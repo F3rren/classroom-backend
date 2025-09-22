@@ -69,6 +69,10 @@
                 <version>1.18.40</version>
                 <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
