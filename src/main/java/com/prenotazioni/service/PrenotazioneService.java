@@ -44,7 +44,7 @@ public class PrenotazioneService {
         
         // Verifica disponibilità
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
-            logger.warn("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
+            logger.info("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
             return null; // Aula non disponibile
         }
         
@@ -52,11 +52,11 @@ public class PrenotazioneService {
         Optional<Utente> utente = utenteRepository.findById(utenteId);
         
         if (aula.isEmpty()) {
-            logger.error("Aula con ID {} non trovata nel database", aulaId);
+            logger.info("Aula con ID {} non trovata nel database", aulaId);
             return null;
         }
         if (utente.isEmpty()) {
-            logger.error("Utente con ID {} non trovato nel database", utenteId);
+            logger.info("Utente con ID {} non trovato nel database", utenteId);
             return null;
         }
         
@@ -65,7 +65,7 @@ public class PrenotazioneService {
         if (corsoId != null) {
             corso = corsoRepository.findById(corsoId);
             if (corso.isEmpty()) {
-                logger.error("Corso con ID {} non trovato nel database", corsoId);
+                logger.info("Corso con ID {} non trovato nel database", corsoId);
                 // Se viene fornito un corsoId ma non esiste, fallisce
                 return null;
             }
@@ -95,7 +95,7 @@ public class PrenotazioneService {
         
         // Verifica disponibilità
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
-            logger.warn("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
+            logger.info("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
             return null; // Aula non disponibile
         }
         
@@ -103,7 +103,7 @@ public class PrenotazioneService {
         Optional<Utente> admin = utenteRepository.findById(utenteAdminId);
         
         if (aula.isEmpty() || admin.isEmpty() || !"admin".equals(admin.get().getRuolo())) {
-            logger.error("Errore nel blocco aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", 
+            logger.info("Errore nel blocco aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", 
                          aulaId, utenteAdminId);
             return null;
         }
@@ -133,7 +133,7 @@ public class PrenotazioneService {
         Optional<Utente> admin = utenteRepository.findById(utenteAdminId);
         
         if (aula.isEmpty() || admin.isEmpty() || !"admin".equals(admin.get().getRuolo())) {
-            logger.error("Errore nella manutenzione aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", aulaId, utenteAdminId);
+            logger.info("Errore nella manutenzione aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", aulaId, utenteAdminId);
             return null;
         }
         
@@ -214,7 +214,7 @@ public class PrenotazioneService {
         Optional<Prenotazione> prenotazione = prenotazioneRepository.findById(prenotazioneId);
         
         if (prenotazione.isEmpty()) {
-            logger.warn("Prenotazione con ID {} non trovata per annullamento", prenotazioneId);
+            logger.info("Prenotazione con ID {} non trovata per annullamento", prenotazioneId);
             return false;
         }
         
@@ -224,7 +224,7 @@ public class PrenotazioneService {
         // Solo il creatore o un admin può annullare
         Optional<Utente> utente = utenteRepository.findById(utenteId);
         if (utente.isEmpty()) {
-            logger.error("Utente con ID {} non trovato nel database per annullamento prenotazione", utenteId);
+            logger.info("Utente con ID {} non trovato nel database per annullamento prenotazione", utenteId);
             return false;
         }
         
@@ -233,7 +233,7 @@ public class PrenotazioneService {
         boolean isAdmin = "admin".equals(utente.get().getRuolo());
         
         if (!isCreatore && !isAdmin) {
-            logger.warn("Utente ID {} non autorizzato ad annullare la prenotazione ID {}", utenteId, prenotazioneId);
+            logger.info("Utente ID {} non autorizzato ad annullare la prenotazione ID {}", utenteId, prenotazioneId);
             return false;
         }
         
@@ -320,7 +320,7 @@ public class PrenotazioneService {
         logger.info("Richiesta annullamento prenotazione da admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         Optional<Prenotazione> prenotazioneOpt = prenotazioneRepository.findById(prenotazioneId);
         if (prenotazioneOpt.isEmpty()) {
-            logger.warn("Prenotazione non trovata - PrenotazioneId: {}", prenotazioneId);
+            logger.info("Prenotazione non trovata - PrenotazioneId: {}", prenotazioneId);
             return false;
         }
         
@@ -331,7 +331,7 @@ public class PrenotazioneService {
         logger.info("Verifica esistenza admin - AdminId: {}", adminId);
         Optional<Utente> admin = utenteRepository.findById(adminId);
         if (admin.isEmpty() || !"admin".equals(admin.get().getRuolo())) {
-            logger.warn("Utente non è un admin valido - AdminId: {}", adminId);
+            logger.info("Utente non è un admin valido - AdminId: {}", adminId);
             return false;
         }
         
@@ -351,5 +351,80 @@ public class PrenotazioneService {
         logger.info("FINE METODO annullaPrenotazioneAsAdmin");
         prenotazioneRepository.save(prenotazione);
         return true;
+    }
+
+    // Aggiorna una prenotazione esistente
+    public Prenotazione updatePrenotazione(Long prenotazioneId, Long aulaId, Long corsoId, Long utenteId, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
+        logger.info("INIZIO METODO updatePrenotazione");
+        logger.info("Richiesta aggiornamento prenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", prenotazioneId, aulaId, corsoId, utenteId, inizio, fine);
+        
+        // Trova la prenotazione esistente
+        Optional<Prenotazione> prenotazioneOpt = prenotazioneRepository.findById(prenotazioneId);
+        if (prenotazioneOpt.isEmpty()) {
+            logger.info("Prenotazione con ID {} non trovata per aggiornamento", prenotazioneId);
+            return null;
+        }
+        
+        Prenotazione prenotazione = prenotazioneOpt.get();
+        
+        // Verifica autorizzazione - solo il creatore o un admin può modificare
+        Optional<Utente> utente = utenteRepository.findById(utenteId);
+        if (utente.isEmpty()) {
+            logger.info("Utente con ID {} non trovato nel database per aggiornamento prenotazione", utenteId);
+            return null;
+        }
+        
+        boolean isCreatore = prenotazione.getUtente().getId().equals(utenteId);
+        boolean isAdmin = "admin".equals(utente.get().getRuolo());
+        
+        if (!isCreatore && !isAdmin) {
+            logger.info("Utente ID {} non autorizzato a modificare la prenotazione ID {}", utenteId, prenotazioneId);
+            return null;
+        }
+        
+        // Verifica che l'aula esista
+        Optional<Aula> aula = aulaRepository.findById(aulaId);
+        if (aula.isEmpty()) {
+            logger.info("Aula con ID {} non trovata nel database", aulaId);
+            return null;
+        }
+        
+        // Verifica disponibilità aula per il nuovo periodo (escludendo questa prenotazione)
+        if (!isAulaDisponibileEscludendo(aulaId, inizio, fine, prenotazioneId)) {
+            logger.info("Aula ID {} non disponibile per il periodo {} - {} (esclusa prenotazione {})", aulaId, inizio, fine, prenotazioneId);
+            return null;
+        }
+        
+        // Corso opzionale
+        Optional<Corso> corso = Optional.empty();
+        if (corsoId != null) {
+            corso = corsoRepository.findById(corsoId);
+            if (corso.isEmpty()) {
+                logger.info("Corso con ID {} non trovato nel database", corsoId);
+                return null;
+            }
+        }
+        
+        // Aggiorna i campi
+        logger.info("Aggiornamento campi prenotazione - PrenotazioneId: {}", prenotazioneId);
+        prenotazione.setAula(aula.get());
+        prenotazione.setCorso(corso.orElse(null));
+        prenotazione.setInizio(inizio);
+        prenotazione.setFine(fine);
+        prenotazione.setDescrizione(descrizione);
+        
+        Prenotazione savedPrenotazione = prenotazioneRepository.save(prenotazione);
+        logger.info("Prenotazione aggiornata con successo - ID: {}, Aula: '{}', Utente: '{}', Periodo: {} - {}", savedPrenotazione.getId(), aula.get().getNome(), utente.get().getEmail(), inizio, fine);
+        logger.info("FINE METODO updatePrenotazione");
+        return savedPrenotazione;
+    }
+    
+    // Verifica disponibilità aula escludendo una prenotazione specifica
+    private boolean isAulaDisponibileEscludendo(Long aulaId, LocalDateTime inizio, LocalDateTime fine, Long prenotazioneIdEsclusa) {
+        logger.info("Verifica disponibilità aula escludendo prenotazione - AulaId: {}, Periodo: {} - {}, Esclusa: {}", aulaId, inizio, fine, prenotazioneIdEsclusa);
+        List<Prenotazione> conflitti = prenotazioneRepository.findConflittingReservationsExcluding(aulaId, inizio, fine, prenotazioneIdEsclusa);
+        boolean disponibile = conflitti.isEmpty();
+        logger.info("Risultato verifica disponibilità aula (esclusa prenotazione {}) - AulaId: {}, Disponibile: {}", prenotazioneIdEsclusa, aulaId, disponibile);
+        return disponibile;
     }
 }

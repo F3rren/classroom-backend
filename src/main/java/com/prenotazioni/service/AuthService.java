@@ -35,11 +35,11 @@ public class AuthService {
         // Controlla se email o username sono già registrati
         logger.info("INIZIO METODO register");
         if (utenteRepository.findByEmail(request.getEmail()) != null) {
-            logger.warn("Tentativo di registrazione fallito - Email già esistente: {}", request.getEmail());
+            logger.info("Tentativo di registrazione fallito - Email già esistente: {}", request.getEmail());
             return null;
         }
         if (utenteRepository.findByUsername(request.getUsername()) != null) {
-            logger.warn("Tentativo di registrazione fallito - Username già esistente: {}", request.getUsername());
+            logger.info("Tentativo di registrazione fallito - Username già esistente: {}", request.getUsername());
             return null;
         }
         // Crea il nuovo utente
@@ -69,7 +69,7 @@ public class AuthService {
     public boolean deleteUtente(Long id) {
         logger.info("INIZIO METODO deleteUtente - UtenteId: {}", id);
         if (!utenteRepository.existsById(id)) {
-            logger.warn("Tentativo di eliminazione fallito - UtenteId non trovato: {}", id);
+            logger.info("Tentativo di eliminazione fallito - UtenteId non trovato: {}", id);
             logger.info("FINE METODO deleteUtente - UtenteId non trovato: {}", id);
             return false;
         }
@@ -82,7 +82,7 @@ public class AuthService {
         logger.info("INIZIO METODO updateUtente - UtenteId: {}", id);
         Utente utente = utenteRepository.findById(id).orElse(null);
         if (utente == null) {
-            logger.warn("Tentativo di aggiornamento fallito - UtenteId non trovato: {}", id);
+            logger.info("Tentativo di aggiornamento fallito - UtenteId non trovato: {}", id);
             logger.info("FINE METODO updateUtente - UtenteId non trovato: {}", id);
             return null;
         }
@@ -90,12 +90,12 @@ public class AuthService {
         // Controlla se la nuova email o username sono già in uso da un altro utente
         Utente utenteConEmail = utenteRepository.findByEmail(request.getEmail());
         if (utenteConEmail != null && !utenteConEmail.getId().equals(id)) {
-            logger.warn("Tentativo di aggiornamento fallito - Email già in uso: {}", request.getEmail());
+            logger.info("Tentativo di aggiornamento fallito - Email già in uso: {}", request.getEmail());
             return null;
         }
         Utente utenteConUsername = utenteRepository.findByUsername(request.getUsername());
         if (utenteConUsername != null && !utenteConUsername.getId().equals(id)) {
-            logger.warn("Tentativo di aggiornamento fallito - Username già in uso: {}", request.getUsername());
+            logger.info("Tentativo di aggiornamento fallito - Username già in uso: {}", request.getUsername());
             return null;
         }
         // Aggiorna i campi modificabili
