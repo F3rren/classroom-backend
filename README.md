@@ -1,5 +1,7 @@
 # University Room Booking System - Backend
 
+⚠️ **Side Note:** This project is designed to work together with its [frontend repository](https://github.com/F3rren/frontend). It cannot function independently, as it requires a running backend server and database connection. 
+
 Spring Boot backend for a university classroom booking system. This backend provides REST APIs for room management, user authentication, and booking operations.
 
 ## Features
