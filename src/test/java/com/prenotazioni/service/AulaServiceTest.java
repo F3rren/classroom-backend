@@ -1,7 +1,8 @@
 package com.prenotazioni.service;
 
 import com.prenotazioni.model.Aula;
-import com.prenotazioni.repository.AulaRepository;
+import com.prenotazioni.repository.IAulaRepository;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.InjectMocks;
@@ -18,7 +19,7 @@ import static org.mockito.Mockito.*;
 public class AulaServiceTest {
 
     @Mock
-    private AulaRepository aulaRepository;
+    private IAulaRepository aulaRepository;
 
     @InjectMocks
     private AulaService aulaService;

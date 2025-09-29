@@ -4,10 +4,13 @@ import com.prenotazioni.service.AuthService;
 import com.prenotazioni.service.JwtService;
 import com.prenotazioni.service.AulaService;
 import com.prenotazioni.service.PrenotazioneService;
+import com.prenotazioni.service.NotificaService;
+import com.prenotazioni.service.UtenteService;
 import com.prenotazioni.dto.RegisterRequest;
 import com.prenotazioni.dto.AulaRequest;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Aula;
+import com.prenotazioni.model.Prenotazione;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +42,10 @@ public class AdminController {
     private AulaService aulaService;
     @Autowired
     private PrenotazioneService prenotazioneService;
+    @Autowired
+    private NotificaService notificaService;
+    @Autowired
+    private UtenteService utenteService;
 
     // ==================== UTILITY METHODS ====================
     
@@ -897,6 +904,24 @@ public class AdminController {
             Long adminId = jwtService.getUserIdFromToken(token);
             logger.info("[{}] Admin ID: {} tenta di eliminare prenotazione: {}", sessionId, adminId, id);
             
+            // Recuperiamo prima la prenotazione per ottenere i dettagli per la notifica
+            Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
+            if (prenotazione == null) {
+                logger.warn("[{}] FINE deletePrenotazioneAsAdmin - Prenotazione non trovata ID: {}", sessionId, id);
+                return new ResponseEntity<>(
+                    createErrorResponse("BOOKING_NOT_FOUND", 
+                                      "Prenotazione non trovata", 
+                                      String.format("La prenotazione con ID %d non esiste.", id), 
+                                      sessionId),
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Recuperiamo i dettagli della prenotazione per la notifica
+            Utente utentePrenotazione = prenotazione.getUtente();
+            Aula aulaPrenotazione = prenotazione.getAula();
+            Utente adminUtente = utenteService.findById(adminId);
+            
             // Motivo opzionale per l'eliminazione
             String motivo = (requestBody != null && requestBody.get("reason") != null) 
                 ? requestBody.get("reason") 
@@ -909,12 +934,38 @@ public class AdminController {
             if (!eliminata) {
                 logger.warn("[{}] FINE deletePrenotazioneAsAdmin - Impossibile eliminare prenotazione ID: {}", sessionId, id);
                 return new ResponseEntity<>(
-                    createErrorResponse("BOOKING_NOT_FOUND", 
+                    createErrorResponse("BOOKING_DELETION_FAILED", 
                                       "Impossibile eliminare prenotazione", 
-                                      String.format("La prenotazione con ID %d non esiste o non può essere eliminata.", id), 
+                                      String.format("La prenotazione con ID %d non può essere eliminata.", id), 
                                       sessionId),
-                    HttpStatus.NOT_FOUND
+                    HttpStatus.CONFLICT
                 );
+            }
+
+            // Crea notifica per l'utente che aveva la prenotazione cancellata
+            try {
+                String adminNome = adminUtente != null ? adminUtente.getNome() : "Amministratore";
+                String dataPrenotazione = prenotazione.getInizio().toLocalDate().toString();
+                String oraInizio = prenotazione.getInizio().toLocalTime().toString();
+                String oraFine = prenotazione.getFine().toLocalTime().toString();
+                String nomeStanza = aulaPrenotazione != null ? aulaPrenotazione.getNome() : "Stanza non specificata";
+                
+                notificaService.createNotificaCancellazionePrenotazione(
+                    utentePrenotazione, 
+                    id, 
+                    nomeStanza, 
+                    adminNome, 
+                    dataPrenotazione, 
+                    oraInizio, 
+                    oraFine,
+                    motivo  // Passa il motivo alla notifica
+                );
+                
+                logger.info("[{}] Notifica di cancellazione creata per utente: {}", sessionId, utentePrenotazione.getId());
+            } catch (Exception e) {
+                logger.error("[{}] Errore durante creazione notifica per utente: {} | Errore: {}", 
+                           sessionId, utentePrenotazione.getId(), e.getMessage(), e);
+                // Non blocchiamo l'operazione se la notifica fallisce
             }
 
             logger.info("[{}] FINE deletePrenotazioneAsAdmin - Prenotazione eliminata con successo | ID: {} | Admin: {} | Motivo: {}", 

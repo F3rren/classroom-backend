@@ -1,7 +1,7 @@
 package com.prenotazioni.service;
 
 import com.prenotazioni.model.Utente;
-import com.prenotazioni.repository.UtenteRepository;
+import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.dto.RegisterRequest;
 
 import java.util.List;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
     @Autowired
-    private UtenteRepository utenteRepository;
+    private IUtenteRepository utenteRepository;
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     public Utente login(String email, String password) {

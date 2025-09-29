@@ -2,8 +2,8 @@ package com.prenotazioni.service;
 
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
-import com.prenotazioni.repository.AulaRepository;
-import com.prenotazioni.repository.PrenotazioneRepository;
+import com.prenotazioni.repository.IAulaRepository;
+import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.dto.AulaRequest;
 import com.prenotazioni.dto.RoomDetailsResponse;
 import org.slf4j.Logger;
@@ -25,10 +25,10 @@ public class AulaService {
     //AulaService(aul)
 
     @Autowired
-    private AulaRepository aulaRepository;
+    private IAulaRepository aulaRepository;
 
     @Autowired
-    private PrenotazioneRepository prenotazioneRepository;
+    private IPrenotazioneRepository prenotazioneRepository;
 
     // Ottieni tutte le aule
     public List<Aula> getAllAule() {

@@ -5,10 +5,10 @@ import com.prenotazioni.model.Corso;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.Prenotazione.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
-import com.prenotazioni.repository.PrenotazioneRepository;
-import com.prenotazioni.repository.AulaRepository;
-import com.prenotazioni.repository.CorsoRepository;
-import com.prenotazioni.repository.UtenteRepository;
+import com.prenotazioni.repository.IAulaRepository;
+import com.prenotazioni.repository.ICorsoRepository;
+import com.prenotazioni.repository.IPrenotazioneRepository;
+import com.prenotazioni.repository.IUtenteRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,16 +26,16 @@ public class PrenotazioneService {
     private static final Logger logger = LoggerFactory.getLogger(PrenotazioneService.class);
     
     @Autowired
-    private PrenotazioneRepository prenotazioneRepository;
+    private IPrenotazioneRepository prenotazioneRepository;
     
     @Autowired
-    private AulaRepository aulaRepository;
+    private IAulaRepository aulaRepository;
     
     @Autowired
-    private CorsoRepository corsoRepository;
+    private ICorsoRepository corsoRepository;
     
     @Autowired
-    private UtenteRepository utenteRepository;
+    private IUtenteRepository utenteRepository;
 
     // Prenota un'aula per una lezione
     public Prenotazione prenotaAula(Long aulaId, Long corsoId, Long utenteId, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
