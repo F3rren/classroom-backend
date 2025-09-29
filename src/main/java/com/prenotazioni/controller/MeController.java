@@ -1,7 +1,7 @@
 package com.prenotazioni.controller;
 
 import com.prenotazioni.model.Utente;
-import com.prenotazioni.repository.UtenteRepository;
+import com.prenotazioni.repository.IUtenteRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ public class MeController {
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
     @Autowired
-    private UtenteRepository utenteRepository;
+    private IUtenteRepository utenteRepository;
   
     // ==================== UTILITY METHODS ====================
     
