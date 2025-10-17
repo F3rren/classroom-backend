@@ -103,7 +103,20 @@ public class AuthService {
         utente.setEmail(request.getEmail());
         utente.setNome(request.getNome());
         utente.setPassword(request.getPassword());
-        utente.setRuolo(request.getRuolo());
+        
+        // Normalizza e valida il ruolo: solo 'admin' o 'user' (minuscolo)
+        String ruolo = request.getRuolo();
+        if (ruolo != null) {
+            ruolo = ruolo.toLowerCase().trim();
+            // Se il ruolo non è valido, mantieni quello esistente
+            if (!"admin".equals(ruolo) && !"user".equals(ruolo)) {
+                logger.warn("Ruolo non valido '{}' fornito. Mantenuto ruolo esistente: {}", request.getRuolo(), utente.getRuolo());
+                ruolo = utente.getRuolo();
+            }
+        } else {
+            ruolo = utente.getRuolo(); // Mantieni esistente se null
+        }
+        utente.setRuolo(ruolo);
         utente.setUsername(request.getUsername());
         
         // NON modifichiamo dataRegistrazione - rimane quella originale

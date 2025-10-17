@@ -39,7 +39,7 @@ public class Utente {
     private String password;
     
     @Column(nullable = false, length = 20)
-    private String ruolo; // 'admin', 'user', 'docente', 'studente' (MINUSCOLO!)
+    private String ruolo; // 'admin' o 'user' (MINUSCOLO!)
     
     @Column(name = "data_registrazione", nullable = false, updatable = false)
     private LocalDateTime dataRegistrazione;

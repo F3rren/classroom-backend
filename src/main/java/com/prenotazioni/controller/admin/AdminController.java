@@ -871,6 +871,56 @@ public class AdminController {
 
     // ========== GESTIONE PRENOTAZIONI ADMIN ==========
 
+    // Lista TUTTE le prenotazioni (incluse annullate) - SOLO ADMIN
+    @GetMapping("/prenotazioni")
+    public ResponseEntity<?> getAllPrenotazioniAdmin(@RequestHeader("Authorization") String authHeader) {
+        String sessionId = generateSessionId();
+        logger.info("[{}] INIZIO getAllPrenotazioniAdmin", sessionId);
+        
+        ResponseEntity<?> accessCheck = checkAdminAccess(authHeader);
+        if (accessCheck != null) {
+            logger.warn("[{}] FINE getAllPrenotazioniAdmin - Accesso admin negato", sessionId);
+            return accessCheck;
+        }
+
+        logger.info("[{}] Accesso admin confermato, recupero TUTTE le prenotazioni (incluse annullate)", sessionId);
+        try {
+            List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
+            
+            // Conta le prenotazioni per stato
+            long attive = tuttePrenotazioni.stream()
+                .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
+                .count();
+            long annullate = tuttePrenotazioni.size() - attive;
+            
+            logger.info("[{}] FINE getAllPrenotazioniAdmin - Totale: {} (Attive: {}, Annullate: {})", 
+                       sessionId, tuttePrenotazioni.size(), attive, annullate);
+            
+            Map<String, Object> responseData = Map.of(
+                "prenotazioni", tuttePrenotazioni,
+                "statistiche", Map.of(
+                    "totale", tuttePrenotazioni.size(),
+                    "attive", attive,
+                    "annullate", annullate
+                )
+            );
+            
+            return new ResponseEntity<>(
+                createSuccessResponse("Prenotazioni recuperate con successo", responseData, sessionId),
+                HttpStatus.OK
+            );
+        } catch (Exception e) {
+            logger.error("[{}] FINE getAllPrenotazioniAdmin - Errore: {}", sessionId, e.getMessage(), e);
+            return new ResponseEntity<>(
+                createErrorResponse("INTERNAL_ERROR", 
+                                  "Errore interno del server", 
+                                  "Si è verificato un errore durante il recupero delle prenotazioni.", 
+                                  sessionId),
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
     // Elimina prenotazione come admin (può eliminare qualsiasi prenotazione)
     @DeleteMapping("/prenotazioni/{id}")
     public ResponseEntity<?> deletePrenotazioneAsAdmin(@PathVariable Long id, 

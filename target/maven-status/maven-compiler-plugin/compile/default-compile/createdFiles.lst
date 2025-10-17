@@ -6,10 +6,15 @@ com\prenotazioni\service\NotificaService.class
 com\prenotazioni\dto\AulaRequest.class
 com\prenotazioni\controller\auth\AuthController$LoginRequest.class
 com\prenotazioni\repository\NotificaRepository.class
+com\prenotazioni\repository\IPrenotazioneRepository.class
 com\prenotazioni\service\UtenteService.class
 com\prenotazioni\dto\RoomDetailsResponse$CurrentBooking.class
+com\prenotazioni\service\AulaService.class
 com\prenotazioni\config\CorsConfig$1.class
+com\prenotazioni\controller\admin\AdminController.class
+com\prenotazioni\controller\PrenotazioneController.class
 com\prenotazioni\PrenotazioniAuleBackendApplication.class
+com\prenotazioni\service\PrenotazioneService.class
 com\prenotazioni\repository\IAulaRepository.class
 com\prenotazioni\model\Corso.class
 com\prenotazioni\dto\RoomDetailsResponse.class
@@ -25,4 +30,6 @@ com\prenotazioni\controller\NotificaController.class
 com\prenotazioni\dto\RoomDetailsResponse$BlockInfo.class
 com\prenotazioni\repository\IUtenteRepository.class
 com\prenotazioni\controller\auth\AuthController.class
+com\prenotazioni\controller\PrenotazioneController$PrenotazioneRequest.class
+com\prenotazioni\controller\RoomController.class
 com\prenotazioni\model\Notifica.class

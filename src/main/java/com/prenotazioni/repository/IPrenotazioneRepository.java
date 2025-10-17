@@ -13,7 +13,7 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     
     // Trova prenotazioni che si sovrappongono con un periodo dato
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId " +
-           "AND p.stato != 'ANNULLATA' " +
+           "AND p.stato != 'annullata' " +
            "AND ((p.inizio <= :inizio AND p.fine > :inizio) " +
            "OR (p.inizio < :fine AND p.fine >= :fine) " +
            "OR (p.inizio >= :inizio AND p.fine <= :fine))")
@@ -23,7 +23,7 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
 
     // Trova prenotazioni che si sovrappongono con un periodo dato escludendo una prenotazione specifica
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId " +
-           "AND p.stato != 'ANNULLATA' " +
+           "AND p.stato != 'annullata' " +
            "AND p.id != :prenotazioneIdEsclusa " +
            "AND ((p.inizio <= :inizio AND p.fine > :inizio) " +
            "OR (p.inizio < :fine AND p.fine >= :fine) " +
@@ -35,7 +35,7 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     
     // Trova prenotazioni di un'aula in un periodo specifico
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId " +
-           "AND p.stato != 'ANNULLATA' " +
+           "AND p.stato != 'annullata' " +
            "AND p.inizio <= :fine AND p.fine >= :inizio " +
            "ORDER BY p.inizio ASC")
     List<Prenotazione> findByAulaAndPeriod(@Param("aulaId") Long aulaId,
@@ -44,7 +44,7 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     
     // Trova prenotazioni attive in un momento specifico
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId " +
-           "AND p.stato != 'ANNULLATA' " +
+           "AND p.stato != 'annullata' " +
            "AND p.inizio <= :momento AND p.fine > :momento " +
            "ORDER BY p.stato DESC") // MANUTENZIONE, BLOCCATA, PRENOTATA
     List<Prenotazione> findActiveReservations(@Param("aulaId") Long aulaId,
@@ -57,7 +57,7 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     
     // Trova aule libere in un periodo
     @Query("SELECT a.id FROM Aula a WHERE a.id NOT IN " +
-           "(SELECT DISTINCT p.aula.id FROM Prenotazione p WHERE p.stato != 'ANNULLATA' " +
+           "(SELECT DISTINCT p.aula.id FROM Prenotazione p WHERE p.stato != 'annullata' " +
            "AND ((p.inizio <= :inizio AND p.fine > :inizio) " +
            "OR (p.inizio < :fine AND p.fine >= :fine) " +
            "OR (p.inizio >= :inizio AND p.fine <= :fine)))")
@@ -68,7 +68,7 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     List<Prenotazione> findByStato(String stato);
     
     // Trova prenotazioni future
-    @Query("SELECT p FROM Prenotazione p WHERE p.inizio > :ora AND p.stato != 'ANNULLATA' " +
+    @Query("SELECT p FROM Prenotazione p WHERE p.inizio > :ora AND p.stato != 'annullata' " +
            "ORDER BY p.inizio ASC")
     List<Prenotazione> findPrenotazioniFuture(@Param("ora") LocalDateTime ora);
     

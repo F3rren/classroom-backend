@@ -791,6 +791,7 @@ public class PrenotazioneController {
     }
     
     // Lista prenotazioni utente
+    // ESCLUDE automaticamente le prenotazioni annullate
     @GetMapping("/mie")
     public ResponseEntity<?> getMiePrenotazioni(@RequestHeader("Authorization") String authHeader) {
         logger.info("INIZIO getMiePrenotazioni");
@@ -805,9 +806,15 @@ public class PrenotazioneController {
         Long utenteId = jwtService.getUserIdFromToken(token);
         logger.info("Utente autenticato con ID: {}", utenteId);
         
-        List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniUtente(utenteId);
+        List<Prenotazione> tuttePrenotazioni = prenotazioneService.getPrenotazioniUtente(utenteId);
         
-        logger.info("FINE getMiePrenotazioni - Prenotazioni recuperate per utente: {}, totale: {}", utenteId, prenotazioni.size());
+        // Filtra le prenotazioni annullate
+        List<Prenotazione> prenotazioni = tuttePrenotazioni.stream()
+            .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
+            .collect(java.util.stream.Collectors.toList());
+        
+        logger.info("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)", 
+                   utenteId, prenotazioni.size(), tuttePrenotazioni.size() - prenotazioni.size());
         return new ResponseEntity<>(
             Collections.singletonMap("prenotazioni", prenotazioni),
             HttpStatus.OK
@@ -935,6 +942,7 @@ public class PrenotazioneController {
     // ========== NUOVI ENDPOINT PER GESTIONE PRENOTAZIONI ==========
 
     // Lista tutte le prenotazioni (semplice) - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
+    // ESCLUDE automaticamente le prenotazioni annullate
     @GetMapping
     public ResponseEntity<?> getAllPrenotazioni(@RequestHeader("Authorization") String authHeader) {
         logger.info("INIZIO getAllPrenotazioni");
@@ -945,17 +953,24 @@ public class PrenotazioneController {
             return authCheck;
         }
 
-        logger.info("Autenticazione riuscita, recupero tutte le prenotazioni");
-        List<Prenotazione> prenotazioni = prenotazioneService.getAllPrenotazioni();
-        if (prenotazioni == null || prenotazioni.isEmpty()) {
-            logger.info("FINE getAllPrenotazioni - Nessuna prenotazione trovata");
+        logger.info("Autenticazione riuscita, recupero tutte le prenotazioni attive (escluse annullate)");
+        List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
+        
+        // Filtra le prenotazioni annullate
+        List<Prenotazione> prenotazioni = tuttePrenotazioni.stream()
+            .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
+            .collect(java.util.stream.Collectors.toList());
+        
+        if (prenotazioni.isEmpty()) {
+            logger.info("FINE getAllPrenotazioni - Nessuna prenotazione attiva trovata");
             return new ResponseEntity<>(
-                Collections.singletonMap("message", "Nessuna prenotazione trovata"),
+                Collections.singletonMap("message", "Nessuna prenotazione attiva trovata"),
                 HttpStatus.OK
             );
         }
 
-        logger.info("FINE getAllPrenotazioni - Prenotazioni recuperate con successo, totale: {}", prenotazioni.size());
+        logger.info("FINE getAllPrenotazioni - Prenotazioni attive recuperate: {} (totale con annullate: {})", 
+                   prenotazioni.size(), tuttePrenotazioni.size());
         return new ResponseEntity<>(
             Collections.singletonMap("prenotazioni", prenotazioni),
             HttpStatus.OK
