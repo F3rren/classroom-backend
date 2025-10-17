@@ -1,19 +1,31 @@
 package com.prenotazioni.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+/**
+ * Entità Corso - Basata su analisi frontend
+ * Campi utilizzati: id, nome, docente, descrizione
+ */
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
+@Table(name = "corso")
 public class Corso {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @Column(nullable = false, length = 100)
     private String nome;
+    
+    @Column(nullable = false, length = 100)
     private String docente;
-    // Getter e Setter
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
-    public String getDocente() { return docente; }
-    public void setDocente(String docente) { this.docente = docente; }
+    
+    @Column(columnDefinition = "TEXT")
+    private String descrizione;
 }

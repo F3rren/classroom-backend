@@ -3,7 +3,6 @@ package com.prenotazioni.service;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Corso;
 import com.prenotazioni.model.Prenotazione;
-import com.prenotazioni.model.Prenotazione.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
@@ -78,7 +77,7 @@ public class PrenotazioneService {
         prenotazione.setUtente(utente.get());
         prenotazione.setInizio(inizio);
         prenotazione.setFine(fine);
-        prenotazione.setStato(StatoPrenotazione.PRENOTATA);
+        prenotazione.setStato("prenotata");
         prenotazione.setDescrizione(descrizione);
         prenotazione.setDataCreazione(LocalDateTime.now());
         
@@ -115,7 +114,7 @@ public class PrenotazioneService {
         blocco.setUtente(admin.get());
         blocco.setInizio(inizio);
         blocco.setFine(fine);
-        blocco.setStato(StatoPrenotazione.BLOCCATA);
+        blocco.setStato("bloccata");
         blocco.setDescrizione(motivo);
         blocco.setDataCreazione(LocalDateTime.now());
         
@@ -144,7 +143,7 @@ public class PrenotazioneService {
         manutenzione.setUtente(admin.get());
         manutenzione.setInizio(inizio);
         manutenzione.setFine(fine);
-        manutenzione.setStato(StatoPrenotazione.MANUTENZIONE);
+        manutenzione.setStato("manutenzione");
         manutenzione.setDescrizione(dettagli);
         manutenzione.setDataCreazione(LocalDateTime.now());
         
@@ -189,14 +188,14 @@ public class PrenotazioneService {
         
         // Priorità: MANUTENZIONE > BLOCCATA > PRENOTATA
         for (Prenotazione p : prenotazioniAttive) {
-            if (p.getStato() == StatoPrenotazione.MANUTENZIONE) {
+            if ("manutenzione".equalsIgnoreCase(p.getStato())) {
                 logger.info("Stato aula - AulaId: {}, Momento: {} - MANUTENZIONE", aulaId, momento);
                 return "MANUTENZIONE";
             }
         }
         
         for (Prenotazione p : prenotazioniAttive) {
-            if (p.getStato() == StatoPrenotazione.BLOCCATA) {
+            if ("bloccata".equalsIgnoreCase(p.getStato())) {
                 logger.info("Stato aula - AulaId: {}, Momento: {} - BLOCCATA", aulaId, momento);
                 return "BLOCCATA";
             }
@@ -238,7 +237,7 @@ public class PrenotazioneService {
         }
         
 
-        p.setStato(StatoPrenotazione.ANNULLATA);
+        p.setStato("annullata");
         prenotazioneRepository.save(p);
         logger.info("Prenotazione ID {} annullata con successo da Utente ID {}", prenotazioneId, utenteId);
         logger.info("FINE METODO annullaPrenotazione");
@@ -299,7 +298,7 @@ public class PrenotazioneService {
     }
     
     // Lista prenotazioni per stato
-    public List<Prenotazione> getPrenotazioniByStato(StatoPrenotazione stato) {
+    public List<Prenotazione> getPrenotazioniByStato(String stato) {
         logger.info("INIZIO METODO getPrenotazioniByStato");
         logger.info("Recupero prenotazioni per stato - Stato: {}", stato);
         logger.info("FINE METODO getPrenotazioniByStato");
@@ -337,7 +336,7 @@ public class PrenotazioneService {
         
         logger.info("Annullamento prenotazione da parte dell'admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         // Gli admin possono eliminare qualsiasi prenotazione, indipendentemente dallo stato
-        prenotazione.setStato(StatoPrenotazione.ANNULLATA);
+        prenotazione.setStato("annullata");
         
         logger.info("Aggiornamento descrizione prenotazione per indicare azione admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         // Aggiorna la descrizione per indicare l'azione admin

@@ -1,7 +1,6 @@
 package com.prenotazioni.repository;
 
 import com.prenotazioni.model.Prenotazione;
-import com.prenotazioni.model.Prenotazione.StatoPrenotazione;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -66,7 +65,7 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
                               @Param("fine") LocalDateTime fine);
     
     // Trova prenotazioni per stato
-    List<Prenotazione> findByStato(StatoPrenotazione stato);
+    List<Prenotazione> findByStato(String stato);
     
     // Trova prenotazioni future
     @Query("SELECT p FROM Prenotazione p WHERE p.inizio > :ora AND p.stato != 'ANNULLATA' " +

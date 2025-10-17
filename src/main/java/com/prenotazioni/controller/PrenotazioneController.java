@@ -885,7 +885,7 @@ public class PrenotazioneController {
                     );
                 }
                 
-                if (prenotazioneEsistente.getStato() != Prenotazione.StatoPrenotazione.PRENOTATA) {
+                if (!"prenotata".equalsIgnoreCase(prenotazioneEsistente.getStato())) {
                     logger.warn("[{}] FINE annullaPrenotazione - Tentativo di annullare prenotazione con stato non valido | PrenotazioneId: {} | Stato: {}", 
                                sessionId, prenotazioneId, prenotazioneEsistente.getStato());
                     return new ResponseEntity<>(
@@ -1064,8 +1064,7 @@ public class PrenotazioneController {
 
         logger.info("Autenticazione riuscita, recupero prenotazioni per stato: {}", stato);
         try {
-            Prenotazione.StatoPrenotazione statoEnum = Prenotazione.StatoPrenotazione.valueOf(stato.toUpperCase());
-            List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniByStato(statoEnum);
+            List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniByStato(stato.toLowerCase());
             
             logger.info("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", stato, prenotazioni.size());
             return new ResponseEntity<>(
