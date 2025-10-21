@@ -1,0 +1,92 @@
+# ============================================
+# MAVEN
+# ============================================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ============================================
+# SPRING BOOT
+# ============================================
+HELP.md
+
+# ============================================
+# IDE - STS (Spring Tool Suite)
+# ============================================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# ============================================
+# IDE - IntelliJ IDEA
+# ============================================
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+
+# ============================================
+# IDE - NetBeans
+# ============================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ============================================
+# IDE - Visual Studio Code
+# ============================================
+.vscode/
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+log/
+
+# ============================================
+# CONFIGURAZIONI SENSIBILI (IMPORTANTE!)
+# ============================================
+# File con credenziali database e altre configurazioni sensibili
+config/config.properties
+
+# File di configurazione ambiente-specifici
+**/application-local.properties
+**/application-dev.properties
+**/application-prod.properties
+
+# ============================================
+# SISTEMA OPERATIVO
+# ============================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# ============================================
+# TEMPORANEI
+# ============================================
+*.tmp
+*.bak
+*.swp
+*~.nib

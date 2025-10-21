@@ -1,4 +1,4 @@
-package com.prenotazioni.config;
+package com.prenotazioni.setting;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,4 +1,4 @@
-package com.prenotazioni.config;
+package com.prenotazioni.setting;
 
 import com.prenotazioni.service.JwtService;
 import jakarta.servlet.FilterChain;
