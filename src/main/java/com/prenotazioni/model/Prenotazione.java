@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "prenotazione")
+@Table(name = "prenotazioni")
 public class Prenotazione {
 
     @Id

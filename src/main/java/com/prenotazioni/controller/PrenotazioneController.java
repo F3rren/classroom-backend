@@ -211,19 +211,6 @@ public class PrenotazioneController {
             );
         }
         
-        // Validazione corso - OPZIONALE per prenotazioni libere
-        // Il service gestisce corsoId null per prenotazioni libere
-        /*
-        if (request.getCorsoId() == null) {
-            logger.warn("[{}] FINE prenotaAula - CorsoId mancante", sessionId);
-            return new ResponseEntity<>(
-                createErrorResponse("MISSING_CORSO_ID", "CorsoId mancante", 
-                                  "Devi specificare per quale corso stai prenotando l'aula.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-        */
-        
         if (request.getInizio() == null || request.getInizio().trim().isEmpty()) {
             logger.warn("[{}] FINE prenotaAula - Data di inizio mancante", sessionId);
             return new ResponseEntity<>(

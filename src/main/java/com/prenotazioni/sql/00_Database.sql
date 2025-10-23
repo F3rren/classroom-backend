@@ -1,0 +1,2 @@
+-- CREAZIONE DEL DATABASE
+CREATE DATABASE prenotazioni_aule_rad;

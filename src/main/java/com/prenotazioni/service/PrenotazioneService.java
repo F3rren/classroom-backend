@@ -82,6 +82,10 @@ public class PrenotazioneService {
         prenotazione.setDataCreazione(LocalDateTime.now());
         
         Prenotazione savedPrenotazione = prenotazioneRepository.save(prenotazione);
+        
+        // Aggiorna lo stato dell'aula se la prenotazione è attiva ADESSO
+        aggiornaStatoAula(aulaId);
+        
         logger.info("Prenotazione salvata con successo - ID: {}, Aula: '{}', Utente: '{}', Periodo: {} - {}", savedPrenotazione.getId(), aula.get().getNome(), utente.get().getEmail(), inizio, fine);
         logger.info("FINE METODO prenotaAula");
         return savedPrenotazione;
@@ -206,6 +210,53 @@ public class PrenotazioneService {
         return "PRENOTATA";
     }
     
+    // Aggiorna lo stato dell'aula in base alle prenotazioni attive
+    private void aggiornaStatoAula(Long aulaId) {
+        logger.info("INIZIO METODO aggiornaStatoAula - AulaId: {}", aulaId);
+        
+        Optional<Aula> aulaOpt = aulaRepository.findById(aulaId);
+        if (aulaOpt.isEmpty()) {
+            logger.warn("Aula non trovata per aggiornamento stato - AulaId: {}", aulaId);
+            return;
+        }
+        
+        Aula aula = aulaOpt.get();
+        LocalDateTime ora = LocalDateTime.now();
+        
+        // Ottieni prenotazioni attive in questo momento
+        List<Prenotazione> prenotazioniAttive = prenotazioneRepository.findActiveReservations(aulaId, ora);
+        
+        String nuovoStato;
+        if (prenotazioniAttive.isEmpty()) {
+            nuovoStato = "libera";
+        } else {
+            // Controlla se c'è una prenotazione di manutenzione o bloccata
+            boolean hasManutenzione = prenotazioniAttive.stream()
+                .anyMatch(p -> "manutenzione".equalsIgnoreCase(p.getStato()));
+            boolean hasBloccata = prenotazioniAttive.stream()
+                .anyMatch(p -> "bloccata".equalsIgnoreCase(p.getStato()));
+            
+            if (hasManutenzione) {
+                nuovoStato = "manutenzione";
+            } else if (hasBloccata) {
+                nuovoStato = "bloccata";
+            } else {
+                nuovoStato = "occupata";
+            }
+        }
+        
+        // Aggiorna solo se lo stato è cambiato
+        if (!nuovoStato.equals(aula.getStato())) {
+            logger.info("Aggiornamento stato aula {} da '{}' a '{}'", aulaId, aula.getStato(), nuovoStato);
+            aula.setStato(nuovoStato);
+            aulaRepository.save(aula);
+        } else {
+            logger.info("Stato aula {} rimane invariato: '{}'", aulaId, aula.getStato());
+        }
+        
+        logger.info("FINE METODO aggiornaStatoAula");
+    }
+    
     // Annulla una prenotazione
     public boolean annullaPrenotazione(Long prenotazioneId, Long utenteId) {
         logger.info("INIZIO METODO annullaPrenotazione");
@@ -239,6 +290,10 @@ public class PrenotazioneService {
 
         p.setStato("annullata");
         prenotazioneRepository.save(p);
+        
+        // Aggiorna lo stato dell'aula
+        aggiornaStatoAula(p.getAula().getId());
+        
         logger.info("Prenotazione ID {} annullata con successo da Utente ID {}", prenotazioneId, utenteId);
         logger.info("FINE METODO annullaPrenotazione");
         return true;
@@ -347,8 +402,12 @@ public class PrenotazioneService {
         prenotazione.setDescrizione(nuovaDescrizione);
 
         logger.info("Salvataggio prenotazione aggiornata - PrenotazioneId: {}", prenotazioneId);
-        logger.info("FINE METODO annullaPrenotazioneAsAdmin");
         prenotazioneRepository.save(prenotazione);
+        
+        // Aggiorna lo stato dell'aula
+        aggiornaStatoAula(prenotazione.getAula().getId());
+        
+        logger.info("FINE METODO annullaPrenotazioneAsAdmin");
         return true;
     }
 

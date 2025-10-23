@@ -102,7 +102,14 @@ public class AuthService {
         logger.info("Aggiornamento dati utente - UtenteId: {}", id);
         utente.setEmail(request.getEmail());
         utente.setNome(request.getNome());
-        utente.setPassword(request.getPassword());
+        
+        // Aggiorna la password solo se ne viene fornita una nuova
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+            utente.setPassword(request.getPassword());
+            logger.info("Password aggiornata per UtenteId: {}", id);
+        } else {
+            logger.info("Password non modificata per UtenteId: {} - Mantenuta password esistente", id);
+        }
         
         // Normalizza e valida il ruolo: solo 'admin' o 'user' (minuscolo)
         String ruolo = request.getRuolo();

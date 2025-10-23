@@ -2,6 +2,7 @@ package com.prenotazioni.repository;
 
 import com.prenotazioni.model.Prenotazione;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -172,4 +173,9 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     // Trova tutte le prenotazioni per una specifica aula
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId ORDER BY p.inizio ASC")
     List<Prenotazione> findByAulaId(@Param("aulaId") Long aulaId);
+    
+    // Elimina tutte le prenotazioni di un utente (per eliminazione utente)
+    @Modifying
+    @Query("DELETE FROM Prenotazione p WHERE p.utente.id = :utenteId")
+    void deleteByUtenteId(@Param("utenteId") Long utenteId);
 }

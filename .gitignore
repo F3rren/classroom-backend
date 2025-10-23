@@ -90,3 +90,6 @@ $RECYCLE.BIN/
 *.bak
 *.swp
 *~.nib
+logs/app-log.txt
+logs/app-log.txt
+*.class
