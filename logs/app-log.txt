@@ -13735,3 +13735,14 @@ This generated password is for development use only. Your security configuration
 2025-10-23 14:42:13.161 [http-nio-8080-exec-4] INFO  com.prenotazioni.service.NotificaService - INIZIO - Conteggio notifiche non lette per utente ID: 1
 2025-10-23 14:42:13.167 [http-nio-8080-exec-4] INFO  com.prenotazioni.service.NotificaService - FINE - Trovate 0 notifiche non lette per utente ID: 1
 2025-10-23 14:42:13.167 [http-nio-8080-exec-4] INFO  com.prenotazioni.controller.NotificaController - Count notifiche non lette: 0
+2025-10-23 16:02:53.571 [restartedMain] INFO  c.prenotazioni.PrenotazioniAuleBackendApplication - Starting PrenotazioniAuleBackendApplication using Java 21.0.8 with PID 14496 (C:\Users\Utente\Desktop\Progetti\WebApp\PrenotazioniAuleFullStack\backend\target\classes started by Utente in C:\Users\Utente\Desktop\Progetti\WebApp\PrenotazioniAuleFullStack\backend)
+2025-10-23 16:02:53.580 [restartedMain] INFO  c.prenotazioni.PrenotazioniAuleBackendApplication - No active profile set, falling back to 1 default profile: "default"
+2025-10-23 16:02:59.354 [restartedMain] WARN  org.hibernate.orm.deprecation - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-10-23 16:03:03.954 [restartedMain] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-10-23 16:03:04.025 [restartedMain] WARN  o.s.b.a.s.s.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: f2a1ce34-9016-4c1c-b888-ed8d63a66b8e
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-10-23 16:03:05.178 [restartedMain] INFO  c.prenotazioni.PrenotazioniAuleBackendApplication - Started PrenotazioniAuleBackendApplication in 12.631 seconds (process running for 13.259)
