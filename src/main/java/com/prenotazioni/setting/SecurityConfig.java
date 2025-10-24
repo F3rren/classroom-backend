@@ -3,6 +3,7 @@ package com.prenotazioni.setting;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,27 +39,28 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/register", "/h2-console/**").permitAll()
-                .requestMatchers("/api/me").authenticated()
-                .requestMatchers("/api/admin/**").authenticated() // Tutti gli endpoint admin richiedono autenticazione
-                .requestMatchers("/api/rooms/**").authenticated() // Endpoint aule accessibile a tutti gli utenti autenticati
-                .requestMatchers("/api/prenotazioni/**").authenticated() // Endpoint prenotazioni accessibile a tutti gli utenti autenticati
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Per le preflight requests
+                .requestMatchers("/api/auth/login", "/api/auth/register", "/auth/login", "/auth/register", "/h2-console/**").permitAll()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .headers(headers -> headers.frameOptions().disable()); // Per H2 console
+            .headers(headers -> headers.frameOptions().disable())
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
-        configuration.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
-        configuration.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
-        configuration.setAllowCredentials(allowCredentials);
-        configuration.setMaxAge(maxAge);
         
+        // ✅ Permetti richieste da qualsiasi porta su 10.10.5.132
+        configuration.addAllowedOriginPattern("http://10.10.5.132");
+        configuration.addAllowedOriginPattern("http://10.10.5.132:*");
+        configuration.addAllowedHeader("*");
+        configuration.addAllowedMethod("*");
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
