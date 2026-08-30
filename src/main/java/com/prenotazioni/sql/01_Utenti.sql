@@ -19,11 +19,12 @@ CREATE TABLE IF NOT EXISTS public.utenti
 );
 
 -- Script di inserimento utenti di esempio
--- NOTA: Le password sono in chiaro solo per esempio. In produzione usa BCrypt!
+-- Le password sono hash BCrypt (costo 10). In chiaro sono, solo per riferimento in questo commento:
+-- admin / mario.rossi -> admin123 / password123 ; laura.bianchi -> password123
 -- Utenti admin
 INSERT INTO public.utenti (username, password, nome, email, ruolo, data_registrazione, ultimo_accesso) VALUES
-('admin', 'admin123', 'Amministratore Sistema', 'admin@prenotazioni.it', 'admin', CURRENT_TIMESTAMP - INTERVAL '30 days', CURRENT_TIMESTAMP - INTERVAL '2 hours'),
-('mario.rossi', 'password123', 'Mario Rossi', 'mario.rossi@prenotazioni.it', 'admin', CURRENT_TIMESTAMP - INTERVAL '25 days', CURRENT_TIMESTAMP - INTERVAL '1 day');
+('admin', '$2a$10$PREebTCFQpFr177u7vZfMOiaZf98KzOdG6KQYZuM/FVdQSE7SMxHK', 'Amministratore Sistema', 'admin@prenotazioni.it', 'admin', CURRENT_TIMESTAMP - INTERVAL '30 days', CURRENT_TIMESTAMP - INTERVAL '2 hours'),
+('mario.rossi', '$2a$10$Eqt5c6TAwwvu3zBizUipCuLILCcgBxFMSSZj226MSFOog8Cj0ofku', 'Mario Rossi', 'mario.rossi@prenotazioni.it', 'admin', CURRENT_TIMESTAMP - INTERVAL '25 days', CURRENT_TIMESTAMP - INTERVAL '1 day');
 -- Utenti normali
 INSERT INTO public.utenti (username, password, nome, email, ruolo, data_registrazione, ultimo_accesso) VALUES
-('laura.bianchi', 'password123', 'Laura Bianchi', 'laura.bianchi@studenti.it', 'user', CURRENT_TIMESTAMP - INTERVAL '20 days', CURRENT_TIMESTAMP - INTERVAL '3 hours');
+('laura.bianchi', '$2a$10$Eqt5c6TAwwvu3zBizUipCuLILCcgBxFMSSZj226MSFOog8Cj0ofku', 'Laura Bianchi', 'laura.bianchi@studenti.it', 'user', CURRENT_TIMESTAMP - INTERVAL '20 days', CURRENT_TIMESTAMP - INTERVAL '3 hours');

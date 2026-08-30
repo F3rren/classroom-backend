@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +38,7 @@ public class PrenotazioneService {
     private IUtenteRepository utenteRepository;
 
     // Prenota un'aula per una lezione
+    @Transactional
     public Prenotazione prenotaAula(Long aulaId, Long corsoId, Long utenteId, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         logger.info("INIZIO METODO prenotaAula");
         logger.info("Richiesta prenotazione aula - AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", aulaId, corsoId, utenteId, inizio, fine);
@@ -92,6 +94,7 @@ public class PrenotazioneService {
     }
     
     // Blocca un'aula (solo admin)
+    @Transactional
     public Prenotazione bloccaAula(Long aulaId, Long utenteAdminId, LocalDateTime inizio, LocalDateTime fine, String motivo) {
         logger.info("INIZIO METODO bloccaAula");
         logger.info("Richiesta blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, utenteAdminId, inizio, fine);
@@ -258,6 +261,7 @@ public class PrenotazioneService {
     }
     
     // Annulla una prenotazione
+    @Transactional
     public boolean annullaPrenotazione(Long prenotazioneId, Long utenteId) {
         logger.info("INIZIO METODO annullaPrenotazione");
         logger.info("Richiesta annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", prenotazioneId, utenteId);
@@ -369,6 +373,7 @@ public class PrenotazioneService {
     }
     
     // Metodo admin per annullare qualsiasi prenotazione
+    @Transactional
     public boolean annullaPrenotazioneAsAdmin(Long prenotazioneId, Long adminId, String motivo) {
         logger.info("INIZIO METODO annullaPrenotazioneAsAdmin");
         logger.info("Richiesta annullamento prenotazione da admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
@@ -412,6 +417,7 @@ public class PrenotazioneService {
     }
 
     // Aggiorna una prenotazione esistente
+    @Transactional
     public Prenotazione updatePrenotazione(Long prenotazioneId, Long aulaId, Long corsoId, Long utenteId, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         logger.info("INIZIO METODO updatePrenotazione");
         logger.info("Richiesta aggiornamento prenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", prenotazioneId, aulaId, corsoId, utenteId, inizio, fine);

@@ -34,10 +34,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         logger.info("JWT Filter - Method: {}, Path: {}, Origin: {}", method, path, origin);
         
         // Salta il filtro per le rotte pubbliche (con o senza /api prefix)
-        if (path.startsWith("/api/auth/login") || 
-            path.startsWith("/api/auth/register") ||
-            path.startsWith("/auth/login") || 
-            path.startsWith("/auth/register") ||
+        if (path.startsWith("/api/auth/login") ||
+            path.startsWith("/auth/login") ||
             path.startsWith("/h2-console")) {
             logger.info("JWT Filter - Rotta pubblica, skip validazione");
             filterChain.doFilter(request, response);

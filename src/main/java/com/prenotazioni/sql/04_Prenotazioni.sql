@@ -29,3 +29,16 @@ CREATE TABLE IF NOT EXISTS public.prenotazioni
     CONSTRAINT prenotazione_stato_check CHECK (stato::text = ANY (ARRAY['prenotata'::character varying, 'confermata'::character varying, 'bloccata'::character varying, 'manutenzione'::character varying, 'annullata'::character varying]::text[])),
     CONSTRAINT chk_orario_valido CHECK (fine > inizio)
 );
+
+-- Vincolo anti-race-condition: impedisce a livello DB due prenotazioni attive sovrapposte
+-- sulla stessa aula, anche se due richieste concorrenti superano entrambe il controllo
+-- applicativo prima che una delle due venga salvata (TOCTOU).
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE public.prenotazioni
+    ADD CONSTRAINT prenotazioni_no_overlap
+    EXCLUDE USING gist (
+        aula_id WITH =,
+        tsrange(inizio, fine) WITH &&
+    )
+    WHERE (stato <> 'annullata');

@@ -88,10 +88,6 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
            "u.id as utenteId, " +
            "u.username as username, " +
            "u.nome as utenteNome, " +
-           "u.email as email, " +
-           "u.ruolo as ruolo, " +
-           "u.dataRegistrazione as utenteRegistrato, " +
-           "u.ultimoAccesso as ultimoAccesso, " +
            "c.id as corsoId, " +
            "c.nome as corsoNome, " +
            "c.docente as docente, " +
@@ -121,10 +117,6 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
            "u.id as utenteId, " +
            "u.username as username, " +
            "u.nome as utenteNome, " +
-           "u.email as email, " +
-           "u.ruolo as ruolo, " +
-           "u.dataRegistrazione as utenteRegistrato, " +
-           "u.ultimoAccesso as ultimoAccesso, " +
            "c.id as corsoId, " +
            "c.nome as corsoNome, " +
            "c.docente as docente, " +
@@ -153,10 +145,6 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
            "u.id as utenteId, " +
            "u.username as username, " +
            "u.nome as utenteNome, " +
-           "u.email as email, " +
-           "u.ruolo as ruolo, " +
-           "u.dataRegistrazione as utenteRegistrato, " +
-           "u.ultimoAccesso as ultimoAccesso, " +
            "c.id as corsoId, " +
            "c.nome as corsoNome, " +
            "c.docente as docente, " +

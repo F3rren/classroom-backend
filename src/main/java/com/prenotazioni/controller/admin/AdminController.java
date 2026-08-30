@@ -471,17 +471,20 @@ public class AdminController {
 
         logger.info("[{}] Accesso admin confermato, tentativo di eliminazione utente ID: {}", sessionId, id);
         try {
-            boolean deleted = authService.deleteUtente(id);
-            if (!deleted) {
-                logger.warn("[{}] FINE deleteUtente - Utente non trovato o non eliminabile - ID: {}", sessionId, id);
+            if (utenteService.findById(id) == null) {
+                logger.warn("[{}] FINE deleteUtente - Utente non trovato - ID: {}", sessionId, id);
                 return new ResponseEntity<>(
-                    createErrorResponse("USER_NOT_FOUND", 
-                                      "Utente non trovato o non eliminabile", 
-                                      String.format("L'utente con ID %d non esiste o non può essere eliminato.", id), 
+                    createErrorResponse("USER_NOT_FOUND",
+                                      "Utente non trovato o non eliminabile",
+                                      String.format("L'utente con ID %d non esiste o non può essere eliminato.", id),
                                       sessionId),
                     HttpStatus.NOT_FOUND
                 );
             }
+
+            // Elimina in cascata notifiche e prenotazioni dell'utente prima dell'utente stesso
+            // (in un'unica transazione, cosi' non si rischia di lasciare righe orfane o un FK violation non gestito)
+            utenteService.deleteById(id);
 
             logger.info("[{}] FINE deleteUtente - Utente eliminato con successo - ID: {}", sessionId, id);
             return new ResponseEntity<>(

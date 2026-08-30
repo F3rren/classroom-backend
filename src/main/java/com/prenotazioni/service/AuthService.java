@@ -10,23 +10,28 @@ import java.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
     @Autowired
     private IUtenteRepository utenteRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     public Utente login(String email, String password) {
         logger.info("INIZIO METODO login");
-        Utente utente = utenteRepository.findByEmailAndPassword(email, password);
-        if (utente != null) {
-            logger.info("Login riuscito per utente: {}", email);
-            // Aggiorna l'ultimo accesso
-            utente.setUltimoAccesso(LocalDateTime.now());
-            utenteRepository.save(utente);
+        Utente utente = utenteRepository.findByEmail(email);
+        if (utente == null || !passwordEncoder.matches(password, utente.getPassword())) {
+            logger.info("FINE METODO login - Credenziali non valide");
+            return null;
         }
+        logger.info("Login riuscito per utente: {}", email);
+        // Aggiorna l'ultimo accesso
+        utente.setUltimoAccesso(LocalDateTime.now());
+        utenteRepository.save(utente);
         logger.info("FINE METODO login");
         return utente;
     }
@@ -46,8 +51,8 @@ public class AuthService {
         logger.info("Registrazione nuovo utente - Email: {}, Username: {}", request.getEmail(), request.getUsername());
         Utente utente = new Utente();
         utente.setEmail(request.getEmail());
-        utente.setNome(request.getNome()); 
-        utente.setPassword(request.getPassword());
+        utente.setNome(request.getNome());
+        utente.setPassword(passwordEncoder.encode(request.getPassword()));
         utente.setRuolo(request.getRuolo());
         utente.setUsername(request.getUsername());
         
@@ -64,18 +69,6 @@ public class AuthService {
         List<Utente> utenti = utenteRepository.findAll();
         logger.info("FINE METODO getAllUsers - Totale utenti trovati: {}", utenti.size());
         return utenti;
-    }
-
-    public boolean deleteUtente(Long id) {
-        logger.info("INIZIO METODO deleteUtente - UtenteId: {}", id);
-        if (!utenteRepository.existsById(id)) {
-            logger.info("Tentativo di eliminazione fallito - UtenteId non trovato: {}", id);
-            logger.info("FINE METODO deleteUtente - UtenteId non trovato: {}", id);
-            return false;
-        }
-        utenteRepository.deleteById(id);
-        logger.info("FINE METODO deleteUtente - UtenteId eliminato: {}", id);
-        return true;
     }
 
     public Utente updateUtente(Long id, RegisterRequest request) {
@@ -105,7 +98,7 @@ public class AuthService {
         
         // Aggiorna la password solo se ne viene fornita una nuova
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
-            utente.setPassword(request.getPassword());
+            utente.setPassword(passwordEncoder.encode(request.getPassword()));
             logger.info("Password aggiornata per UtenteId: {}", id);
         } else {
             logger.info("Password non modificata per UtenteId: {} - Mantenuta password esistente", id);

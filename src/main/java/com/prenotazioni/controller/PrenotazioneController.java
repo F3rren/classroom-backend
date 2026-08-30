@@ -7,6 +7,7 @@ import com.prenotazioni.service.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -328,8 +329,18 @@ public class PrenotazioneController {
                 HttpStatus.CREATED
             );
 
+        } catch (DataIntegrityViolationException e) {
+            logger.warn("[{}] FINE prenotaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}",
+                       sessionId, request.getAulaId());
+            return new ResponseEntity<>(
+                createErrorResponse("BOOKING_CONFLICT",
+                                  "Impossibile prenotare l'aula",
+                                  "L'aula è appena stata prenotata da un'altra richiesta per lo stesso periodo. Riprova con un altro orario.",
+                                  sessionId),
+                HttpStatus.CONFLICT
+            );
         } catch (Exception e) {
-            logger.error("[{}] FINE prenotaAula - Errore critico imprevisto durante prenotazione | AulaId: {} | Utente: ? | Errore: {}", 
+            logger.error("[{}] FINE prenotaAula - Errore critico imprevisto durante prenotazione | AulaId: {} | Utente: ? | Errore: {}",
                         sessionId, request.getAulaId(), e.getMessage(), e);
             return new ResponseEntity<>(
                 createErrorResponse("INTERNAL_ERROR", 
@@ -477,8 +488,18 @@ public class PrenotazioneController {
                 HttpStatus.OK
             );
 
+        } catch (DataIntegrityViolationException e) {
+            logger.warn("[{}] FINE modificaPrenotazione - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - PrenotazioneId: {}, AulaId: {}",
+                       sessionId, prenotazioneId, request.getAulaId());
+            return new ResponseEntity<>(
+                createErrorResponse("UPDATE_CONFLICT",
+                                  "Impossibile modificare la prenotazione",
+                                  "L'aula è appena stata prenotata da un'altra richiesta per il nuovo periodo. Riprova con un altro orario.",
+                                  sessionId),
+                HttpStatus.CONFLICT
+            );
         } catch (Exception e) {
-            logger.error("[{}] FINE modificaPrenotazione - Errore critico imprevisto durante modifica | PrenotazioneId: {} | AulaId: {} | Utente: ? | Errore: {}", 
+            logger.error("[{}] FINE modificaPrenotazione - Errore critico imprevisto durante modifica | PrenotazioneId: {} | AulaId: {} | Utente: ? | Errore: {}",
                         sessionId, prenotazioneId, request.getAulaId(), e.getMessage(), e);
             return new ResponseEntity<>(
                 createErrorResponse("INTERNAL_ERROR", 
@@ -628,9 +649,19 @@ public class PrenotazioneController {
                                     sessionId),
                 HttpStatus.CREATED
             );
-            
+
+        } catch (DataIntegrityViolationException e) {
+            logger.warn("[{}] FINE bloccaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}",
+                       sessionId, request.getAulaId());
+            return new ResponseEntity<>(
+                createErrorResponse("BLOCK_CONFLICT",
+                                  "Impossibile bloccare l'aula",
+                                  "L'aula è appena stata occupata da un'altra richiesta per lo stesso periodo.",
+                                  sessionId),
+                HttpStatus.CONFLICT
+            );
         } catch (Exception e) {
-            logger.error("[{}] FINE bloccaAula - Errore critico imprevisto durante blocco | AulaId: {} | Errore: {}", 
+            logger.error("[{}] FINE bloccaAula - Errore critico imprevisto durante blocco | AulaId: {} | Errore: {}",
                         sessionId, request.getAulaId(), e.getMessage(), e);
             return new ResponseEntity<>(
                 createErrorResponse("INTERNAL_ERROR", 
@@ -943,11 +974,12 @@ public class PrenotazioneController {
         logger.info("Autenticazione riuscita, recupero tutte le prenotazioni attive (escluse annullate)");
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
         
-        // Filtra le prenotazioni annullate
+        // Filtra le prenotazioni annullate e rimuove i dati personali dei proprietari
         List<Prenotazione> prenotazioni = tuttePrenotazioni.stream()
             .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
+            .map(this::sanitizeOwnerForListing)
             .collect(java.util.stream.Collectors.toList());
-        
+
         if (prenotazioni.isEmpty()) {
             logger.info("FINE getAllPrenotazioni - Nessuna prenotazione attiva trovata");
             return new ResponseEntity<>(
@@ -964,54 +996,98 @@ public class PrenotazioneController {
         );
     }
 
-    // Singola prenotazione per ID (semplice) - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
+    // Rimuove i dati personali del proprietario dagli elenchi visibili a tutti gli utenti autenticati
+    // (mantiene solo id/username/nome, mai email/ruolo/date di accesso di un utente diverso dal chiamante)
+    private Prenotazione sanitizeOwnerForListing(Prenotazione p) {
+        com.prenotazioni.model.Utente owner = p.getUtente();
+        if (owner != null) {
+            com.prenotazioni.model.Utente safeOwner = new com.prenotazioni.model.Utente();
+            safeOwner.setId(owner.getId());
+            safeOwner.setUsername(owner.getUsername());
+            safeOwner.setNome(owner.getNome());
+            p.setUtente(safeOwner);
+        }
+        return p;
+    }
+
+    // Verifica che chi chiama sia il proprietario della prenotazione o un admin
+    private boolean isOwnerOrAdmin(Prenotazione prenotazione, String authHeader) {
+        String token = authHeader.substring(7);
+        Long utenteId = jwtService.getUserIdFromToken(token);
+        String ruolo = jwtService.getRuoloFromToken(token);
+        return prenotazione.getUtente().getId().equals(utenteId) || "admin".equals(ruolo);
+    }
+
+    private ResponseEntity<?> accessDeniedResponse(String sessionId) {
+        return new ResponseEntity<>(
+            createErrorResponse("ACCESS_DENIED",
+                              "Accesso negato",
+                              "Puoi visualizzare solo le tue prenotazioni.",
+                              sessionId),
+            HttpStatus.FORBIDDEN
+        );
+    }
+
+    // Singola prenotazione per ID (semplice) - SOLO IL PROPRIETARIO O UN ADMIN
     @GetMapping("/{id}")
     public ResponseEntity<?> getPrenotazioneById(@PathVariable Long id, @RequestHeader("Authorization") String authHeader) {
-        logger.info("INIZIO getPrenotazioneById - ID Prenotazione: {}", id);
-        
+        String sessionId = generateSessionId();
+        logger.info("[{}] INIZIO getPrenotazioneById - ID Prenotazione: {}", sessionId, id);
+
         ResponseEntity<?> authCheck = checkAuth(authHeader);
         if (authCheck != null) {
-            logger.info("FINE getPrenotazioneById - Autenticazione fallita");
+            logger.info("[{}] FINE getPrenotazioneById - Autenticazione fallita", sessionId);
             return authCheck;
         }
 
-        logger.info("Autenticazione riuscita, recupero prenotazione con ID: {}", id);
+        logger.info("[{}] Autenticazione riuscita, recupero prenotazione con ID: {}", sessionId, id);
         Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
         if (prenotazione == null) {
-            logger.info("FINE getPrenotazioneById - Prenotazione non trovata con ID: {}", id);
+            logger.info("[{}] FINE getPrenotazioneById - Prenotazione non trovata con ID: {}", sessionId, id);
             return new ResponseEntity<>(
                 Collections.singletonMap("error", "Prenotazione non trovata"),
                 HttpStatus.NOT_FOUND
             );
         }
 
-        logger.info("FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", prenotazione.getId());
+        if (!isOwnerOrAdmin(prenotazione, authHeader)) {
+            logger.warn("[{}] FINE getPrenotazioneById - Accesso negato a prenotazione di un altro utente | PrenotazioneId: {}", sessionId, id);
+            return accessDeniedResponse(sessionId);
+        }
+
+        logger.info("[{}] FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", sessionId, prenotazione.getId());
         return new ResponseEntity<>(
             Collections.singletonMap("prenotazione", prenotazione),
             HttpStatus.OK
         );
     }
 
-    // Dettagli completi di una prenotazione specifica - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
+    // Dettagli completi di una prenotazione specifica - SOLO IL PROPRIETARIO O UN ADMIN
     @GetMapping("/{id}/details")
     public ResponseEntity<?> getPrenotazioneDetailsById(@PathVariable Long id, @RequestHeader("Authorization") String authHeader) {
-        logger.info("INIZIO getPrenotazioneDetailsById - ID Prenotazione: {}", id);
-        
+        String sessionId = generateSessionId();
+        logger.info("[{}] INIZIO getPrenotazioneDetailsById - ID Prenotazione: {}", sessionId, id);
+
         ResponseEntity<?> authCheck = checkAuth(authHeader);
         if (authCheck != null) {
-            logger.info("FINE getPrenotazioneDetailsById - Autenticazione fallita");
+            logger.info("[{}] FINE getPrenotazioneDetailsById - Autenticazione fallita", sessionId);
             return authCheck;
         }
 
-        logger.info("Autenticazione riuscita, recupero dettagli completi per prenotazione con ID: {}", id);
+        logger.info("[{}] Autenticazione riuscita, recupero dettagli completi per prenotazione con ID: {}", sessionId, id);
         // Prima verifica se la prenotazione esiste
         Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
         if (prenotazione == null) {
-            logger.info("FINE getPrenotazioneDetailsById - Prenotazione non trovata con ID: {}", id);
+            logger.info("[{}] FINE getPrenotazioneDetailsById - Prenotazione non trovata con ID: {}", sessionId, id);
             return new ResponseEntity<>(
                 Collections.singletonMap("error", "Prenotazione non trovata"),
                 HttpStatus.NOT_FOUND
             );
+        }
+
+        if (!isOwnerOrAdmin(prenotazione, authHeader)) {
+            logger.warn("[{}] FINE getPrenotazioneDetailsById - Accesso negato a prenotazione di un altro utente | PrenotazioneId: {}", sessionId, id);
+            return accessDeniedResponse(sessionId);
         }
 
         logger.info("Prenotazione trovata: ID: {}", prenotazione.getId());
@@ -1066,8 +1142,9 @@ public class PrenotazioneController {
 
         logger.info("Autenticazione riuscita, recupero prenotazioni per stato: {}", stato);
         try {
-            List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniByStato(stato.toLowerCase());
-            
+            List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniByStato(stato.toLowerCase())
+                .stream().map(this::sanitizeOwnerForListing).collect(java.util.stream.Collectors.toList());
+
             logger.info("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", stato, prenotazioni.size());
             return new ResponseEntity<>(
                 Map.of(
@@ -1104,8 +1181,9 @@ public class PrenotazioneController {
         }
 
         logger.info("Autenticazione riuscita, recupero prenotazioni future");
-        List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniFuture();
-        
+        List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniFuture()
+            .stream().map(this::sanitizeOwnerForListing).collect(java.util.stream.Collectors.toList());
+
         logger.info("FINE getPrenotazioniFuture - Prenotazioni future recuperate con successo, totale: {}", prenotazioni.size());
         return new ResponseEntity<>(
             Map.of(

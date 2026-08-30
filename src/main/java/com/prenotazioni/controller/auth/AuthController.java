@@ -8,7 +8,9 @@ import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,31 @@ public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // Rate limiting minimo anti brute-force sul login: finestra fissa in memoria, per processo.
+    // Non sopravvive a un restart e non e' condiviso tra piu' istanze, ma e' sufficiente per
+    // rallentare un attacco a dizionario contro una singola istanza in sviluppo/produzione singola.
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+    private static final long RATE_LIMIT_WINDOW_MS = 60_000; // 1 minuto
+    private static final ConcurrentHashMap<String, RateLimitEntry> loginAttempts = new ConcurrentHashMap<>();
+
+    private static class RateLimitEntry {
+        int count;
+        long windowStart = System.currentTimeMillis();
+    }
+
+    private boolean isLoginRateLimited(String key) {
+        long now = System.currentTimeMillis();
+        RateLimitEntry entry = loginAttempts.computeIfAbsent(key, k -> new RateLimitEntry());
+        synchronized (entry) {
+            if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+                entry.windowStart = now;
+                entry.count = 0;
+            }
+            entry.count++;
+            return entry.count > MAX_LOGIN_ATTEMPTS;
+        }
+    }
 
     @Autowired
     private AuthService authService;
@@ -102,26 +129,39 @@ public class AuthController {
     // ==================== AUTHENTICATION ENDPOINTS ====================
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String sessionId = generateSessionId();
         logger.info("[{}] INIZIO login - Tentativo di accesso", sessionId);
-        
+
         try {
             // Validazione input - email
             if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
                 logger.warn("[{}] FINE login - Email mancante", sessionId);
                 return new ResponseEntity<>(
-                    createErrorResponse("MISSING_EMAIL", 
-                                      "Email mancante", 
-                                      "L'email è obbligatoria per effettuare il login.", 
+                    createErrorResponse("MISSING_EMAIL",
+                                      "Email mancante",
+                                      "L'email è obbligatoria per effettuare il login.",
                                       sessionId),
                     HttpStatus.BAD_REQUEST
                 );
             }
-            
+
             String email = request.getEmail().trim().toLowerCase();
             String maskedEmail = maskEmail(email);
-            
+
+            // Rate limiting anti brute-force, per IP + email
+            String rateLimitKey = httpRequest.getRemoteAddr() + "|" + email;
+            if (isLoginRateLimited(rateLimitKey)) {
+                logger.warn("[{}] FINE login - Troppi tentativi di login per: {}", sessionId, maskedEmail);
+                return new ResponseEntity<>(
+                    createErrorResponse("TOO_MANY_ATTEMPTS",
+                                      "Troppi tentativi di login",
+                                      "Hai effettuato troppi tentativi di accesso. Riprova tra qualche minuto.",
+                                      sessionId),
+                    HttpStatus.TOO_MANY_REQUESTS
+                );
+            }
+
             // Validazione formato email
             if (!isValidEmail(email)) {
                 logger.warn("[{}] FINE login - Formato email non valido: {}", sessionId, maskedEmail);
