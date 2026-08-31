@@ -1,13 +1,11 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Conteggio prenotazioni per stato, dentro AdminPrenotazioniPayload. */
-@Getter
-@AllArgsConstructor
+@Value
 public class PrenotazioniStats {
-    private final long totale;
-    private final long attive;
-    private final long annullate;
+    long totale;
+    long attive;
+    long annullate;
 }

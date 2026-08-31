@@ -1,15 +1,13 @@
 package com.prenotazioni.dto;
 
 import com.prenotazioni.model.Prenotazione;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Risposta di successo per il blocco aula da parte di un admin (POST /blocca). */
-@Getter
-@AllArgsConstructor
+@Value
 public class BlockAckPayload {
-    private final Prenotazione blocco;
-    private final Long aulaId;
-    private final String periodo;
-    private final Long amministratore;
+    Prenotazione blocco;
+    Long aulaId;
+    String periodo;
+    Long amministratore;
 }

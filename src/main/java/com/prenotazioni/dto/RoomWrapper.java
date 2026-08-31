@@ -1,14 +1,12 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /**
  * Wrapper minimo per una singola aula, riusato da GET /api/admin/rooms/{id} (Aula grezza)
  * e GET /api/rooms/{id}/detailed (RoomDetailsResponse).
  */
-@Getter
-@AllArgsConstructor
+@Value
 public class RoomWrapper<T> {
-    private final T room;
+    T room;
 }

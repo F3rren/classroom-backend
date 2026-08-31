@@ -1,11 +1,9 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Risposta minimale con un solo messaggio, per operazioni di scrittura senza payload di rilievo. */
-@Getter
-@AllArgsConstructor
+@Value
 public class MessageResponse {
-    private final String message;
+    String message;
 }

@@ -1,11 +1,9 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Wrapper per GET /api/rooms/stats: { "statistics": {...} }. */
-@Getter
-@AllArgsConstructor
+@Value
 public class RoomStatsPayload {
-    private final RoomStats statistics;
+    RoomStats statistics;
 }

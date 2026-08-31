@@ -1,11 +1,9 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Risposta con un solo contatore, es. numero di notifiche non lette. */
-@Getter
-@AllArgsConstructor
+@Value
 public class CountResponse {
-    private final long count;
+    long count;
 }

@@ -1,13 +1,11 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Risposta di successo per DELETE /api/prenotazioni/{id}. */
-@Getter
-@AllArgsConstructor
+@Value
 public class CancellationAckPayload {
-    private final Long prenotazioneId;
-    private final Long utenteId;
-    private final String dataAnnullamento;
+    Long prenotazioneId;
+    Long utenteId;
+    String dataAnnullamento;
 }

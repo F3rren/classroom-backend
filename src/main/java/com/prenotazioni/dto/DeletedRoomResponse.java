@@ -1,11 +1,9 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Conferma di eliminazione aula (DELETE /api/admin/rooms/{id}). */
-@Getter
-@AllArgsConstructor
+@Value
 public class DeletedRoomResponse {
-    private final Long deletedRoomId;
+    Long deletedRoomId;
 }

@@ -1,14 +1,12 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /**
  * Errore a una sola chiave, per i pochi endpoint (es. GET /api/rooms/{id}/details) che
  * oggi rispondono con Collections.singletonMap("error", msg) invece del pieno ApiEnvelope.
  */
-@Getter
-@AllArgsConstructor
+@Value
 public class SimpleErrorResponse {
-    private final String error;
+    String error;
 }

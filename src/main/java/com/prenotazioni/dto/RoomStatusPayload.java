@@ -1,15 +1,13 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 import java.time.LocalDateTime;
 
 /** Risposta non avvolta di GET /api/prenotazioni/stato/{aulaId} (comportamento gia' esistente). */
-@Getter
-@AllArgsConstructor
+@Value
 public class RoomStatusPayload {
-    private final Long aulaId;
-    private final String stato;
-    private final LocalDateTime timestamp;
+    Long aulaId;
+    String stato;
+    LocalDateTime timestamp;
 }

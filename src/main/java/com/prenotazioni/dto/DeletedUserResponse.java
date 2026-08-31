@@ -1,11 +1,9 @@
 package com.prenotazioni.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
 /** Conferma di eliminazione utente (DELETE /api/admin/delete/{id}). */
-@Getter
-@AllArgsConstructor
+@Value
 public class DeletedUserResponse {
-    private final Long deletedUserId;
+    Long deletedUserId;
 }
