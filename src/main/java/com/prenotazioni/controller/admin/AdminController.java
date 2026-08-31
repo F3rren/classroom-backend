@@ -359,7 +359,7 @@ public class AdminController {
     @Operation(summary = "Elimina forzatamente qualsiasi prenotazione (solo admin)")
     public ResponseEntity<ApiEnvelope<BookingDeletionResponse>> deletePrenotazioneAsAdmin(@PathVariable Long id,
                                                       @AuthenticationPrincipal AppPrincipal principal,
-                                                      @RequestBody(required = false) DeleteReasonRequest requestBody) {
+                                                      @Valid @RequestBody(required = false) DeleteReasonRequest requestBody) {
         String sessionId = generateSessionId();
         logger.debug("[{}] INIZIO deletePrenotazioneAsAdmin - ID Prenotazione: {}", sessionId, id);
 

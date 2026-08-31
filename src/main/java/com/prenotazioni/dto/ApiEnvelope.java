@@ -1,6 +1,7 @@
 package com.prenotazioni.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -18,16 +19,25 @@ import java.time.format.DateTimeFormatter;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
+@Schema(description = "Involucro comune a quasi tutte le risposte: distingue esito, messaggi e payload")
 public class ApiEnvelope<T> {
 
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    @Schema(description = "true se l'operazione e' riuscita", example = "true")
     private boolean success;
+    @Schema(description = "Codice di errore stabile, presente solo in caso di errore", example = "BOOKING_CONFLICT")
     private String error;
+    @Schema(description = "Messaggio tecnico per gli sviluppatori", example = "Impossibile prenotare l'aula")
     private String message;
+    @Schema(description = "Messaggio pensato per essere mostrato all'utente finale",
+            example = "L'aula non e' disponibile nel periodo richiesto.")
     private String userMessage;
+    @Schema(description = "Payload della risposta, assente in caso di errore")
     private T data;
+    @Schema(description = "Momento della risposta", example = "2026-08-31 14:05:00")
     private String timestamp;
+    @Schema(description = "Identificativo della richiesta, utile per correlare i log", example = "S4D094712")
     private String sessionId;
 
     public static <T> ApiEnvelope<T> success(String message, T data, String sessionId) {

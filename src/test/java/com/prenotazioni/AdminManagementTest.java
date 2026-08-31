@@ -273,6 +273,37 @@ class AdminManagementTest {
     }
 
     @Test
+    void anOverlongReasonIsRejectedInsteadOfSilentlyLosingTheNotification() throws Exception {
+        // Il motivo finisce concatenato dentro Notifica.messaggio, che e' varchar(1000).
+        // Senza un limite, il salvataggio della notifica esplode e AdminController inghiotte
+        // l'eccezione ("non blocchiamo l'operazione se la notifica fallisce"): la prenotazione
+        // risulta annullata ma il proprietario non viene MAI avvisato, in silenzio.
+        String motivoEnorme = "x".repeat(1500);
+
+        ResponseEntity<String> resp = exchange(
+                "/api/admin/prenotazioni/" + prenotazioneId, HttpMethod.DELETE, tokenAdmin,
+                Map.of("reason", motivoEnorme));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // e la prenotazione NON deve essere stata annullata da una richiesta rifiutata
+        assertThat(prenotazioneRepository.findById(prenotazioneId).orElseThrow().getStato())
+                .isEqualTo(StatoPrenotazione.PRENOTATA);
+    }
+
+    @Test
+    void aReasonWithinTheLimitStillNotifiesTheOwner() {
+        String motivoLungoMaValido = "y".repeat(400);
+
+        ResponseEntity<String> resp = exchange(
+                "/api/admin/prenotazioni/" + prenotazioneId, HttpMethod.DELETE, tokenAdmin,
+                Map.of("reason", motivoLungoMaValido));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // la notifica deve esistere davvero, non essere persa da un catch silenzioso
+        assertThat(notificaRepository.findAll()).isNotEmpty();
+    }
+
+    @Test
     void adminForceDeleteWorksWithoutBody() {
         // il corpo con il motivo e' opzionale: senza, si usa un motivo di default
         ResponseEntity<String> resp = exchange(

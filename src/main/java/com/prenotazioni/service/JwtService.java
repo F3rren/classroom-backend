@@ -7,7 +7,6 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.prenotazioni.model.Utente;
-import com.prenotazioni.model.Ruolo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

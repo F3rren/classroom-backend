@@ -1,8 +1,9 @@
 package com.prenotazioni.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.Utente;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -16,16 +17,24 @@ import java.time.format.DateTimeFormatter;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
+@Schema(description = "Vista pubblica di un utente. Non contiene mai la password")
 public class UserSummaryDto {
 
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    @Schema(description = "Identificativo dell'utente", example = "7")
     private Long id;
+    @Schema(description = "Username univoco", example = "m.rossi")
     private String username;
+    @Schema(description = "Nome e cognome", example = "Mario Rossi")
     private String nome;
+    @Schema(description = "Email dell'utente", example = "mario.rossi@example.it")
     private String email;
-    private String ruolo;
+    @Schema(description = "Ruolo applicativo", example = "user")
+    private Ruolo ruolo;
+    @Schema(description = "Data di registrazione. Omessa quando non disponibile", example = "2026-01-15 09:30:00")
     private String dataRegistrazione;
+    @Schema(description = "Ultimo accesso. Omesso quando non disponibile", example = "2026-08-31 14:05:00")
     private String ultimoAccesso;
 
     public static UserSummaryDto basic(Utente utente) {
@@ -34,7 +43,7 @@ public class UserSummaryDto {
         dto.username = utente.getUsername() != null ? utente.getUsername() : "";
         dto.nome = utente.getNome() != null ? utente.getNome() : "";
         dto.email = utente.getEmail() != null ? utente.getEmail() : "";
-        dto.ruolo = utente.getRuolo() != null ? utente.getRuolo().getValore() : "USER";
+        dto.ruolo = utente.getRuolo();
         return dto;
     }
 

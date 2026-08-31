@@ -1,6 +1,7 @@
 package com.prenotazioni.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -11,11 +12,14 @@ import lombok.Data;
  * consumare un tentativo dal rate limiter).
  */
 @Data
+@Schema(description = "Credenziali di accesso")
 public class LoginRequest {
 
     @NotBlank(message = "L'email è obbligatoria per effettuare il login.")
+    @Schema(description = "Email dell'account", example = "mario.rossi@example.it")
     private String email;
 
     @NotBlank(message = "La password è obbligatoria per effettuare il login.")
+    @Schema(description = "Password dell'account", example = "password-sicura")
     private String password;
 }
