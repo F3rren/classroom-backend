@@ -8,7 +8,6 @@ import com.prenotazioni.dto.AulaRequest;
 import com.prenotazioni.dto.RoomDetailsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,13 +21,14 @@ public class AulaService {
 
     private static final Logger logger = LoggerFactory.getLogger(AulaService.class);
 
-    //AulaService(aul)
+    private final IAulaRepository aulaRepository;
 
-    @Autowired
-    private IAulaRepository aulaRepository;
+    private final IPrenotazioneRepository prenotazioneRepository;
 
-    @Autowired
-    private IPrenotazioneRepository prenotazioneRepository;
+    AulaService(IAulaRepository aulaRepository, IPrenotazioneRepository prenotazioneRepository) {
+        this.aulaRepository = aulaRepository;
+        this.prenotazioneRepository = prenotazioneRepository;
+    }
 
     // Ottieni tutte le aule
     public List<Aula> getAllAule() {

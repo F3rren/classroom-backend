@@ -1,5 +1,6 @@
 package com.prenotazioni.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
  * Entità Utente - Basata su analisi frontend
  * Campi utilizzati dal frontend:
  * - id, username, nome, email, ruolo, dataRegistrazione, ultimoAccesso
- * 
+ *
  * IMPORTANTE: ruolo DEVE essere in minuscolo ('admin' o 'user')
  * Frontend controlla: user?.ruolo === "admin"
  */
@@ -22,6 +23,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @Table(name = "utenti")
+// Quando Utente e' referenziato come relazione LAZY (es. Notifica.utente), Hibernate lo
+// carica come subclasse proxy che aggiunge un getter pubblico "hibernateLazyInitializer";
+// senza questa esclusione Jackson prova a serializzarlo e fallisce con
+// InvalidDefinitionException (nessun serializzatore per ByteBuddyInterceptor).
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Utente {
     
     @Id

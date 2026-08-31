@@ -1,5 +1,6 @@
 package com.prenotazioni.repository;
 
+import com.prenotazioni.dto.PrenotazioneDettaglioDto;
 import com.prenotazioni.model.Prenotazione;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -8,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Long> {
     
@@ -74,89 +74,89 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     List<Prenotazione> findPrenotazioniFuture(@Param("ora") LocalDateTime ora);
     
     // Vista completa prenotazioni per una specifica aula
-    @Query("SELECT new map(" +
-           "p.id as prenotazioneId, " +
-           "p.inizio as inizio, " + 
-           "p.fine as fine, " +
-           "p.stato as stato, " +
-           "p.descrizione as notePrenotazione, " +
-           "p.dataCreazione as dataCreazione, " +
-           "a.id as aulaId, " +
-           "a.nome as aulaNome, " +
-           "a.capienza as aulaCapienza, " +
-           "a.piano as aulaPiano, " +
-           "u.id as utenteId, " +
-           "u.username as username, " +
-           "u.nome as utenteNome, " +
-           "c.id as corsoId, " +
-           "c.nome as corsoNome, " +
-           "c.docente as docente, " +
+    @Query("SELECT new com.prenotazioni.dto.PrenotazioneDettaglioDto(" +
+           "p.id, " +
+           "p.inizio, " +
+           "p.fine, " +
+           "p.stato, " +
+           "p.descrizione, " +
+           "p.dataCreazione, " +
+           "a.id, " +
+           "a.nome, " +
+           "a.capienza, " +
+           "a.piano, " +
+           "u.id, " +
+           "u.username, " +
+           "u.nome, " +
+           "c.id, " +
+           "c.nome, " +
+           "c.docente, " +
            "CASE WHEN p.inizio > CURRENT_TIMESTAMP THEN 'FUTURA' " +
            "     WHEN p.fine < CURRENT_TIMESTAMP THEN 'PASSATA' " +
-           "     ELSE 'IN_CORSO' END as statoTemporale) " +
+           "     ELSE 'IN_CORSO' END) " +
            "FROM Prenotazione p " +
            "JOIN p.aula a " +
            "JOIN p.utente u " +
            "LEFT JOIN p.corso c " +
            "WHERE a.id = :aulaId " +
            "ORDER BY p.inizio DESC")
-    List<Map<String, Object>> findCompleteDetailsByAulaId(@Param("aulaId") Long aulaId);
+    List<PrenotazioneDettaglioDto> findCompleteDetailsByAulaId(@Param("aulaId") Long aulaId);
     
     // Vista completa di tutte le prenotazioni
-    @Query("SELECT new map(" +
-           "p.id as prenotazioneId, " +
-           "p.inizio as inizio, " + 
-           "p.fine as fine, " +
-           "p.stato as stato, " +
-           "p.descrizione as notePrenotazione, " +
-           "p.dataCreazione as dataCreazione, " +
-           "a.id as aulaId, " +
-           "a.nome as aulaNome, " +
-           "a.capienza as aulaCapienza, " +
-           "a.piano as aulaPiano, " +
-           "u.id as utenteId, " +
-           "u.username as username, " +
-           "u.nome as utenteNome, " +
-           "c.id as corsoId, " +
-           "c.nome as corsoNome, " +
-           "c.docente as docente, " +
+    @Query("SELECT new com.prenotazioni.dto.PrenotazioneDettaglioDto(" +
+           "p.id, " +
+           "p.inizio, " +
+           "p.fine, " +
+           "p.stato, " +
+           "p.descrizione, " +
+           "p.dataCreazione, " +
+           "a.id, " +
+           "a.nome, " +
+           "a.capienza, " +
+           "a.piano, " +
+           "u.id, " +
+           "u.username, " +
+           "u.nome, " +
+           "c.id, " +
+           "c.nome, " +
+           "c.docente, " +
            "CASE WHEN p.inizio > CURRENT_TIMESTAMP THEN 'FUTURA' " +
            "     WHEN p.fine < CURRENT_TIMESTAMP THEN 'PASSATA' " +
-           "     ELSE 'IN_CORSO' END as statoTemporale) " +
+           "     ELSE 'IN_CORSO' END) " +
            "FROM Prenotazione p " +
            "JOIN p.aula a " +
            "JOIN p.utente u " +
            "LEFT JOIN p.corso c " +
            "ORDER BY p.inizio DESC")
-    List<Map<String, Object>> findAllCompleteDetails();
+    List<PrenotazioneDettaglioDto> findAllCompleteDetails();
     
     // Dettagli completi per una singola prenotazione
-    @Query("SELECT new map(" +
-           "p.id as prenotazioneId, " +
-           "p.inizio as inizio, " + 
-           "p.fine as fine, " +
-           "p.stato as stato, " +
-           "p.descrizione as notePrenotazione, " +
-           "p.dataCreazione as dataCreazione, " +
-           "a.id as aulaId, " +
-           "a.nome as aulaNome, " +
-           "a.capienza as aulaCapienza, " +
-           "a.piano as aulaPiano, " +
-           "u.id as utenteId, " +
-           "u.username as username, " +
-           "u.nome as utenteNome, " +
-           "c.id as corsoId, " +
-           "c.nome as corsoNome, " +
-           "c.docente as docente, " +
+    @Query("SELECT new com.prenotazioni.dto.PrenotazioneDettaglioDto(" +
+           "p.id, " +
+           "p.inizio, " +
+           "p.fine, " +
+           "p.stato, " +
+           "p.descrizione, " +
+           "p.dataCreazione, " +
+           "a.id, " +
+           "a.nome, " +
+           "a.capienza, " +
+           "a.piano, " +
+           "u.id, " +
+           "u.username, " +
+           "u.nome, " +
+           "c.id, " +
+           "c.nome, " +
+           "c.docente, " +
            "CASE WHEN p.inizio > CURRENT_TIMESTAMP THEN 'FUTURA' " +
            "     WHEN p.fine < CURRENT_TIMESTAMP THEN 'PASSATA' " +
-           "     ELSE 'IN_CORSO' END as statoTemporale) " +
+           "     ELSE 'IN_CORSO' END) " +
            "FROM Prenotazione p " +
            "JOIN p.aula a " +
            "JOIN p.utente u " +
            "LEFT JOIN p.corso c " +
            "WHERE p.id = :prenotazioneId")
-    List<Map<String, Object>> findCompleteDetailsByPrenotazioneId(@Param("prenotazioneId") Long prenotazioneId);
+    List<PrenotazioneDettaglioDto> findCompleteDetailsByPrenotazioneId(@Param("prenotazioneId") Long prenotazioneId);
     
     // Trova tutte le prenotazioni per una specifica aula
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId ORDER BY p.inizio ASC")

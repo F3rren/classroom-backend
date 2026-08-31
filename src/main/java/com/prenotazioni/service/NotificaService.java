@@ -3,7 +3,6 @@ package com.prenotazioni.service;
 import com.prenotazioni.model.Notifica;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.NotificaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -18,8 +17,11 @@ public class NotificaService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificaService.class);
 
-    @Autowired
-    private NotificaRepository notificaRepository;
+    private final NotificaRepository notificaRepository;
+
+    NotificaService(NotificaRepository notificaRepository) {
+        this.notificaRepository = notificaRepository;
+    }
 
     public List<Notifica> getNotificheByUtente(Long utenteId) {
         logger.info("INIZIO - Recupero notifiche per utente ID: {}", utenteId);

@@ -1,5 +1,6 @@
 package com.prenotazioni.service;
 
+import com.prenotazioni.dto.PrenotazioneDettaglioDto;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Corso;
 import com.prenotazioni.model.Prenotazione;
@@ -11,13 +12,11 @@ import com.prenotazioni.repository.IUtenteRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -25,17 +24,20 @@ public class PrenotazioneService {
     
     private static final Logger logger = LoggerFactory.getLogger(PrenotazioneService.class);
     
-    @Autowired
-    private IPrenotazioneRepository prenotazioneRepository;
+    private final IPrenotazioneRepository prenotazioneRepository;
     
-    @Autowired
-    private IAulaRepository aulaRepository;
+    private final IAulaRepository aulaRepository;
     
-    @Autowired
-    private ICorsoRepository corsoRepository;
+    private final ICorsoRepository corsoRepository;
     
-    @Autowired
-    private IUtenteRepository utenteRepository;
+    private final IUtenteRepository utenteRepository;
+
+    PrenotazioneService(IPrenotazioneRepository prenotazioneRepository, IAulaRepository aulaRepository, ICorsoRepository corsoRepository, IUtenteRepository utenteRepository) {
+        this.prenotazioneRepository = prenotazioneRepository;
+        this.aulaRepository = aulaRepository;
+        this.corsoRepository = corsoRepository;
+        this.utenteRepository = utenteRepository;
+    }
 
     // Prenota un'aula per una lezione
     @Transactional
@@ -324,7 +326,7 @@ public class PrenotazioneService {
     }
     
     // Ottieni dettagli completi per una specifica aula
-    public List<Map<String, Object>> getRoomCompleteDetails(Long aulaId) {
+    public List<PrenotazioneDettaglioDto> getRoomCompleteDetails(Long aulaId) {
         logger.info("INIZIO METODO getRoomCompleteDetails");
         logger.info("Recupero dettagli completi per aula - AulaId: {}", aulaId);
         logger.info("FINE METODO getRoomCompleteDetails");
@@ -332,7 +334,7 @@ public class PrenotazioneService {
     }
     
     // Ottieni dettagli completi di tutte le prenotazioni
-    public List<Map<String, Object>> getAllCompleteDetails() {
+    public List<PrenotazioneDettaglioDto> getAllCompleteDetails() {
         logger.info("INIZIO METODO getAllCompleteDetails");
         logger.info("Recupero dettagli completi per tutte le prenotazioni");
         logger.info("FINE METODO getAllCompleteDetails");
@@ -349,7 +351,7 @@ public class PrenotazioneService {
     }
     
     // Ottieni dettagli completi per una singola prenotazione
-    public List<Map<String, Object>> getPrenotazioneCompleteDetails(Long prenotazioneId) {
+    public List<PrenotazioneDettaglioDto> getPrenotazioneCompleteDetails(Long prenotazioneId) {
         logger.info("INIZIO METODO getPrenotazioneCompleteDetails");
         logger.info("Recupero dettagli completi per prenotazione - PrenotazioneId: {}", prenotazioneId);
         logger.info("FINE METODO getPrenotazioneCompleteDetails");

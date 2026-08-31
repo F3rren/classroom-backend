@@ -2,24 +2,30 @@ package com.prenotazioni.service;
 
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IUtenteRepository;
-import com.prenotazioni.dto.RegisterRequest;
+import com.prenotazioni.dto.CreateUserRequest;
+import com.prenotazioni.dto.UpdateUserRequest;
 
 import java.util.List;
 import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
-    @Autowired
-    private IUtenteRepository utenteRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+
+    private final IUtenteRepository utenteRepository;
+
+    private final PasswordEncoder passwordEncoder;
+
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+
+    AuthService(IUtenteRepository utenteRepository, PasswordEncoder passwordEncoder) {
+        this.utenteRepository = utenteRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public Utente login(String email, String password) {
         logger.info("INIZIO METODO login");
@@ -36,7 +42,7 @@ public class AuthService {
         return utente;
     }
 
-    public Utente register(RegisterRequest request) {
+    public Utente register(CreateUserRequest request) {
         // Controlla se email o username sono già registrati
         logger.info("INIZIO METODO register");
         if (utenteRepository.findByEmail(request.getEmail()) != null) {
@@ -71,7 +77,7 @@ public class AuthService {
         return utenti;
     }
 
-    public Utente updateUtente(Long id, RegisterRequest request) {
+    public Utente updateUtente(Long id, UpdateUserRequest request) {
         logger.info("INIZIO METODO updateUtente - UtenteId: {}", id);
         Utente utente = utenteRepository.findById(id).orElse(null);
         if (utente == null) {
@@ -104,18 +110,9 @@ public class AuthService {
             logger.info("Password non modificata per UtenteId: {} - Mantenuta password esistente", id);
         }
         
-        // Normalizza e valida il ruolo: solo 'admin' o 'user' (minuscolo)
-        String ruolo = request.getRuolo();
-        if (ruolo != null) {
-            ruolo = ruolo.toLowerCase().trim();
-            // Se il ruolo non è valido, mantieni quello esistente
-            if (!"admin".equals(ruolo) && !"user".equals(ruolo)) {
-                logger.warn("Ruolo non valido '{}' fornito. Mantenuto ruolo esistente: {}", request.getRuolo(), utente.getRuolo());
-                ruolo = utente.getRuolo();
-            }
-        } else {
-            ruolo = utente.getRuolo(); // Mantieni esistente se null
-        }
+        // Il formato del ruolo (admin|user, case-insensitive) e' gia' garantito da @Pattern
+        // sul DTO; qui resta solo la normalizzazione e il fallback per un ruolo non fornito.
+        String ruolo = request.getRuolo() != null ? request.getRuolo().toLowerCase().trim() : utente.getRuolo();
         utente.setRuolo(ruolo);
         utente.setUsername(request.getUsername());
         

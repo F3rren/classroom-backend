@@ -4,7 +4,6 @@ import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.repository.NotificaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -17,14 +16,17 @@ public class UtenteService {
 
     private static final Logger logger = LoggerFactory.getLogger(UtenteService.class);
 
-    @Autowired
-    private IUtenteRepository utenteRepository;
+    private final IUtenteRepository utenteRepository;
     
-    @Autowired
-    private NotificaRepository notificaRepository;
+    private final NotificaRepository notificaRepository;
     
-    @Autowired
-    private IPrenotazioneRepository prenotazioneRepository;
+    private final IPrenotazioneRepository prenotazioneRepository;
+
+    UtenteService(IUtenteRepository utenteRepository, NotificaRepository notificaRepository, IPrenotazioneRepository prenotazioneRepository) {
+        this.utenteRepository = utenteRepository;
+        this.notificaRepository = notificaRepository;
+        this.prenotazioneRepository = prenotazioneRepository;
+    }
 
     public Utente findById(Long id) {
         logger.info("INIZIO - Ricerca utente per ID: {}", id);
