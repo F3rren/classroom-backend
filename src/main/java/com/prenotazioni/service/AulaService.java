@@ -164,14 +164,6 @@ public class AulaService {
         }
     }
 
-    // Verifica se un'aula esiste per nome
-    public boolean aulaExistsByName(String nome) {
-        logger.debug("INIZIO aulaExistsByName - Nome: {}", nome);
-        boolean exists = aulaRepository.existsByNomeIgnoreCase(nome);
-        logger.debug("FINE aulaExistsByName - Esiste: {}", exists);
-        return exists;
-    }
-    
     // Filtra aule per piano
     public List<Aula> getAuleByPiano(int piano) {
         logger.debug("INIZIO getAuleByPiano - Piano: {}", piano);
@@ -372,21 +364,6 @@ public class AulaService {
     
     // Metodi per gestire aule fisiche e virtuali
     
-    // Ottieni tutte le aule fisiche
-    public List<Aula> getPhysicalRooms() {
-        logger.debug("INIZIO getPhysicalRooms - Recupero aule fisiche");
-        List<Aula> aule = aulaRepository.findByIsVirtual(false);
-        logger.debug("FINE getPhysicalRooms - Aule fisiche trovate: {}", aule.size());
-        return aule;
-    }
-    
-    // Ottieni tutte le aule virtuali
-    public List<Aula> getVirtualRooms() {
-        logger.debug("INIZIO getVirtualRooms - Recupero aule virtuali");
-        List<Aula> aule = aulaRepository.findByIsVirtual(true);
-        logger.debug("FINE getVirtualRooms - Aule virtuali trovate: {}", aule.size());
-        return aule;
-    }
     
     // Ottieni aule fisiche ordinate per piano e nome
     public List<Aula> getPhysicalRoomsOrdered() {

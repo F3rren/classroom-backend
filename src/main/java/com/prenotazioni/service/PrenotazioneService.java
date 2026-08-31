@@ -132,35 +132,6 @@ public class PrenotazioneService {
         return prenotazioneRepository.save(blocco);
     }
     
-    // Mette un'aula in manutenzione
-    public Prenotazione aulaInManutenzione(Long aulaId, Long utenteAdminId, LocalDateTime inizio, LocalDateTime fine, String dettagli) {
-        logger.debug("INIZIO METODO aulaInManutenzione");
-        logger.debug("Richiesta manutenzione aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, utenteAdminId, inizio, fine);
-
-        Optional<Aula> aula = aulaRepository.findById(aulaId);
-        Optional<Utente> admin = utenteRepository.findById(utenteAdminId);
-        
-        if (aula.isEmpty() || admin.isEmpty() || !"admin".equals(admin.get().getRuolo())) {
-            logger.warn("Errore nella manutenzione aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", aulaId, utenteAdminId);
-            return null;
-        }
-        
-        logger.debug("Impostazione aula in manutenzione - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, utenteAdminId, inizio, fine);
-        Prenotazione manutenzione = new Prenotazione();
-        manutenzione.setAula(aula.get());
-        manutenzione.setCorso(null);
-        manutenzione.setUtente(admin.get());
-        manutenzione.setInizio(inizio);
-        manutenzione.setFine(fine);
-        manutenzione.setStato("manutenzione");
-        manutenzione.setDescrizione(dettagli);
-        manutenzione.setDataCreazione(LocalDateTime.now());
-        
-        logger.info("Aula in manutenzione - id={} aula='{}' adminId={} periodo={} - {}", manutenzione.getId(), aula.get().getNome(), admin.get().getId(), inizio, fine);
-        logger.debug("FINE METODO aulaInManutenzione");
-        return prenotazioneRepository.save(manutenzione);
-    }
-    
     // Verifica se un'aula è disponibile in un determinato periodo
     public boolean isAulaDisponibile(Long aulaId, LocalDateTime inizio, LocalDateTime fine) {
         logger.debug("INIZIO METODO isAulaDisponibile");
@@ -169,19 +140,6 @@ public class PrenotazioneService {
         boolean disponibile = conflitti.isEmpty();
         logger.debug("Risultato verifica disponibilità aula - AulaId: {}, Periodo: {} - {}", aulaId, inizio, fine, disponibile);
         return disponibile;
-    }
-    
-    // Ottiene tutte le prenotazioni di un'aula in una data specifica
-    public List<Prenotazione> getPrenotazioniAula(Long aulaId, LocalDateTime data) {
-        logger.debug("INIZIO METODO getPrenotazioniAula");
-        logger.debug("Recupero prenotazioni per aula - AulaId: {}, Data: {}", aulaId, data.toLocalDate());
-        LocalDateTime inizioGiornata = data.toLocalDate().atStartOfDay();
-        LocalDateTime fineGiornata = inizioGiornata.plusDays(1).minusSeconds(1);
-
-        List<Prenotazione> prenotazioni = prenotazioneRepository.findByAulaAndPeriod(aulaId, inizioGiornata, fineGiornata);
-        logger.debug("Recuperate {} prenotazioni per aula ID {} nella data {}", prenotazioni.size(), aulaId, data.toLocalDate());
-        logger.debug("FINE METODO getPrenotazioniAula");
-        return prenotazioni;
     }
     
     // Ottiene lo stato attuale di un'aula

@@ -19,14 +19,6 @@ public class RoomDetailsResponse {
     private BlockInfo blocked;
     private List<BookingInfo> bookings;
 
-    public RoomDetailsResponse(Long id, String name, int floor, int capacity) {
-        this.id = id;
-        this.name = name;
-        this.floor = floor;
-        this.capacity = capacity;
-        this.isVirtual = false;
-    }
-
     public RoomDetailsResponse(Long id, String name, int floor, int capacity, boolean isVirtual) {
         this.id = id;
         this.name = name;

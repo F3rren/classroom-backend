@@ -60,12 +60,6 @@ public class NotificaService {
     }
 
     public Notifica createNotificaCancellazionePrenotazione(Utente utente, Long prenotazioneId, 
-            String nomeStanza, String adminNome, String dataPrenotazione, String oraInizio, String oraFine) {
-        return createNotificaCancellazionePrenotazione(utente, prenotazioneId, nomeStanza, adminNome, 
-            dataPrenotazione, oraInizio, oraFine, null);
-    }
-
-    public Notifica createNotificaCancellazionePrenotazione(Utente utente, Long prenotazioneId, 
             String nomeStanza, String adminNome, String dataPrenotazione, String oraInizio, String oraFine, String motivo) {
         
         logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", utente.getId(), prenotazioneId);

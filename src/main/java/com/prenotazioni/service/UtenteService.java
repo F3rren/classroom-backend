@@ -1,6 +1,5 @@
 package com.prenotazioni.service;
 
-import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.repository.NotificaRepository;
@@ -9,8 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 @Service
 public class UtenteService {
@@ -38,42 +35,6 @@ public class UtenteService {
             logger.warn("FINE - Utente non trovato per ID: {}", id);
         }
         return utente;
-    }
-
-    public Utente findByUsername(String username) {
-        logger.debug("INIZIO - Ricerca utente per username: {}", username);
-        Utente utente = utenteRepository.findByUsername(username);
-        if (utente != null) {
-            logger.debug("FINE - Utente trovato per username: {}", username);
-        } else {
-            logger.warn("FINE - Utente non trovato per username: {}", username);
-        }
-        return utente;
-    }
-
-    public Utente findByEmail(String email) {
-        logger.debug("Ricerca utente per {}", LogSanitizer.maskEmail(email));
-        Utente utente = utenteRepository.findByEmail(email);
-        if (utente != null) {
-            logger.debug("Utente trovato per {}", LogSanitizer.maskEmail(email));
-        } else {
-            logger.warn("Utente non trovato per {}", LogSanitizer.maskEmail(email));
-        }
-        return utente;
-    }
-
-    public List<Utente> findAll() {
-        logger.debug("INIZIO - Recupero di tutti gli utenti");
-        List<Utente> utenti = utenteRepository.findAll();
-        logger.debug("FINE - Recuperati {} utenti", utenti.size());
-        return utenti;
-    }
-
-    public Utente save(Utente utente) {
-        logger.debug("Salvataggio utente {}", LogSanitizer.maskEmail(utente.getEmail()));
-        Utente savedUtente = utenteRepository.save(utente);
-        logger.debug("FINE - Utente salvato con ID: {}", savedUtente.getId());
-        return savedUtente;
     }
 
     @Transactional

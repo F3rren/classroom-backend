@@ -34,15 +34,6 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
                                                            @Param("fine") LocalDateTime fine,
                                                            @Param("prenotazioneIdEsclusa") Long prenotazioneIdEsclusa);
     
-    // Trova prenotazioni di un'aula in un periodo specifico
-    @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId " +
-           "AND p.stato != 'annullata' " +
-           "AND p.inizio <= :fine AND p.fine >= :inizio " +
-           "ORDER BY p.inizio ASC")
-    List<Prenotazione> findByAulaAndPeriod(@Param("aulaId") Long aulaId,
-                                          @Param("inizio") LocalDateTime inizio,
-                                          @Param("fine") LocalDateTime fine);
-    
     // Trova prenotazioni attive in un momento specifico
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId " +
            "AND p.stato != 'annullata' " +
