@@ -1,0 +1,322 @@
+package com.prenotazioni;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.model.Aula;
+import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.Utente;
+import com.prenotazioni.repository.IAulaRepository;
+import com.prenotazioni.repository.IPrenotazioneRepository;
+import com.prenotazioni.repository.IUtenteRepository;
+import com.prenotazioni.repository.NotificaRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Copre gli endpoint admin finora senza test: gestione aule (GET/PUT/DELETE su
+ * /api/admin/rooms), eliminazione utente e gestione prenotazioni lato admin.
+ *
+ * Per ogni operazione distruttiva il test non si ferma allo status code ma verifica
+ * l'effetto reale sul database, ed esiste sempre la controprova che un utente non
+ * admin riceve 403 sullo stesso endpoint.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+class AdminManagementTest {
+
+    @Autowired
+    private TestRestTemplate rest;
+
+    @Autowired
+    private IUtenteRepository utenteRepository;
+
+    @Autowired
+    private IAulaRepository aulaRepository;
+
+    @Autowired
+    private IPrenotazioneRepository prenotazioneRepository;
+
+    @Autowired
+    private NotificaRepository notificaRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private String tokenAdmin;
+    private String tokenUser;
+    private Long aulaId;
+    private Long utenteNormaleId;
+    private Long prenotazioneId;
+
+    @BeforeEach
+    void setUp() {
+        notificaRepository.deleteAll();
+        prenotazioneRepository.deleteAll();
+        aulaRepository.deleteAll();
+        utenteRepository.deleteAll();
+
+        salvaUtente("admin-mgmt@test.it", "admin-mgmt", "admin-password", "admin");
+        utenteNormaleId = salvaUtente("user-mgmt@test.it", "user-mgmt", "user-password", "user");
+
+        Aula aula = new Aula();
+        aula.setNome("Aula Admin");
+        aula.setPiano(1);
+        aula.setCapienza(25);
+        aula.setVirtual(false);
+        aula.setStato("libera");
+        aulaId = aulaRepository.save(aula).getId();
+
+        Prenotazione p = new Prenotazione();
+        p.setAula(aula);
+        p.setUtente(utenteRepository.findById(utenteNormaleId).orElseThrow());
+        p.setInizio(LocalDateTime.now().plusDays(3).withNano(0));
+        p.setFine(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
+        p.setStato("prenotata");
+        p.setDescrizione("Prenotazione gestita da admin");
+        p.setDataCreazione(LocalDateTime.now());
+        prenotazioneId = prenotazioneRepository.save(p).getId();
+
+        tokenAdmin = login("admin-mgmt@test.it", "admin-password");
+        tokenUser = login("user-mgmt@test.it", "user-password");
+    }
+
+    private Long salvaUtente(String email, String username, String rawPassword, String ruolo) {
+        Utente u = new Utente();
+        u.setEmail(email);
+        u.setUsername(username);
+        u.setPassword(passwordEncoder.encode(rawPassword));
+        u.setNome(username);
+        u.setRuolo(ruolo);
+        u.setDataRegistrazione(LocalDateTime.now());
+        return utenteRepository.save(u).getId();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String login(String email, String password) {
+        ResponseEntity<Map> resp = rest.postForEntity(
+                "/api/auth/login", Map.of("email", email, "password", password), Map.class);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return (String) resp.getBody().get("token");
+    }
+
+    private HttpHeaders bearer(String token) {
+        HttpHeaders h = new HttpHeaders();
+        h.setBearerAuth(token);
+        h.setContentType(MediaType.APPLICATION_JSON);
+        return h;
+    }
+
+    private ResponseEntity<String> exchange(String url, HttpMethod method, String token, Object body) {
+        HttpEntity<Object> entity = body == null
+                ? new HttpEntity<>(bearer(token))
+                : new HttpEntity<>(body, bearer(token));
+        return rest.exchange(url, method, entity, String.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMap(String json) throws Exception {
+        return objectMapper.readValue(json, Map.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> dataOf(ResponseEntity<String> resp) throws Exception {
+        return (Map<String, Object>) asMap(resp.getBody()).get("data");
+    }
+
+    // ==================== Gestione aule ====================
+
+    @Test
+    void adminListsRooms() throws Exception {
+        ResponseEntity<String> resp = exchange("/api/admin/rooms", HttpMethod.GET, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(dataOf(resp).get("totalRooms")).isEqualTo(1);
+    }
+
+    @Test
+    void adminGetsSingleRoomWrappedInRoomKey() throws Exception {
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/" + aulaId, HttpMethod.GET, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(dataOf(resp).keySet()).containsExactly("room");
+    }
+
+    @Test
+    void adminGetsRoomNotFound() throws Exception {
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.GET, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
+    }
+
+    @Test
+    void adminUpdatesRoomAndChangeIsPersisted() throws Exception {
+        Map<String, Object> body = Map.of("nome", "Aula Rinominata", "capienza", 42, "piano", 4);
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/" + aulaId, HttpMethod.PUT, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(dataOf(resp).get("nome")).isEqualTo("Aula Rinominata");
+
+        Aula ricaricata = aulaRepository.findById(aulaId).orElseThrow();
+        assertThat(ricaricata.getNome()).isEqualTo("Aula Rinominata");
+        assertThat(ricaricata.getCapienza()).isEqualTo(42);
+    }
+
+    @Test
+    void adminUpdateRoomRejectsInvalidPayload() {
+        // capienza negativa viola @Positive su AulaRequest
+        Map<String, Object> body = Map.of("nome", "X", "capienza", -5, "piano", 1);
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/" + aulaId, HttpMethod.PUT, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void adminDeletesRoomAndItDisappears() {
+        prenotazioneRepository.deleteAll(); // l'aula ha una prenotazione collegata
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/" + aulaId, HttpMethod.DELETE, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(aulaRepository.existsById(aulaId)).isFalse();
+    }
+
+    @Test
+    void adminDeleteRoomNotFoundReturns404() {
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.DELETE, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // ==================== Gestione utenti ====================
+
+    @Test
+    void adminDeletesUserCascadingBookings() {
+        ResponseEntity<String> resp = exchange(
+                "/api/admin/delete/" + utenteNormaleId, HttpMethod.DELETE, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(utenteRepository.existsById(utenteNormaleId)).isFalse();
+        // le prenotazioni dell'utente non devono restare orfane
+        assertThat(prenotazioneRepository.existsById(prenotazioneId)).isFalse();
+    }
+
+    @Test
+    void adminDeleteUserNotFoundReturns404() {
+        ResponseEntity<String> resp = exchange("/api/admin/delete/999999", HttpMethod.DELETE, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void adminDeleteUserRejectsInvalidId() throws Exception {
+        ResponseEntity<String> resp = exchange("/api/admin/delete/0", HttpMethod.DELETE, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("INVALID_USER_ID");
+    }
+
+    // ==================== Gestione prenotazioni ====================
+
+    @Test
+    void adminListsAllBookingsWithStats() throws Exception {
+        ResponseEntity<String> resp = exchange("/api/admin/prenotazioni", HttpMethod.GET, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> data = dataOf(resp);
+        assertThat(data.keySet()).containsExactlyInAnyOrder("prenotazioni", "statistiche");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stats = (Map<String, Object>) data.get("statistiche");
+        assertThat(stats.keySet()).containsExactlyInAnyOrder("totale", "attive", "annullate");
+        assertThat(stats.get("totale")).isEqualTo(1);
+        assertThat(stats.get("attive")).isEqualTo(1);
+        assertThat(stats.get("annullate")).isEqualTo(0);
+    }
+
+    @Test
+    void adminForceDeletesAnyBookingAndNotifiesOwner() throws Exception {
+        ResponseEntity<String> resp = exchange(
+                "/api/admin/prenotazioni/" + prenotazioneId, HttpMethod.DELETE, tokenAdmin,
+                Map.of("reason", "Aula richiesta per un esame"));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> data = dataOf(resp);
+        assertThat(data.get("adminAction")).isEqualTo(true);
+        assertThat(data.get("reason")).isEqualTo("Aula richiesta per un esame");
+
+        // la prenotazione risulta annullata e il proprietario riceve una notifica
+        Prenotazione dopo = prenotazioneRepository.findById(prenotazioneId).orElseThrow();
+        assertThat(dopo.getStato()).isEqualToIgnoringCase("annullata");
+        assertThat(notificaRepository.findAll()).isNotEmpty();
+    }
+
+    @Test
+    void adminForceDeleteWorksWithoutBody() {
+        // il corpo con il motivo e' opzionale: senza, si usa un motivo di default
+        ResponseEntity<String> resp = exchange(
+                "/api/admin/prenotazioni/" + prenotazioneId, HttpMethod.DELETE, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void adminForceDeleteOnMissingBookingReturns404() {
+        ResponseEntity<String> resp = exchange(
+                "/api/admin/prenotazioni/999999", HttpMethod.DELETE, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // ==================== Controprova: nessun accesso senza ruolo admin ====================
+
+    @Test
+    void nonAdminIsForbiddenOnEveryAdminEndpoint() {
+        record Chiamata(String url, HttpMethod method) {}
+        Chiamata[] chiamate = {
+                new Chiamata("/api/admin/rooms", HttpMethod.GET),
+                new Chiamata("/api/admin/rooms/" + aulaId, HttpMethod.GET),
+                new Chiamata("/api/admin/rooms/" + aulaId, HttpMethod.DELETE),
+                new Chiamata("/api/admin/prenotazioni", HttpMethod.GET),
+                new Chiamata("/api/admin/prenotazioni/" + prenotazioneId, HttpMethod.DELETE),
+                new Chiamata("/api/admin/delete/" + utenteNormaleId, HttpMethod.DELETE),
+        };
+
+        for (Chiamata c : chiamate) {
+            ResponseEntity<String> resp = exchange(c.url(), c.method(), tokenUser, null);
+            assertThat(resp.getStatusCode())
+                    .as("%s %s con token non-admin", c.method(), c.url())
+                    .isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        // e nulla e' stato modificato
+        assertThat(aulaRepository.existsById(aulaId)).isTrue();
+        assertThat(utenteRepository.existsById(utenteNormaleId)).isTrue();
+    }
+
+    @Test
+    void adminEndpointsRequireAuthentication() {
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/admin/rooms", HttpMethod.GET, HttpEntity.EMPTY, String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+}
