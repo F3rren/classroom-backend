@@ -11,7 +11,12 @@ public class Notifica {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    // EAGER e non LAZY: con spring.jpa.open-in-view=false la sessione e' gia' chiusa quando
+    // Jackson serializza la risposta, e un proxy lazy qui provocava LazyInitializationException.
+    // E' anche l'unica relazione LAZY del progetto: Prenotazione carica aula/corso/utente in
+    // EAGER. Nella lista notifiche di un utente la cache di primo livello evita l'N+1, perche'
+    // l'utente e' sempre lo stesso.
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "utente_id", nullable = false)
     private Utente utente;
     

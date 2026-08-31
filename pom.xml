@@ -37,6 +37,13 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Migrazioni versionate dello schema. Prima lo schema reale era quello
+             generato da ddl-auto=update e i file .sql del progetto non venivano
+             mai eseguiti, con la conseguenza che i vincoli di dominio mancavano. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
