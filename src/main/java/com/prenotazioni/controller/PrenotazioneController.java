@@ -366,8 +366,13 @@ public class PrenotazioneController {
         );
     }
 
-    // Stato attuale di un'aula
-    @GetMapping("/stato/{aulaId}")
+    // Stato attuale di un'aula.
+    // Path "/stato-aula/{aulaId}" e non "/stato/{aulaId}": quest'ultimo collideva con
+    // "/stato/{stato}" (prenotazioni per stato) piu' sotto. Essendo lo stesso pattern di
+    // path, Spring li registrava entrambi ma a runtime falliva con "Ambiguous handler
+    // methods mapped", quindi ENTRAMBI gli endpoint rispondevano 500. Nessun client
+    // funzionante poteva dipendere dal vecchio path, per questo il rename e' sicuro.
+    @GetMapping("/stato-aula/{aulaId}")
     @Operation(summary = "Stato attuale di un'aula")
     public ResponseEntity<RoomStatusPayload> getStatoAula(@PathVariable Long aulaId) {
         logger.debug("INIZIO getStatoAula - AulaId: {}", aulaId);
