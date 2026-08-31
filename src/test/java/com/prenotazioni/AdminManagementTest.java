@@ -312,6 +312,95 @@ class AdminManagementTest {
         assertThat(utenteRepository.existsById(utenteNormaleId)).isTrue();
     }
 
+    // ==================== Elenco utenti ====================
+
+    @Test
+    void adminListsUsersWithoutLeakingPasswords() throws Exception {
+        ResponseEntity<String> resp = exchange("/api/admin/users", HttpMethod.GET, tokenAdmin, null);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> data = dataOf(resp);
+        assertThat(data.keySet()).containsExactlyInAnyOrder("users", "totalUsers");
+        assertThat(data.get("totalUsers")).isEqualTo(2);
+        // nessun hash di password deve comparire nella risposta
+        assertThat(resp.getBody()).doesNotContain("password");
+        assertThat(resp.getBody()).doesNotContain("$2a$");
+    }
+
+    @Test
+    void adminRegisterRejectsDuplicateEmail() throws Exception {
+        Map<String, Object> body = Map.of(
+                "username", "utente-nuovo",
+                "email", "user-mgmt@test.it", // gia' esistente
+                "password", "password123",
+                "nome", "Utente Nuovo",
+                "ruolo", "user");
+
+        ResponseEntity<String> resp = exchange("/api/admin/register", HttpMethod.POST, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("USER_ALREADY_EXISTS");
+    }
+
+    @Test
+    void adminRegisterRejectsDuplicateUsername() throws Exception {
+        Map<String, Object> body = Map.of(
+                "username", "user-mgmt", // gia' esistente
+                "email", "email-mai-vista@test.it",
+                "password", "password123",
+                "nome", "Utente Nuovo",
+                "ruolo", "user");
+
+        ResponseEntity<String> resp = exchange("/api/admin/register", HttpMethod.POST, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void adminUpdateUserNotFoundReturns404() throws Exception {
+        Map<String, Object> body = Map.of(
+                "username", "chiunque",
+                "email", "chiunque@test.it",
+                "nome", "Chiunque",
+                "password", "",
+                "ruolo", "user");
+
+        ResponseEntity<String> resp = exchange("/api/admin/users/999999", HttpMethod.PUT, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("USER_NOT_FOUND");
+    }
+
+    @Test
+    void adminCreateRoomRejectsDuplicateName() throws Exception {
+        Map<String, Object> body = Map.of("nome", "Aula Admin", "capienza", 10, "piano", 1);
+
+        ResponseEntity<String> resp = exchange("/api/admin/createrooms", HttpMethod.POST, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_CREATION_FAILED");
+    }
+
+    @Test
+    void adminUpdateRoomWithInvalidIdIsRejected() throws Exception {
+        Map<String, Object> body = Map.of("nome", "Qualsiasi", "capienza", 10, "piano", 1);
+
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("INVALID_ROOM_ID");
+    }
+
+    @Test
+    void adminUpdateRoomNotFoundReturns404() throws Exception {
+        Map<String, Object> body = Map.of("nome", "Inesistente", "capienza", 10, "piano", 1);
+
+        ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, body);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_UPDATE_FAILED");
+    }
+
     @Test
     void adminEndpointsRequireAuthentication() {
         ResponseEntity<String> resp = rest.exchange(
