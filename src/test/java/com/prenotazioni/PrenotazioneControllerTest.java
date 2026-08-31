@@ -1,5 +1,6 @@
 package com.prenotazioni;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.Utente;
@@ -18,6 +19,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -32,6 +34,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+// Isola il contesto (e quindi lo schema H2) da questa classe: senza, dati lasciati da
+// altre classi di test @SpringBootTest nello stesso DB in-memory condiviso possono violare
+// vincoli FK qui (es. un Utente referenziato da una Notifica creata da un'altra classe).
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PrenotazioneControllerTest {
 
     @LocalServerPort
@@ -53,6 +59,7 @@ class PrenotazioneControllerTest {
     private PasswordEncoder passwordEncoder;
 
     private Long prenotazioneIdDiOwner;
+    private Long aulaId;
     private String tokenOwner;
     private String tokenOther;
 
@@ -75,6 +82,7 @@ class PrenotazioneControllerTest {
         aula.setVirtual(false);
         aula.setStato("libera");
         aulaRepository.save(aula);
+        aulaId = aula.getId();
 
         Prenotazione prenotazione = new Prenotazione();
         prenotazione.setAula(aula);
@@ -180,5 +188,81 @@ class PrenotazioneControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).doesNotContain("owner@test.it");
+    }
+
+    // ==================== SHAPE-LOCK: blocca derive accidentali di forma durante il refactor Swagger ====================
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMap(String json) throws Exception {
+        return objectMapper.readValue(json, Map.class);
+    }
+
+    @Test
+    void loginSuccessResponseShapeIsLocked() throws Exception {
+        ResponseEntity<String> resp = rest.postForEntity(
+                "/api/auth/login",
+                Map.of("email", "owner@test.it", "password", "password-owner"),
+                String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> body = asMap(resp.getBody());
+        assertThat(body.keySet()).containsExactlyInAnyOrder(
+                "success", "message", "token", "data", "timestamp", "sessionId");
+
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        assertThat(data.keySet()).containsExactlyInAnyOrder(
+                "token", "user", "loginTime", "tokenType");
+
+        Map<String, Object> user = (Map<String, Object>) data.get("user");
+        assertThat(user.keySet()).containsExactlyInAnyOrder(
+                "id", "username", "nome", "email", "ruolo");
+    }
+
+    @Test
+    void prenotaSuccessResponseShapeIsLocked() throws Exception {
+        HttpHeaders headers = bearer(tokenOwner);
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        Map<String, Object> body = Map.of(
+                "aulaId", aulaId,
+                "inizio", LocalDateTime.now().plusDays(2).toString(),
+                "fine", LocalDateTime.now().plusDays(2).plusHours(1).toString());
+
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/prenotazioni/prenota",
+                HttpMethod.POST,
+                new HttpEntity<>(body, headers),
+                String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Map<String, Object> responseBody = asMap(resp.getBody());
+        assertThat(responseBody.keySet()).containsExactlyInAnyOrder(
+                "success", "message", "data", "timestamp", "sessionId");
+
+        Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+        assertThat(data.keySet()).containsExactlyInAnyOrder("prenotazione", "aulaId", "periodo");
+    }
+
+    @Test
+    void missingFieldErrorResponseShapeIsLocked() throws Exception {
+        HttpHeaders headers = bearer(tokenOwner);
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        // aulaId mancante
+        Map<String, Object> body = Map.of(
+                "inizio", LocalDateTime.now().plusDays(2).toString(),
+                "fine", LocalDateTime.now().plusDays(2).plusHours(1).toString());
+
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/prenotazioni/prenota",
+                HttpMethod.POST,
+                new HttpEntity<>(body, headers),
+                String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Map<String, Object> responseBody = asMap(resp.getBody());
+        assertThat(responseBody.keySet()).containsExactlyInAnyOrder(
+                "success", "error", "message", "userMessage", "timestamp", "sessionId");
+        assertThat(responseBody.get("success")).isEqualTo(false);
     }
 }
