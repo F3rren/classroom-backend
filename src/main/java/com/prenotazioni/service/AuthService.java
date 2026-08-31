@@ -1,6 +1,7 @@
 package com.prenotazioni.service;
 
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.dto.CreateUserRequest;
 import com.prenotazioni.dto.UpdateUserRequest;
@@ -57,7 +58,7 @@ public class AuthService {
         utente.setEmail(request.getEmail());
         utente.setNome(request.getNome());
         utente.setPassword(passwordEncoder.encode(request.getPassword()));
-        utente.setRuolo(request.getRuolo());
+        utente.setRuolo(Ruolo.da(request.getRuolo()));
         utente.setUsername(request.getUsername());
         
         // Imposta la data di registrazione (non modificabile)
@@ -104,7 +105,7 @@ public class AuthService {
         
         // Il formato del ruolo (admin|user, case-insensitive) e' gia' garantito da @Pattern
         // sul DTO; qui resta solo la normalizzazione e il fallback per un ruolo non fornito.
-        String ruolo = request.getRuolo() != null ? request.getRuolo().toLowerCase().trim() : utente.getRuolo();
+        Ruolo ruolo = request.getRuolo() != null ? Ruolo.da(request.getRuolo()) : utente.getRuolo();
         utente.setRuolo(ruolo);
         utente.setUsername(request.getUsername());
         

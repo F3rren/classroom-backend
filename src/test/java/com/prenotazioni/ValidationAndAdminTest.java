@@ -2,6 +2,7 @@ package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
@@ -67,7 +68,7 @@ class ValidationAndAdminTest {
         admin.setUsername("admin-validation");
         admin.setPassword(passwordEncoder.encode("admin-password"));
         admin.setNome("Admin Validation");
-        admin.setRuolo("admin");
+        admin.setRuolo(Ruolo.ADMIN);
         admin.setDataRegistrazione(LocalDateTime.now());
         utenteRepository.save(admin);
 
@@ -76,7 +77,7 @@ class ValidationAndAdminTest {
         user.setUsername("user-validation");
         user.setPassword(passwordEncoder.encode("user-password"));
         user.setNome("User Validation");
-        user.setRuolo("user");
+        user.setRuolo(Ruolo.USER);
         user.setDataRegistrazione(LocalDateTime.now());
         utenteRepository.save(user);
 

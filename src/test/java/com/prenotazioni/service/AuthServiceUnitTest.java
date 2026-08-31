@@ -3,6 +3,7 @@ package com.prenotazioni.service;
 import com.prenotazioni.dto.CreateUserRequest;
 import com.prenotazioni.dto.UpdateUserRequest;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ class AuthServiceUnitTest {
         u.setEmail(email);
         u.setUsername("utente" + id);
         u.setNome("Nome " + id);
-        u.setRuolo("user");
+        u.setRuolo(Ruolo.USER);
         u.setPassword("hash");
         u.setDataRegistrazione(LocalDateTime.now());
         return u;
@@ -55,7 +56,7 @@ class AuthServiceUnitTest {
         r.setUsername(username);
         r.setPassword("password123");
         r.setNome("Nuovo Utente");
-        r.setRuolo("user");
+        r.setRuolo("user"); // DTO di richiesta: resta String, validata da @Pattern
         return r;
     }
 
@@ -65,7 +66,7 @@ class AuthServiceUnitTest {
         r.setUsername(username);
         r.setPassword(password);
         r.setNome("Nome Aggiornato");
-        r.setRuolo("user");
+        r.setRuolo("user"); // DTO di richiesta: resta String, validata da @Pattern
         return r;
     }
 
@@ -207,7 +208,7 @@ class AuthServiceUnitTest {
     @Test
     void updateFallsBackToExistingRoleWhenNoneGiven() {
         Utente esistente = utente(1L, "mia@test.it");
-        esistente.setRuolo("admin");
+        esistente.setRuolo(Ruolo.ADMIN);
         UpdateUserRequest richiesta = modifica("mia@test.it", "mio", "");
         richiesta.setRuolo(null);
 
@@ -218,6 +219,6 @@ class AuthServiceUnitTest {
 
         service.updateUtente(1L, richiesta);
 
-        assertThat(esistente.getRuolo()).isEqualTo("admin");
+        assertThat(esistente.getRuolo()).isEqualTo(Ruolo.ADMIN);
     }
 }

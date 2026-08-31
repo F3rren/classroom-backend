@@ -2,9 +2,11 @@ package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
+import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
@@ -75,15 +77,15 @@ class AdminManagementTest {
         aulaRepository.deleteAll();
         utenteRepository.deleteAll();
 
-        salvaUtente("admin-mgmt@test.it", "admin-mgmt", "admin-password", "admin");
-        utenteNormaleId = salvaUtente("user-mgmt@test.it", "user-mgmt", "user-password", "user");
+        salvaUtente("admin-mgmt@test.it", "admin-mgmt", "admin-password", Ruolo.ADMIN);
+        utenteNormaleId = salvaUtente("user-mgmt@test.it", "user-mgmt", "user-password", Ruolo.USER);
 
         Aula aula = new Aula();
         aula.setNome("Aula Admin");
         aula.setPiano(1);
         aula.setCapienza(25);
         aula.setVirtual(false);
-        aula.setStato("libera");
+        aula.setStato(StatoAula.LIBERA);
         aulaId = aulaRepository.save(aula).getId();
 
         Prenotazione p = new Prenotazione();
@@ -100,7 +102,7 @@ class AdminManagementTest {
         tokenUser = login("user-mgmt@test.it", "user-password");
     }
 
-    private Long salvaUtente(String email, String username, String rawPassword, String ruolo) {
+    private Long salvaUtente(String email, String username, String rawPassword, Ruolo ruolo) {
         Utente u = new Utente();
         u.setEmail(email);
         u.setUsername(username);

@@ -2,7 +2,9 @@ package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
+import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
@@ -68,7 +70,7 @@ class RoomQueryTest {
         user.setUsername("roomquery");
         user.setPassword(passwordEncoder.encode("roomquery-password"));
         user.setNome("Room Query");
-        user.setRuolo("user");
+        user.setRuolo(Ruolo.USER);
         user.setDataRegistrazione(LocalDateTime.now());
         utenteRepository.save(user);
 
@@ -85,7 +87,7 @@ class RoomQueryTest {
         a.setPiano(piano);
         a.setCapienza(capienza);
         a.setVirtual(virtuale);
-        a.setStato("libera");
+        a.setStato(StatoAula.LIBERA);
         return aulaRepository.save(a).getId();
     }
 

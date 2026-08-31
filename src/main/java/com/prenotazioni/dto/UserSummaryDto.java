@@ -2,6 +2,7 @@ package com.prenotazioni.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -33,7 +34,7 @@ public class UserSummaryDto {
         dto.username = utente.getUsername() != null ? utente.getUsername() : "";
         dto.nome = utente.getNome() != null ? utente.getNome() : "";
         dto.email = utente.getEmail() != null ? utente.getEmail() : "";
-        dto.ruolo = utente.getRuolo() != null ? utente.getRuolo() : "USER";
+        dto.ruolo = utente.getRuolo() != null ? utente.getRuolo().getValore() : "USER";
         return dto;
     }
 

@@ -3,6 +3,7 @@ package com.prenotazioni;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Notifica;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.repository.NotificaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +85,7 @@ class NotificaEndpointsTest {
         u.setUsername(username);
         u.setPassword(passwordEncoder.encode(rawPassword));
         u.setNome(username);
-        u.setRuolo("user");
+        u.setRuolo(Ruolo.USER);
         u.setDataRegistrazione(LocalDateTime.now());
         return utenteRepository.save(u);
     }

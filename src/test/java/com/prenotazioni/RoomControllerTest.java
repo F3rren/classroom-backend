@@ -2,7 +2,9 @@ package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
+import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +59,7 @@ class RoomControllerTest {
         user.setUsername("room-user");
         user.setPassword("{noop}"); // placeholder, sovrascritto sotto
         user.setNome("Room User");
-        user.setRuolo("user");
+        user.setRuolo(Ruolo.USER);
         user.setDataRegistrazione(LocalDateTime.now());
         user = utenteRepository.save(user);
 
@@ -66,7 +68,7 @@ class RoomControllerTest {
         aula.setPiano(3);
         aula.setCapienza(15);
         aula.setVirtual(false);
-        aula.setStato("libera");
+        aula.setStato(StatoAula.LIBERA);
         aulaId = aulaRepository.save(aula).getId();
 
         token = login("room-user@test.it", "room-password", user);

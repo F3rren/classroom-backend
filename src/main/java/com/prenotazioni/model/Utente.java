@@ -49,7 +49,8 @@ public class Utente {
     private String password;
     
     @Column(nullable = false, length = 20)
-    private String ruolo; // 'admin' o 'user' (MINUSCOLO!)
+    // Persistito minuscolo dal converter di Ruolo (CHECK constraint utente_ruolo_check)
+    private Ruolo ruolo;
     
     @Column(name = "data_registrazione", nullable = false, updatable = false)
     private LocalDateTime dataRegistrazione;
@@ -62,19 +63,11 @@ public class Utente {
         if (dataRegistrazione == null) {
             dataRegistrazione = LocalDateTime.now();
         }
-        // Normalizza il ruolo in minuscolo
-        if (ruolo != null) {
-            ruolo = ruolo.toLowerCase();
-        } else {
-            ruolo = "user"; // Default
+        // Nessuna normalizzazione del case: la conversione da stringa passa da
+        // Ruolo.da(), che accetta qualunque case e restituisce sempre la costante giusta.
+        if (ruolo == null) {
+            ruolo = Ruolo.USER;
         }
     }
     
-    @PreUpdate
-    protected void onUpdate() {
-        // Normalizza il ruolo in minuscolo ad ogni aggiornamento
-        if (ruolo != null) {
-            ruolo = ruolo.toLowerCase();
-        }
-    }
 }

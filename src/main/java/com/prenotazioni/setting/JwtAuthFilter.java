@@ -1,5 +1,6 @@
 package com.prenotazioni.setting;
 
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.service.JwtService;
 import jakarta.servlet.FilterChain;
@@ -18,7 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Locale;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -60,9 +60,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String ruolo = jwtService.getRuoloFromToken(token);
 
             AppPrincipal principal = new AppPrincipal(id, email, ruolo);
-            List<GrantedAuthority> authorities = ruolo != null
-                    ? List.of(new SimpleGrantedAuthority("ROLE_" + ruolo.toUpperCase(Locale.ROOT)))
-                    : List.of();
+
+            // Il prefisso "ROLE_" atteso da hasRole(...) viene da Ruolo.toAuthority(), cosi'
+            // non e' piu' ricostruito a mano qui. Un ruolo non riconosciuto non fa fallire la
+            // richiesta: si resta senza authority, esattamente come quando il claim manca, e
+            // sara' la policy di sicurezza a negare l'accesso.
+            List<GrantedAuthority> authorities;
+            try {
+                Ruolo ruoloTipizzato = Ruolo.da(ruolo);
+                authorities = ruoloTipizzato != null
+                        ? List.of(new SimpleGrantedAuthority(ruoloTipizzato.toAuthority()))
+                        : List.of();
+            } catch (IllegalArgumentException e) {
+                logger.warn("JWT Filter - ruolo non riconosciuto nel token, nessuna authority assegnata");
+                authorities = List.of();
+            }
 
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

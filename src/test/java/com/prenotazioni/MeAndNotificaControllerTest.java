@@ -3,6 +3,7 @@ package com.prenotazioni;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Notifica;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.repository.NotificaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +64,7 @@ class MeAndNotificaControllerTest {
         owner.setUsername("me-owner");
         owner.setPassword(passwordEncoder.encode("owner-password"));
         owner.setNome("Me Owner");
-        owner.setRuolo("user");
+        owner.setRuolo(Ruolo.USER);
         owner.setDataRegistrazione(LocalDateTime.now());
         utenteRepository.save(owner);
 
@@ -72,7 +73,7 @@ class MeAndNotificaControllerTest {
         other.setUsername("me-other");
         other.setPassword(passwordEncoder.encode("other-password"));
         other.setNome("Me Other");
-        other.setRuolo("user");
+        other.setRuolo(Ruolo.USER);
         other.setDataRegistrazione(LocalDateTime.now());
         utenteRepository.save(other);
 

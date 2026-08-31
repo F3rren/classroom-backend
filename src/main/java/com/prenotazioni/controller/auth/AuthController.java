@@ -263,7 +263,7 @@ public class AuthController {
             logger.debug("[{}] FINE login - Login effettuato con successo | Utente ID: {} | Username: {} | Ruolo: {}", 
                        sessionId, utente.getId(), 
                        utente.getUsername() != null ? utente.getUsername() : "N/A",
-                       utente.getRuolo() != null ? utente.getRuolo() : "USER");
+                       utente.getRuolo() != null ? utente.getRuolo().getValore() : "USER");
             
             // Preparazione dati di risposta (senza informazioni sensibili)
             LoginPayload authData = new LoginPayload(token, UserSummaryDto.basic(utente), formatTimestamp(LocalDateTime.now()));

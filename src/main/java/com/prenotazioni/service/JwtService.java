@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +37,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(utente.getEmail())
                 .claim("id", utente.getId())
-                .claim("ruolo", utente.getRuolo())
+                .claim("ruolo", utente.getRuolo() != null ? utente.getRuolo().getValore() : null)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(key)

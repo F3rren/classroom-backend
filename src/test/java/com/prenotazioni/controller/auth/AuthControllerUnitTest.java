@@ -4,6 +4,7 @@ import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.dto.LoginRequest;
 import com.prenotazioni.dto.LoginResponse;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.service.AuthService;
 import com.prenotazioni.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -71,7 +72,7 @@ class AuthControllerUnitTest {
         u.setEmail("u@test.it");
         u.setUsername("utente");
         u.setNome("Utente Test");
-        u.setRuolo("user");
+        u.setRuolo(Ruolo.USER);
         u.setDataRegistrazione(LocalDateTime.now());
         return u;
     }

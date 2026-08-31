@@ -41,13 +41,14 @@ public class Aula {
     private String descrizione;
     
     @Column(length = 20)
-    private String stato; // 'libera', 'occupata', 'bloccata', 'manutenzione'
+    // Persistito minuscolo dal converter di StatoAula (CHECK constraint aula_stato_check)
+    private StatoAula stato;
     
     @PrePersist
     @PreUpdate
     protected void setDefaults() {
-        if (stato == null || stato.isEmpty()) {
-            stato = "libera";
+        if (stato == null) {
+            stato = StatoAula.LIBERA;
         }
     }
 }

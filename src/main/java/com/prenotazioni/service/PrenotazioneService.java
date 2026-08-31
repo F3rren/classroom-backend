@@ -4,6 +4,8 @@ import com.prenotazioni.dto.PrenotazioneDettaglioDto;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Corso;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
@@ -111,7 +113,7 @@ public class PrenotazioneService {
         Optional<Aula> aula = aulaRepository.findById(aulaId);
         Optional<Utente> admin = utenteRepository.findById(utenteAdminId);
         
-        if (aula.isEmpty() || admin.isEmpty() || !"admin".equals(admin.get().getRuolo())) {
+        if (aula.isEmpty() || admin.isEmpty() || admin.get().getRuolo() != Ruolo.ADMIN) {
             logger.warn("Errore nel blocco aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", 
                          aulaId, utenteAdminId);
             return null;
@@ -190,9 +192,9 @@ public class PrenotazioneService {
         // Ottieni prenotazioni attive in questo momento
         List<Prenotazione> prenotazioniAttive = prenotazioneRepository.findActiveReservations(aulaId, ora);
         
-        String nuovoStato;
+        StatoAula nuovoStato;
         if (prenotazioniAttive.isEmpty()) {
-            nuovoStato = "libera";
+            nuovoStato = StatoAula.LIBERA;
         } else {
             // Controlla se c'è una prenotazione di manutenzione o bloccata
             boolean hasManutenzione = prenotazioniAttive.stream()
@@ -201,16 +203,16 @@ public class PrenotazioneService {
                 .anyMatch(p -> p.getStato() == StatoPrenotazione.BLOCCATA);
             
             if (hasManutenzione) {
-                nuovoStato = "manutenzione";
+                nuovoStato = StatoAula.MANUTENZIONE;
             } else if (hasBloccata) {
-                nuovoStato = "bloccata";
+                nuovoStato = StatoAula.BLOCCATA;
             } else {
-                nuovoStato = "occupata";
+                nuovoStato = StatoAula.OCCUPATA;
             }
         }
         
         // Aggiorna solo se lo stato è cambiato
-        if (!nuovoStato.equals(aula.getStato())) {
+        if (nuovoStato != aula.getStato()) {
             logger.debug("Aggiornamento stato aula {} da '{}' a '{}'", aulaId, aula.getStato(), nuovoStato);
             aula.setStato(nuovoStato);
             aulaRepository.save(aula);
@@ -245,7 +247,7 @@ public class PrenotazioneService {
         
         logger.debug("Verifica permessi annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", prenotazioneId, utenteId);
         boolean isCreatore = p.getUtente().getId().equals(utenteId);
-        boolean isAdmin = "admin".equals(utente.get().getRuolo());
+        boolean isAdmin = utente.get().getRuolo() == Ruolo.ADMIN;
         
         if (!isCreatore && !isAdmin) {
             logger.warn("Utente ID {} non autorizzato ad annullare la prenotazione ID {}", utenteId, prenotazioneId);
@@ -359,7 +361,7 @@ public class PrenotazioneService {
         // Verifica che l'admin esista
         logger.debug("Verifica esistenza admin - AdminId: {}", adminId);
         Optional<Utente> admin = utenteRepository.findById(adminId);
-        if (admin.isEmpty() || !"admin".equals(admin.get().getRuolo())) {
+        if (admin.isEmpty() || admin.get().getRuolo() != Ruolo.ADMIN) {
             logger.warn("Utente non è un admin valido - AdminId: {}", adminId);
             return false;
         }
@@ -409,7 +411,7 @@ public class PrenotazioneService {
         }
         
         boolean isCreatore = prenotazione.getUtente().getId().equals(utenteId);
-        boolean isAdmin = "admin".equals(utente.get().getRuolo());
+        boolean isAdmin = utente.get().getRuolo() == Ruolo.ADMIN;
         
         if (!isCreatore && !isAdmin) {
             logger.warn("Utente ID {} non autorizzato a modificare la prenotazione ID {}", utenteId, prenotazioneId);

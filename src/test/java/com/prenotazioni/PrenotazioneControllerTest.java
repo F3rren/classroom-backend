@@ -2,9 +2,11 @@ package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
+import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
@@ -81,7 +83,7 @@ class PrenotazioneControllerTest {
         aula.setPiano(1);
         aula.setCapienza(20);
         aula.setVirtual(false);
-        aula.setStato("libera");
+        aula.setStato(StatoAula.LIBERA);
         aulaRepository.save(aula);
         aulaId = aula.getId();
 
@@ -106,7 +108,7 @@ class PrenotazioneControllerTest {
         u.setUsername(username);
         u.setPassword(passwordEncoder.encode(rawPassword));
         u.setNome(nome);
-        u.setRuolo("user");
+        u.setRuolo(Ruolo.USER);
         u.setDataRegistrazione(LocalDateTime.now());
         return u;
     }
