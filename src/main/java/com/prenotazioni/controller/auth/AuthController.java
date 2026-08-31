@@ -1,25 +1,36 @@
 package com.prenotazioni.controller.auth;
 
+import com.prenotazioni.dto.ApiEnvelope;
+import com.prenotazioni.dto.LoginPayload;
+import com.prenotazioni.dto.LoginRequest;
+import com.prenotazioni.dto.LoginResponse;
+import com.prenotazioni.dto.UserSummaryDto;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.service.AuthService;
 import com.prenotazioni.service.JwtService;
 
-import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Autenticazione")
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -28,33 +39,42 @@ public class AuthController {
     // Rate limiting minimo anti brute-force sul login: finestra fissa in memoria, per processo.
     // Non sopravvive a un restart e non e' condiviso tra piu' istanze, ma e' sufficiente per
     // rallentare un attacco a dizionario contro una singola istanza in sviluppo/produzione singola.
-    private static final int MAX_LOGIN_ATTEMPTS = 5;
-    private static final long RATE_LIMIT_WINDOW_MS = 60_000; // 1 minuto
+    // Configurabile via property cosi' i test possono alzare il limite senza disattivare la protezione.
+    @Value("${auth.rate-limit.max-attempts:5}")
+    private int maxLoginAttempts;
+
+    @Value("${auth.rate-limit.window-ms:60000}")
+    private long rateLimitWindowMs;
+
     private static final ConcurrentHashMap<String, RateLimitEntry> loginAttempts = new ConcurrentHashMap<>();
+
+    private final AuthService authService;
+
+    private final JwtService jwtService;
 
     private static class RateLimitEntry {
         int count;
         long windowStart = System.currentTimeMillis();
     }
 
+    AuthController(AuthService authService, JwtService jwtService) {
+        this.authService = authService;
+        this.jwtService = jwtService;
+    }
+
     private boolean isLoginRateLimited(String key) {
         long now = System.currentTimeMillis();
         RateLimitEntry entry = loginAttempts.computeIfAbsent(key, k -> new RateLimitEntry());
         synchronized (entry) {
-            if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+            if (now - entry.windowStart > rateLimitWindowMs) {
                 entry.windowStart = now;
                 entry.count = 0;
             }
             entry.count++;
-            return entry.count > MAX_LOGIN_ATTEMPTS;
+            return entry.count > maxLoginAttempts;
         }
     }
 
-    @Autowired
-    private AuthService authService;
-
-    @Autowired
-    private JwtService jwtService;
 
     // ==================== UTILITY METHODS ====================
     
@@ -75,17 +95,10 @@ public class AuthController {
     /**
      * Crea una risposta di errore standardizzata
      */
-    private Map<String, Object> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {
-        return Map.of(
-            "success", false,
-            "error", errorCode,
-            "message", message,
-            "userMessage", userMessage,
-            "timestamp", formatTimestamp(LocalDateTime.now()),
-            "sessionId", sessionId
-        );
+    private ApiEnvelope<Void> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {
+        return ApiEnvelope.error(errorCode, message, userMessage, sessionId);
     }
-    
+
     /**
      * Valida il formato dell'email con controlli base
      */
@@ -116,19 +129,13 @@ public class AuthController {
 
     // ==================== DTO CLASSES ====================
 
-    public static class LoginRequest {
-        private String email;
-        private String password;
-        
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
-    }
-
     // ==================== AUTHENTICATION ENDPOINTS ====================
 
     @PostMapping("/login")
+    @Operation(summary = "Login utente")
+    @SecurityRequirements
+    @ApiResponse(responseCode = "200", description = "Login effettuato con successo",
+            content = @Content(schema = @Schema(implementation = LoginResponse.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String sessionId = generateSessionId();
         logger.info("[{}] INIZIO login - Tentativo di accesso", sessionId);
@@ -270,28 +277,10 @@ public class AuthController {
                        utente.getRuolo() != null ? utente.getRuolo() : "USER");
             
             // Preparazione dati di risposta (senza informazioni sensibili)
-            Map<String, Object> authData = Map.of(
-                "token", token,
-                "user", Map.of(
-                    "id", utente.getId(),
-                    "username", utente.getUsername() != null ? utente.getUsername() : "",
-                    "nome", utente.getNome() != null ? utente.getNome() : "",
-                    "email", utente.getEmail() != null ? utente.getEmail() : "",
-                    "ruolo", utente.getRuolo() != null ? utente.getRuolo() : "USER"
-                ),
-                "loginTime", formatTimestamp(LocalDateTime.now()),
-                "tokenType", "Bearer"
-            );
-            
-            // Response compatibile con il frontend esistente
-            Map<String, Object> response = Map.of(
-                "success", true,
-                "message", "Login effettuato con successo",
-                "token", token, // <- Per compatibilità con il frontend
-                "data", authData,
-                "timestamp", formatTimestamp(LocalDateTime.now()),
-                "sessionId", sessionId
-            );
+            LoginPayload authData = new LoginPayload(token, UserSummaryDto.basic(utente), formatTimestamp(LocalDateTime.now()));
+
+            // Response compatibile con il frontend esistente (token duplicato a livello radice)
+            LoginResponse response = new LoginResponse("Login effettuato con successo", token, authData, sessionId);
             
             return new ResponseEntity<>(response, HttpStatus.OK);
             
