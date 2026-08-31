@@ -421,7 +421,13 @@ public class PrenotazioneController {
         boolean annullata = prenotazioneService.annullaPrenotazione(prenotazioneId, principal.id());
 
         if (!annullata) {
-            if (!prenotazioneEsistente.getUtente().getId().equals(principal.id())) {
+            // L'ordine conta: si allinea alla regola del service, che accetta il proprietario
+            // OPPURE un admin. Controllando solo la proprieta' un admin che annulla la
+            // prenotazione altrui gia' annullata riceverebbe un fuorviante 403 "puoi annullare
+            // solo le tue prenotazioni" invece del 409 sullo stato.
+            boolean puoAgire = prenotazioneEsistente.getUtente().getId().equals(principal.id())
+                    || principal.isAdmin();
+            if (!puoAgire) {
                 logger.warn("[{}] FINE annullaPrenotazione - Tentativo di annullare prenotazione di altro utente | PrenotazioneId: {} | Proprietario: {} | Richiedente: {}",
                            sessionId, prenotazioneId, prenotazioneEsistente.getUtente().getId(), principal.id());
                 return new ResponseEntity<>(

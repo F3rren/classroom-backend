@@ -250,7 +250,16 @@ public class PrenotazioneService {
             logger.warn("Utente ID {} non autorizzato ad annullare la prenotazione ID {}", utenteId, prenotazioneId);
             return false;
         }
-        
+
+        // Solo una prenotazione attiva puo' essere annullata da questo endpoint. Senza questo
+        // controllo un secondo annullamento riusciva e rispondeva "annullata con successo"
+        // pur non cambiando nulla; i blocchi e le manutenzioni, che non sono "prenotata",
+        // si annullano dall'endpoint admin (annullaPrenotazioneAsAdmin, volutamente permissivo
+        // sullo stato). La regola e' sullo stato, non sul ruolo: vale anche per gli admin.
+        if (!"prenotata".equalsIgnoreCase(p.getStato())) {
+            logger.warn("Prenotazione ID {} non annullabile: stato attuale '{}'", prenotazioneId, p.getStato());
+            return false;
+        }
 
         p.setStato("annullata");
         prenotazioneRepository.save(p);

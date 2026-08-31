@@ -331,6 +331,43 @@ class PrenotazioneServiceUnitTest {
         verify(aulaRepository, never()).save(any());
     }
 
+    @Test
+    void annullaReturnsFalseWhenBookingIsAlreadyCancelled() {
+        // Annullare due volte non deve riuscire: il chiamante riceverebbe un "annullata
+        // con successo" per un'operazione che non ha cambiato nulla.
+        Aula a = aula(10L, "libera");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "annullata");
+        when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
+
+        assertThat(service.annullaPrenotazione(5L, 1L)).isFalse();
+        verify(prenotazioneRepository, never()).save(any());
+    }
+
+    @Test
+    void annullaReturnsFalseForABlockedBooking() {
+        // I blocchi e le manutenzioni sono roba da admin: si annullano dall'endpoint
+        // admin dedicato, non da DELETE /api/prenotazioni/{id}.
+        Aula a = aula(10L, "bloccata");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "bloccata");
+        when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
+
+        assertThat(service.annullaPrenotazione(5L, 1L)).isFalse();
+    }
+
+    @Test
+    void theStateRuleAppliesToAdminsToo() {
+        // La regola e' sullo stato, non sul ruolo: per annullare comunque una
+        // prenotazione gia' annullata l'admin ha annullaPrenotazioneAsAdmin.
+        Aula a = aula(10L, "libera");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "annullata");
+        when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
+        when(utenteRepository.findById(2L)).thenReturn(Optional.of(utente(2L, "admin")));
+
+        assertThat(service.annullaPrenotazione(5L, 2L)).isFalse();
+    }
+
     // ==================== updatePrenotazione ====================
 
     @Test

@@ -265,4 +265,52 @@ class PrenotazioneControllerTest {
                 "success", "error", "message", "userMessage", "timestamp", "sessionId");
         assertThat(responseBody.get("success")).isEqualTo(false);
     }
+
+    // ==================== Annullamento: regressione doppio annullamento ====================
+
+    @Test
+    void ownerCanCancelTheirOwnBooking() {
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                new HttpEntity<>(bearer(tokenOwner)), String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(prenotazioneRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
+                .isEqualToIgnoringCase("annullata");
+    }
+
+    @Test
+    void cancellingTwiceIsRejectedInsteadOfSilentlySucceeding() throws Exception {
+        rest.exchange("/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                new HttpEntity<>(bearer(tokenOwner)), String.class);
+
+        ResponseEntity<String> secondo = rest.exchange(
+                "/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                new HttpEntity<>(bearer(tokenOwner)), String.class);
+
+        assertThat(secondo.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(asMap(secondo.getBody()).get("error")).isEqualTo("INVALID_STATE");
+    }
+
+    @Test
+    void strangerCannotCancelSomeoneElsesBooking() throws Exception {
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                new HttpEntity<>(bearer(tokenOther)), String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
+        // la prenotazione resta intatta
+        assertThat(prenotazioneRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
+                .isEqualToIgnoringCase("prenotata");
+    }
+
+    @Test
+    void cancellingAMissingBookingReturns404() {
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/prenotazioni/999999", HttpMethod.DELETE,
+                new HttpEntity<>(bearer(tokenOwner)), String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
 }

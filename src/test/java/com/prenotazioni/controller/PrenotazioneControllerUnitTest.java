@@ -315,6 +315,36 @@ class PrenotazioneControllerUnitTest {
     }
 
     @Test
+    void annullaReturns409WhenBookingIsAlreadyCancelled() {
+        // Ramo INVALID_STATE: era irraggiungibile finche' il service non controllava lo stato.
+        Prenotazione gia = prenotazioneFinta();
+        gia.setStato("annullata");
+        when(service.getPrenotazioneById(7L)).thenReturn(gia);
+        when(service.annullaPrenotazione(7L, 1L)).thenReturn(false);
+
+        ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(errorCode(resp)).isEqualTo("INVALID_STATE");
+    }
+
+    @Test
+    void adminGets409NotForbiddenOnSomeoneElsesCancelledBooking() {
+        // Senza l'allineamento del controllo di proprieta' alla regola del service
+        // (proprietario OPPURE admin), qui sarebbe uscito un fuorviante 403.
+        Prenotazione altrui = prenotazioneFinta();
+        altrui.getUtente().setId(42L);
+        altrui.setStato("annullata");
+        when(service.getPrenotazioneById(7L)).thenReturn(altrui);
+        when(service.annullaPrenotazione(7L, 2L)).thenReturn(false);
+
+        ResponseEntity<?> resp = controller.annullaPrenotazione(7L, admin);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(errorCode(resp)).isEqualTo("INVALID_STATE");
+    }
+
+    @Test
     void annullaReturns200ForOwner() {
         when(service.getPrenotazioneById(7L)).thenReturn(prenotazioneFinta());
         when(service.annullaPrenotazione(7L, 1L)).thenReturn(true);
