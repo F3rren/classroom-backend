@@ -1,10 +1,12 @@
 package com.prenotazioni.dto;
 
 import com.prenotazioni.model.Prenotazione;
+import lombok.Getter;
 
 import java.util.List;
 
 /** Risposta non avvolta di GET /api/prenotazioni/{id}/details. */
+@Getter
 public class PrenotazioneWithDettagliPayload {
     private final Prenotazione prenotazione;
     private final List<PrenotazioneDettaglioDto> dettagliCompleti;
@@ -15,8 +17,4 @@ public class PrenotazioneWithDettagliPayload {
         this.dettagliCompleti = dettagliCompleti;
         this.totalDettagli = dettagliCompleti.size();
     }
-
-    public Prenotazione getPrenotazione() { return prenotazione; }
-    public List<PrenotazioneDettaglioDto> getDettagliCompleti() { return dettagliCompleti; }
-    public int getTotalDettagli() { return totalDettagli; }
 }

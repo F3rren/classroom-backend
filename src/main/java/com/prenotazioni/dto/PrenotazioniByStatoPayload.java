@@ -1,10 +1,12 @@
 package com.prenotazioni.dto;
 
 import com.prenotazioni.model.Prenotazione;
+import lombok.Getter;
 
 import java.util.List;
 
 /** Risposta non avvolta di GET /api/prenotazioni/stato/{stato}. */
+@Getter
 public class PrenotazioniByStatoPayload {
     private final String stato;
     private final List<Prenotazione> prenotazioni;
@@ -15,8 +17,4 @@ public class PrenotazioniByStatoPayload {
         this.prenotazioni = prenotazioni;
         this.totalPrenotazioni = prenotazioni.size();
     }
-
-    public String getStato() { return stato; }
-    public List<Prenotazione> getPrenotazioni() { return prenotazioni; }
-    public int getTotalPrenotazioni() { return totalPrenotazioni; }
 }

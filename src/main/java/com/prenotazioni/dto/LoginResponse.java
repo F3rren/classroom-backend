@@ -1,5 +1,7 @@
 package com.prenotazioni.dto;
 
+import lombok.Getter;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -8,6 +10,7 @@ import java.time.format.DateTimeFormatter;
  * sia dentro "data" - duplicazione intenzionale del comportamento gia' esistente,
  * mantenuta per compatibilita' con il frontend attuale.
  */
+@Getter
 public class LoginResponse {
 
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -26,11 +29,4 @@ public class LoginResponse {
         this.timestamp = LocalDateTime.now().format(TIMESTAMP_FORMATTER);
         this.sessionId = sessionId;
     }
-
-    public boolean isSuccess() { return success; }
-    public String getMessage() { return message; }
-    public String getToken() { return token; }
-    public LoginPayload getData() { return data; }
-    public String getTimestamp() { return timestamp; }
-    public String getSessionId() { return sessionId; }
 }

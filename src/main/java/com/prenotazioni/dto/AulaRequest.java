@@ -4,7 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
 public class AulaRequest {
     @NotBlank(message = "Il nome dell'aula è obbligatorio.")
     private String nome;
@@ -18,9 +22,6 @@ public class AulaRequest {
     @JsonProperty("isVirtual")
     private boolean isVirtual = false;
 
-    // Costruttori
-    public AulaRequest() {}
-
     public AulaRequest(String nome, int capienza, int piano) {
         this.nome = nome;
         this.capienza = capienza;
@@ -32,39 +33,6 @@ public class AulaRequest {
         this.nome = nome;
         this.capienza = capienza;
         this.piano = piano;
-        this.isVirtual = isVirtual;
-    }
-
-    // Getter e Setter
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public int getCapienza() {
-        return capienza;
-    }
-
-    public void setCapienza(int capienza) {
-        this.capienza = capienza;
-    }
-
-    public int getPiano() {
-        return piano;
-    }
-
-    public void setPiano(int piano) {
-        this.piano = piano;
-    }
-
-    public boolean isVirtual() {
-        return isVirtual;
-    }
-
-    public void setVirtual(boolean isVirtual) {
         this.isVirtual = isVirtual;
     }
 }

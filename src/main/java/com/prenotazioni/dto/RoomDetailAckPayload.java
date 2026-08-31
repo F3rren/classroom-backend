@@ -1,8 +1,10 @@
 package com.prenotazioni.dto;
 
 import com.prenotazioni.model.Aula;
+import lombok.Getter;
 
 /** Risposta di GET /api/rooms/{id}: l'aula piu' alcuni campi denormalizzati gia' presenti oggi. */
+@Getter
 public class RoomDetailAckPayload {
     private final Aula room;
     private final Long roomId;
@@ -17,10 +19,4 @@ public class RoomDetailAckPayload {
         this.floor = room.getPiano();
         this.capacity = room.getCapienza();
     }
-
-    public Aula getRoom() { return room; }
-    public Long getRoomId() { return roomId; }
-    public String getRoomName() { return roomName; }
-    public int getFloor() { return floor; }
-    public int getCapacity() { return capacity; }
 }

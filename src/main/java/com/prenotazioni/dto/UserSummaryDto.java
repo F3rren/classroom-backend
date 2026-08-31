@@ -2,6 +2,7 @@ package com.prenotazioni.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.prenotazioni.model.Utente;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -13,6 +14,7 @@ import java.time.format.DateTimeFormatter;
  * cosi' la risposta di login (che oggi non li include) resta identica.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Getter
 public class UserSummaryDto {
 
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -55,12 +57,4 @@ public class UserSummaryDto {
                 ? utente.getUltimoAccesso().format(TIMESTAMP_FORMATTER) : "";
         return dto;
     }
-
-    public Long getId() { return id; }
-    public String getUsername() { return username; }
-    public String getNome() { return nome; }
-    public String getEmail() { return email; }
-    public String getRuolo() { return ruolo; }
-    public String getDataRegistrazione() { return dataRegistrazione; }
-    public String getUltimoAccesso() { return ultimoAccesso; }
 }

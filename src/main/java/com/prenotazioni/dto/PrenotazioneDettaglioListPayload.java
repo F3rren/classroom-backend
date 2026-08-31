@@ -1,8 +1,11 @@
 package com.prenotazioni.dto;
 
+import lombok.Getter;
+
 import java.util.List;
 
 /** Lista di dettagli prenotazione, non avvolta nell'envelope ApiEnvelope (comportamento gia' esistente). */
+@Getter
 public class PrenotazioneDettaglioListPayload {
     private final List<PrenotazioneDettaglioDto> prenotazioni;
     private final int totalPrenotazioni;
@@ -11,7 +14,4 @@ public class PrenotazioneDettaglioListPayload {
         this.prenotazioni = prenotazioni;
         this.totalPrenotazioni = prenotazioni.size();
     }
-
-    public List<PrenotazioneDettaglioDto> getPrenotazioni() { return prenotazioni; }
-    public int getTotalPrenotazioni() { return totalPrenotazioni; }
 }

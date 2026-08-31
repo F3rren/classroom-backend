@@ -1,6 +1,9 @@
 package com.prenotazioni.dto;
 
+import lombok.Getter;
+
 /** Conferma di eliminazione prenotazione da parte di un admin. */
+@Getter
 public class BookingDeletionResponse {
     private final Long deletedBookingId;
     private final Long adminId;
@@ -12,9 +15,4 @@ public class BookingDeletionResponse {
         this.adminId = adminId;
         this.reason = reason;
     }
-
-    public Long getDeletedBookingId() { return deletedBookingId; }
-    public Long getAdminId() { return adminId; }
-    public boolean isAdminAction() { return adminAction; }
-    public String getReason() { return reason; }
 }

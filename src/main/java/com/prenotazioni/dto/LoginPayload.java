@@ -1,6 +1,9 @@
 package com.prenotazioni.dto;
 
+import lombok.Getter;
+
 /** Contenuto di "data" nella risposta di login: token, riepilogo utente, metadati sessione. */
+@Getter
 public class LoginPayload {
 
     private final String token;
@@ -13,9 +16,4 @@ public class LoginPayload {
         this.user = user;
         this.loginTime = loginTime;
     }
-
-    public String getToken() { return token; }
-    public UserSummaryDto getUser() { return user; }
-    public String getLoginTime() { return loginTime; }
-    public String getTokenType() { return tokenType; }
 }

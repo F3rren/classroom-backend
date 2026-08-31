@@ -1,6 +1,7 @@
 package com.prenotazioni.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter;
  * entrambe si possono importare normalmente invece di doverne qualificare una inline.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Getter
 public class ApiEnvelope<T> {
 
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -59,12 +61,4 @@ public class ApiEnvelope<T> {
     private static String now() {
         return LocalDateTime.now().format(TIMESTAMP_FORMATTER);
     }
-
-    public boolean isSuccess() { return success; }
-    public String getError() { return error; }
-    public String getMessage() { return message; }
-    public String getUserMessage() { return userMessage; }
-    public T getData() { return data; }
-    public String getTimestamp() { return timestamp; }
-    public String getSessionId() { return sessionId; }
 }

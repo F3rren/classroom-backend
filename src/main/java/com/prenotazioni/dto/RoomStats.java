@@ -1,6 +1,9 @@
 package com.prenotazioni.dto;
 
+import lombok.Getter;
+
 /** Statistiche aule fisiche vs virtuali, dentro RoomStatsPayload.statistics. */
+@Getter
 public class RoomStats {
     private final long totalRooms;
     private final long physicalRooms;
@@ -17,11 +20,4 @@ public class RoomStats {
         this.virtualPercentage = totalRooms > 0 ? Math.round((double) virtualRooms / totalRooms * 10000.0) / 100.0 : 0.0;
         this.hasRooms = totalRooms > 0;
     }
-
-    public long getTotalRooms() { return totalRooms; }
-    public long getPhysicalRooms() { return physicalRooms; }
-    public long getVirtualRooms() { return virtualRooms; }
-    public double getPhysicalPercentage() { return physicalPercentage; }
-    public double getVirtualPercentage() { return virtualPercentage; }
-    public boolean isHasRooms() { return hasRooms; }
 }

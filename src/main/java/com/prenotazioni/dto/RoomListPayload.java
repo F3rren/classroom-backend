@@ -1,6 +1,7 @@
 package com.prenotazioni.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Getter;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ import java.util.List;
  * @JsonInclude(NON_NULL) li omette per tutti gli altri, riproducendo lo shape esatto di oggi.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Getter
 public class RoomListPayload {
     private List<?> rooms;
     private int totalRooms;
@@ -32,12 +34,4 @@ public class RoomListPayload {
     public RoomListPayload withType(String type) { this.type = type; return this; }
     public RoomListPayload withSuggestion(String suggestion) { this.suggestion = suggestion; return this; }
     public RoomListPayload withMaxCapacityFound(int maxCapacityFound) { this.maxCapacityFound = maxCapacityFound; return this; }
-
-    public List<?> getRooms() { return rooms; }
-    public int getTotalRooms() { return totalRooms; }
-    public Integer getPiano() { return piano; }
-    public Integer getCapienzaMinima() { return capienzaMinima; }
-    public String getType() { return type; }
-    public String getSuggestion() { return suggestion; }
-    public Integer getMaxCapacityFound() { return maxCapacityFound; }
 }

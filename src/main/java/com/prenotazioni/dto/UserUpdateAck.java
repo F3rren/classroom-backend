@@ -1,8 +1,10 @@
 package com.prenotazioni.dto;
 
 import com.prenotazioni.model.Utente;
+import lombok.Getter;
 
 /** Riepilogo di un utente appena modificato da un admin (PUT /api/admin/users/{id}). */
+@Getter
 public class UserUpdateAck {
     private final Long userId;
     private final String email;
@@ -17,10 +19,4 @@ public class UserUpdateAck {
         this.nome = utente.getNome() != null ? utente.getNome() : "";
         this.ruolo = utente.getRuolo() != null ? utente.getRuolo() : "USER";
     }
-
-    public Long getUserId() { return userId; }
-    public String getEmail() { return email; }
-    public String getUsername() { return username; }
-    public String getNome() { return nome; }
-    public String getRuolo() { return ruolo; }
 }

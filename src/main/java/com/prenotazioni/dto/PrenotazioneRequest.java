@@ -2,6 +2,7 @@ package com.prenotazioni.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 /**
  * Richiesta di creazione/modifica/blocco di una prenotazione.
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
  * di range (fine dopo inizio, non nel passato, ecc.) sono logica applicativa fatta
  * a mano nel controller dopo che questa validazione di presenza campo e' passata.
  */
+@Data
 public class PrenotazioneRequest {
 
     @NotNull(message = "Devi specificare quale aula vuoi prenotare.")
@@ -23,15 +25,4 @@ public class PrenotazioneRequest {
     private String fine;
 
     private String descrizione;
-
-    public Long getAulaId() { return aulaId; }
-    public void setAulaId(Long aulaId) { this.aulaId = aulaId; }
-    public Long getCorsoId() { return corsoId; }
-    public void setCorsoId(Long corsoId) { this.corsoId = corsoId; }
-    public String getInizio() { return inizio; }
-    public void setInizio(String inizio) { this.inizio = inizio; }
-    public String getFine() { return fine; }
-    public void setFine(String fine) { this.fine = fine; }
-    public String getDescrizione() { return descrizione; }
-    public void setDescrizione(String descrizione) { this.descrizione = descrizione; }
 }

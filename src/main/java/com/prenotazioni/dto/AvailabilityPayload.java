@@ -1,6 +1,9 @@
 package com.prenotazioni.dto;
 
+import lombok.Getter;
+
 /** Risposta di GET /api/prenotazioni/disponibilita. */
+@Getter
 public class AvailabilityPayload {
     private final Long aulaId;
     private final boolean disponibile;
@@ -13,9 +16,4 @@ public class AvailabilityPayload {
         this.periodo = periodo;
         this.status = disponibile ? "LIBERA" : "OCCUPATA";
     }
-
-    public Long getAulaId() { return aulaId; }
-    public boolean isDisponibile() { return disponibile; }
-    public String getPeriodo() { return periodo; }
-    public String getStatus() { return status; }
 }

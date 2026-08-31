@@ -1,8 +1,11 @@
 package com.prenotazioni.dto;
 
+import lombok.Getter;
+
 import java.util.List;
 
 /** Lista utenti per GET /api/admin/users, senza password (UserSummaryDto). */
+@Getter
 public class UserListPayload {
     private final List<UserSummaryDto> users;
     private final int totalUsers;
@@ -11,7 +14,4 @@ public class UserListPayload {
         this.users = users;
         this.totalUsers = users.size();
     }
-
-    public List<UserSummaryDto> getUsers() { return users; }
-    public int getTotalUsers() { return totalUsers; }
 }

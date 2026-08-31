@@ -1,8 +1,10 @@
 package com.prenotazioni.dto;
 
 import com.prenotazioni.model.Aula;
+import lombok.Getter;
 
 /** Riepilogo di un'aula creata/modificata, riusato da createRoom e updateRoom. */
+@Getter
 public class RoomAckPayload {
     private final Long aulaId;
     private final String nome;
@@ -15,9 +17,4 @@ public class RoomAckPayload {
         this.piano = aula.getPiano();
         this.capienza = aula.getCapienza();
     }
-
-    public Long getAulaId() { return aulaId; }
-    public String getNome() { return nome; }
-    public int getPiano() { return piano; }
-    public int getCapienza() { return capienza; }
 }
