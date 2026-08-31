@@ -4,11 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -19,9 +19,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthFilter jwtAuthFilter;
+
+    private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
+
+    private final ApiAccessDeniedHandler apiAccessDeniedHandler;
 
     @Value("${prenotazioni.cors.allowed-origins}")
     private String allowedOrigins;
@@ -37,6 +41,12 @@ public class SecurityConfig {
 
     @Value("${prenotazioni.cors.max-age:3600}")
     private long maxAge;
+
+    SecurityConfig(JwtAuthFilter jwtAuthFilter, ApiAuthenticationEntryPoint apiAuthenticationEntryPoint, ApiAccessDeniedHandler apiAccessDeniedHandler) {
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.apiAuthenticationEntryPoint = apiAuthenticationEntryPoint;
+        this.apiAccessDeniedHandler = apiAccessDeniedHandler;
+    }
 
     private static List<String> splitConfigList(String raw) {
         return Arrays.stream(raw.split(","))
@@ -66,6 +76,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html")
                         .permitAll()
                         .anyRequest().authenticated())
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                        .accessDeniedHandler(apiAccessDeniedHandler))
                 .headers(headers -> headers.frameOptions(frame -> frame.deny()))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

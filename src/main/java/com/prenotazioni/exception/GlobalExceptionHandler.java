@@ -1,0 +1,98 @@
+package com.prenotazioni.exception;
+
+import com.prenotazioni.dto.ApiEnvelope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.UUID;
+
+/**
+ * Punto unico di gestione errori per i controller migrati al nuovo pattern
+ * (Authentication/@PreAuthorize + ApiEnvelope). Sostituisce i metodi privati
+ * createErrorResponse/generateSessionId duplicati in 4 controller.
+ *
+ * Copre solo le eccezioni sollevate DENTRO l'esecuzione del metodo del controller.
+ * I rifiuti a livello di filtro di sicurezza (nessun token / token non valido) sono
+ * gestiti separatamente da ApiAuthenticationEntryPoint/ApiAccessDeniedHandler, perche'
+ * avvengono prima che il dispatch al controller (e quindi questo @RestControllerAdvice)
+ * abbia luogo.
+ */
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private String newSessionId() {
+        return "ERR_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleValidation(MethodArgumentNotValidException ex) {
+        String sessionId = newSessionId();
+        FieldError firstError = ex.getBindingResult().getFieldError();
+        String userMessage = firstError != null
+                ? firstError.getDefaultMessage()
+                : "I dati inviati non sono validi.";
+        logger.warn("[{}] Validazione fallita: {}", sessionId, ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error("VALIDATION_ERROR", "Dati della richiesta non validi", userMessage, sessionId),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleAccessDenied(AccessDeniedException ex) {
+        String sessionId = newSessionId();
+        // Se il messaggio e' stato costruito esplicitamente da un throw applicativo, lo si preserva;
+        // altrimenti (es. rifiuto generato da @PreAuthorize) si usa un messaggio equivalente a quello
+        // gia' in uso oggi per gli accessi admin negati.
+        String userMessage = ex.getMessage() != null
+                ? ex.getMessage()
+                : "Accesso negato: privilegi insufficienti per questa operazione.";
+        logger.warn("[{}] Accesso negato: {}", sessionId, userMessage);
+        return new ResponseEntity<>(
+                ApiEnvelope.error("ACCESS_DENIED", "Accesso negato", userMessage, sessionId),
+                HttpStatus.FORBIDDEN
+        );
+    }
+
+    @ExceptionHandler(BookingConflictException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleBookingConflict(BookingConflictException ex) {
+        String sessionId = newSessionId();
+        logger.warn("[{}] Conflitto prenotazione: {}", sessionId, ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String sessionId = newSessionId();
+        logger.warn("[{}] Vincolo del database violato: {}", sessionId, ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error("CONFLICT", "Conflitto con lo stato attuale dei dati",
+                        "L'operazione non e' andata a buon fine per un conflitto con dati esistenti.", sessionId),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleGeneric(Exception ex) {
+        String sessionId = newSessionId();
+        logger.error("[{}] Errore interno non gestito", sessionId, ex);
+        return new ResponseEntity<>(
+                ApiEnvelope.error("INTERNAL_ERROR", "Errore interno del server",
+                        "Si e' verificato un errore imprevisto. Se il problema persiste, contatta il supporto tecnico.", sessionId),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+}
