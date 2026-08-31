@@ -36,15 +36,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         
         String path = request.getRequestURI();
         String method = request.getMethod();
-        String origin = request.getHeader("Origin");
-        
-        logger.info("JWT Filter - Method: {}, Path: {}, Origin: {}", method, path, origin);
-        
+
+        // DEBUG e non INFO: questo filtro attraversa OGNI richiesta (asset statici inclusi),
+        // quindi a INFO produceva due righe per richiesta seppellendo gli eventi utili.
+        logger.debug("JWT Filter - {} {}", method, path);
+
         // Salta il filtro per le rotte pubbliche (con o senza /api prefix)
         if (path.startsWith("/api/auth/login") ||
             path.startsWith("/auth/login") ||
             path.startsWith("/h2-console")) {
-            logger.info("JWT Filter - Rotta pubblica, skip validazione");
             filterChain.doFilter(request, response);
             return;
         }
@@ -67,6 +67,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
+            logger.debug("JWT Filter - autenticato utenteId={} ruolo={}", id, ruolo);
+        } else if (token != null) {
+            // Token presente ma non valido (scaduto, firma errata, manomesso): finora passava
+            // in silenzio e la richiesta arrivava non autenticata senza lasciare traccia.
+            // E' un segnale di sicurezza, quindi WARN.
+            logger.warn("JWT Filter - token non valido o scaduto su {} {}", method, path);
         }
         filterChain.doFilter(request, response);
     }

@@ -32,43 +32,43 @@ public class AulaService {
 
     // Ottieni tutte le aule
     public List<Aula> getAllAule() {
-        logger.info("getAllAule - Recupero tutte le aule");
+        logger.debug("getAllAule - Recupero tutte le aule");
         List<Aula> aule = aulaRepository.findAll();
-        logger.info("getAllAule - Totale aule recuperate: {}", aule.size());
+        logger.debug("getAllAule - Totale aule recuperate: {}", aule.size());
         return aule;
     }
 
     // Ottieni una singola aula per ID
     public Optional<Aula> getAulaById(Long id) {
-        logger.info("getAulaById - ID: {}", id);
+        logger.debug("getAulaById - ID: {}", id);
         Optional<Aula> aula = aulaRepository.findById(id);
-        logger.info("getAulaById - Aula trovata: {}", aula.isPresent());
+        logger.debug("getAulaById - Aula trovata: {}", aula.isPresent());
         return aula;
     }
 
     // Crea una nuova aula
     public Aula createAula(AulaRequest request) {
-        logger.info("INIZIO createAula - Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
+        logger.debug("INIZIO createAula - Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    request.getNome(), request.getCapienza(), request.getPiano(), request.isVirtual());
         
         // Verifica che il nome non sia già esistente
         if (aulaRepository.existsByNomeIgnoreCase(request.getNome())) {
-            logger.info("FINE createAula - Nome già esistente: {}", request.getNome());
+            logger.debug("FINE createAula - Nome già esistente: {}", request.getNome());
             return null; // Nome già esistente
         }
         
 
         // Validazioni
         if (request.getNome() == null || request.getNome().trim().isEmpty()) {
-            logger.info("FINE createAula - Nome non valido");
+            logger.debug("FINE createAula - Nome non valido");
             return null; // Nome non valido
         }
         if (request.getCapienza() <= 0) {
-            logger.info("FINE createAula - Capienza non valida: {}", request.getCapienza());
+            logger.debug("FINE createAula - Capienza non valida: {}", request.getCapienza());
             return null; // Capienza non valida
         }
         if (request.getPiano() < 0) {
-            logger.info("FINE createAula - Piano non valido: {}", request.getPiano());
+            logger.debug("FINE createAula - Piano non valido: {}", request.getPiano());
             return null; // Piano non valido
         }
 
@@ -78,12 +78,12 @@ public class AulaService {
         aula.setPiano(request.getPiano());
         aula.setVirtual(request.isVirtual());
 
-        logger.info("Validazioni superate, creazione aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
+        logger.debug("Validazioni superate, creazione aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    aula.getNome(), aula.getCapienza(), aula.getPiano(), aula.isVirtual());
 
         try {
             Aula savedAula = aulaRepository.save(aula);
-            logger.info("FINE createAula - Aula salvata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
+            logger.debug("FINE createAula - Aula salvata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
             return savedAula;
         } catch (Exception e) {
             logger.error("FINE createAula - Errore durante il salvataggio dell'aula: {}", e.getMessage(), e);
@@ -93,36 +93,36 @@ public class AulaService {
 
     // Aggiorna un'aula esistente
     public Aula updateAula(Long id, AulaRequest request) {
-        logger.info("INIZIO updateAula - ID: {}, Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
+        logger.debug("INIZIO updateAula - ID: {}, Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    id, request.getNome(), request.getCapienza(), request.getPiano(), request.isVirtual());
         
         Optional<Aula> aulaOptional = aulaRepository.findById(id);
         if (aulaOptional.isEmpty()) {
-            logger.info("FINE updateAula - Aula non trovata con ID: {}", id);
+            logger.debug("FINE updateAula - Aula non trovata con ID: {}", id);
             return null; // Aula non trovata
         }
 
         Aula aula = aulaOptional.get();
-        logger.info("Aula esistente trovata - Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
+        logger.debug("Aula esistente trovata - Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    aula.getNome(), aula.getCapienza(), aula.getPiano(), aula.isVirtual());
 
         // Verifica che il nome non sia già esistente (escludendo l'aula corrente)
         if (aulaRepository.existsByNomeIgnoreCaseAndIdNot(request.getNome(), id)) {
-            logger.info("FINE updateAula - Nome già esistente: {}", request.getNome());
+            logger.debug("FINE updateAula - Nome già esistente: {}", request.getNome());
             return null; // Nome già esistente
         }
 
         // Validazioni
         if (request.getNome() == null || request.getNome().trim().isEmpty()) {
-            logger.info("FINE updateAula - Nome non valido");
+            logger.debug("FINE updateAula - Nome non valido");
             return null; // Nome non valido
         }
         if (request.getCapienza() <= 0) {
-            logger.info("FINE updateAula - Capienza non valida: {}", request.getCapienza());
+            logger.debug("FINE updateAula - Capienza non valida: {}", request.getCapienza());
             return null; // Capienza non valida
         }
         if (request.getPiano() < 0) {
-            logger.info("FINE updateAula - Piano non valido: {}", request.getPiano());
+            logger.debug("FINE updateAula - Piano non valido: {}", request.getPiano());
             return null; // Piano non valido
         }
 
@@ -131,12 +131,12 @@ public class AulaService {
         aula.setPiano(request.getPiano());
         aula.setVirtual(request.isVirtual());
 
-        logger.info("Validazioni superate, aggiornamento aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
+        logger.debug("Validazioni superate, aggiornamento aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    aula.getNome(), aula.getCapienza(), aula.getPiano(), aula.isVirtual());
 
         try {
             Aula savedAula = aulaRepository.save(aula);
-            logger.info("FINE updateAula - Aula aggiornata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
+            logger.debug("FINE updateAula - Aula aggiornata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
             return savedAula;
         } catch (Exception e) {
             logger.error("FINE updateAula - Errore durante l'aggiornamento dell'aula: {}", e.getMessage(), e);
@@ -146,17 +146,17 @@ public class AulaService {
 
     // Elimina un'aula
     public boolean deleteAula(Long id) {
-        logger.info("INIZIO deleteAula - ID: {}", id);
+        logger.debug("INIZIO deleteAula - ID: {}", id);
         
         Optional<Aula> aulaOptional = aulaRepository.findById(id);
         if (aulaOptional.isEmpty()) {
-            logger.info("FINE deleteAula - Aula non trovata con ID: {}", id);
+            logger.debug("FINE deleteAula - Aula non trovata con ID: {}", id);
             return false; // Aula non trovata
         }
 
         try {
             aulaRepository.deleteById(id);
-            logger.info("FINE deleteAula - Aula eliminata con successo - ID: {}", id);
+            logger.debug("FINE deleteAula - Aula eliminata con successo - ID: {}", id);
             return true;
         } catch (Exception e) {
             logger.error("FINE deleteAula - Errore durante l'eliminazione dell'aula ID: {}, Errore: {}", id, e.getMessage(), e);
@@ -166,33 +166,33 @@ public class AulaService {
 
     // Verifica se un'aula esiste per nome
     public boolean aulaExistsByName(String nome) {
-        logger.info("INIZIO aulaExistsByName - Nome: {}", nome);
+        logger.debug("INIZIO aulaExistsByName - Nome: {}", nome);
         boolean exists = aulaRepository.existsByNomeIgnoreCase(nome);
-        logger.info("FINE aulaExistsByName - Esiste: {}", exists);
+        logger.debug("FINE aulaExistsByName - Esiste: {}", exists);
         return exists;
     }
     
     // Filtra aule per piano
     public List<Aula> getAuleByPiano(int piano) {
-        logger.info("INIZIO getAuleByPiano - Piano: {}", piano);
+        logger.debug("INIZIO getAuleByPiano - Piano: {}", piano);
         List<Aula> aule = aulaRepository.findByPiano(piano);
-        logger.info("FINE getAuleByPiano - Aule trovate: {}", aule.size());
+        logger.debug("FINE getAuleByPiano - Aule trovate: {}", aule.size());
         return aule;
     }
     
     // Filtra aule per capienza minima
     public List<Aula> getAuleByCapienzaMinima(int minCapienza) {
-        logger.info("INIZIO getAuleByCapienzaMinima - Capienza minima: {}", minCapienza);
+        logger.debug("INIZIO getAuleByCapienzaMinima - Capienza minima: {}", minCapienza);
         List<Aula> aule = aulaRepository.findByCapienzaGreaterThanEqual(minCapienza);
-        logger.info("FINE getAuleByCapienzaMinima - Aule trovate: {}", aule.size());
+        logger.debug("FINE getAuleByCapienzaMinima - Aule trovate: {}", aule.size());
         return aule;
     }
 
     // Ottieni i dettagli completi di tutte le aule con informazioni di stato e prenotazioni
     public List<RoomDetailsResponse> getAllRoomsWithDetails() {
-        logger.info("INIZIO getAllRoomsWithDetails");
+        logger.debug("INIZIO getAllRoomsWithDetails");
         List<Aula> aule = aulaRepository.findAll();
-        logger.info("Recuperate {} aule per elaborazione dettagli", aule.size());
+        logger.debug("Recuperate {} aule per elaborazione dettagli", aule.size());
         
         List<RoomDetailsResponse> response = new ArrayList<>();
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -275,17 +275,17 @@ public class AulaService {
             response.add(roomDetails);
         }
         
-        logger.info("FINE getAllRoomsWithDetails - Dettagli elaborati per {} aule", response.size());
+        logger.debug("FINE getAllRoomsWithDetails - Dettagli elaborati per {} aule", response.size());
         return response;
     }
 
     // Ottieni i dettagli completi di una singola aula
     public RoomDetailsResponse getRoomWithDetails(Long aulaId) {
-        logger.info("INIZIO getRoomWithDetails - ID Aula: {}", aulaId);
+        logger.debug("INIZIO getRoomWithDetails - ID Aula: {}", aulaId);
         
         Optional<Aula> aulaOpt = aulaRepository.findById(aulaId);
         if (aulaOpt.isEmpty()) {
-            logger.info("FINE getRoomWithDetails - Aula non trovata con ID: {}", aulaId);
+            logger.debug("FINE getRoomWithDetails - Aula non trovata con ID: {}", aulaId);
             return null;
         }
         
@@ -366,7 +366,7 @@ public class AulaService {
         roomDetails.setBlocked(blockInfo);
         roomDetails.setBookings(bookingInfos);
         
-        logger.info("FINE getRoomWithDetails - Dettagli elaborati per aula: {}", aulaId);
+        logger.debug("FINE getRoomWithDetails - Dettagli elaborati per aula: {}", aulaId);
         return roomDetails;
     }
     
@@ -374,73 +374,73 @@ public class AulaService {
     
     // Ottieni tutte le aule fisiche
     public List<Aula> getPhysicalRooms() {
-        logger.info("INIZIO getPhysicalRooms - Recupero aule fisiche");
+        logger.debug("INIZIO getPhysicalRooms - Recupero aule fisiche");
         List<Aula> aule = aulaRepository.findByIsVirtual(false);
-        logger.info("FINE getPhysicalRooms - Aule fisiche trovate: {}", aule.size());
+        logger.debug("FINE getPhysicalRooms - Aule fisiche trovate: {}", aule.size());
         return aule;
     }
     
     // Ottieni tutte le aule virtuali
     public List<Aula> getVirtualRooms() {
-        logger.info("INIZIO getVirtualRooms - Recupero aule virtuali");
+        logger.debug("INIZIO getVirtualRooms - Recupero aule virtuali");
         List<Aula> aule = aulaRepository.findByIsVirtual(true);
-        logger.info("FINE getVirtualRooms - Aule virtuali trovate: {}", aule.size());
+        logger.debug("FINE getVirtualRooms - Aule virtuali trovate: {}", aule.size());
         return aule;
     }
     
     // Ottieni aule fisiche ordinate per piano e nome
     public List<Aula> getPhysicalRoomsOrdered() {
-        logger.info("INIZIO getPhysicalRoomsOrdered - Recupero aule fisiche ordinate");
+        logger.debug("INIZIO getPhysicalRoomsOrdered - Recupero aule fisiche ordinate");
         List<Aula> aule = aulaRepository.findPhysicalRoomsOrderByPianoAndNome();
-        logger.info("FINE getPhysicalRoomsOrdered - Aule fisiche ordinate: {}", aule.size());
+        logger.debug("FINE getPhysicalRoomsOrdered - Aule fisiche ordinate: {}", aule.size());
         return aule;
     }
     
     // Ottieni aule virtuali ordinate per nome
     public List<Aula> getVirtualRoomsOrdered() {
-        logger.info("INIZIO getVirtualRoomsOrdered - Recupero aule virtuali ordinate");
+        logger.debug("INIZIO getVirtualRoomsOrdered - Recupero aule virtuali ordinate");
         List<Aula> aule = aulaRepository.findVirtualRoomsOrderByNome();
-        logger.info("FINE getVirtualRoomsOrdered - Aule virtuali ordinate: {}", aule.size());
+        logger.debug("FINE getVirtualRoomsOrdered - Aule virtuali ordinate: {}", aule.size());
         return aule;
     }
     
     // Ottieni i dettagli delle aule fisiche
     public List<RoomDetailsResponse> getPhysicalRoomsWithDetails() {
-        logger.info("INIZIO getPhysicalRoomsWithDetails - Recupero dettagli aule fisiche");
+        logger.debug("INIZIO getPhysicalRoomsWithDetails - Recupero dettagli aule fisiche");
         List<Aula> aule = aulaRepository.findByIsVirtual(false);
         List<RoomDetailsResponse> details = getRoomsDetailsFromList(aule);
-        logger.info("FINE getPhysicalRoomsWithDetails - Dettagli elaborati: {}", details.size());
+        logger.debug("FINE getPhysicalRoomsWithDetails - Dettagli elaborati: {}", details.size());
         return details;
     }
     
     // Ottieni i dettagli delle aule virtuali
     public List<RoomDetailsResponse> getVirtualRoomsWithDetails() {
-        logger.info("INIZIO getVirtualRoomsWithDetails - Recupero dettagli aule virtuali");
+        logger.debug("INIZIO getVirtualRoomsWithDetails - Recupero dettagli aule virtuali");
         List<Aula> aule = aulaRepository.findByIsVirtual(true);
         List<RoomDetailsResponse> details = getRoomsDetailsFromList(aule);
-        logger.info("FINE getVirtualRoomsWithDetails - Dettagli elaborati: {}", details.size());
+        logger.debug("FINE getVirtualRoomsWithDetails - Dettagli elaborati: {}", details.size());
         return details;
     }
     
     // Conta aule fisiche
     public long countPhysicalRooms() {
-        logger.info("INIZIO countPhysicalRooms - Conteggio aule fisiche");
+        logger.debug("INIZIO countPhysicalRooms - Conteggio aule fisiche");
         long count = aulaRepository.countByIsVirtual(false);
-        logger.info("FINE countPhysicalRooms - Totale aule fisiche: {}", count);
+        logger.debug("FINE countPhysicalRooms - Totale aule fisiche: {}", count);
         return count;
     }
     
     // Conta aule virtuali  
     public long countVirtualRooms() {
-        logger.info("INIZIO countVirtualRooms - Conteggio aule virtuali");
+        logger.debug("INIZIO countVirtualRooms - Conteggio aule virtuali");
         long count = aulaRepository.countByIsVirtual(true);
-        logger.info("FINE countVirtualRooms - Totale aule virtuali: {}", count);
+        logger.debug("FINE countVirtualRooms - Totale aule virtuali: {}", count);
         return count;
     }
     
     // Metodo di utilità privato per evitare duplicazione del codice
     private List<RoomDetailsResponse> getRoomsDetailsFromList(List<Aula> aule) {
-        logger.info("INIZIO getRoomsDetailsFromList - Elaborazione dettagli per {} aule", aule.size());
+        logger.debug("INIZIO getRoomsDetailsFromList - Elaborazione dettagli per {} aule", aule.size());
         List<RoomDetailsResponse> response = new ArrayList<>();
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
@@ -522,7 +522,7 @@ public class AulaService {
             response.add(roomDetails);
         }
 
-        logger.info("FINE getRoomsDetailsFromList - Completata elaborazione per {} aule", response.size());
+        logger.debug("FINE getRoomsDetailsFromList - Completata elaborazione per {} aule", response.size());
         return response;
     }
 }

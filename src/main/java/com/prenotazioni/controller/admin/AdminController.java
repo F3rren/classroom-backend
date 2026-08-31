@@ -10,6 +10,7 @@ import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.security.AppPrincipal;
+import com.prenotazioni.util.LogSanitizer;
 
 import java.util.List;
 import java.util.Optional;
@@ -72,14 +73,14 @@ public class AdminController {
     @Operation(summary = "Crea un nuovo utente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO register - Registrazione utente da admin | Email: {} | Username: {} | Ruolo: {}",
-                   sessionId, request.getEmail(), request.getUsername(), request.getRuolo());
+        logger.debug("[{}] register - creazione utente da admin | {} | ruolo={}",
+                   sessionId, LogSanitizer.maskEmail(request.getEmail()), request.getRuolo());
 
         Utente utente = authService.register(request);
 
         if (utente == null) {
-            logger.warn("[{}] FINE register - Registrazione fallita (email/username esistenti) - Email: {} | Username: {}",
-                       sessionId, request.getEmail(), request.getUsername());
+            logger.warn("[{}] register - rifiutata, email o username già esistenti ({})",
+                       sessionId, LogSanitizer.maskEmail(request.getEmail()));
             return new ResponseEntity<>(
                 createErrorResponse("USER_ALREADY_EXISTS",
                                   "Email o username già esistenti",
@@ -90,8 +91,8 @@ public class AdminController {
             );
         }
 
-        logger.info("[{}] FINE register - Utente registrato con successo | ID: {} | Email: {} | Username: {}",
-                   sessionId, utente.getId(), utente.getEmail(), utente.getUsername());
+        logger.info("[{}] Utente creato da admin - utenteId={} ruolo={}",
+                   sessionId, utente.getId(), utente.getRuolo());
 
         return new ResponseEntity<>(
             createSuccessResponse("Utente registrato con successo dall'amministratore", new UserRegisterAck(utente), sessionId),
@@ -103,14 +104,14 @@ public class AdminController {
     @Operation(summary = "Elenca tutti gli utenti (solo admin)")
     public ResponseEntity<ApiEnvelope<UserListPayload>> getAllUsers() {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO getAllUsers - Richiesta lista completa utenti", sessionId);
+        logger.debug("[{}] INIZIO getAllUsers - Richiesta lista completa utenti", sessionId);
 
         List<Utente> users = authService.getAllUsers();
         List<UserSummaryDto> safeUsers = users.stream()
             .map(UserSummaryDto::forAdminListing)
             .collect(Collectors.toList());
 
-        logger.info("[{}] FINE getAllUsers - Utenti recuperati con successo, totale: {}", sessionId, users.size());
+        logger.debug("[{}] FINE getAllUsers - Utenti recuperati con successo, totale: {}", sessionId, users.size());
         return new ResponseEntity<>(
             createSuccessResponse("Lista utenti recuperata con successo", new UserListPayload(safeUsers), sessionId),
             HttpStatus.OK
@@ -121,8 +122,7 @@ public class AdminController {
     @Operation(summary = "Modifica un utente esistente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUtente(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO updateUtente - ID Utente: {} | Email: {} | Username: {} | Ruolo: {}",
-                   sessionId, id, request.getEmail(), request.getUsername(), request.getRuolo());
+        logger.debug("[{}] updateUtente - utenteId={} ruolo={}", sessionId, id, request.getRuolo());
 
         if (id == null || id <= 0) {
             logger.warn("[{}] FINE updateUtente - ID utente non valido: {}", sessionId, id);
@@ -143,8 +143,7 @@ public class AdminController {
             );
         }
 
-        logger.info("[{}] FINE updateUtente - Utente modificato con successo | ID: {} | Email: {} | Username: {}",
-                   sessionId, updated.getId(), updated.getEmail(), updated.getUsername());
+        logger.info("[{}] Utente modificato da admin - utenteId={}", sessionId, updated.getId());
 
         return new ResponseEntity<>(
             createSuccessResponse("Utente aggiornato con successo dall'amministratore", new UserUpdateAck(updated), sessionId),
@@ -156,7 +155,7 @@ public class AdminController {
     @Operation(summary = "Elimina un utente e i suoi dati (solo admin)")
     public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUtente(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO deleteUtente - ID Utente: {}", sessionId, id);
+        logger.debug("[{}] INIZIO deleteUtente - ID Utente: {}", sessionId, id);
 
         if (id == null || id <= 0) {
             logger.warn("[{}] FINE deleteUtente - ID utente non valido: {}", sessionId, id);
@@ -180,7 +179,7 @@ public class AdminController {
         // (in un'unica transazione, cosi' non si rischia di lasciare righe orfane o un FK violation non gestito)
         utenteService.deleteById(id);
 
-        logger.info("[{}] FINE deleteUtente - Utente eliminato con successo - ID: {}", sessionId, id);
+        logger.debug("[{}] FINE deleteUtente - Utente eliminato con successo - ID: {}", sessionId, id);
         return new ResponseEntity<>(
             createSuccessResponse("Utente eliminato con successo", new DeletedUserResponse(id), sessionId),
             HttpStatus.OK
@@ -193,10 +192,10 @@ public class AdminController {
     @Operation(summary = "Elenca tutte le aule (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getAllRooms() {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO getAllRooms (admin) - Richiesta lista completa aule", sessionId);
+        logger.debug("[{}] INIZIO getAllRooms (admin) - Richiesta lista completa aule", sessionId);
 
         List<Aula> aule = aulaService.getAllAule();
-        logger.info("[{}] FINE getAllRooms - Aule recuperate con successo, totale: {}", sessionId, aule.size());
+        logger.debug("[{}] FINE getAllRooms - Aule recuperate con successo, totale: {}", sessionId, aule.size());
         return new ResponseEntity<>(
             createSuccessResponse(aule.isEmpty() ? "Nessuna aula presente nel sistema" : "Lista aule recuperata con successo",
                                 RoomListPayload.of(aule), sessionId),
@@ -208,7 +207,7 @@ public class AdminController {
     @Operation(summary = "Recupera una singola aula per ID (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomWrapper<Aula>>> getRoomById(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO getRoomById (admin) - ID Aula: {}", sessionId, id);
+        logger.debug("[{}] INIZIO getRoomById (admin) - ID Aula: {}", sessionId, id);
 
         if (id == null || id <= 0) {
             logger.warn("[{}] FINE getRoomById - ID aula non valido: {}", sessionId, id);
@@ -229,7 +228,7 @@ public class AdminController {
             );
         }
 
-        logger.info("[{}] FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}",
+        logger.debug("[{}] FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}",
                    sessionId, aula.get().getId(), aula.get().getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula recuperata con successo", new RoomWrapper<>(aula.get()), sessionId),
@@ -241,7 +240,7 @@ public class AdminController {
     @Operation(summary = "Crea una nuova aula (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> createRoom(@Valid @RequestBody AulaRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO createRoom | Nome: {} | Piano: {} | Capienza: {}",
+        logger.debug("[{}] INIZIO createRoom | Nome: {} | Piano: {} | Capienza: {}",
                    sessionId, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
 
         Aula nuovaAula = aulaService.createAula(roomRequest);
@@ -255,7 +254,7 @@ public class AdminController {
             );
         }
 
-        logger.info("[{}] FINE createRoom - Aula creata con successo | ID: {} | Nome: {}",
+        logger.debug("[{}] FINE createRoom - Aula creata con successo | ID: {} | Nome: {}",
                    sessionId, nuovaAula.getId(), nuovaAula.getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula creata con successo", new RoomAckPayload(nuovaAula), sessionId),
@@ -267,7 +266,7 @@ public class AdminController {
     @Operation(summary = "Modifica un'aula esistente (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(@PathVariable Long id, @Valid @RequestBody AulaRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO updateRoom | ID Aula: {} | Nuovo Nome: {} | Piano: {} | Capienza: {}",
+        logger.debug("[{}] INIZIO updateRoom | ID Aula: {} | Nuovo Nome: {} | Piano: {} | Capienza: {}",
                    sessionId, id, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
 
         if (id == null || id <= 0) {
@@ -289,7 +288,7 @@ public class AdminController {
             );
         }
 
-        logger.info("[{}] FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}",
+        logger.debug("[{}] FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}",
                    sessionId, aulaAggiornata.getId(), aulaAggiornata.getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula aggiornata con successo", new RoomAckPayload(aulaAggiornata), sessionId),
@@ -301,7 +300,7 @@ public class AdminController {
     @Operation(summary = "Elimina un'aula (solo admin)")
     public ResponseEntity<ApiEnvelope<DeletedRoomResponse>> deleteRoom(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO deleteRoom - ID Aula: {}", sessionId, id);
+        logger.debug("[{}] INIZIO deleteRoom - ID Aula: {}", sessionId, id);
 
         if (id == null || id <= 0) {
             logger.warn("[{}] FINE deleteRoom - ID aula non valido: {}", sessionId, id);
@@ -322,7 +321,7 @@ public class AdminController {
             );
         }
 
-        logger.info("[{}] FINE deleteRoom - Aula eliminata con successo - ID: {}", sessionId, id);
+        logger.debug("[{}] FINE deleteRoom - Aula eliminata con successo - ID: {}", sessionId, id);
         return new ResponseEntity<>(
             createSuccessResponse("Aula eliminata con successo", new DeletedRoomResponse(id), sessionId),
             HttpStatus.OK
@@ -335,7 +334,7 @@ public class AdminController {
     @Operation(summary = "Elenca tutte le prenotazioni, incluse annullate (solo admin)")
     public ResponseEntity<ApiEnvelope<AdminPrenotazioniPayload>> getAllPrenotazioniAdmin() {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO getAllPrenotazioniAdmin", sessionId);
+        logger.debug("[{}] INIZIO getAllPrenotazioniAdmin", sessionId);
 
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
         long attive = tuttePrenotazioni.stream()
@@ -343,7 +342,7 @@ public class AdminController {
             .count();
         long annullate = tuttePrenotazioni.size() - attive;
 
-        logger.info("[{}] FINE getAllPrenotazioniAdmin - Totale: {} (Attive: {}, Annullate: {})",
+        logger.debug("[{}] FINE getAllPrenotazioniAdmin - Totale: {} (Attive: {}, Annullate: {})",
                    sessionId, tuttePrenotazioni.size(), attive, annullate);
 
         AdminPrenotazioniPayload payload = new AdminPrenotazioniPayload(
@@ -361,7 +360,7 @@ public class AdminController {
                                                       @AuthenticationPrincipal AppPrincipal principal,
                                                       @RequestBody(required = false) DeleteReasonRequest requestBody) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO deletePrenotazioneAsAdmin - ID Prenotazione: {}", sessionId, id);
+        logger.debug("[{}] INIZIO deletePrenotazioneAsAdmin - ID Prenotazione: {}", sessionId, id);
 
         if (id == null || id <= 0) {
             logger.warn("[{}] FINE deletePrenotazioneAsAdmin - ID prenotazione non valido: {}", sessionId, id);
@@ -392,7 +391,7 @@ public class AdminController {
         String motivo = (requestBody != null && requestBody.getReason() != null)
             ? requestBody.getReason()
             : "Eliminazione da parte dell'amministratore";
-        logger.info("[{}] Motivo eliminazione: {}", sessionId, motivo);
+        logger.debug("[{}] Motivo eliminazione: {}", sessionId, motivo);
 
         boolean eliminata = prenotazioneService.annullaPrenotazioneAsAdmin(id, adminId, motivo);
         if (!eliminata) {
@@ -415,14 +414,14 @@ public class AdminController {
                 utentePrenotazione, id, nomeStanza, adminNome, dataPrenotazione, oraInizio, oraFine, motivo
             );
 
-            logger.info("[{}] Notifica di cancellazione creata per utente: {}", sessionId, utentePrenotazione.getId());
+            logger.debug("[{}] Notifica di cancellazione creata per utente: {}", sessionId, utentePrenotazione.getId());
         } catch (Exception e) {
             logger.error("[{}] Errore durante creazione notifica per utente: {} | Errore: {}",
                        sessionId, utentePrenotazione.getId(), e.getMessage(), e);
             // Non blocchiamo l'operazione se la notifica fallisce
         }
 
-        logger.info("[{}] FINE deletePrenotazioneAsAdmin - Prenotazione eliminata con successo | ID: {} | Admin: {} | Motivo: {}",
+        logger.debug("[{}] FINE deletePrenotazioneAsAdmin - Prenotazione eliminata con successo | ID: {} | Admin: {} | Motivo: {}",
                    sessionId, id, adminId, motivo);
 
         return new ResponseEntity<>(

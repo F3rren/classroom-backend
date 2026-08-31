@@ -53,11 +53,11 @@ public class NotificaController {
     @PutMapping("/{id}/mark-read")
     @Operation(summary = "Segna una notifica come letta")
     public ResponseEntity<Notifica> markAsRead(@PathVariable Long id, @AuthenticationPrincipal AppPrincipal principal) {
-        logger.info("INIZIO - Richiesta di segnare notifica come letta, ID: {}", id);
+        logger.debug("INIZIO - Richiesta di segnare notifica come letta, ID: {}", id);
         Optional<Notifica> updatedNotificaOpt = notificaService.markAsRead(id, principal.id());
 
         if (updatedNotificaOpt.isPresent()) {
-            logger.info("FINE - Notifica ID: {} segnata come letta con successo.", id);
+            logger.debug("FINE - Notifica ID: {} segnata come letta con successo.", id);
             return ResponseEntity.ok(updatedNotificaOpt.get());
         }
         // Il service ha gia' loggato il motivo (notifica non trovata o non autorizzato)
@@ -69,14 +69,14 @@ public class NotificaController {
     @Operation(summary = "Segna tutte le notifiche come lette")
     public ResponseEntity<MessageResponse> markAllAsRead(@AuthenticationPrincipal AppPrincipal principal) {
         notificaService.markAllAsRead(principal.id());
-        logger.info("FINE - Tutte le notifiche per l'utente {} sono state segnate come lette.", principal.email());
+        logger.debug("Notifiche segnate come lette per utenteId={}", principal.id());
         return ResponseEntity.ok(new MessageResponse("Tutte le notifiche sono state segnate come lette"));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Elimina una notifica propria")
     public ResponseEntity<MessageResponse> deleteNotifica(@PathVariable Long id, @AuthenticationPrincipal AppPrincipal principal) {
-        logger.info("INIZIO - Richiesta di eliminazione notifica ID: {}", id);
+        logger.debug("INIZIO - Richiesta di eliminazione notifica ID: {}", id);
         Optional<Notifica> notificaOpt = notificaService.getNotificaById(id);
         if (notificaOpt.isEmpty()) {
             logger.warn("Notifica da eliminare non trovata, ID: {}", id);
@@ -85,12 +85,12 @@ public class NotificaController {
 
         Notifica notifica = notificaOpt.get();
         if (!notifica.getUtente().getId().equals(principal.id())) {
-            logger.warn("Utente {} non autorizzato a eliminare notifica ID: {}", principal.email(), id);
+            logger.warn("UtenteId={} non autorizzato a eliminare la notifica {}", principal.id(), id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         notificaService.deleteNotifica(id);
-        logger.info("FINE - Notifica ID: {} eliminata con successo.", id);
+        logger.debug("FINE - Notifica ID: {} eliminata con successo.", id);
         return ResponseEntity.ok(new MessageResponse("Notifica eliminata con successo"));
     }
 

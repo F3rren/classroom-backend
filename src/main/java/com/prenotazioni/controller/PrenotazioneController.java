@@ -79,7 +79,7 @@ public class PrenotazioneController {
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> prenotaAula(@Valid @RequestBody PrenotazioneRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO prenotaAula - AulaId: {}, CorsoId: {}, Periodo: {} - {}",
+        logger.debug("[{}] INIZIO prenotaAula - AulaId: {}, CorsoId: {}, Periodo: {} - {}",
                    sessionId, request.getAulaId(), request.getCorsoId(), request.getInizio(), request.getFine());
 
         LocalDateTime inizio;
@@ -122,7 +122,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] Validazioni superate, tentativo prenotazione per periodo: {} - {}", sessionId, formatTimestamp(inizio), formatTimestamp(fine));
+        logger.debug("[{}] Validazioni superate, tentativo prenotazione per periodo: {} - {}", sessionId, formatTimestamp(inizio), formatTimestamp(fine));
 
         Prenotazione prenotazione;
         try {
@@ -145,7 +145,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}",
+        logger.debug("[{}] FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}",
                    sessionId, prenotazione.getId(), request.getAulaId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione effettuata con successo",
@@ -162,7 +162,7 @@ public class PrenotazioneController {
                                                  @Valid @RequestBody PrenotazioneRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO modificaPrenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, Periodo: {} - {}",
+        logger.debug("[{}] INIZIO modificaPrenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, Periodo: {} - {}",
                    sessionId, prenotazioneId, request.getAulaId(), request.getCorsoId(), request.getInizio(), request.getFine());
 
         LocalDateTime inizio;
@@ -205,7 +205,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] Validazioni superate, tentativo modifica prenotazione ID {} per periodo: {} - {}",
+        logger.debug("[{}] Validazioni superate, tentativo modifica prenotazione ID {} per periodo: {} - {}",
                     sessionId, prenotazioneId, formatTimestamp(inizio), formatTimestamp(fine));
 
         Prenotazione prenotazione;
@@ -229,7 +229,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}",
+        logger.debug("[{}] FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}",
                    sessionId, prenotazione.getId(), request.getAulaId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione modificata con successo",
@@ -246,7 +246,7 @@ public class PrenotazioneController {
     public ResponseEntity<ApiEnvelope<BlockAckPayload>> bloccaAula(@Valid @RequestBody PrenotazioneRequest request,
                                        @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO bloccaAula - AulaId: {}, Periodo: {} - {}",
+        logger.debug("[{}] INIZIO bloccaAula - AulaId: {}, Periodo: {} - {}",
                    sessionId, request.getAulaId(), request.getInizio(), request.getFine());
 
         LocalDateTime inizio;
@@ -281,7 +281,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] Validazioni superate, tentativo blocco aula per periodo: {} - {}", sessionId, formatTimestamp(inizio), formatTimestamp(fine));
+        logger.debug("[{}] Validazioni superate, tentativo blocco aula per periodo: {} - {}", sessionId, formatTimestamp(inizio), formatTimestamp(fine));
 
         Prenotazione blocco;
         try {
@@ -303,7 +303,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] FINE bloccaAula - Aula bloccata con successo - ID blocco: {}, AulaId: {}, Admin: {}",
+        logger.debug("[{}] FINE bloccaAula - Aula bloccata con successo - ID blocco: {}, AulaId: {}, Admin: {}",
                    sessionId, blocco.getId(), request.getAulaId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Aula bloccata con successo",
@@ -320,7 +320,7 @@ public class PrenotazioneController {
                                                    @RequestParam String inizio,
                                                    @RequestParam String fine) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", sessionId, aulaId, inizio, fine);
+        logger.debug("[{}] INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", sessionId, aulaId, inizio, fine);
 
         LocalDateTime inizioDateTime;
         LocalDateTime fineDateTime;
@@ -354,9 +354,9 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] Verifica disponibilità per AulaId: {} nel periodo: {} - {}", sessionId, aulaId, formatTimestamp(inizioDateTime), formatTimestamp(fineDateTime));
+        logger.debug("[{}] Verifica disponibilità per AulaId: {} nel periodo: {} - {}", sessionId, aulaId, formatTimestamp(inizioDateTime), formatTimestamp(fineDateTime));
         boolean disponibile = prenotazioneService.isAulaDisponibile(aulaId, inizioDateTime, fineDateTime);
-        logger.info("[{}] FINE verificaDisponibilita - AulaId: {}, Disponibile: {}", sessionId, aulaId, disponibile);
+        logger.debug("[{}] FINE verificaDisponibilita - AulaId: {}, Disponibile: {}", sessionId, aulaId, disponibile);
 
         return new ResponseEntity<>(
             createSuccessResponse("Verifica disponibilità completata",
@@ -370,9 +370,9 @@ public class PrenotazioneController {
     @GetMapping("/stato/{aulaId}")
     @Operation(summary = "Stato attuale di un'aula")
     public ResponseEntity<RoomStatusPayload> getStatoAula(@PathVariable Long aulaId) {
-        logger.info("INIZIO getStatoAula - AulaId: {}", aulaId);
+        logger.debug("INIZIO getStatoAula - AulaId: {}", aulaId);
         String stato = prenotazioneService.getStatoAula(aulaId, LocalDateTime.now());
-        logger.info("FINE getStatoAula - AulaId: {}, Stato: {}", aulaId, stato);
+        logger.debug("FINE getStatoAula - AulaId: {}, Stato: {}", aulaId, stato);
         return ResponseEntity.ok(new RoomStatusPayload(aulaId, stato, LocalDateTime.now()));
     }
 
@@ -380,14 +380,14 @@ public class PrenotazioneController {
     @GetMapping("/mie")
     @Operation(summary = "Le prenotazioni dell'utente autenticato")
     public ResponseEntity<SinglePrenotazioniPayload> getMiePrenotazioni(@AuthenticationPrincipal AppPrincipal principal) {
-        logger.info("INIZIO getMiePrenotazioni");
+        logger.debug("INIZIO getMiePrenotazioni");
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getPrenotazioniUtente(principal.id());
 
         List<Prenotazione> prenotazioni = tuttePrenotazioni.stream()
             .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
             .collect(Collectors.toList());
 
-        logger.info("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)",
+        logger.debug("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)",
                    principal.id(), prenotazioni.size(), tuttePrenotazioni.size() - prenotazioni.size());
         return ResponseEntity.ok(new SinglePrenotazioniPayload(prenotazioni));
     }
@@ -398,7 +398,7 @@ public class PrenotazioneController {
     public ResponseEntity<ApiEnvelope<CancellationAckPayload>> annullaPrenotazione(@PathVariable Long prenotazioneId,
                                                 @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO annullaPrenotazione - PrenotazioneId: {}", sessionId, prenotazioneId);
+        logger.debug("[{}] INIZIO annullaPrenotazione - PrenotazioneId: {}", sessionId, prenotazioneId);
 
         Prenotazione prenotazioneEsistente = prenotazioneService.getPrenotazioneById(prenotazioneId);
         if (prenotazioneEsistente == null) {
@@ -410,7 +410,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] Prenotazione trovata: ID {}, proprietario: {}, stato: {}",
+        logger.debug("[{}] Prenotazione trovata: ID {}, proprietario: {}, stato: {}",
                     sessionId, prenotazioneId, prenotazioneEsistente.getUtente().getId(), prenotazioneEsistente.getStato());
 
         boolean annullata = prenotazioneService.annullaPrenotazione(prenotazioneId, principal.id());
@@ -443,7 +443,7 @@ public class PrenotazioneController {
             );
         }
 
-        logger.info("[{}] FINE annullaPrenotazione - Prenotazione annullata con successo | PrenotazioneId: {} | UtenteId: {}",
+        logger.debug("[{}] FINE annullaPrenotazione - Prenotazione annullata con successo | PrenotazioneId: {} | UtenteId: {}",
                    sessionId, prenotazioneId, principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione annullata con successo",
@@ -460,7 +460,7 @@ public class PrenotazioneController {
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = SinglePrenotazioniPayload.class)))
     public ResponseEntity<?> getAllPrenotazioni() {
-        logger.info("INIZIO getAllPrenotazioni");
+        logger.debug("INIZIO getAllPrenotazioni");
 
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
         List<Prenotazione> prenotazioni = tuttePrenotazioni.stream()
@@ -469,11 +469,11 @@ public class PrenotazioneController {
             .collect(Collectors.toList());
 
         if (prenotazioni.isEmpty()) {
-            logger.info("FINE getAllPrenotazioni - Nessuna prenotazione attiva trovata");
+            logger.debug("FINE getAllPrenotazioni - Nessuna prenotazione attiva trovata");
             return ResponseEntity.ok(new MessageResponse("Nessuna prenotazione attiva trovata"));
         }
 
-        logger.info("FINE getAllPrenotazioni - Prenotazioni attive recuperate: {} (totale con annullate: {})",
+        logger.debug("FINE getAllPrenotazioni - Prenotazioni attive recuperate: {} (totale con annullate: {})",
                    prenotazioni.size(), tuttePrenotazioni.size());
         return ResponseEntity.ok(new SinglePrenotazioniPayload(prenotazioni));
     }
@@ -486,15 +486,15 @@ public class PrenotazioneController {
             content = @Content(schema = @Schema(implementation = PrenotazioneWrapper.class)))
     public ResponseEntity<?> getPrenotazioneById(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO getPrenotazioneById - ID Prenotazione: {}", sessionId, id);
+        logger.debug("[{}] INIZIO getPrenotazioneById - ID Prenotazione: {}", sessionId, id);
 
         Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
         if (prenotazione == null) {
-            logger.info("[{}] FINE getPrenotazioneById - Prenotazione non trovata con ID: {}", sessionId, id);
+            logger.debug("[{}] FINE getPrenotazioneById - Prenotazione non trovata con ID: {}", sessionId, id);
             return new ResponseEntity<>(new SimpleErrorResponse("Prenotazione non trovata"), HttpStatus.NOT_FOUND);
         }
 
-        logger.info("[{}] FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", sessionId, prenotazione.getId());
+        logger.debug("[{}] FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", sessionId, prenotazione.getId());
         return ResponseEntity.ok(new PrenotazioneWrapper(prenotazione));
     }
 
@@ -506,17 +506,17 @@ public class PrenotazioneController {
             content = @Content(schema = @Schema(implementation = PrenotazioneWithDettagliPayload.class)))
     public ResponseEntity<?> getPrenotazioneDetailsById(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO getPrenotazioneDetailsById - ID Prenotazione: {}", sessionId, id);
+        logger.debug("[{}] INIZIO getPrenotazioneDetailsById - ID Prenotazione: {}", sessionId, id);
 
         Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
         if (prenotazione == null) {
-            logger.info("[{}] FINE getPrenotazioneDetailsById - Prenotazione non trovata con ID: {}", sessionId, id);
+            logger.debug("[{}] FINE getPrenotazioneDetailsById - Prenotazione non trovata con ID: {}", sessionId, id);
             return new ResponseEntity<>(new SimpleErrorResponse("Prenotazione non trovata"), HttpStatus.NOT_FOUND);
         }
 
-        logger.info("Prenotazione trovata: ID: {}", prenotazione.getId());
+        logger.debug("Prenotazione trovata: ID: {}", prenotazione.getId());
         List<PrenotazioneDettaglioDto> dettagliCompleti = prenotazioneService.getPrenotazioneCompleteDetails(id);
-        logger.info("FINE getPrenotazioneDetailsById - Dettagli completi recuperati con successo, totale dettagli: {}", dettagliCompleti.size());
+        logger.debug("FINE getPrenotazioneDetailsById - Dettagli completi recuperati con successo, totale dettagli: {}", dettagliCompleti.size());
         return ResponseEntity.ok(new PrenotazioneWithDettagliPayload(prenotazione, dettagliCompleti));
     }
 
@@ -524,9 +524,9 @@ public class PrenotazioneController {
     @GetMapping("/all-details")
     @Operation(summary = "Dettagli completi di tutte le prenotazioni")
     public ResponseEntity<PrenotazioneDettaglioListPayload> getAllPrenotazioniWithDetails() {
-        logger.info("INIZIO getAllPrenotazioniWithDetails");
+        logger.debug("INIZIO getAllPrenotazioniWithDetails");
         List<PrenotazioneDettaglioDto> dettagliCompleti = prenotazioneService.getAllCompleteDetails();
-        logger.info("FINE getAllPrenotazioniWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", dettagliCompleti.size());
+        logger.debug("FINE getAllPrenotazioniWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", dettagliCompleti.size());
         return ResponseEntity.ok(new PrenotazioneDettaglioListPayload(dettagliCompleti));
     }
 
@@ -536,15 +536,15 @@ public class PrenotazioneController {
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = PrenotazioniByStatoPayload.class)))
     public ResponseEntity<?> getPrenotazioniByStato(@PathVariable String stato) {
-        logger.info("INIZIO getPrenotazioniByStato - Stato: {}", stato);
+        logger.debug("INIZIO getPrenotazioniByStato - Stato: {}", stato);
         try {
             List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniByStato(stato.toLowerCase())
                 .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
 
-            logger.info("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", stato, prenotazioni.size());
+            logger.debug("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", stato, prenotazioni.size());
             return ResponseEntity.ok(new PrenotazioniByStatoPayload(stato, prenotazioni));
         } catch (IllegalArgumentException e) {
-            logger.info("FINE getPrenotazioniByStato - Stato non valido: {}", stato);
+            logger.debug("FINE getPrenotazioniByStato - Stato non valido: {}", stato);
             return new ResponseEntity<>(
                 new SimpleErrorResponse("Stato non valido. Stati disponibili: PRENOTATA, BLOCCATA, MANUTENZIONE, ANNULLATA"),
                 HttpStatus.BAD_REQUEST
@@ -556,10 +556,10 @@ public class PrenotazioneController {
     @GetMapping("/future")
     @Operation(summary = "Elenca le prenotazioni future")
     public ResponseEntity<PrenotazioniListWithTotalPayload> getPrenotazioniFuture() {
-        logger.info("INIZIO getPrenotazioniFuture");
+        logger.debug("INIZIO getPrenotazioniFuture");
         List<Prenotazione> prenotazioni = prenotazioneService.getPrenotazioniFuture()
             .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
-        logger.info("FINE getPrenotazioniFuture - Prenotazioni future recuperate con successo, totale: {}", prenotazioni.size());
+        logger.debug("FINE getPrenotazioniFuture - Prenotazioni future recuperate con successo, totale: {}", prenotazioni.size());
         return ResponseEntity.ok(new PrenotazioniListWithTotalPayload(prenotazioni));
     }
 }

@@ -8,6 +8,7 @@ import com.prenotazioni.dto.UserSummaryDto;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.service.AuthService;
 import com.prenotazioni.service.JwtService;
+import com.prenotazioni.util.LogSanitizer;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -117,18 +118,6 @@ public class AuthController {
                trimmedEmail.lastIndexOf(".") < trimmedEmail.length() - 1;
     }
     
-    /**
-     * Oscura parzialmente l'email per i log di sicurezza
-     */
-    private String maskEmail(String email) {
-        if (email == null || email.length() < 3) return "***";
-        int atIndex = email.indexOf('@');
-        if (atIndex <= 0) return "***";
-        return email.charAt(0) + "***" + email.substring(atIndex);
-    }
-
-    // ==================== DTO CLASSES ====================
-
     // ==================== AUTHENTICATION ENDPOINTS ====================
 
     @PostMapping("/login")
@@ -138,7 +127,7 @@ public class AuthController {
             content = @Content(schema = @Schema(implementation = LoginResponse.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO login - Tentativo di accesso", sessionId);
+        logger.debug("[{}] INIZIO login - Tentativo di accesso", sessionId);
 
         try {
             // Validazione input - email
@@ -154,7 +143,7 @@ public class AuthController {
             }
 
             String email = request.getEmail().trim().toLowerCase();
-            String maskedEmail = maskEmail(email);
+            String maskedEmail = LogSanitizer.maskEmail(email);
 
             // Rate limiting anti brute-force, per IP + email
             String rateLimitKey = httpRequest.getRemoteAddr() + "|" + email;
@@ -271,7 +260,7 @@ public class AuthController {
                 );
             }
             
-            logger.info("[{}] FINE login - Login effettuato con successo | Utente ID: {} | Username: {} | Ruolo: {}", 
+            logger.debug("[{}] FINE login - Login effettuato con successo | Utente ID: {} | Username: {} | Ruolo: {}", 
                        sessionId, utente.getId(), 
                        utente.getUsername() != null ? utente.getUsername() : "N/A",
                        utente.getRuolo() != null ? utente.getRuolo() : "USER");

@@ -4,6 +4,7 @@ import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.dto.CreateUserRequest;
 import com.prenotazioni.dto.UpdateUserRequest;
+import com.prenotazioni.util.LogSanitizer;
 
 import java.util.List;
 import java.time.LocalDateTime;
@@ -28,33 +29,30 @@ public class AuthService {
     }
 
     public Utente login(String email, String password) {
-        logger.info("INIZIO METODO login");
         Utente utente = utenteRepository.findByEmail(email);
         if (utente == null || !passwordEncoder.matches(password, utente.getPassword())) {
-            logger.info("FINE METODO login - Credenziali non valide");
+            // WARN e non INFO: un login fallito e' un segnale di sicurezza (brute-force,
+            // credenziali compromesse) e deve restare visibile anche alzando il livello.
+            logger.warn("Login fallito - credenziali non valide per {}", LogSanitizer.maskEmail(email));
             return null;
         }
-        logger.info("Login riuscito per utente: {}", email);
-        // Aggiorna l'ultimo accesso
         utente.setUltimoAccesso(LocalDateTime.now());
         utenteRepository.save(utente);
-        logger.info("FINE METODO login");
+        logger.info("Login riuscito - utenteId={} ({})", utente.getId(), LogSanitizer.maskEmail(email));
         return utente;
     }
 
     public Utente register(CreateUserRequest request) {
         // Controlla se email o username sono già registrati
-        logger.info("INIZIO METODO register");
         if (utenteRepository.findByEmail(request.getEmail()) != null) {
-            logger.info("Tentativo di registrazione fallito - Email già esistente: {}", request.getEmail());
+            logger.warn("Registrazione rifiutata - email già esistente: {}", LogSanitizer.maskEmail(request.getEmail()));
             return null;
         }
         if (utenteRepository.findByUsername(request.getUsername()) != null) {
-            logger.info("Tentativo di registrazione fallito - Username già esistente: {}", request.getUsername());
+            logger.warn("Registrazione rifiutata - username già esistente: {}",
+                    LogSanitizer.maskUsername(request.getUsername()));
             return null;
         }
-        // Crea il nuovo utente
-        logger.info("Registrazione nuovo utente - Email: {}, Username: {}", request.getEmail(), request.getUsername());
         Utente utente = new Utente();
         utente.setEmail(request.getEmail());
         utente.setNome(request.getNome());
@@ -65,49 +63,43 @@ public class AuthService {
         // Imposta la data di registrazione (non modificabile)
         utente.setDataRegistrazione(LocalDateTime.now());
         // ultimoAccesso viene aggiornato solo al login
-        logger.info("Utente creato con successo - Email: {}, Username: {}", request.getEmail(), request.getUsername());
-        logger.info("FINE METODO register");
-        return utenteRepository.save(utente);
+        Utente salvato = utenteRepository.save(utente);
+        logger.info("Utente creato - utenteId={} ({})", salvato.getId(), LogSanitizer.maskEmail(salvato.getEmail()));
+        return salvato;
     }
 
     public List<Utente> getAllUsers() {
-        logger.info("INIZIO METODO getAllUsers");
         List<Utente> utenti = utenteRepository.findAll();
-        logger.info("FINE METODO getAllUsers - Totale utenti trovati: {}", utenti.size());
+        logger.debug("Elenco utenti recuperato - totale={}", utenti.size());
         return utenti;
     }
 
     public Utente updateUtente(Long id, UpdateUserRequest request) {
-        logger.info("INIZIO METODO updateUtente - UtenteId: {}", id);
         Utente utente = utenteRepository.findById(id).orElse(null);
         if (utente == null) {
-            logger.info("Tentativo di aggiornamento fallito - UtenteId non trovato: {}", id);
-            logger.info("FINE METODO updateUtente - UtenteId non trovato: {}", id);
+            logger.warn("Aggiornamento rifiutato - utenteId={} non trovato", id);
             return null;
         }
 
         // Controlla se la nuova email o username sono già in uso da un altro utente
         Utente utenteConEmail = utenteRepository.findByEmail(request.getEmail());
         if (utenteConEmail != null && !utenteConEmail.getId().equals(id)) {
-            logger.info("Tentativo di aggiornamento fallito - Email già in uso: {}", request.getEmail());
+            logger.warn("Aggiornamento rifiutato - email già in uso da un altro utente (utenteId={})", id);
             return null;
         }
         Utente utenteConUsername = utenteRepository.findByUsername(request.getUsername());
         if (utenteConUsername != null && !utenteConUsername.getId().equals(id)) {
-            logger.info("Tentativo di aggiornamento fallito - Username già in uso: {}", request.getUsername());
+            logger.warn("Aggiornamento rifiutato - username già in uso da un altro utente (utenteId={})", id);
             return null;
         }
         // Aggiorna i campi modificabili
-        logger.info("Aggiornamento dati utente - UtenteId: {}", id);
         utente.setEmail(request.getEmail());
         utente.setNome(request.getNome());
         
         // Aggiorna la password solo se ne viene fornita una nuova
-        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+        boolean passwordCambiata = request.getPassword() != null && !request.getPassword().trim().isEmpty();
+        if (passwordCambiata) {
             utente.setPassword(passwordEncoder.encode(request.getPassword()));
-            logger.info("Password aggiornata per UtenteId: {}", id);
-        } else {
-            logger.info("Password non modificata per UtenteId: {} - Mantenuta password esistente", id);
         }
         
         // Il formato del ruolo (admin|user, case-insensitive) e' gia' garantito da @Pattern
@@ -118,8 +110,8 @@ public class AuthService {
         
         // NON modifichiamo dataRegistrazione - rimane quella originale
         // ultimoAccesso viene aggiornato solo al login
-        logger.info("Utente aggiornato con successo - UtenteId: {}", id);
-        logger.info("FINE METODO updateUtente - UtenteId: {}", id);
-        return utenteRepository.save(utente);
+        Utente salvato = utenteRepository.save(utente);
+        logger.info("Utente aggiornato - utenteId={} passwordCambiata={}", id, passwordCambiata);
+        return salvato;
     }
 }

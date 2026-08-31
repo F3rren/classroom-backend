@@ -1,5 +1,6 @@
 package com.prenotazioni.controller;
 
+import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.dto.UserSummaryDto;
 import com.prenotazioni.model.Utente;
@@ -39,7 +40,7 @@ public class MeController {
     @Operation(summary = "Profilo dell'utente autenticato")
     public ResponseEntity<ApiEnvelope<UserSummaryDto>> getMe(Authentication authentication) {
         String sessionId = generateSessionId();
-        logger.info("[{}] INIZIO getMe - Richiesta informazioni profilo utente", sessionId);
+        logger.debug("[{}] INIZIO getMe - Richiesta informazioni profilo utente", sessionId);
 
         // Se la richiesta e' arrivata qui, Spring Security ha gia' garantito un principal valido
         // (rifiuti a livello di filtro sono gestiti da ApiAuthenticationEntryPoint, prima del dispatch).
@@ -47,7 +48,7 @@ public class MeController {
 
         Utente utente = utenteRepository.findByEmail(email);
         if (utente == null) {
-            logger.warn("[{}] FINE getMe - Utente non trovato nel database per email: {}", sessionId, email);
+            logger.warn("[{}] getMe - nessun utente in database per {}", sessionId, LogSanitizer.maskEmail(email));
             return new ResponseEntity<>(
                     ApiEnvelope.error("USER_NOT_FOUND", "Utente non trovato",
                             "Nessun utente trovato con le tue credenziali. Effettua nuovamente il login.", sessionId),
@@ -55,7 +56,7 @@ public class MeController {
             );
         }
 
-        logger.info("[{}] FINE getMe - Profilo utente recuperato con successo | ID: {} | Email: {}",
+        logger.debug("[{}] FINE getMe - Profilo utente recuperato con successo | ID: {} | Email: {}",
                 sessionId, utente.getId(), email);
 
         return new ResponseEntity<>(

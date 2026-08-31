@@ -1,5 +1,6 @@
 package com.prenotazioni.service;
 
+import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.repository.NotificaRepository;
@@ -29,10 +30,10 @@ public class UtenteService {
     }
 
     public Utente findById(Long id) {
-        logger.info("INIZIO - Ricerca utente per ID: {}", id);
+        logger.debug("INIZIO - Ricerca utente per ID: {}", id);
         Utente utente = utenteRepository.findById(id).orElse(null);
         if (utente != null) {
-            logger.info("FINE - Utente trovato per ID: {}", id);
+            logger.debug("FINE - Utente trovato per ID: {}", id);
         } else {
             logger.warn("FINE - Utente non trovato per ID: {}", id);
         }
@@ -40,10 +41,10 @@ public class UtenteService {
     }
 
     public Utente findByUsername(String username) {
-        logger.info("INIZIO - Ricerca utente per username: {}", username);
+        logger.debug("INIZIO - Ricerca utente per username: {}", username);
         Utente utente = utenteRepository.findByUsername(username);
         if (utente != null) {
-            logger.info("FINE - Utente trovato per username: {}", username);
+            logger.debug("FINE - Utente trovato per username: {}", username);
         } else {
             logger.warn("FINE - Utente non trovato per username: {}", username);
         }
@@ -51,33 +52,33 @@ public class UtenteService {
     }
 
     public Utente findByEmail(String email) {
-        logger.info("INIZIO - Ricerca utente per email: {}", email);
+        logger.debug("Ricerca utente per {}", LogSanitizer.maskEmail(email));
         Utente utente = utenteRepository.findByEmail(email);
         if (utente != null) {
-            logger.info("FINE - Utente trovato per email: {}", email);
+            logger.debug("Utente trovato per {}", LogSanitizer.maskEmail(email));
         } else {
-            logger.warn("FINE - Utente non trovato per email: {}", email);
+            logger.warn("Utente non trovato per {}", LogSanitizer.maskEmail(email));
         }
         return utente;
     }
 
     public List<Utente> findAll() {
-        logger.info("INIZIO - Recupero di tutti gli utenti");
+        logger.debug("INIZIO - Recupero di tutti gli utenti");
         List<Utente> utenti = utenteRepository.findAll();
-        logger.info("FINE - Recuperati {} utenti", utenti.size());
+        logger.debug("FINE - Recuperati {} utenti", utenti.size());
         return utenti;
     }
 
     public Utente save(Utente utente) {
-        logger.info("INIZIO - Salvataggio utente con email: {}", utente.getEmail());
+        logger.debug("Salvataggio utente {}", LogSanitizer.maskEmail(utente.getEmail()));
         Utente savedUtente = utenteRepository.save(utente);
-        logger.info("FINE - Utente salvato con ID: {}", savedUtente.getId());
+        logger.debug("FINE - Utente salvato con ID: {}", savedUtente.getId());
         return savedUtente;
     }
 
     @Transactional
     public void deleteById(Long id) {
-        logger.info("INIZIO - Eliminazione utente e dati associati per ID: {}", id);
+        logger.debug("INIZIO - Eliminazione utente e dati associati per ID: {}", id);
         // Prima elimina le notifiche dell'utente
         logger.info("Eliminazione notifiche per utente ID: {}", id);
         notificaRepository.deleteByUtenteId(id);
@@ -89,6 +90,6 @@ public class UtenteService {
         // Infine, elimina l'utente
         logger.info("Eliminazione utente ID: {}", id);
         utenteRepository.deleteById(id);
-        logger.info("FINE - Eliminazione completata per utente ID: {}", id);
+        logger.debug("FINE - Eliminazione completata per utente ID: {}", id);
     }
 }
