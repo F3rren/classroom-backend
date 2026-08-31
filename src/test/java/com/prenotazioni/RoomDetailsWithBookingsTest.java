@@ -3,6 +3,7 @@ package com.prenotazioni;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
@@ -88,18 +89,18 @@ class RoomDetailsWithBookingsTest {
         LocalDateTime ora = LocalDateTime.now();
 
         aulaOccupataId = salvaAula("Aula Occupata", 1, 30, false);
-        prenota(aulaOccupataId, user, "prenotata", ora.minusHours(1), ora.plusHours(1), "Lezione di Analisi");
+        prenota(aulaOccupataId, user, StatoPrenotazione.PRENOTATA, ora.minusHours(1), ora.plusHours(1), "Lezione di Analisi");
 
         aulaBloccataId = salvaAula("Aula Bloccata", 1, 30, false);
-        prenota(aulaBloccataId, user, "bloccata", ora.minusHours(1), ora.plusHours(1), "Evento riservato");
+        prenota(aulaBloccataId, user, StatoPrenotazione.BLOCCATA, ora.minusHours(1), ora.plusHours(1), "Evento riservato");
 
         aulaManutenzioneId = salvaAula("Aula Manutenzione", 2, 20, false);
-        prenota(aulaManutenzioneId, user, "manutenzione", ora.minusHours(1), ora.plusHours(1), "Sostituzione proiettore");
+        prenota(aulaManutenzioneId, user, StatoPrenotazione.MANUTENZIONE, ora.minusHours(1), ora.plusHours(1), "Sostituzione proiettore");
 
         // Aula virtuale con prenotazione IMMINENTE (entro 2 ore, ma non ancora iniziata):
         // copre il secondo ramo e il lato virtuale del terzo clone.
         aulaImminenteId = salvaAula("Aula Virtuale Imminente", 0, 50, true);
-        prenota(aulaImminenteId, user, "prenotata", ora.plusMinutes(30), ora.plusMinutes(90), null);
+        prenota(aulaImminenteId, user, StatoPrenotazione.PRENOTATA, ora.plusMinutes(30), ora.plusMinutes(90), null);
 
         aulaLiberaId = salvaAula("Aula Libera", 3, 10, false);
 
@@ -116,7 +117,7 @@ class RoomDetailsWithBookingsTest {
         return aulaRepository.save(a).getId();
     }
 
-    private void prenota(Long aulaId, Utente utente, String stato,
+    private void prenota(Long aulaId, Utente utente, StatoPrenotazione stato,
                          LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         Prenotazione p = new Prenotazione();
         p.setAula(aulaRepository.findById(aulaId).orElseThrow());

@@ -2,6 +2,7 @@ package com.prenotazioni.service;
 
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.dto.AulaRequest;
@@ -206,7 +207,7 @@ public class AulaService {
             // Controllo se l'aula è attualmente occupata o bloccata
             for (Prenotazione prenotazione : prenotazioni) {
                 if (prenotazione.getInizio().isBefore(now) && prenotazione.getFine().isAfter(now)) {
-                    if (prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                    if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                         status = "prenotata";
                         currentBooking = new RoomDetailsResponse.CurrentBooking(
                             prenotazione.getUtente().getNome(),
@@ -214,8 +215,7 @@ public class AulaService {
                             prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
                             prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
                         );
-                    } else if (prenotazione.getStato() .equalsIgnoreCase("bloccata") || 
-                              prenotazione.getStato() .equalsIgnoreCase("manutenzione")) {
+                    } else if (prenotazione.getStato().isInterventoAdmin()) {
                         status = "bloccata";
                         blockInfo = new RoomDetailsResponse.BlockInfo(
                             prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Aula bloccata",
@@ -232,7 +232,7 @@ public class AulaService {
                 LocalDateTime twoHoursLater = now.plusHours(2);
                 for (Prenotazione prenotazione : prenotazioni) {
                     if (prenotazione.getInizio().isAfter(now) && prenotazione.getInizio().isBefore(twoHoursLater) &&
-                        prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                        prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                         status = "prenotata";
                         currentBooking = new RoomDetailsResponse.CurrentBooking(
                             prenotazione.getUtente().getNome(),
@@ -248,7 +248,7 @@ public class AulaService {
             // Crea la lista delle prenotazioni
             List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
             for (Prenotazione prenotazione : prenotazioni) {
-                if (prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                     bookingInfos.add(new RoomDetailsResponse.BookingInfo(
                         prenotazione.getInizio().toLocalDate().format(dateFormatter),
                         prenotazione.getInizio().format(timeFormatter),
@@ -300,7 +300,7 @@ public class AulaService {
         // Controllo se l'aula è attualmente occupata o bloccata
         for (Prenotazione prenotazione : prenotazioni) {
             if (prenotazione.getInizio().isBefore(now) && prenotazione.getFine().isAfter(now)) {
-                if (prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                     status = "prenotata";
                     currentBooking = new RoomDetailsResponse.CurrentBooking(
                         prenotazione.getUtente().getNome(),
@@ -308,8 +308,7 @@ public class AulaService {
                         prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
                         prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
                     );
-                } else if (prenotazione.getStato() .equalsIgnoreCase("bloccata") || 
-                          prenotazione.getStato() .equalsIgnoreCase("manutenzione")) {
+                } else if (prenotazione.getStato().isInterventoAdmin()) {
                     status = "bloccata";
                     blockInfo = new RoomDetailsResponse.BlockInfo(
                         prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Aula bloccata",
@@ -326,7 +325,7 @@ public class AulaService {
             LocalDateTime twoHoursLater = now.plusHours(2);
             for (Prenotazione prenotazione : prenotazioni) {
                 if (prenotazione.getInizio().isAfter(now) && prenotazione.getInizio().isBefore(twoHoursLater) &&
-                    prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                    prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                     status = "prenotata";
                     currentBooking = new RoomDetailsResponse.CurrentBooking(
                         prenotazione.getUtente().getNome(),
@@ -342,7 +341,7 @@ public class AulaService {
         // Crea la lista delle prenotazioni
         List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
         for (Prenotazione prenotazione : prenotazioni) {
-            if (prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+            if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                 bookingInfos.add(new RoomDetailsResponse.BookingInfo(
                     prenotazione.getInizio().toLocalDate().format(dateFormatter),
                     prenotazione.getInizio().format(timeFormatter),
@@ -438,7 +437,7 @@ public class AulaService {
             // Controllo se l'aula è attualmente occupata o bloccata
             for (Prenotazione prenotazione : prenotazioni) {
                 if (prenotazione.getInizio().isBefore(now) && prenotazione.getFine().isAfter(now)) {
-                    if (prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                    if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                         status = "prenotata";
                         currentBooking = new RoomDetailsResponse.CurrentBooking(
                             prenotazione.getUtente().getNome(),
@@ -446,8 +445,7 @@ public class AulaService {
                             prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
                             prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
                         );
-                    } else if (prenotazione.getStato() .equalsIgnoreCase("bloccata") || 
-                              prenotazione.getStato() .equalsIgnoreCase("manutenzione")) {
+                    } else if (prenotazione.getStato().isInterventoAdmin()) {
                         status = "bloccata";
                         blockInfo = new RoomDetailsResponse.BlockInfo(
                             prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Aula bloccata",
@@ -464,7 +462,7 @@ public class AulaService {
                 LocalDateTime twoHoursLater = now.plusHours(2);
                 for (Prenotazione prenotazione : prenotazioni) {
                     if (prenotazione.getInizio().isAfter(now) && prenotazione.getInizio().isBefore(twoHoursLater) &&
-                        prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                        prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                         status = "prenotata";
                         currentBooking = new RoomDetailsResponse.CurrentBooking(
                             prenotazione.getUtente().getNome(),
@@ -480,7 +478,7 @@ public class AulaService {
             // Crea la lista delle prenotazioni
             List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
             for (Prenotazione prenotazione : prenotazioni) {
-                if (prenotazione.getStato() .equalsIgnoreCase("prenotata")) {
+                if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
                     bookingInfos.add(new RoomDetailsResponse.BookingInfo(
                         prenotazione.getInizio().toLocalDate().format(dateFormatter),
                         prenotazione.getInizio().format(timeFormatter),

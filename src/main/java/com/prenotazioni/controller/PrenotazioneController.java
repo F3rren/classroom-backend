@@ -3,6 +3,7 @@ package com.prenotazioni.controller;
 import com.prenotazioni.dto.*;
 import com.prenotazioni.exception.BookingConflictException;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.service.PrenotazioneService;
@@ -389,7 +390,7 @@ public class PrenotazioneController {
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getPrenotazioniUtente(principal.id());
 
         List<Prenotazione> prenotazioni = tuttePrenotazioni.stream()
-            .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
+            .filter(p -> p.getStato() != StatoPrenotazione.ANNULLATA)
             .collect(Collectors.toList());
 
         logger.debug("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)",
@@ -436,12 +437,12 @@ public class PrenotazioneController {
                     HttpStatus.FORBIDDEN
                 );
             }
-            if (!"prenotata".equalsIgnoreCase(prenotazioneEsistente.getStato())) {
+            if (!prenotazioneEsistente.getStato().isAttiva()) {
                 logger.warn("[{}] FINE annullaPrenotazione - Tentativo di annullare prenotazione con stato non valido | PrenotazioneId: {} | Stato: {}",
                            sessionId, prenotazioneId, prenotazioneEsistente.getStato());
                 return new ResponseEntity<>(
                     createErrorResponse("INVALID_STATE", "Stato prenotazione non valido",
-                                      "Puoi annullare solo prenotazioni attive. Questa prenotazione è nello stato: " + prenotazioneEsistente.getStato(), sessionId),
+                                      "Puoi annullare solo prenotazioni attive. Questa prenotazione è nello stato: " + prenotazioneEsistente.getStato().getValore(), sessionId),
                     HttpStatus.CONFLICT
                 );
             }
@@ -475,7 +476,7 @@ public class PrenotazioneController {
 
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
         List<Prenotazione> prenotazioni = tuttePrenotazioni.stream()
-            .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
+            .filter(p -> p.getStato() != StatoPrenotazione.ANNULLATA)
             .map(this::sanitizeOwnerForListing)
             .collect(Collectors.toList());
 

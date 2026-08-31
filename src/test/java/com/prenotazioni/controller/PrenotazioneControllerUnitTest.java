@@ -5,6 +5,7 @@ import com.prenotazioni.dto.PrenotazioneRequest;
 import com.prenotazioni.exception.BookingConflictException;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.service.PrenotazioneService;
@@ -83,7 +84,7 @@ class PrenotazioneControllerUnitTest {
         p.setUtente(u);
         p.setInizio(LocalDateTime.now().plusDays(1));
         p.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
-        p.setStato("prenotata");
+        p.setStato(StatoPrenotazione.PRENOTATA);
         return p;
     }
 
@@ -318,7 +319,7 @@ class PrenotazioneControllerUnitTest {
     void annullaReturns409WhenBookingIsAlreadyCancelled() {
         // Ramo INVALID_STATE: era irraggiungibile finche' il service non controllava lo stato.
         Prenotazione gia = prenotazioneFinta();
-        gia.setStato("annullata");
+        gia.setStato(StatoPrenotazione.ANNULLATA);
         when(service.getPrenotazioneById(7L)).thenReturn(gia);
         when(service.annullaPrenotazione(7L, 1L)).thenReturn(false);
 
@@ -334,7 +335,7 @@ class PrenotazioneControllerUnitTest {
         // (proprietario OPPURE admin), qui sarebbe uscito un fuorviante 403.
         Prenotazione altrui = prenotazioneFinta();
         altrui.getUtente().setId(42L);
-        altrui.setStato("annullata");
+        altrui.setStato(StatoPrenotazione.ANNULLATA);
         when(service.getPrenotazioneById(7L)).thenReturn(altrui);
         when(service.annullaPrenotazione(7L, 2L)).thenReturn(false);
 

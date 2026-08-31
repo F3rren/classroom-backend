@@ -3,6 +3,7 @@ package com.prenotazioni;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
@@ -89,7 +90,7 @@ class PrenotazioneControllerTest {
         prenotazione.setUtente(owner);
         prenotazione.setInizio(LocalDateTime.now().plusDays(1));
         prenotazione.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
-        prenotazione.setStato("prenotata");
+        prenotazione.setStato(StatoPrenotazione.PRENOTATA);
         prenotazione.setDescrizione("Riunione privata di owner");
         prenotazione.setDataCreazione(LocalDateTime.now());
         prenotazioneRepository.save(prenotazione);
@@ -276,7 +277,7 @@ class PrenotazioneControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(prenotazioneRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
-                .isEqualToIgnoringCase("annullata");
+                .isEqualTo(StatoPrenotazione.ANNULLATA);
     }
 
     @Test
@@ -302,7 +303,7 @@ class PrenotazioneControllerTest {
         assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
         // la prenotazione resta intatta
         assertThat(prenotazioneRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
-                .isEqualToIgnoringCase("prenotata");
+                .isEqualTo(StatoPrenotazione.PRENOTATA);
     }
 
     @Test

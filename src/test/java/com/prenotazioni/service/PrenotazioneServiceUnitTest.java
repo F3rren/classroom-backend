@@ -3,6 +3,7 @@ package com.prenotazioni.service;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Corso;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
@@ -73,7 +74,7 @@ class PrenotazioneServiceUnitTest {
         return u;
     }
 
-    private Prenotazione prenotazione(Long id, Aula a, Utente u, String stato) {
+    private Prenotazione prenotazione(Long id, Aula a, Utente u, StatoPrenotazione stato) {
         Prenotazione p = new Prenotazione();
         p.setId(id);
         p.setAula(a);
@@ -100,7 +101,7 @@ class PrenotazioneServiceUnitTest {
     @Test
     void prenotaAulaReturnsNullWhenRoomIsBusy() {
         when(prenotazioneRepository.findConflittingReservations(anyLong(), any(), any()))
-                .thenReturn(List.of(prenotazione(1L, aula(10L, "libera"), utente(1L, "user"), "prenotata")));
+                .thenReturn(List.of(prenotazione(1L, aula(10L, "libera"), utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
 
         assertThat(service.prenotaAula(10L, null, 1L, inizio, fine, "x")).isNull();
         verify(prenotazioneRepository, never()).save(any());
@@ -150,7 +151,7 @@ class PrenotazioneServiceUnitTest {
 
         assertThat(creata).isNotNull();
         assertThat(creata.getCorso()).isSameAs(corso);
-        assertThat(creata.getStato()).isEqualTo("prenotata");
+        assertThat(creata.getStato()).isEqualTo(StatoPrenotazione.PRENOTATA);
     }
 
     @Test
@@ -175,7 +176,7 @@ class PrenotazioneServiceUnitTest {
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(prenotazioneRepository.findActiveReservations(anyLong(), any()))
-                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), "prenotata")));
+                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
 
         service.prenotaAula(10L, null, 1L, inizio, fine, "x");
 
@@ -191,7 +192,7 @@ class PrenotazioneServiceUnitTest {
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(prenotazioneRepository.findActiveReservations(anyLong(), any()))
-                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), "manutenzione")));
+                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), StatoPrenotazione.MANUTENZIONE)));
 
         service.prenotaAula(10L, null, 1L, inizio, fine, "x");
 
@@ -206,7 +207,7 @@ class PrenotazioneServiceUnitTest {
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(prenotazioneRepository.findActiveReservations(anyLong(), any()))
-                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), "bloccata")));
+                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), StatoPrenotazione.BLOCCATA)));
 
         service.prenotaAula(10L, null, 1L, inizio, fine, "x");
 
@@ -218,7 +219,7 @@ class PrenotazioneServiceUnitTest {
     @Test
     void bloccaAulaReturnsNullWhenRoomIsBusy() {
         when(prenotazioneRepository.findConflittingReservations(anyLong(), any(), any()))
-                .thenReturn(List.of(prenotazione(1L, aula(10L, "libera"), utente(1L, "user"), "prenotata")));
+                .thenReturn(List.of(prenotazione(1L, aula(10L, "libera"), utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
 
         assertThat(service.bloccaAula(10L, 2L, inizio, fine, "motivo")).isNull();
     }
@@ -252,7 +253,7 @@ class PrenotazioneServiceUnitTest {
         Prenotazione blocco = service.bloccaAula(10L, 2L, inizio, fine, "manutenzione straordinaria");
 
         assertThat(blocco).isNotNull();
-        assertThat(blocco.getStato()).isEqualTo("bloccata");
+        assertThat(blocco.getStato()).isEqualTo(StatoPrenotazione.BLOCCATA);
         assertThat(blocco.getCorso()).isNull();
         assertThat(blocco.getDescrizione()).isEqualTo("manutenzione straordinaria");
     }
@@ -270,7 +271,7 @@ class PrenotazioneServiceUnitTest {
     void annullaReturnsFalseWhenUserMissing() {
         Aula a = aula(10L, "libera");
         when(prenotazioneRepository.findById(5L))
-                .thenReturn(Optional.of(prenotazione(5L, a, utente(1L, "user"), "prenotata")));
+                .thenReturn(Optional.of(prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThat(service.annullaPrenotazione(5L, 1L)).isFalse();
@@ -280,7 +281,7 @@ class PrenotazioneServiceUnitTest {
     void annullaReturnsFalseForUnrelatedUser() {
         Aula a = aula(10L, "libera");
         when(prenotazioneRepository.findById(5L))
-                .thenReturn(Optional.of(prenotazione(5L, a, utente(1L, "user"), "prenotata")));
+                .thenReturn(Optional.of(prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(9L)).thenReturn(Optional.of(utente(9L, "user")));
 
         assertThat(service.annullaPrenotazione(5L, 9L)).isFalse();
@@ -290,7 +291,7 @@ class PrenotazioneServiceUnitTest {
     @Test
     void annullaSucceedsForOwnerAndSetsStateToAnnullata() {
         Aula a = aula(10L, "occupata");
-        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "prenotata");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
@@ -298,7 +299,7 @@ class PrenotazioneServiceUnitTest {
         salvaComeArrivato();
 
         assertThat(service.annullaPrenotazione(5L, 1L)).isTrue();
-        assertThat(p.getStato()).isEqualTo("annullata");
+        assertThat(p.getStato()).isEqualTo(StatoPrenotazione.ANNULLATA);
         // l'aula torna libera e viene salvata perche' lo stato e' cambiato
         assertThat(a.getStato()).isEqualTo("libera");
         verify(aulaRepository).save(a);
@@ -307,7 +308,7 @@ class PrenotazioneServiceUnitTest {
     @Test
     void annullaSucceedsForAdminOnSomeoneElsesBooking() {
         Aula a = aula(10L, "libera");
-        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "prenotata");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
         when(utenteRepository.findById(2L)).thenReturn(Optional.of(utente(2L, "admin")));
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
@@ -321,7 +322,7 @@ class PrenotazioneServiceUnitTest {
     void annullaHandlesMissingRoomDuringStateRefresh() {
         // ramo "aula non trovata" dentro aggiornaStatoAula
         Aula a = aula(10L, "libera");
-        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "prenotata");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(aulaRepository.findById(10L)).thenReturn(Optional.empty());
@@ -336,7 +337,7 @@ class PrenotazioneServiceUnitTest {
         // Annullare due volte non deve riuscire: il chiamante riceverebbe un "annullata
         // con successo" per un'operazione che non ha cambiato nulla.
         Aula a = aula(10L, "libera");
-        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "annullata");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.ANNULLATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
 
@@ -349,7 +350,7 @@ class PrenotazioneServiceUnitTest {
         // I blocchi e le manutenzioni sono roba da admin: si annullano dall'endpoint
         // admin dedicato, non da DELETE /api/prenotazioni/{id}.
         Aula a = aula(10L, "bloccata");
-        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "bloccata");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.BLOCCATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
 
@@ -361,7 +362,7 @@ class PrenotazioneServiceUnitTest {
         // La regola e' sullo stato, non sul ruolo: per annullare comunque una
         // prenotazione gia' annullata l'admin ha annullaPrenotazioneAsAdmin.
         Aula a = aula(10L, "libera");
-        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), "annullata");
+        Prenotazione p = prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.ANNULLATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
         when(utenteRepository.findById(2L)).thenReturn(Optional.of(utente(2L, "admin")));
 
@@ -380,7 +381,7 @@ class PrenotazioneServiceUnitTest {
     @Test
     void updateReturnsNullWhenUserMissing() {
         when(prenotazioneRepository.findById(5L)).thenReturn(
-                Optional.of(prenotazione(5L, aula(10L, "libera"), utente(1L, "user"), "prenotata")));
+                Optional.of(prenotazione(5L, aula(10L, "libera"), utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThat(service.updatePrenotazione(5L, 10L, null, 1L, inizio, fine, "x")).isNull();
@@ -389,7 +390,7 @@ class PrenotazioneServiceUnitTest {
     @Test
     void updateReturnsNullForUnrelatedUser() {
         when(prenotazioneRepository.findById(5L)).thenReturn(
-                Optional.of(prenotazione(5L, aula(10L, "libera"), utente(1L, "user"), "prenotata")));
+                Optional.of(prenotazione(5L, aula(10L, "libera"), utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(9L)).thenReturn(Optional.of(utente(9L, "user")));
 
         assertThat(service.updatePrenotazione(5L, 10L, null, 9L, inizio, fine, "x")).isNull();
@@ -398,7 +399,7 @@ class PrenotazioneServiceUnitTest {
     @Test
     void updateReturnsNullWhenRoomMissing() {
         when(prenotazioneRepository.findById(5L)).thenReturn(
-                Optional.of(prenotazione(5L, aula(10L, "libera"), utente(1L, "user"), "prenotata")));
+                Optional.of(prenotazione(5L, aula(10L, "libera"), utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(aulaRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -409,11 +410,11 @@ class PrenotazioneServiceUnitTest {
     void updateReturnsNullWhenNewSlotOverlapsAnotherBooking() {
         Aula a = aula(10L, "libera");
         when(prenotazioneRepository.findById(5L)).thenReturn(
-                Optional.of(prenotazione(5L, a, utente(1L, "user"), "prenotata")));
+                Optional.of(prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
         when(prenotazioneRepository.findConflittingReservationsExcluding(anyLong(), any(), any(), anyLong()))
-                .thenReturn(List.of(prenotazione(6L, a, utente(2L, "user"), "prenotata")));
+                .thenReturn(List.of(prenotazione(6L, a, utente(2L, "user"), StatoPrenotazione.PRENOTATA)));
 
         assertThat(service.updatePrenotazione(5L, 10L, null, 1L, inizio, fine, "x")).isNull();
     }
@@ -422,7 +423,7 @@ class PrenotazioneServiceUnitTest {
     void updateReturnsNullWhenCourseIdIsGivenButMissing() {
         Aula a = aula(10L, "libera");
         when(prenotazioneRepository.findById(5L)).thenReturn(
-                Optional.of(prenotazione(5L, a, utente(1L, "user"), "prenotata")));
+                Optional.of(prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
         when(prenotazioneRepository.findConflittingReservationsExcluding(anyLong(), any(), any(), anyLong()))
@@ -436,7 +437,7 @@ class PrenotazioneServiceUnitTest {
     void updateAppliesNewValuesForOwner() {
         Aula vecchia = aula(10L, "libera");
         Aula nuova = aula(20L, "libera");
-        Prenotazione p = prenotazione(5L, vecchia, utente(1L, "user"), "prenotata");
+        Prenotazione p = prenotazione(5L, vecchia, utente(1L, "user"), StatoPrenotazione.PRENOTATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "user")));
         when(aulaRepository.findById(20L)).thenReturn(Optional.of(nuova));
@@ -458,7 +459,7 @@ class PrenotazioneServiceUnitTest {
     void updateIsAllowedForAdminOnSomeoneElsesBooking() {
         Aula a = aula(10L, "libera");
         when(prenotazioneRepository.findById(5L)).thenReturn(
-                Optional.of(prenotazione(5L, a, utente(1L, "user"), "prenotata")));
+                Optional.of(prenotazione(5L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
         when(utenteRepository.findById(2L)).thenReturn(Optional.of(utente(2L, "admin")));
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(a));
         when(prenotazioneRepository.findConflittingReservationsExcluding(anyLong(), any(), any(), anyLong()))
@@ -481,7 +482,7 @@ class PrenotazioneServiceUnitTest {
     void statoAulaIsPrenotataWithAnOrdinaryBooking() {
         Aula a = aula(10L, "occupata");
         when(prenotazioneRepository.findActiveReservations(anyLong(), any()))
-                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), "prenotata")));
+                .thenReturn(List.of(prenotazione(1L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA)));
 
         assertThat(service.getStatoAula(10L, LocalDateTime.now())).isEqualTo("PRENOTATA");
     }
@@ -491,8 +492,8 @@ class PrenotazioneServiceUnitTest {
         Aula a = aula(10L, "bloccata");
         when(prenotazioneRepository.findActiveReservations(anyLong(), any()))
                 .thenReturn(List.of(
-                        prenotazione(1L, a, utente(1L, "user"), "prenotata"),
-                        prenotazione(2L, a, utente(2L, "admin"), "bloccata")));
+                        prenotazione(1L, a, utente(1L, "user"), StatoPrenotazione.PRENOTATA),
+                        prenotazione(2L, a, utente(2L, "admin"), StatoPrenotazione.BLOCCATA)));
 
         assertThat(service.getStatoAula(10L, LocalDateTime.now())).isEqualTo("BLOCCATA");
     }
@@ -503,8 +504,8 @@ class PrenotazioneServiceUnitTest {
         Aula a = aula(10L, "manutenzione");
         when(prenotazioneRepository.findActiveReservations(anyLong(), any()))
                 .thenReturn(List.of(
-                        prenotazione(1L, a, utente(2L, "admin"), "bloccata"),
-                        prenotazione(2L, a, utente(2L, "admin"), "manutenzione")));
+                        prenotazione(1L, a, utente(2L, "admin"), StatoPrenotazione.BLOCCATA),
+                        prenotazione(2L, a, utente(2L, "admin"), StatoPrenotazione.MANUTENZIONE)));
 
         assertThat(service.getStatoAula(10L, LocalDateTime.now())).isEqualTo("MANUTENZIONE");
     }

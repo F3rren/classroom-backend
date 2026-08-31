@@ -4,6 +4,7 @@ import com.prenotazioni.dto.PrenotazioneDettaglioDto;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Corso;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
@@ -81,7 +82,7 @@ public class PrenotazioneService {
         prenotazione.setUtente(utente.get());
         prenotazione.setInizio(inizio);
         prenotazione.setFine(fine);
-        prenotazione.setStato("prenotata");
+        prenotazione.setStato(StatoPrenotazione.PRENOTATA);
         prenotazione.setDescrizione(descrizione);
         prenotazione.setDataCreazione(LocalDateTime.now());
         
@@ -123,7 +124,7 @@ public class PrenotazioneService {
         blocco.setUtente(admin.get());
         blocco.setInizio(inizio);
         blocco.setFine(fine);
-        blocco.setStato("bloccata");
+        blocco.setStato(StatoPrenotazione.BLOCCATA);
         blocco.setDescrizione(motivo);
         blocco.setDataCreazione(LocalDateTime.now());
         
@@ -155,14 +156,14 @@ public class PrenotazioneService {
         
         // Priorità: MANUTENZIONE > BLOCCATA > PRENOTATA
         for (Prenotazione p : prenotazioniAttive) {
-            if ("manutenzione".equalsIgnoreCase(p.getStato())) {
+            if (p.getStato() == StatoPrenotazione.MANUTENZIONE) {
                 logger.debug("Stato aula - AulaId: {}, Momento: {} - MANUTENZIONE", aulaId, momento);
                 return "MANUTENZIONE";
             }
         }
         
         for (Prenotazione p : prenotazioniAttive) {
-            if ("bloccata".equalsIgnoreCase(p.getStato())) {
+            if (p.getStato() == StatoPrenotazione.BLOCCATA) {
                 logger.debug("Stato aula - AulaId: {}, Momento: {} - BLOCCATA", aulaId, momento);
                 return "BLOCCATA";
             }
@@ -195,9 +196,9 @@ public class PrenotazioneService {
         } else {
             // Controlla se c'è una prenotazione di manutenzione o bloccata
             boolean hasManutenzione = prenotazioniAttive.stream()
-                .anyMatch(p -> "manutenzione".equalsIgnoreCase(p.getStato()));
+                .anyMatch(p -> p.getStato() == StatoPrenotazione.MANUTENZIONE);
             boolean hasBloccata = prenotazioniAttive.stream()
-                .anyMatch(p -> "bloccata".equalsIgnoreCase(p.getStato()));
+                .anyMatch(p -> p.getStato() == StatoPrenotazione.BLOCCATA);
             
             if (hasManutenzione) {
                 nuovoStato = "manutenzione";
@@ -256,12 +257,12 @@ public class PrenotazioneService {
         // pur non cambiando nulla; i blocchi e le manutenzioni, che non sono "prenotata",
         // si annullano dall'endpoint admin (annullaPrenotazioneAsAdmin, volutamente permissivo
         // sullo stato). La regola e' sullo stato, non sul ruolo: vale anche per gli admin.
-        if (!"prenotata".equalsIgnoreCase(p.getStato())) {
+        if (!p.getStato().isAttiva()) {
             logger.warn("Prenotazione ID {} non annullabile: stato attuale '{}'", prenotazioneId, p.getStato());
             return false;
         }
 
-        p.setStato("annullata");
+        p.setStato(StatoPrenotazione.ANNULLATA);
         prenotazioneRepository.save(p);
         
         // Aggiorna lo stato dell'aula
@@ -330,7 +331,7 @@ public class PrenotazioneService {
         logger.debug("INIZIO METODO getPrenotazioniByStato");
         logger.debug("Recupero prenotazioni per stato - Stato: {}", stato);
         logger.debug("FINE METODO getPrenotazioniByStato");
-        return prenotazioneRepository.findByStato(stato);
+        return prenotazioneRepository.findByStato(StatoPrenotazione.da(stato));
     }
     
     // Lista prenotazioni future
@@ -365,7 +366,7 @@ public class PrenotazioneService {
         
         logger.debug("Annullamento prenotazione da parte dell'admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         // Gli admin possono eliminare qualsiasi prenotazione, indipendentemente dallo stato
-        prenotazione.setStato("annullata");
+        prenotazione.setStato(StatoPrenotazione.ANNULLATA);
         
         logger.debug("Aggiornamento descrizione prenotazione per indicare azione admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         // Aggiorna la descrizione per indicare l'azione admin

@@ -1,5 +1,6 @@
 package com.prenotazioni.dto;
 
+import com.prenotazioni.model.StatoPrenotazione;
 import lombok.Value;
 
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ public class PrenotazioneDettaglioDto {
     Long prenotazioneId;
     LocalDateTime inizio;
     LocalDateTime fine;
-    String stato;
+    StatoPrenotazione stato;
     String notePrenotazione;
     LocalDateTime dataCreazione;
     Long aulaId;

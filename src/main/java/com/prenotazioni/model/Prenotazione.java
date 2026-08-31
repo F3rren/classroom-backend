@@ -45,8 +45,10 @@ public class Prenotazione {
     @Column(nullable = false)
     private LocalDateTime fine;
     
+    // Persistito come stringa minuscola dal converter di StatoPrenotazione, per restare
+    // compatibile con il CHECK constraint prenotazione_stato_check e col frontend.
     @Column(nullable = false, length = 20)
-    private String stato; // 'prenotata', 'confermata', 'bloccata', 'manutenzione', 'annullata'
+    private StatoPrenotazione stato;
     
     @Column(columnDefinition = "TEXT")
     private String descrizione;
@@ -59,8 +61,8 @@ public class Prenotazione {
         if (dataCreazione == null) {
             dataCreazione = LocalDateTime.now();
         }
-        if (stato == null || stato.isEmpty()) {
-            stato = "prenotata";
+        if (stato == null) {
+            stato = StatoPrenotazione.PRENOTATA;
         }
     }
 }

@@ -9,6 +9,7 @@ import com.prenotazioni.dto.*;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.util.LogSanitizer;
 
@@ -338,7 +339,7 @@ public class AdminController {
 
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
         long attive = tuttePrenotazioni.stream()
-            .filter(p -> !"annullata".equalsIgnoreCase(p.getStato()))
+            .filter(p -> p.getStato() != StatoPrenotazione.ANNULLATA)
             .count();
         long annullate = tuttePrenotazioni.size() - attive;
 

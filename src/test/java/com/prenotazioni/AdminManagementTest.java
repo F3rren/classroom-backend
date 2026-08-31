@@ -3,6 +3,7 @@ package com.prenotazioni;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
@@ -90,7 +91,7 @@ class AdminManagementTest {
         p.setUtente(utenteRepository.findById(utenteNormaleId).orElseThrow());
         p.setInizio(LocalDateTime.now().plusDays(3).withNano(0));
         p.setFine(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
-        p.setStato("prenotata");
+        p.setStato(StatoPrenotazione.PRENOTATA);
         p.setDescrizione("Prenotazione gestita da admin");
         p.setDataCreazione(LocalDateTime.now());
         prenotazioneId = prenotazioneRepository.save(p).getId();
@@ -265,7 +266,7 @@ class AdminManagementTest {
 
         // la prenotazione risulta annullata e il proprietario riceve una notifica
         Prenotazione dopo = prenotazioneRepository.findById(prenotazioneId).orElseThrow();
-        assertThat(dopo.getStato()).isEqualToIgnoringCase("annullata");
+        assertThat(dopo.getStato()).isEqualTo(StatoPrenotazione.ANNULLATA);
         assertThat(notificaRepository.findAll()).isNotEmpty();
     }
 

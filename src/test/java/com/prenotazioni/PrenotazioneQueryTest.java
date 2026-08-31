@@ -3,6 +3,7 @@ package com.prenotazioni;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
@@ -96,7 +97,7 @@ class PrenotazioneQueryTest {
         p.setUtente(user);
         p.setInizio(inizio);
         p.setFine(fine);
-        p.setStato("prenotata");
+        p.setStato(StatoPrenotazione.PRENOTATA);
         p.setDescrizione("Prenotazione per test di query");
         p.setDataCreazione(LocalDateTime.now());
         prenotazioneId = prenotazioneRepository.save(p).getId();
@@ -141,7 +142,7 @@ class PrenotazioneQueryTest {
     @Test
     void miePrenotazioniExcludesCancelledBookings() throws Exception {
         Prenotazione p = prenotazioneRepository.findById(prenotazioneId).orElseThrow();
-        p.setStato("annullata");
+        p.setStato(StatoPrenotazione.ANNULLATA);
         prenotazioneRepository.save(p);
 
         Map<String, Object> body = asMap(get("/api/prenotazioni/mie").getBody());
