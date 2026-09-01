@@ -60,10 +60,20 @@ logs/
 # File con credenziali database e altre configurazioni sensibili
 config/config.properties
 
-# File di configurazione ambiente-specifici
+# File di configurazione ambiente-specifici.
+# Le regole generiche restano come rete di sicurezza per copie sparse fuori dal progetto.
 **/application-local.properties
 **/application-dev.properties
 **/application-prod.properties
+
+# ...ma i due profili versionati del progetto vanno committati: contengono SOLO
+# valori non sensibili (url, porte, livelli di log, origini CORS). I segreti restano
+# in config/config.properties, ignorato qui sopra.
+# Senza queste due negazioni i file verrebbero ignorati in silenzio: nessun errore,
+# semplicemente non finirebbero mai in un commit e la produzione partirebbe da un
+# jar che non li contiene.
+!src/main/resources/application-dev.properties
+!src/main/resources/application-prod.properties
 
 # ============================================
 # SISTEMA OPERATIVO
