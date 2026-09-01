@@ -1,0 +1,75 @@
+# Integrazione continua.
+#
+# Il motivo per cui questo file esiste: la suite ha tre livelli (unit con Mockito,
+# integrazione su H2, e una classe sui vincoli con PostgreSQL vero via Testcontainers)
+# ma il terzo gira solo se la macchina ha Docker acceso. Senza Docker la classe viene
+# saltata e la build resta VERDE: e' successo davvero, e per un periodo i test sui
+# vincoli non sono mai stati eseguiti pur risultando "a posto".
+#
+# Sui runner ubuntu-latest Docker c'e' sempre, quindi qui i vincoli vengono verificati
+# a ogni push. Il passo "Verifica che..." trasforma lo skip silenzioso in un errore.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configura JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      # verify e non test: e' la fase in cui gira il gate JaCoCo all'80%.
+      # Nessun segreto da iniettare: config/config.properties e' importato come
+      # "optional:" e i profili test/pgtest portano da soli jwt.secret, le origini
+      # CORS e il rate limit.
+      - name: Build, test e gate di copertura
+        run: mvn -B clean verify
+
+      # Un "BUILD SUCCESS" non basta: passerebbe anche con la classe saltata.
+      - name: Verifica che i vincoli siano stati provati su PostgreSQL reale
+        run: |
+          REPORT=target/surefire-reports/TEST-com.prenotazioni.PostgresSchemaConstraintsTest.xml
+          if [ ! -f "$REPORT" ]; then
+            echo "::error::PostgresSchemaConstraintsTest non ha prodotto un report: non e' stata eseguita."
+            echo "Se la classe e' stata rinominata in *IT, surefire non la raccoglie piu'."
+            exit 1
+          fi
+          if ! grep -q 'skipped="0"' "$REPORT"; then
+            echo "::error::PostgresSchemaConstraintsTest e' stata saltata: Testcontainers non ha raggiunto Docker."
+            grep -oE 'tests="[0-9]+"|skipped="[0-9]+"' "$REPORT" | head -2
+            exit 1
+          fi
+          if grep -q 'tests="0"' "$REPORT"; then
+            echo "::error::PostgresSchemaConstraintsTest non contiene test."
+            exit 1
+          fi
+          echo "OK: vincoli verificati su PostgreSQL reale."
+
+      - name: Report di copertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: warn
+
+      - name: Report dei test falliti
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
