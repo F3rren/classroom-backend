@@ -5,12 +5,14 @@ import com.prenotazioni.dto.AulaRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.lang.reflect.Method;
 
@@ -51,6 +53,17 @@ class GlobalExceptionHandlerUnitTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(resp.getBody().getError()).isEqualTo("CONFLICT");
+    }
+
+    @Test
+    void missingResourceStays404AndDoesNotBecomeAnInternalError() {
+        // Regressione: senza un handler dedicato, NoResourceFoundException finiva in
+        // handleGeneric e un percorso inesistente rispondeva 500 INTERNAL_ERROR.
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
+                new NoResourceFoundException(HttpMethod.GET, "/v3/api-docs"));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(resp.getBody().getError()).isEqualTo("NOT_FOUND");
     }
 
     @Test

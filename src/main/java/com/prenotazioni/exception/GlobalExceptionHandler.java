@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.UUID;
 
@@ -82,6 +83,26 @@ public class GlobalExceptionHandler {
                 ApiEnvelope.error("CONFLICT", "Conflitto con lo stato attuale dei dati",
                         "L'operazione non e' andata a buon fine per un conflitto con dati esistenti.", sessionId),
                 HttpStatus.CONFLICT
+        );
+    }
+
+    /**
+     * Una risorsa inesistente deve restare un 404. Senza questo handler finiva in
+     * handleGeneric e diventava un 500 INTERNAL_ERROR, per giunta loggato come errore:
+     * un percorso sbagliato di un client non e' un guasto del server.
+     *
+     * Il caso e' emerso disattivando springdoc in produzione, che rende /v3/api-docs
+     * e /swagger-ui.html percorsi permitAll ma inesistenti. Sui percorsi protetti non
+     * si notava, perche' la sicurezza risponde 401 prima di arrivare qui.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleResourceNotFound(NoResourceFoundException ex) {
+        String sessionId = newSessionId();
+        logger.debug("[{}] Risorsa non trovata: {}", sessionId, ex.getResourcePath());
+        return new ResponseEntity<>(
+                ApiEnvelope.error("NOT_FOUND", "Risorsa non trovata",
+                        "L'indirizzo richiesto non esiste.", sessionId),
+                HttpStatus.NOT_FOUND
         );
     }
 
