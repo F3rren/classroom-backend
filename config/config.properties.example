@@ -1,0 +1,20 @@
+# ============================================================================
+# MODELLO per config/config.properties
+#
+# Copiare questo file in config/config.properties (stessa cartella, senza
+# .example) e valorizzare le due chiavi. Il file reale e' ignorato da git.
+#
+# REGOLA: qui vanno SOLO segreti. Host, porta e nome del database si cambiano
+# in application-dev.properties o application-prod.properties. Mettere qui un
+# spring.datasource.url reintrodurrebbe un'ambiguita' di precedenza fra file
+# di configurazione difficile da ragionare.
+# ============================================================================
+
+# Password dell'utente PostgreSQL.
+spring.datasource.password=
+
+# Segreto per la firma dei token JWT.
+# Non ha un valore di default nel codice: se manca, l'applicazione NON parte.
+# E' voluto, cosi' non puo' mai girare con un segreto noto o committato.
+# Generarlo con:  openssl rand -base64 48
+jwt.secret=

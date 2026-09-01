@@ -1,75 +1,128 @@
-### CONFIGURAZIONE
+# Prenotazioni Aule — Backend
 
-1. **VERIFICARE PREREQUISITI**
-   PostgreSQL 18.0
-   Java 17
-   Spring Boot 3.4.0
+API REST per la gestione di prenotazioni aule, corsi e notifiche.
 
-### INSTALLAZIONE E AVVIO POSTGRESQL   
+## Prerequisiti
 
-2. **CREA IL DATABASE POSTGRESQL**:
-   ```sql
-   CREATE DATABASE prenotazioni_aule;
-   ```
+- **Java 17**
+- **PostgreSQL 13 o superiore** (verificato su 18.3)
+- **Maven** (il progetto non include il wrapper `mvnw`)
+- **Docker** — facoltativo: serve solo a una classe di test, che senza viene saltata
 
-3. **CONFIGURAZIONE DELLE CREDENZIALI DEL DATABASE**:
-   
-   Nel file `src/main/resources/application.properties` modificare le seguenti proprietà secondo la configurazione prescelta:
+Spring Boot **3.2.12**.
 
-   ```properties
-   # Configurazione PostgreSQL
-   spring.datasource.url=jdbc:postgresql://localhost:5432/prenotazioni_aule
-   spring.datasource.username=postgres //da modificare con valore personalizzato
-   spring.datasource.password=root //da modificare con valore personalizzato
-   ```
+---
 
-   **PARAMETRI CONFIGURABILI:**
+## 1. Creare il database
 
-   - `localhost:17102` - Cambia con l'host e la porta del tuo server PostgreSQL (porta standard: 5432)
-   - `prenotazioni_aule` - Nome del database
-   - `postgres` - Username del database
-   - `root` - Password del database
+```sql
+CREATE DATABASE prenotazione_aule;
+```
 
-   # - Se il database è su un altro server, cambia 'localhost' con l'IP del server
-   # - Se è cambiato la porta di PostgreSQL, modificare '17102'   
+Il database può restare **vuoto**: lo schema viene creato da Flyway al primo avvio.
 
-   # ABILITA CORS GLOBALE
-   prenotazioni.cors.allowed-origins=http://indirizzo_ip_chiamante_del_frontend
+## 2. Configurare i segreti
 
-4. **BUILD DEL PROGETTO** 
+Le credenziali **non** stanno in `application.properties`, che è versionato. Vanno in
+`config/config.properties`, ignorato da git e letto dall'esterno del jar.
 
-   # 1. BUILD IL JAR GENERATO
-   ```bash
-   mvnw.cmd spring-boot:run
-   ```
-   # 2. BUILD DEL PROGETTO
-   ```bash
-   mvnw.cmd clean package
-   ```
-   # 3. ESEGUI IL JAR GENERATO
-   java -jar target/backend-0.0.1-SNAPSHOT.jar
+Copiare `config/config.properties.example` in `config/config.properties` e valorizzarlo:
 
-5. **TEST DELL'APPLICAZIONE**
+```properties
+spring.datasource.password=LA_TUA_PASSWORD
+jwt.secret=UN_SEGRETO_LUNGO_E_CASUALE
+```
 
-   Apri il browser e vai a:
-   ```
-   http://localhost:8080/api/aule
-   ```
+Il file deve contenere **solo segreti**. Host, porta e nome del database si cambiano nel
+profilo (vedi sotto), non qui.
 
-   Dovresti vedere la lista delle aule (vuota se il database è nuovo).
+> `jwt.secret` non ha un valore di default nel codice: se manca, l'avvio **fallisce
+> esplicitamente** invece di usare un segreto noto. È voluto.
 
-   Quando l'applicazione è avviata correttamente, vedrai nel terminale:
+Per generare un segreto:
 
-   ```
-   .   ____          _            __ _ _
-   /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-   ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
-   \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-   '  |____| .__|_| |_|_| |_\__, | / / / /
-   =========|_|==============|___/=/_/_/_/
-   :: Spring Boot ::                (v3.4.0)
+```bash
+openssl rand -base64 48
+```
 
-   ...
-   Started BackendApplication in 3.456 seconds (process running for 4.123)
-   Tomcat started on port(s): 8080 (http) with context path ''
-   ```
+## 3. Avviare
+
+```bash
+mvn spring-boot:run
+```
+
+Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log:
+`Successfully applied 2 migrations`).
+
+Verifica che funzioni:
+
+```bash
+curl -i http://localhost:8080/api/rooms
+```
+
+Attendersi **`401 Unauthorized`**: è la risposta corretta senza token, e prova che
+database, migrazioni e configurazione si sono risolti. Documentazione interattiva su
+<http://localhost:8080/swagger-ui.html> (attiva solo in `dev`).
+
+---
+
+## Configurazione per ambiente
+
+| File | Contenuto |
+|---|---|
+| `application.properties` | chiavi valide ovunque |
+| `application-dev.properties` | database locale, porta 8080, DevTools, CORS su localhost |
+| `application-prod.properties` | valori da variabili d'ambiente, DevTools e Swagger disattivati |
+| `config/config.properties` | **solo segreti**, non versionato |
+
+### Produzione
+
+```bash
+mvn clean package
+export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
+java -jar target/prenotazioni-aule-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+```
+
+Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PORT`, `LOG_FILE`.
+La password arriva da `config/config.properties` oppure da `SPRING_DATASOURCE_PASSWORD`.
+
+`CORS_ALLOWED_ORIGINS` **non ha un default**: se non è impostata l'avvio fallisce, invece
+di pubblicare in produzione le origini di localhost. In `prod` Swagger è disattivato,
+perché lo schema dell'API è servito su percorsi pubblici.
+
+---
+
+## Schema del database
+
+Gestito da **Flyway**, in `src/main/resources/db/migration/`. `ddl-auto` è `validate`:
+Hibernate non modifica mai lo schema, verifica soltanto che le entity corrispondano e
+fallisce all'avvio se divergono.
+
+Per modificare lo schema si aggiunge una migrazione (`V3__descrizione.sql`). Quelle già
+applicate non vanno più modificate: Flyway ne verifica il checksum.
+
+> I file in `src/main/java/com/prenotazioni/sql/` **non** sono lo schema: sono dati di
+> popolamento da eseguire a mano. Vedi il `LEGGIMI.md` in quella cartella.
+
+---
+
+## Test
+
+```bash
+mvn test      # esegue la suite
+mvn verify    # esegue la suite e fa fallire la build sotto l'80% di copertura
+```
+
+Il report di copertura finisce in `target/site/jacoco/index.html`.
+
+La suite è composta da unit test senza Spring, test di integrazione HTTP su H2, e **una**
+classe su PostgreSQL reale via Testcontainers, che verifica i vincoli di database che H2
+non sa esprimere (il vincolo anti-sovrapposizione e i CHECK).
+
+Quella classe richiede Docker: **senza, viene saltata e la build resta verde**. Alla prima
+esecuzione con Docker attivo serve la rete per scaricare le immagini:
+
+```bash
+docker pull postgres:16-alpine
+docker pull testcontainers/ryuk:0.7.0
+```
