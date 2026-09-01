@@ -131,6 +131,33 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <!--
+                api.version e' letto da docker-java (dentro Testcontainers) e fissa la
+                versione di API Docker usata per parlare col daemon.
+
+                Serve: docker-java negozia di default la 1.32, mentre Docker Engine 29.x
+                dichiara MinAPIVersion 1.40 e risponde 400 Bad Request. Testcontainers
+                interpreta il 400 come "daemon assente", segna la classe come skipped e la
+                build resta verde senza aver provato nulla. Non e' un problema di pipe ne'
+                di versione di Testcontainers: la 1.21.3 fallisce esattamente allo stesso
+                modo, ed e' stata scartata proprio per questo.
+
+                1.40 e non 1.44: e' il minimo accettato dall'Engine 29 ed e' supportata
+                gia' da Engine 19.03, quindi copre la banda piu' ampia di daemon.
+
+                ATTENZIONE: non aggiungere qui un <argLine>. La property "argLine" e'
+                impostata da jacoco:prepare-agent; sovrascriverla senza @{argLine} manda
+                la copertura a zero in silenzio. systemPropertyVariables non la tocca.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <api.version>1.40</api.version>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <!--
                 Copertura test. NOTA: prepare-agent imposta la property "argLine" usata da
                 surefire. Se in futuro si aggiunge una <configuration><argLine> a surefire,
                 DEVE contenere @{argLine} o la copertura scende silenziosamente a 0.
