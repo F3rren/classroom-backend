@@ -35,9 +35,10 @@ public class Prenotazione {
     @JoinColumn(name = "corso_id", nullable = true) // Nullable per blocchi admin
     private Corso corso;
     
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "utente_id", nullable = false)
-    private Utente utente;
+    // Istantanea e non relazione: gli utenti vivono in un altro servizio.
+    // Vedi ProprietarioPrenotazione per il perche' e per le conseguenze.
+    @Embedded
+    private ProprietarioPrenotazione utente;
     
     @Column(nullable = false)
     private LocalDateTime inizio;

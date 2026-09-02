@@ -72,6 +72,7 @@ public final class TestJwt {
                 .subject(email)
                 .claim("id", id)
                 .claim("nome", nome)
+                .claim("username", nome == null ? null : nome.toLowerCase().replace(" ", "."))
                 .claim("ruolo", ruolo)
                 .issuedAt(new Date())
                 .expiration(scadenza)

@@ -4,6 +4,7 @@ import com.prenotazioni.dto.PrenotazioneDettaglioDto;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Corso;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.StatoPrenotazione;
@@ -43,6 +44,15 @@ public class PrenotazioneService {
     }
 
     // Prenota un'aula per una lezione
+    /**
+     * L'istantanea del proprietario salvata sulla prenotazione. Finche' utenti e
+     * prenotazioni condividono il database la si ricava dall'entita'; dopo la
+     * separazione arrivera' dai claim del token, senza cambiare nulla qui intorno.
+     */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
+    }
+
     @Transactional
     public Prenotazione prenotaAula(Long aulaId, Long corsoId, Long utenteId, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         logger.debug("INIZIO METODO prenotaAula");
@@ -81,7 +91,7 @@ public class PrenotazioneService {
         Prenotazione prenotazione = new Prenotazione();
         prenotazione.setAula(aula.get());
         prenotazione.setCorso(corso.orElse(null)); // Può essere null
-        prenotazione.setUtente(utente.get());
+        prenotazione.setUtente(istantaneaDi(utente.get()));
         prenotazione.setInizio(inizio);
         prenotazione.setFine(fine);
         prenotazione.setStato(StatoPrenotazione.PRENOTATA);
@@ -123,7 +133,7 @@ public class PrenotazioneService {
         Prenotazione blocco = new Prenotazione();
         blocco.setAula(aula.get());
         blocco.setCorso(null); // Nessun corso per i blocchi
-        blocco.setUtente(admin.get());
+        blocco.setUtente(istantaneaDi(admin.get()));
         blocco.setInizio(inizio);
         blocco.setFine(fine);
         blocco.setStato(StatoPrenotazione.BLOCCATA);

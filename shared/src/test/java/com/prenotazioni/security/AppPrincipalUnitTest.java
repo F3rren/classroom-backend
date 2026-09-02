@@ -15,7 +15,7 @@ class AppPrincipalUnitTest {
     @Test
     void getNameReturnsTheEmailBecauseCallersExpectIt() {
         // il codice esistente chiama Authentication.getName() aspettandosi l'email
-        AppPrincipal principal = new AppPrincipal(7L, "mario.rossi@example.it", "Mario Rossi", "user");
+        AppPrincipal principal = new AppPrincipal(7L, "mario.rossi@example.it", "m.rossi", "Mario Rossi", "user");
 
         assertThat(principal.getName()).isEqualTo("mario.rossi@example.it");
         assertThat(principal.id()).isEqualTo(7L);
@@ -23,16 +23,16 @@ class AppPrincipalUnitTest {
 
     @Test
     void isAdminRecognisesTheRoleWhateverTheCasing() {
-        assertThat(new AppPrincipal(1L, "a@b.it", "Mario Rossi", Ruolo.ADMIN.getValore()).isAdmin()).isTrue();
-        assertThat(new AppPrincipal(1L, "a@b.it", "Mario Rossi", "ADMIN").isAdmin()).isTrue();
-        assertThat(new AppPrincipal(1L, "a@b.it", "Mario Rossi", "Admin").isAdmin()).isTrue();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Ruolo.ADMIN.getValore()).isAdmin()).isTrue();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "ADMIN").isAdmin()).isTrue();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "Admin").isAdmin()).isTrue();
     }
 
     @Test
     void isAdminIsFalseForEveryoneElse() {
-        assertThat(new AppPrincipal(1L, "a@b.it", "Mario Rossi", Ruolo.USER.getValore()).isAdmin()).isFalse();
-        assertThat(new AppPrincipal(1L, "a@b.it", "Mario Rossi", "superuser").isAdmin()).isFalse();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Ruolo.USER.getValore()).isAdmin()).isFalse();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "superuser").isAdmin()).isFalse();
         // un token senza claim di ruolo non deve promuovere nessuno ad admin
-        assertThat(new AppPrincipal(1L, "a@b.it", "Mario Rossi", null).isAdmin()).isFalse();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", null).isAdmin()).isFalse();
     }
 }

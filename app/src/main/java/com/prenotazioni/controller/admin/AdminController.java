@@ -9,6 +9,7 @@ import com.prenotazioni.dto.*;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.util.LogSanitizer;
@@ -387,7 +388,7 @@ public class AdminController {
             );
         }
 
-        Utente utentePrenotazione = prenotazione.getUtente();
+        ProprietarioPrenotazione utentePrenotazione = prenotazione.getUtente();
         Aula aulaPrenotazione = prenotazione.getAula();
         Utente adminUtente = utenteService.findById(adminId);
 

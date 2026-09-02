@@ -40,6 +40,7 @@ public class JwtService {
                 // Serve a booking-service per salvare il nome di chi prenota senza
                 // interrogare il servizio utenti: vedi JwtVerifier.getNomeFromToken.
                 .claim("nome", utente.getNome())
+                .claim("username", utente.getUsername())
                 .claim("ruolo", utente.getRuolo() != null ? utente.getRuolo().getValore() : null)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION))

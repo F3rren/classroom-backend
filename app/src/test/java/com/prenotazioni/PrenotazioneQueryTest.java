@@ -7,6 +7,7 @@ import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
@@ -96,7 +97,7 @@ class PrenotazioneQueryTest {
 
         Prenotazione p = new Prenotazione();
         p.setAula(aula);
-        p.setUtente(user);
+        p.setUtente(istantaneaDi(user));
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(StatoPrenotazione.PRENOTATA);
@@ -278,5 +279,10 @@ class PrenotazioneQueryTest {
     @SuppressWarnings("unchecked")
     private Map<String, Object> castMap(Object o) {
         return (Map<String, Object>) o;
+    }
+
+    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
     }
 }

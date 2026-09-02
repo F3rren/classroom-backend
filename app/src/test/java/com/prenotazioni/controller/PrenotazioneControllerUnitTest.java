@@ -7,6 +7,7 @@ import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.service.PrenotazioneService;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,8 +52,8 @@ class PrenotazioneControllerUnitTest {
     void setUp() {
         service = mock(PrenotazioneService.class);
         controller = new PrenotazioneController(service);
-        utente = new AppPrincipal(1L, "user@test.it", "Mario Rossi", "user");
-        admin = new AppPrincipal(2L, "admin@test.it", "Mario Rossi", "admin");
+        utente = new AppPrincipal(1L, "user@test.it", "m.rossi", "Mario Rossi", "user");
+        admin = new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin");
     }
 
     // ---------- helper ----------
@@ -81,7 +82,7 @@ class PrenotazioneControllerUnitTest {
         Prenotazione p = new Prenotazione();
         p.setId(99L);
         p.setAula(aula);
-        p.setUtente(u);
+        p.setUtente(istantaneaDi(u));
         p.setInizio(LocalDateTime.now().plusDays(1));
         p.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
         p.setStato(StatoPrenotazione.PRENOTATA);
@@ -353,5 +354,10 @@ class PrenotazioneControllerUnitTest {
         ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
     }
 }

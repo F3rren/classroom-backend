@@ -7,6 +7,7 @@ import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
@@ -99,7 +100,7 @@ class AdminManagementTest {
 
         Prenotazione p = new Prenotazione();
         p.setAula(aula);
-        p.setUtente(utenteRepository.findById(utenteNormaleId).orElseThrow());
+        p.setUtente(istantaneaDi(utenteRepository.findById(utenteNormaleId).orElseThrow()));
         p.setInizio(LocalDateTime.now().plusDays(3).withNano(0));
         p.setFine(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
         p.setStato(StatoPrenotazione.PRENOTATA);
@@ -450,5 +451,10 @@ class AdminManagementTest {
                 "/api/admin/rooms", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
     }
 }

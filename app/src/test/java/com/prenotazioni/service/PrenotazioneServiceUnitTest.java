@@ -7,6 +7,7 @@ import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
@@ -80,7 +81,7 @@ class PrenotazioneServiceUnitTest {
         Prenotazione p = new Prenotazione();
         p.setId(id);
         p.setAula(a);
-        p.setUtente(u);
+        p.setUtente(istantaneaDi(u));
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(stato);
@@ -510,5 +511,10 @@ class PrenotazioneServiceUnitTest {
                         prenotazione(2L, a, utente(2L, Ruolo.ADMIN), StatoPrenotazione.MANUTENZIONE)));
 
         assertThat(service.getStatoAula(10L, LocalDateTime.now())).isEqualTo("MANUTENZIONE");
+    }
+
+    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
     }
 }

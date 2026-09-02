@@ -81,6 +81,10 @@ public class JwtVerifier {
      * Un token emesso prima di questa modifica non ha il claim: torna null, e chi lo usa
      * deve gestirlo invece di dare per scontato che ci sia.
      */
+    public String getUsernameFromToken(String token) {
+        return extractClaim(token, claims -> claims.get("username", String.class));
+    }
+
     public String getNomeFromToken(String token) {
         return extractClaim(token, claims -> claims.get("nome", String.class));
     }

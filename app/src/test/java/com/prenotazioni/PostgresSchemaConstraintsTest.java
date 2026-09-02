@@ -6,6 +6,7 @@ import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
@@ -144,7 +145,7 @@ class PostgresSchemaConstraintsTest {
     private Prenotazione salva(Aula suAula, LocalDateTime inizio, LocalDateTime fine, StatoPrenotazione stato) {
         Prenotazione p = new Prenotazione();
         p.setAula(suAula);
-        p.setUtente(utente);
+        p.setUtente(istantaneaDi(utente));
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(stato);
@@ -360,5 +361,10 @@ class PostgresSchemaConstraintsTest {
                     .as("stato prenotazione %s deve essere ammesso", s.getValore())
                     .doesNotThrowAnyException();
         }
+    }
+
+    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
     }
 }

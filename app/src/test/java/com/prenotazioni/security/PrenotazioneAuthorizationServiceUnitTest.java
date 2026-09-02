@@ -3,6 +3,7 @@ package com.prenotazioni.security;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.service.PrenotazioneService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ class PrenotazioneAuthorizationServiceUnitTest {
         a.setId(1L);
         Prenotazione p = new Prenotazione();
         p.setId(5L);
-        p.setUtente(u);
+        p.setUtente(istantaneaDi(u));
         p.setAula(a);
         return p;
     }
@@ -49,27 +50,32 @@ class PrenotazioneAuthorizationServiceUnitTest {
         // scelta deliberata: non si maschera un 404 con un 403
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(null);
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "Mario Rossi", "user"))).isTrue();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();
     }
 
     @Test
     void allowsTheOwner() {
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "Mario Rossi", "user"))).isTrue();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();
     }
 
     @Test
     void deniesAnUnrelatedUser() {
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(99L, "altro@test.it", "Mario Rossi", "user"))).isFalse();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(99L, "altro@test.it", "m.rossi", "Mario Rossi", "user"))).isFalse();
     }
 
     @Test
     void allowsAnAdminOnSomeoneElsesBooking() {
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "Mario Rossi", "admin"))).isTrue();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin"))).isTrue();
+    }
+
+    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
     }
 }

@@ -59,8 +59,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             Long id = jwtVerifier.getUserIdFromToken(token);
             String ruolo = jwtVerifier.getRuoloFromToken(token);
             String nome = jwtVerifier.getNomeFromToken(token);
+            String username = jwtVerifier.getUsernameFromToken(token);
 
-            AppPrincipal principal = new AppPrincipal(id, email, nome, ruolo);
+            AppPrincipal principal = new AppPrincipal(id, email, username, nome, ruolo);
 
             // Il prefisso "ROLE_" atteso da hasRole(...) viene da Ruolo.toAuthority(), cosi'
             // non e' piu' ricostruito a mano qui. Un ruolo non riconosciuto non fa fallire la

@@ -62,14 +62,9 @@ public class PrenotazioneController {
     // Rimuove i dati personali del proprietario dagli elenchi visibili a tutti gli utenti autenticati
     // (mantiene solo id/username/nome, mai email/ruolo/date di accesso di un utente diverso dal chiamante)
     private Prenotazione sanitizeOwnerForListing(Prenotazione p) {
-        Utente owner = p.getUtente();
-        if (owner != null) {
-            Utente safeOwner = new Utente();
-            safeOwner.setId(owner.getId());
-            safeOwner.setUsername(owner.getUsername());
-            safeOwner.setNome(owner.getNome());
-            p.setUtente(safeOwner);
-        }
+        // Non c'e' piu' nulla da rimuovere: la prenotazione conserva solo id, username e
+        // nome, cioe' esattamente i campi che questo metodo ricopiava a mano. Email, ruolo
+        // e date di accesso non sono piu' nemmeno raggiungibili da qui.
         return p;
     }
 

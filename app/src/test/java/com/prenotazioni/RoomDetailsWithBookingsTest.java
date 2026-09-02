@@ -7,6 +7,7 @@ import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
@@ -123,7 +124,7 @@ class RoomDetailsWithBookingsTest {
                          LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         Prenotazione p = new Prenotazione();
         p.setAula(aulaRepository.findById(aulaId).orElseThrow());
-        p.setUtente(utente);
+        p.setUtente(istantaneaDi(utente));
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(stato);
@@ -320,5 +321,10 @@ class RoomDetailsWithBookingsTest {
         ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + aulaId);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         return (String) asMap(resp.getBody()).get("stato");
+    }
+
+    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
+    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
+        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
     }
 }
