@@ -97,14 +97,14 @@ public class AulaService {
         logger.debug("Validazioni superate, creazione aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    aula.getNome(), aula.getCapienza(), aula.getPiano(), aula.isVirtual());
 
-        try {
-            Aula savedAula = aulaRepository.save(aula);
-            logger.debug("FINE createAula - Aula salvata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
-            return savedAula;
-        } catch (Exception e) {
-            logger.error("FINE createAula - Errore durante il salvataggio dell'aula: {}", e.getMessage(), e);
-            return null;
-        }
+        // Nessun try/catch: un errore di salvataggio deve arrivare a GlobalExceptionHandler,
+        // che sa tradurlo. Prima veniva ingoiato e restituito come null, e il controller lo
+        // presentava come "verifica che il nome non sia gia' esistente" - una supposizione,
+        // falsa quando la causa era il database. Il caso concreto e' la violazione di
+        // aule.nome UNIQUE fra due creazioni concorrenti: ora e' un 409, non un 400.
+        Aula savedAula = aulaRepository.save(aula);
+        logger.debug("FINE createAula - Aula salvata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
+        return savedAula;
     }
 
     // Aggiorna un'aula esistente
@@ -150,14 +150,10 @@ public class AulaService {
         logger.debug("Validazioni superate, aggiornamento aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    aula.getNome(), aula.getCapienza(), aula.getPiano(), aula.isVirtual());
 
-        try {
-            Aula savedAula = aulaRepository.save(aula);
-            logger.debug("FINE updateAula - Aula aggiornata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
-            return savedAula;
-        } catch (Exception e) {
-            logger.error("FINE updateAula - Errore durante l'aggiornamento dell'aula: {}", e.getMessage(), e);
-            return null;
-        }
+        // Come in createAula: l'errore va lasciato salire fino al gestore globale.
+        Aula savedAula = aulaRepository.save(aula);
+        logger.debug("FINE updateAula - Aula aggiornata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
+        return savedAula;
     }
 
     // Elimina un'aula
@@ -170,14 +166,13 @@ public class AulaService {
             return false; // Aula non trovata
         }
 
-        try {
-            aulaRepository.deleteById(id);
-            logger.debug("FINE deleteAula - Aula eliminata con successo - ID: {}", id);
-            return true;
-        } catch (Exception e) {
-            logger.error("FINE deleteAula - Errore durante l'eliminazione dell'aula ID: {}, Errore: {}", id, e.getMessage(), e);
-            return false; // Errore durante l'eliminazione
-        }
+        // false significava due cose opposte: "aula inesistente" (sopra) e "cancellazione
+        // fallita" (qui). Ora significa solo la prima, e un errore vero sale al gestore.
+        // Il caso realistico e' una prenotazione che referenzia l'aula: e' un 409, e
+        // dirlo e' piu' utile che rispondere "aula non trovata" su un'aula che esiste.
+        aulaRepository.deleteById(id);
+        logger.debug("FINE deleteAula - Aula eliminata con successo - ID: {}", id);
+        return true;
     }
 
     // Filtra aule per piano
