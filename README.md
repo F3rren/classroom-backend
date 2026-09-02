@@ -59,12 +59,12 @@ Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log
 Verifica che funzioni:
 
 ```bash
-curl -i http://localhost:8080/api/rooms
+curl -i http://localhost:17102/api/rooms
 ```
 
 Attendersi **`401 Unauthorized`**: è la risposta corretta senza token, e prova che
 database, migrazioni e configurazione si sono risolti. Documentazione interattiva su
-<http://localhost:8080/swagger-ui.html> (attiva solo in `dev`).
+<http://localhost:17103/swagger-ui.html> (attiva solo in `dev`).
 
 ---
 
@@ -75,15 +75,28 @@ un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora 
 
 | Modulo | Porta | Database | Contenuto |
 |---|---|---|---|
-| `shared` | — | — | Comune a tutti i servizi: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
-| `notifica-service` | 8081 | `prenotazione_aule_notifiche` | Le notifiche |
-| `app` | 8080 | `prenotazione_aule` | Aule, prenotazioni, corsi, utenti |
+| `gateway` | **17102** | — | Punto di ingresso unico: instrada per prefisso |
+| `app` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi, utenti |
+| `notifica-service` | 17104 | `prenotazione_aule_notifiche` | Le notifiche |
+| `shared` | — | — | Comune a tutti: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
 
-Il servizio notifiche va avviato a parte:
+**Il frontend conosce solo la 17102.** Le porte crescono in sequenza a partire da lì, così
+aggiungere un servizio non obbliga a ripensare l'assegnazione (la 17105 è riservata al
+futuro `auth-service`). La 8080 è volutamente evitata: è troppo comune e collide con altri
+progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'ambiente
+(`GATEWAY_PORT`, `APP_PORT`, `NOTIFICA_PORT`) senza toccare codice.
+
+Servono tre processi, ognuno in un terminale:
 
 ```bash
-mvn spring-boot:run -pl notifica-service -am
+mvn spring-boot:run -pl app -am              # 17103
+mvn spring-boot:run -pl notifica-service -am # 17104
+mvn spring-boot:run -pl gateway -am          # 17102
 ```
+
+Il gateway non valida i token: instrada e basta. Ogni servizio verifica il JWT da sé, così
+resta protetto anche se raggiunto direttamente. Il gateway chiude però dall'esterno le
+rotte `/api/notifiche/interne/**`, che sono chiamate fra servizi.
 
 Prima del primo avvio serve il suo database (vuoto: lo schema lo crea Flyway):
 
@@ -106,7 +119,7 @@ verificare che il confine regga.
 | File | Contenuto |
 |---|---|
 | `application.properties` | chiavi valide ovunque |
-| `application-dev.properties` | database locale, porta 8080, DevTools, CORS su localhost |
+| `application-dev.properties` | database locale, porta 17103, DevTools, CORS su localhost |
 | `application-prod.properties` | valori da variabili d'ambiente, DevTools e Swagger disattivati |
 | `config/config.properties` | **solo segreti**, non versionato |
 

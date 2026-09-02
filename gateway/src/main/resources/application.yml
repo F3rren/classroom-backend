@@ -3,16 +3,23 @@
 #
 # Il frontend conosce questo indirizzo e nessun altro.
 #
-# PORTE: tutto e' parametrico e i default non cambiano nulla di cio' che gira oggi
-# (app resta sulla 8080, notifiche sulla 8081, il gateway sale sulla 8000). Per
-# mettere il gateway sulla 8080 e spostare app basta:
-#     GATEWAY_PORT=8080  APP_SERVICE_URL=http://localhost:8082
-#     e APP_PORT=8082 sul servizio app
-# Nessuna riga di codice da toccare.
+# PORTE. Il gateway occupa 17102, ed e' l'unica che il frontend deve conoscere. I
+# servizi prendono le successive, in modo che aggiungerne uno non richieda di
+# ripensare l'assegnazione:
+#
+#     17102  gateway            <-- il frontend parla solo con questa
+#     17103  app                (aule, prenotazioni, corsi, utenti)
+#     17104  notifica-service
+#     17105  auth-service       (riservata, non ancora esistente)
+#
+# La 8080 e' volutamente evitata: e' troppo comune e finisce per collidere con
+# altri progetti sulla stessa macchina.
+#
+# Ogni porta resta sovrascrivibile da variabile d'ambiente, senza toccare codice.
 # ============================================================================
 
 server:
-  port: ${GATEWAY_PORT:8000}
+  port: ${GATEWAY_PORT:17102}
 
 spring:
   application:
@@ -51,7 +58,7 @@ spring:
             - Path=/api/notifiche/interne/**
 
         - id: notifiche
-          uri: ${NOTIFICA_SERVICE_URL:http://localhost:8081}
+          uri: ${NOTIFICA_SERVICE_URL:http://localhost:17104}
           predicates:
             - Path=/api/notifiche/**
 
@@ -59,7 +66,7 @@ spring:
         # /api/auth/** e /api/me diventeranno una voce a se' e questa restera'
         # a coprire aule, prenotazioni e amministrazione.
         - id: applicazione
-          uri: ${APP_SERVICE_URL:http://localhost:8080}
+          uri: ${APP_SERVICE_URL:http://localhost:17103}
           predicates:
             - Path=/api/auth/**,/api/me/**,/api/rooms/**,/api/prenotazioni/**,/api/admin/**
 

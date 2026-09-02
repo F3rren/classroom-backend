@@ -37,7 +37,7 @@ public class NotificaClient {
     private final HttpServletRequest richiestaCorrente;
 
     NotificaClient(RestClient.Builder builder,
-                   @Value("${prenotazioni.notifica-service.url:http://localhost:8081}") String baseUrl,
+                   @Value("${prenotazioni.notifica-service.url:http://localhost:17104}") String baseUrl,
                    HttpServletRequest richiestaCorrente) {
         this.restClient = builder.baseUrl(baseUrl).build();
         this.richiestaCorrente = richiestaCorrente;
