@@ -18,6 +18,10 @@ import java.util.Locale;
  * Il frontend legge anche quei valori maiuscoli, quindi unificarli sarebbe una
  * modifica di contratto, non un refactor.
  *
+ * C'e' infine {@link DisponibilitaAula}, il campo "status" di RoomDetailsResponse:
+ * minuscolo come questo enum ma con PRENOTATA e senza OCCUPATA, quindi nemmeno
+ * quello e' sostituibile con StatoAula.
+ *
  * Come per StatoPrenotazione, il valore su disco e nel JSON resta minuscolo:
  * lo impone il CHECK constraint aula_stato_check e il bundle compilato del frontend.
  */

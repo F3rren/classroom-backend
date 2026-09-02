@@ -5,11 +5,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * Richiesta di login. Solo @NotBlank qui: il formato email e la lunghezza minima
- * password restano controlli manuali nel controller, ESEGUITI DOPO il rate limiter -
- * spostarli in Bean Validation li farebbe girare prima, indebolendo la protezione
- * anti brute-force (un attaccante potrebbe far fallire la validazione senza mai
- * consumare un tentativo dal rate limiter).
+ * Richiesta di login.
+ *
+ * ATTENZIONE: le @NotBlank qui sotto NON vengono applicate a runtime. AuthController.login
+ * non annota il parametro con @Valid, quindi Bean Validation non gira affatto su questo DTO:
+ * email e password vuote sono respinte dai controlli manuali dentro il controller.
+ *
+ * E' voluto e non va "sistemato" aggiungendo @Valid. Quei controlli devono girare DOPO il
+ * rate limiter: Bean Validation li anticiperebbe, e un attaccante potrebbe far fallire la
+ * validazione all'infinito senza mai consumare un tentativo dal rate limiter.
+ *
+ * Le annotazioni restano perche' springdoc le legge per generare lo schema OpenAPI:
+ * verificato su /v3/api-docs, senza di esse LoginRequest.required perderebbe entrambi
+ * i campi e la documentazione li mostrerebbe come facoltativi.
  */
 @Data
 @Schema(description = "Credenziali di accesso")
