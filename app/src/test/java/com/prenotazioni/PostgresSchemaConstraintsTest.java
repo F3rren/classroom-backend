@@ -3,7 +3,6 @@ package com.prenotazioni;
 import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
-import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.ProprietarioPrenotazione;
@@ -149,11 +148,14 @@ class PostgresSchemaConstraintsTest {
     // ==================== 1. le migrazioni sono state applicate davvero ====================
 
     @Test
-    void flywayHaApplicatoV1EV2SenzaBaseline() {
+    void flywayHaApplicatoTutteLeMigrazioniSenzaBaseline() {
         List<String> versioni = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
                 String.class);
-        assertThat(versioni).containsExactly("1", "2");
+        // V3 e V5 cedono notifiche e utenti ai servizi dedicati, V4 denormalizza il
+        // proprietario della prenotazione. Se una mancasse, lo schema qui sarebbe
+        // quello del monolite e i test sotto proverebbero il sistema sbagliato.
+        assertThat(versioni).containsExactly("1", "2", "3", "4", "5");
 
         // Nessuna riga BASELINE: e' questo che prova che la V1 e' stata ESEGUITA
         // e non solo marcata come gia' applicata, saltando il vincolo di esclusione.
@@ -181,7 +183,9 @@ class PostgresSchemaConstraintsTest {
                         + "WHERE c.contype IN ('c','x') AND t.relname IN ('utenti','aule','prenotazioni')",
                 String.class);
         assertThat(vincoli).containsExactlyInAnyOrder(
-                "prenotazioni_no_overlap", "utente_ruolo_check", "aula_stato_check", "prenotazione_stato_check");
+                // utente_ruolo_check non compare piu': vive nel database di auth-service,
+                // insieme alla tabella che vincola. Lo verifica un test omologo la'.
+                "prenotazioni_no_overlap", "aula_stato_check", "prenotazione_stato_check");
     }
 
     @Test
@@ -293,14 +297,8 @@ class PostgresSchemaConstraintsTest {
     // ==================== 3. i CHECK constraint ====================
     // Inserimenti raw: gli enum non possono produrre valori fuori dominio.
 
-    @Test
-    void ilCheckRifiutaUnRuoloFuoriDominio() {
-        assertThatThrownBy(() -> jdbc.update(
-                "INSERT INTO utenti (username, password, nome, email, ruolo, data_registrazione) "
-                        + "VALUES ('fuori', 'x', 'Fuori Dominio', 'fuori@test.it', 'SUPERUSER', now())"))
-                .isInstanceOf(DataIntegrityViolationException.class)
-                .hasMessageContaining("utente_ruolo_check");
-    }
+    // Il CHECK sul ruolo e' verificato in auth-service, che possiede la tabella utenti:
+    // vedi VincoliUtentiTest. Qui la tabella non esiste piu' (migrazione V5).
 
     @Test
     void ilCheckRifiutaUnoStatoAulaFuoriDominio() {
@@ -327,14 +325,6 @@ class PostgresSchemaConstraintsTest {
     void tuttiIValoriDegliEnumSonoAmmessiDaiCheck() {
         // L'inverso dei tre test sopra, ed e' quello che intercetta la regressione
         // realistica: aggiungere una costante a un enum e dimenticare la migrazione.
-        for (Ruolo r : Ruolo.values()) {
-            assertThatCode(() -> jdbc.update(
-                    "INSERT INTO utenti (username, password, nome, email, ruolo, data_registrazione) "
-                            + "VALUES (?, 'x', 'N', ?, ?, now())",
-                    "u-" + r.getValore(), r.getValore() + "@test.it", r.getValore()))
-                    .as("ruolo %s deve essere ammesso", r.getValore())
-                    .doesNotThrowAnyException();
-        }
 
         for (StatoAula s : StatoAula.values()) {
             assertThatCode(() -> jdbc.update(

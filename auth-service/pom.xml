@@ -98,6 +98,20 @@
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Il CHECK sul ruolo e' un vincolo PostgreSQL: H2 lo ignorerebbe, quindi
+             quel test deve girare su un database vero come gia' fa quello sui vincoli
+             delle prenotazioni. Versione gestita da spring-boot-dependencies. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- TestJwt: permette ai test di firmarsi i propri token invece di dover
              creare un utente e passare da auth-service. -->
         <dependency>
