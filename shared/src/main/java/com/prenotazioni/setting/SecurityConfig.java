@@ -27,6 +27,20 @@ public class SecurityConfig {
 
     private final ApiAccessDeniedHandler apiAccessDeniedHandler;
 
+    /**
+     * Percorsi raggiungibili senza token, separati da virgola.
+     *
+     * E' l'unica parte di questa configurazione che cambia da servizio a servizio, ed e'
+     * per questo una property invece che una lista scritta nel codice: la catena di
+     * sicurezza, la CORS e i due handler di errore sono identici ovunque, e duplicarli in
+     * ogni servizio significherebbe che prima o poi divergono.
+     *
+     * Il default copre solo la documentazione OpenAPI: un servizio che non dichiara nulla
+     * resta completamente protetto, che e' il default giusto da sbagliare.
+     */
+    @Value("${prenotazioni.security.public-paths:/v3/api-docs,/v3/api-docs/**,/swagger-ui/**,/swagger-ui.html}")
+    private String publicPaths;
+
     @Value("${prenotazioni.cors.allowed-origins}")
     private String allowedOrigins;
 
@@ -67,13 +81,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Per le preflight requests
-                        .requestMatchers(
-                                "/api/auth/login",
-                                "/auth/login",
-                                "/v3/api-docs",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html")
+                        .requestMatchers(splitConfigList(publicPaths).toArray(new String[0]))
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

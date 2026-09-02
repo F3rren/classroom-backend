@@ -68,6 +68,7 @@ jobs:
           name: jacoco-report
           path: |
             shared/target/site/jacoco/
+            notifica-service/target/site/jacoco/
             app/target/site/jacoco/
           if-no-files-found: warn
 
@@ -78,4 +79,5 @@ jobs:
           name: surefire-reports
           path: |
             shared/target/surefire-reports/
+            notifica-service/target/surefire-reports/
             app/target/surefire-reports/

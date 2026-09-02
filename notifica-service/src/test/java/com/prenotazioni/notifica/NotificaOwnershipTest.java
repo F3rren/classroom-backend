@@ -1,11 +1,9 @@
-package com.prenotazioni;
+package com.prenotazioni.notifica;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.prenotazioni.model.Notifica;
-import com.prenotazioni.model.Utente;
-import com.prenotazioni.model.Ruolo;
-import com.prenotazioni.repository.IUtenteRepository;
-import com.prenotazioni.repository.NotificaRepository;
+import com.prenotazioni.notifica.model.Notifica;
+import com.prenotazioni.notifica.repository.NotificaRepository;
+import com.prenotazioni.testsupport.TestJwt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,40 +14,39 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Regression suite per la Fase 3 del refactor Swagger: MeController e NotificaController
- * migrati ad AppPrincipal/@AuthenticationPrincipal, senza piu' query findByEmail ripetute.
+ * Chi vede e chi puo' modificare una notifica.
+ *
+ * Questi cinque casi stavano in MeAndNotificaControllerTest nel monolite, insieme a due
+ * test su /api/me. Erano nello stesso file perche' condividevano la fixture di utenti e
+ * il login; separati i domini, quella ragione e' scomparsa e restano due cose distinte:
+ * il profilo appartiene al dominio utenti, l'isolamento delle notifiche a questo servizio.
+ *
+ * I token sono firmati da TestJwt: qui non esiste una tabella utenti, e non serve.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class MeAndNotificaControllerTest {
+class NotificaOwnershipTest {
+
+    private static final Long OWNER_ID = 10L;
+    private static final Long OTHER_ID = 20L;
 
     @Autowired
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private NotificaRepository notificaRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private Utente owner;
-    private Utente other;
     private String tokenOwner;
     private String tokenOther;
     private Long notificaIdDiOwner;
@@ -57,40 +54,13 @@ class MeAndNotificaControllerTest {
     @BeforeEach
     void setUp() {
         notificaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        owner = new Utente();
-        owner.setEmail("me-owner@test.it");
-        owner.setUsername("me-owner");
-        owner.setPassword(passwordEncoder.encode("owner-password"));
-        owner.setNome("Me Owner");
-        owner.setRuolo(Ruolo.USER);
-        owner.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(owner);
-
-        other = new Utente();
-        other.setEmail("me-other@test.it");
-        other.setUsername("me-other");
-        other.setPassword(passwordEncoder.encode("other-password"));
-        other.setNome("Me Other");
-        other.setRuolo(Ruolo.USER);
-        other.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(other);
-
-        Notifica notifica = new Notifica(owner, "Titolo", "Messaggio di test", "INFO");
+        Notifica notifica = new Notifica(OWNER_ID, "Titolo", "Messaggio di test", "INFO");
         notificaRepository.save(notifica);
         notificaIdDiOwner = notifica.getId();
 
-        tokenOwner = login("me-owner@test.it", "owner-password");
-        tokenOther = login("me-other@test.it", "other-password");
-    }
-
-    @SuppressWarnings("unchecked")
-    private String login(String email, String password) {
-        Map<String, String> body = Map.of("email", email, "password", password);
-        ResponseEntity<Map> resp = rest.postForEntity("/api/auth/login", body, Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
+        tokenOwner = TestJwt.perUtente(OWNER_ID, "me-owner@test.it");
+        tokenOther = TestJwt.perUtente(OTHER_ID, "me-other@test.it");
     }
 
     private HttpHeaders bearer(String token) {
@@ -103,33 +73,6 @@ class MeAndNotificaControllerTest {
     private Map<String, Object> asMap(String json) throws Exception {
         return objectMapper.readValue(json, Map.class);
     }
-
-    // ==================== MeController ====================
-
-    @Test
-    void getMeReturnsOwnProfileWithoutPassword() throws Exception {
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/me", HttpMethod.GET, new HttpEntity<>(bearer(tokenOwner)), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = asMap(resp.getBody());
-        assertThat(body.get("success")).isEqualTo(true);
-        Map<String, Object> data = (Map<String, Object>) body.get("data");
-        assertThat(data.get("email")).isEqualTo("me-owner@test.it");
-        assertThat(data.get("username")).isEqualTo("me-owner");
-        assertThat(data).doesNotContainKey("password");
-        assertThat(resp.getBody()).doesNotContain("owner-password");
-    }
-
-    @Test
-    void getMeWithoutTokenReturns401() {
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/me", HttpMethod.GET, HttpEntity.EMPTY, String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    }
-
-    // ==================== NotificaController ====================
 
     @Test
     void ownerSeesTheirOwnNotifications() {
@@ -178,5 +121,18 @@ class MeAndNotificaControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(asMap(resp.getBody()).get("count")).isEqualTo(1);
+    }
+
+    @Test
+    void aTokenSignedWithAnotherSecretIsRejected() {
+        // Prova diretta del meccanismo su cui poggia l'intera separazione: questo servizio
+        // accetta un token solo se la firma torna col segreto condiviso, senza consultare
+        // nessuno. Un token altrimenti ben formato ma firmato altrove non passa.
+        String tokenFasullo = tokenOwner.substring(0, tokenOwner.lastIndexOf('.')) + ".firmaSbagliata";
+
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/notifiche", HttpMethod.GET, new HttpEntity<>(bearer(tokenFasullo)), String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }

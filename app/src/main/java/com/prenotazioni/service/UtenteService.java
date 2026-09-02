@@ -2,7 +2,7 @@ package com.prenotazioni.service;
 
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IUtenteRepository;
-import com.prenotazioni.repository.NotificaRepository;
+import com.prenotazioni.client.NotificaClient;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,13 +16,13 @@ public class UtenteService {
 
     private final IUtenteRepository utenteRepository;
     
-    private final NotificaRepository notificaRepository;
+    private final NotificaClient notificaClient;
     
     private final IPrenotazioneRepository prenotazioneRepository;
 
-    UtenteService(IUtenteRepository utenteRepository, NotificaRepository notificaRepository, IPrenotazioneRepository prenotazioneRepository) {
+    UtenteService(IUtenteRepository utenteRepository, NotificaClient notificaClient, IPrenotazioneRepository prenotazioneRepository) {
         this.utenteRepository = utenteRepository;
-        this.notificaRepository = notificaRepository;
+        this.notificaClient = notificaClient;
         this.prenotazioneRepository = prenotazioneRepository;
     }
 
@@ -42,7 +42,7 @@ public class UtenteService {
         logger.debug("INIZIO - Eliminazione utente e dati associati per ID: {}", id);
         // Prima elimina le notifiche dell'utente
         logger.info("Eliminazione notifiche per utente ID: {}", id);
-        notificaRepository.deleteByUtenteId(id);
+        notificaClient.eliminaNotificheUtente(id);
         
         // Poi elimina le prenotazioni dell'utente
         logger.info("Eliminazione prenotazioni per utente ID: {}", id);

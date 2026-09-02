@@ -10,10 +10,11 @@ import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
-import com.prenotazioni.repository.NotificaRepository;
+import com.prenotazioni.client.NotificaClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
@@ -30,6 +31,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 
 /**
  * Copre gli endpoint admin finora senza test: gestione aule (GET/PUT/DELETE su
@@ -57,7 +60,14 @@ class AdminManagementTest {
     private IPrenotazioneRepository prenotazioneRepository;
 
     @Autowired
-    private NotificaRepository notificaRepository;
+    /**
+     * La notifica non e' piu' una riga scritta in questo processo ma una chiamata a
+     * notifica-service. Il test conserva il proprio intento verificando che la chiamata
+     * parta: e' il confine giusto da controllare da qui, e non richiede che l'altro
+     * servizio sia in esecuzione.
+     */
+    @MockBean
+    private NotificaClient notificaClient;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -72,7 +82,6 @@ class AdminManagementTest {
 
     @BeforeEach
     void setUp() {
-        notificaRepository.deleteAll();
         prenotazioneRepository.deleteAll();
         aulaRepository.deleteAll();
         utenteRepository.deleteAll();
@@ -269,7 +278,7 @@ class AdminManagementTest {
         // la prenotazione risulta annullata e il proprietario riceve una notifica
         Prenotazione dopo = prenotazioneRepository.findById(prenotazioneId).orElseThrow();
         assertThat(dopo.getStato()).isEqualTo(StatoPrenotazione.ANNULLATA);
-        assertThat(notificaRepository.findAll()).isNotEmpty();
+        verify(notificaClient).notificaCancellazione(any());
     }
 
     @Test
@@ -300,7 +309,7 @@ class AdminManagementTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         // la notifica deve esistere davvero, non essere persa da un catch silenzioso
-        assertThat(notificaRepository.findAll()).isNotEmpty();
+        verify(notificaClient).notificaCancellazione(any());
     }
 
     @Test

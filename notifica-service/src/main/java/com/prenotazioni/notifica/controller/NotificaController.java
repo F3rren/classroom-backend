@@ -1,10 +1,10 @@
-package com.prenotazioni.controller;
+package com.prenotazioni.notifica.controller;
 
 import com.prenotazioni.dto.CountResponse;
 import com.prenotazioni.dto.MessageResponse;
-import com.prenotazioni.model.Notifica;
+import com.prenotazioni.notifica.model.Notifica;
 import com.prenotazioni.security.AppPrincipal;
-import com.prenotazioni.service.NotificaService;
+import com.prenotazioni.notifica.service.NotificaService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -84,7 +84,7 @@ public class NotificaController {
         }
 
         Notifica notifica = notificaOpt.get();
-        if (!notifica.getUtente().getId().equals(principal.id())) {
+        if (!notifica.getUtenteId().equals(principal.id())) {
             logger.warn("UtenteId={} non autorizzato a eliminare la notifica {}", principal.id(), id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

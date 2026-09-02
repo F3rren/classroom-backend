@@ -1,14 +1,16 @@
-package com.prenotazioni.service;
+package com.prenotazioni.notifica.service;
 
-import com.prenotazioni.model.Notifica;
-import com.prenotazioni.model.Utente;
-import com.prenotazioni.repository.NotificaRepository;
+import com.prenotazioni.notifica.model.Notifica;
+import com.prenotazioni.notifica.repository.NotificaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,10 +46,10 @@ public class NotificaService {
         return count;
     }
 
-    public Notifica createNotifica(Utente utente, String tipo, String titolo, String messaggio) {
-        logger.debug("INIZIO - Creazione notifica per utente ID: {}, Tipo: {}, Titolo: {}", utente.getId(), tipo, titolo);
+    public Notifica createNotifica(Long utenteId, String tipo, String titolo, String messaggio) {
+        logger.debug("INIZIO - Creazione notifica per utente ID: {}, Tipo: {}, Titolo: {}", utenteId, tipo, titolo);
         Notifica notifica = new Notifica();
-        notifica.setUtente(utente);
+        notifica.setUtenteId(utenteId);
         notifica.setTipo(tipo);
         notifica.setTitolo(titolo);
         notifica.setMessaggio(messaggio);
@@ -59,10 +61,10 @@ public class NotificaService {
         return savedNotifica;
     }
 
-    public Notifica createNotificaCancellazionePrenotazione(Utente utente, Long prenotazioneId, 
+    public Notifica createNotificaCancellazionePrenotazione(Long utenteId, Long prenotazioneId, 
             String nomeStanza, String adminNome, String dataPrenotazione, String oraInizio, String oraFine, String motivo) {
         
-        logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", utente.getId(), prenotazioneId);
+        logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", utenteId, prenotazioneId);
 
         String titolo = "Cancellazione Prenotazione: " + nomeStanza;
         String messaggio;
@@ -82,7 +84,17 @@ public class NotificaService {
             );
         }
         
-        Notifica notifica = createNotifica(utente, "cancellazione", titolo, messaggio);
+        Notifica notifica = createNotifica(utenteId, "cancellazione", titolo, messaggio);
+
+        // Queste quattro colonne esistevano gia' sull'entita' ma NESSUNO le valorizzava:
+        // erano permanentemente null da prima della separazione in servizi. Sono le uniche
+        // che permettono al frontend di collegare la notifica alla prenotazione senza
+        // interpretare il testo del messaggio, quindi vanno riempite.
+        notifica.setPrenotazioneId(prenotazioneId);
+        notifica.setNomeStanza(nomeStanza);
+        notifica.setAdminNome(adminNome);
+        notifica.setDataPrenotazione(componiIstante(dataPrenotazione, oraInizio));
+        notifica = notificaRepository.save(notifica);
         logger.debug("FINE - Notifica di cancellazione creata con ID: {}", notifica.getId());
         return notifica;
     }
@@ -105,7 +117,7 @@ public class NotificaService {
         if (notificaOpt.isPresent()) {
             Notifica notifica = notificaOpt.get();
             // Verifica che la notifica appartenga all'utente corretto
-            if (notifica.getUtente().getId().equals(utenteId)) {
+            if (notifica.getUtenteId().equals(utenteId)) {
                 notifica.setLetta(true);
                 Notifica updatedNotifica = notificaRepository.save(notifica);
                 logger.debug("FINE - Notifica ID: {} segnata come letta.", notificaId);
@@ -139,5 +151,35 @@ public class NotificaService {
         logger.debug("INIZIO - Eliminazione notifiche lette per utente ID: {}", utenteId);
         notificaRepository.deleteByUtenteIdAndLettaTrue(utenteId);
         logger.debug("FINE - Eliminazione notifiche lette completata per utente ID: {}", utenteId);
+    }
+
+    /**
+     * Elimina tutte le notifiche di un utente, chiamato quando l'utente viene eliminato.
+     *
+     * Prima era una riga dentro la transazione di UtenteService, che cancellava notifiche,
+     * prenotazioni e utente insieme. Ora e' un'operazione a se': se fallisce, l'utente puo'
+     * risultare eliminato mentre le sue notifiche restano.
+     */
+    @Transactional
+    public void deleteAllByUtente(Long utenteId) {
+        logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", utenteId);
+        notificaRepository.deleteByUtenteId(utenteId);
+    }
+
+    /**
+     * Ricompone data e ora in un istante. Restituisce null invece di sollevare se il
+     * formato non e' quello atteso: una notifica con un campo in meno resta utile, una
+     * cancellazione che fallisce per un timestamp malformato no.
+     */
+    private static LocalDateTime componiIstante(String data, String ora) {
+        if (data == null || ora == null) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(data).atTime(LocalTime.parse(ora));
+        } catch (DateTimeParseException e) {
+            logger.warn("Data prenotazione non interpretabile: data={} ora={}", data, ora);
+            return null;
+        }
     }
 }

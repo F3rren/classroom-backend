@@ -10,7 +10,6 @@ import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
 import com.prenotazioni.repository.IUtenteRepository;
-import com.prenotazioni.repository.NotificaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -97,7 +96,6 @@ class PostgresSchemaConstraintsTest {
     @Autowired private IAulaRepository aulaRepository;
     @Autowired private IPrenotazioneRepository prenotazioneRepository;
     @Autowired private ICorsoRepository corsoRepository;
-    @Autowired private NotificaRepository notificaRepository;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private Environment env;
 
@@ -115,7 +113,6 @@ class PostgresSchemaConstraintsTest {
     void setUp() {
         // Qui lo schema e' creato una volta da Flyway e non viene mai ricreato,
         // quindi l'ordine di cancellazione deve rispettare le foreign key.
-        notificaRepository.deleteAll();
         prenotazioneRepository.deleteAll();
         corsoRepository.deleteAll();
         aulaRepository.deleteAll();

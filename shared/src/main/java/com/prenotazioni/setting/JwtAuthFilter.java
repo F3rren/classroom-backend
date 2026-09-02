@@ -2,7 +2,7 @@ package com.prenotazioni.setting;
 
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.security.AppPrincipal;
-import com.prenotazioni.service.JwtService;
+import com.prenotazioni.security.JwtVerifier;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,10 +24,10 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
     
-    private final JwtService jwtService;
+    private final JwtVerifier jwtVerifier;
 
-    JwtAuthFilter(JwtService jwtService) {
-        this.jwtService = jwtService;
+    JwtAuthFilter(JwtVerifier jwtVerifier) {
+        this.jwtVerifier = jwtVerifier;
     }
 
     @Override
@@ -54,10 +54,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
         }
-        if (token != null && jwtService.validateToken(token)) {
-            String email = jwtService.getEmailFromToken(token);
-            Long id = jwtService.getUserIdFromToken(token);
-            String ruolo = jwtService.getRuoloFromToken(token);
+        if (token != null && jwtVerifier.validateToken(token)) {
+            String email = jwtVerifier.getEmailFromToken(token);
+            Long id = jwtVerifier.getUserIdFromToken(token);
+            String ruolo = jwtVerifier.getRuoloFromToken(token);
 
             AppPrincipal principal = new AppPrincipal(id, email, ruolo);
 

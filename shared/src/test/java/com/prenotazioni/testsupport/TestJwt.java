@@ -1,0 +1,66 @@
+package com.prenotazioni.testsupport;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+
+/**
+ * Firma token di prova, senza che esista un utente ne' un servizio di autenticazione.
+ *
+ * E' cio' che rende sostenibile la separazione in servizi sul fronte dei test. Prima ogni
+ * classe di integrazione creava un utente vero e chiamava /api/auth/login solo per
+ * ottenere un token: una dipendenza dal dominio utenti che non c'entrava nulla con cio'
+ * che il test voleva verificare. Otto classi su dieci attraversavano tre o quattro domini
+ * per questo motivo.
+ *
+ * Funziona perche' la validazione e' offline: JwtVerifier controlla la firma e legge i
+ * claim, senza mai consultare un database. Un token firmato qui con lo stesso segreto e'
+ * indistinguibile da uno emesso da auth-service.
+ *
+ * Vive nei sorgenti di test di shared e viene pubblicato come test-jar, cosi' gli altri
+ * moduli lo usano senza che finisca nell'artefatto di produzione.
+ */
+public final class TestJwt {
+
+    /** Deve coincidere con jwt.secret dei profili di test. */
+    public static final String SEGRETO_DI_TEST = "dGVzdC1zZWNyZXQtcGVyLWktdGVzdC1kaS1pbnRlZ3JhemlvbmUtMDAxMg";
+
+    private static final long DURATA_MS = 1000L * 60 * 60;
+
+    private TestJwt() {
+    }
+
+    /** Token per un utente qualunque. */
+    public static String perUtente(Long id, String email) {
+        return firma(id, email, "user");
+    }
+
+    /** Token per un amministratore. */
+    public static String perAdmin(Long id, String email) {
+        return firma(id, email, "admin");
+    }
+
+    /** Token gia' scaduto, per verificare che venga rifiutato. */
+    public static String scaduto(Long id, String email) {
+        return costruisci(id, email, "user", new Date(System.currentTimeMillis() - DURATA_MS));
+    }
+
+    private static String firma(Long id, String email, String ruolo) {
+        return costruisci(id, email, ruolo, new Date(System.currentTimeMillis() + DURATA_MS));
+    }
+
+    private static String costruisci(Long id, String email, String ruolo, Date scadenza) {
+        SecretKey chiave = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(SEGRETO_DI_TEST));
+        return Jwts.builder()
+                .subject(email)
+                .claim("id", id)
+                .claim("ruolo", ruolo)
+                .issuedAt(new Date())
+                .expiration(scadenza)
+                .signWith(chiave)
+                .compact();
+    }
+}

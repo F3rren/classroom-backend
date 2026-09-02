@@ -73,10 +73,27 @@ database, migrazioni e configurazione si sono risolti. Documentazione interattiv
 Il progetto e' un build Maven multi-modulo. E' il primo passo della scomposizione verso
 un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora uno solo.
 
-| Modulo | Contenuto |
-|---|---|
-| `shared` | Codice comune a tutti i futuri servizi: `ApiEnvelope`, `GlobalExceptionHandler`, le risposte 401/403, `AppPrincipal`, `Ruolo`, utility |
-| `app` | L'applicazione: aule, prenotazioni, utenti, notifiche |
+| Modulo | Porta | Database | Contenuto |
+|---|---|---|---|
+| `shared` | — | — | Comune a tutti i servizi: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
+| `notifica-service` | 8081 | `prenotazione_aule_notifiche` | Le notifiche |
+| `app` | 8080 | `prenotazione_aule` | Aule, prenotazioni, corsi, utenti |
+
+Il servizio notifiche va avviato a parte:
+
+```bash
+mvn spring-boot:run -pl notifica-service -am
+```
+
+Prima del primo avvio serve il suo database (vuoto: lo schema lo crea Flyway):
+
+```sql
+CREATE DATABASE prenotazione_aule_notifiche;
+```
+
+`jwt.secret` in `config/config.properties` deve essere lo stesso per entrambi i servizi:
+e' cio' che permette a ognuno di validare i token da solo, senza chiamare gli altri. E'
+anche il motivo per cui i test possono firmarsi i propri token invece di creare un utente.
 
 `shared` e' una libreria e non viene ripacchettata come jar eseguibile. Ci entra solo cio'
 la cui chiusura transitiva non tocca il dominio: e' il compilatore, non una convenzione, a

@@ -24,6 +24,7 @@
     -->
     <modules>
         <module>shared</module>
+        <module>notifica-service</module>
         <module>app</module>
     </modules>
 

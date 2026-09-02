@@ -1,6 +1,5 @@
 package com.prenotazioni.service;
 
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -13,10 +12,12 @@ import org.slf4j.LoggerFactory;
 import jakarta.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    // Emette i token e basta: la verifica vive in shared/JwtVerifier, perche' la fanno
+    // tutti i servizi mentre firmare tocca solo a chi possiede la tabella utenti.
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
     @Value("${jwt.secret}")
@@ -41,43 +42,5 @@ public class JwtService {
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(key)
                 .compact();
-    }
-
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            logger.warn("Validazione token fallita: {}", e.getMessage());
-            return false;
-        }
-    }
-
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    public String getEmailFromToken(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    public String getRuoloFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("ruolo", String.class));
-    }
-
-    public Long getUserIdFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("id", Long.class));
     }
 }
