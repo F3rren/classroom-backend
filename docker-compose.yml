@@ -80,6 +80,14 @@ services:
     depends_on:
       db-prenotazioni: *attesa-db
     environment:
+      # In container serve il profilo prod, ed e' una necessita' non una preferenza:
+      # application-dev.properties ha l'URL del database scritto su localhost, quindi
+      # con il profilo predefinito DB_HOST verrebbe ignorato e il servizio morirebbe
+      # al primo tentativo di connessione. Solo prod legge le variabili d'ambiente.
+      SPRING_PROFILES_ACTIVE: prod
+      # prod pretende questa variabile senza default, per non spedire in produzione
+      # le origini di localhost: qui va quindi passata esplicitamente.
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
       DB_HOST: db-prenotazioni
       DB_NAME: prenotazione_aule
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}

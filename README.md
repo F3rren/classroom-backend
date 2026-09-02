@@ -96,9 +96,14 @@ Alza tre PostgreSQL (uno per servizio), i quattro servizi e pubblica **solo la 1
 Gli altri si parlano sulla rete interna e non sono raggiungibili da fuori: le rotte
 `/interne/` diventano così irraggiungibili per costruzione, non solo per regola del gateway.
 
-> **Non ancora provato.** Il `Dockerfile` e il `docker-compose.yml` sono stati scritti e
-> validati come sintassi, ma non eseguiti: sulla macchina di sviluppo Docker non era
-> avviato. Il primo `docker compose up` è anche il primo collaudo.
+Provato: le quattro immagini si costruiscono, lo stack sale e il giro completo (login →
+creazione aula → notifiche) passa dal gateway. Serve comunque inserire a mano il primo
+admin nel database utenti, per la ragione spiegata più sotto.
+
+> Dentro i container `app` gira con il profilo **`prod`**, e non è una preferenza:
+> `application-dev.properties` ha l'URL del database scritto su `localhost`, quindi con il
+> profilo predefinito `DB_HOST` verrebbe ignorato e il servizio morirebbe alla prima
+> connessione. Solo `prod` legge le variabili d'ambiente.
 
 ### Senza Docker
 
