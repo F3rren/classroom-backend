@@ -76,13 +76,13 @@ un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora 
 | Modulo | Porta | Database | Contenuto |
 |---|---|---|---|
 | `gateway` | **17102** | — | Punto di ingresso unico: instrada per prefisso |
-| `app` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi, utenti |
+| `app` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi |
+| `auth-service` | 17105 | `prenotazione_aule_utenti` | Utenti, login, amministrazione utenti |
 | `notifica-service` | 17104 | `prenotazione_aule_notifiche` | Le notifiche |
 | `shared` | — | — | Comune a tutti: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
 
 **Il frontend conosce solo la 17102.** Le porte crescono in sequenza a partire da lì, così
-aggiungere un servizio non obbliga a ripensare l'assegnazione (la 17105 è riservata al
-futuro `auth-service`). La 8080 è volutamente evitata: è troppo comune e collide con altri
+aggiungere un servizio non obbliga a ripensare l'assegnazione (il prossimo servizio prenderà la 17106). La 8080 è volutamente evitata: è troppo comune e collide con altri
 progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'ambiente
 (`GATEWAY_PORT`, `APP_PORT`, `NOTIFICA_PORT`) senza toccare codice.
 
@@ -90,6 +90,7 @@ Servono tre processi, ognuno in un terminale:
 
 ```bash
 mvn spring-boot:run -pl app -am              # 17103
+mvn spring-boot:run -pl auth-service -am     # 17105
 mvn spring-boot:run -pl notifica-service -am # 17104
 mvn spring-boot:run -pl gateway -am          # 17102
 ```
@@ -139,6 +140,15 @@ di pubblicare in produzione le origini di localhost. In `prod` Swagger è disatt
 perché lo schema dell'API è servito su percorsi pubblici.
 
 ---
+
+## Il primo amministratore
+
+Su un database utenti vuoto **non c'è modo di creare il primo admin dalle API**:
+`/api/admin/register` richiede già un token con ruolo `ADMIN`. Non è una conseguenza della
+separazione — il monolite aveva lo stesso vincolo — ma su database nuovi si incontra subito.
+
+Va inserito a mano nel database `prenotazione_aule_utenti`, dopo che Flyway ha creato lo
+schema al primo avvio di `auth-service`, con una password già cifrata con BCrypt.
 
 ## Schema del database
 
