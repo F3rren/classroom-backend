@@ -48,8 +48,10 @@ openssl rand -base64 48
 ## 3. Avviare
 
 ```bash
-mvn spring-boot:run
+mvn spring-boot:run -pl app -am
 ```
+
+`-pl app` sceglie il modulo applicativo, `-am` costruisce prima `shared` da cui dipende.
 
 Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log:
 `Successfully applied 2 migrations`).
@@ -63,6 +65,22 @@ curl -i http://localhost:8080/api/rooms
 Attendersi **`401 Unauthorized`**: è la risposta corretta senza token, e prova che
 database, migrazioni e configurazione si sono risolti. Documentazione interattiva su
 <http://localhost:8080/swagger-ui.html> (attiva solo in `dev`).
+
+---
+
+## Struttura del progetto
+
+Il progetto e' un build Maven multi-modulo. E' il primo passo della scomposizione verso
+un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora uno solo.
+
+| Modulo | Contenuto |
+|---|---|
+| `shared` | Codice comune a tutti i futuri servizi: `ApiEnvelope`, `GlobalExceptionHandler`, le risposte 401/403, `AppPrincipal`, `Ruolo`, utility |
+| `app` | L'applicazione: aule, prenotazioni, utenti, notifiche |
+
+`shared` e' una libreria e non viene ripacchettata come jar eseguibile. Ci entra solo cio'
+la cui chiusura transitiva non tocca il dominio: e' il compilatore, non una convenzione, a
+verificare che il confine regga.
 
 ---
 
@@ -80,7 +98,7 @@ database, migrazioni e configurazione si sono risolti. Documentazione interattiv
 ```bash
 mvn clean package
 export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
-java -jar target/prenotazioni-aule-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar app/target/prenotazioni-aule-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PORT`, `LOG_FILE`.
@@ -94,14 +112,14 @@ perché lo schema dell'API è servito su percorsi pubblici.
 
 ## Schema del database
 
-Gestito da **Flyway**, in `src/main/resources/db/migration/`. `ddl-auto` è `validate`:
+Gestito da **Flyway**, in `app/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
 Hibernate non modifica mai lo schema, verifica soltanto che le entity corrispondano e
 fallisce all'avvio se divergono.
 
 Per modificare lo schema si aggiunge una migrazione (`V3__descrizione.sql`). Quelle già
 applicate non vanno più modificate: Flyway ne verifica il checksum.
 
-> I file in `src/main/java/com/prenotazioni/sql/` **non** sono lo schema: sono dati di
+> I file in `app/src/main/java/com/prenotazioni/sql/` **non** sono lo schema: sono dati di
 > popolamento da eseguire a mano. Vedi il `LEGGIMI.md` in quella cartella.
 
 ---
@@ -109,11 +127,13 @@ applicate non vanno più modificate: Flyway ne verifica il checksum.
 ## Test
 
 ```bash
-mvn test      # esegue la suite
-mvn verify    # esegue la suite e fa fallire la build sotto l'80% di copertura
+mvn test      # esegue la suite di tutti i moduli
+mvn verify    # aggiunge il gate di copertura, per modulo
 ```
 
-Il report di copertura finisce in `target/site/jacoco/index.html`.
+I report di copertura finiscono in `shared/target/site/jacoco/index.html` e
+`app/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
+separatamente, perche' il denominatore cambia da modulo a modulo.
 
 La suite è composta da unit test senza Spring, test di integrazione HTTP su H2, e **una**
 classe su PostgreSQL reale via Testcontainers, che verifica i vincoli di database che H2

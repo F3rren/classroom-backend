@@ -1,0 +1,76 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.prenotazioni</groupId>
+        <artifactId>prenotazioni-aule-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>shared</artifactId>
+    <name>Shared</name>
+    <description>Codice comune a tutti i servizi: envelope di risposta, gestione errori, principal, utility</description>
+
+    <!--
+        Libreria, non applicazione: niente spring-boot-maven-plugin, altrimenti il jar
+        verrebbe ripacchettato come eseguibile e non sarebbe piu' usabile come dipendenza.
+
+        Cosa entra qui: solo cio' la cui chiusura transitiva non tocca il dominio. E'
+        stato verificato file per file. Restano fuori JwtAuthFilter e SecurityConfig,
+        che dipendono da JwtService: si spostano quando JwtService verra' diviso fra
+        emissione (auth-service) e sola validazione (shared).
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- Ruolo porta un AttributeConverter JPA: serve la sola API, non l'ORM -->
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+        </dependency>
+        <!-- GlobalExceptionHandler traduce DataIntegrityViolationException in un 409.
+             Vive in org.springframework.dao, che sta in spring-tx: si prende quella e
+             non l'intero starter data-jpa, perche' shared non deve conoscere l'ORM. -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

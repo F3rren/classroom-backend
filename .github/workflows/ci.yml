@@ -42,7 +42,9 @@ jobs:
       # Un "BUILD SUCCESS" non basta: passerebbe anche con la classe saltata.
       - name: Verifica che i vincoli siano stati provati su PostgreSQL reale
         run: |
-          REPORT=target/surefire-reports/TEST-com.prenotazioni.PostgresSchemaConstraintsTest.xml
+          # Percorso di modulo: la classe dei vincoli vive in app, e vivra' in
+          # booking-service quando i servizi saranno separati.
+          REPORT=app/target/surefire-reports/TEST-com.prenotazioni.PostgresSchemaConstraintsTest.xml
           if [ ! -f "$REPORT" ]; then
             echo "::error::PostgresSchemaConstraintsTest non ha prodotto un report: non e' stata eseguita."
             echo "Se la classe e' stata rinominata in *IT, surefire non la raccoglie piu'."
@@ -64,7 +66,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report
-          path: target/site/jacoco/
+          path: |
+            shared/target/site/jacoco/
+            app/target/site/jacoco/
           if-no-files-found: warn
 
       - name: Report dei test falliti
@@ -72,4 +76,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: surefire-reports
-          path: target/surefire-reports/
+          path: |
+            shared/target/surefire-reports/
+            app/target/surefire-reports/

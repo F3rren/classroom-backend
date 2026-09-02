@@ -1,7 +1,6 @@
 package com.prenotazioni.exception;
 
 import com.prenotazioni.dto.ApiEnvelope;
-import com.prenotazioni.dto.AulaRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,6 +30,23 @@ class GlobalExceptionHandlerUnitTest {
     /** Metodo fittizio usato solo per costruire un MethodParameter valido. */
     @SuppressWarnings("unused")
     private void metodoDiComodo(String argomento) {
+    }
+
+    /**
+     * BeanPropertyBindingResult richiede che il campo respinto esista davvero sul target,
+     * altrimenti rejectValue produce un errore globale e getFieldError() torna null.
+     * Prima si usava AulaRequest, che vive nel modulo applicativo: qui basta un bean locale.
+     */
+    static class OggettoConCapienza {
+        private Integer capienza;
+
+        public Integer getCapienza() {
+            return capienza;
+        }
+
+        public void setCapienza(Integer capienza) {
+            this.capienza = capienza;
+        }
     }
 
     @Test
@@ -107,7 +123,8 @@ class GlobalExceptionHandlerUnitTest {
         MethodParameter parametro = new MethodParameter(metodo, 0);
         // il target deve avere un campo vero: rejectValue su un campo inesistente
         // produrrebbe un errore globale e getFieldError() tornerebbe null
-        BeanPropertyBindingResult binding = new BeanPropertyBindingResult(new AulaRequest(), "aulaRequest");
+        BeanPropertyBindingResult binding =
+                new BeanPropertyBindingResult(new OggettoConCapienza(), "oggettoConCapienza");
         binding.rejectValue("capienza", "Positive", "La capienza deve essere un numero positivo.");
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleValidation(

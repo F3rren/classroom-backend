@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Contratto esterno di Ruolo e StatoAula.
+ * Contratto esterno di Ruolo.
  *
  * Il test su toAuthority() e' il piu' importante del file: le espressioni
  * @PreAuthorize("hasRole('ADMIN')") sono stringhe SpEL che il compilatore non verifica,
@@ -48,15 +48,13 @@ class RuoloTest {
     }
 
     @Test
-    void statoAulaKeepsItsOwnLowercaseVocabulary() {
-        // aula_stato_check: 4 valori, diversi da quelli della prenotazione
-        assertThat(java.util.Arrays.stream(StatoAula.values()).map(StatoAula::getValore))
-                .containsExactlyInAnyOrder("libera", "occupata", "bloccata", "manutenzione");
-    }
+    void theJpaConverterWritesTheLowercaseValueOnDisk() {
+        // e' cio' che tiene la colonna dentro utente_ruolo_check
+        Ruolo.JpaConverter converter = new Ruolo.JpaConverter();
 
-    @Test
-    void statoAulaSerializesLowercase() throws Exception {
-        assertThat(objectMapper.writeValueAsString(StatoAula.OCCUPATA)).isEqualTo("\"occupata\"");
-        assertThat(objectMapper.writeValueAsString(StatoAula.LIBERA)).isEqualTo("\"libera\"");
+        assertThat(converter.convertToDatabaseColumn(Ruolo.ADMIN)).isEqualTo("admin");
+        assertThat(converter.convertToDatabaseColumn(null)).isNull();
+        assertThat(converter.convertToEntityAttribute("user")).isEqualTo(Ruolo.USER);
+        assertThat(converter.convertToEntityAttribute(null)).isNull();
     }
 }
