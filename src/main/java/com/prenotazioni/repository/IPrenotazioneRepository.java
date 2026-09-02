@@ -144,6 +144,26 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
     // Trova tutte le prenotazioni per una specifica aula
     @Query("SELECT p FROM Prenotazione p WHERE p.aula.id = :aulaId ORDER BY p.inizio ASC")
     List<Prenotazione> findByAulaId(@Param("aulaId") Long aulaId);
+
+    /**
+     * Le prenotazioni di piu' aule in una query sola, per costruire l'elenco dei
+     * dettagli senza interrogare il database una volta per aula.
+     *
+     * Le tre relazioni di Prenotazione sono tutte EAGER, quindi senza i JOIN FETCH
+     * l'N+1 si limiterebbe a spostarsi: ogni riga caricata ne farebbe scattare altre
+     * per aula, utente e corso. Su corso il join e' LEFT perche' e' nullable (i blocchi
+     * admin non hanno corso): un JOIN FETCH normale li escluderebbe silenziosamente
+     * dal risultato, e le aule bloccate risulterebbero libere.
+     *
+     * L'ordinamento per inizio ASC ricalca findByAulaId: i cicli che consumano questa
+     * lista si fermano alla prima prenotazione utile, quindi l'ordine e' significativo.
+     */
+    @Query("SELECT p FROM Prenotazione p " +
+           "JOIN FETCH p.aula a " +
+           "JOIN FETCH p.utente " +
+           "LEFT JOIN FETCH p.corso " +
+           "WHERE a.id IN :aulaIds ORDER BY p.inizio ASC")
+    List<Prenotazione> findByAulaIdIn(@Param("aulaIds") List<Long> aulaIds);
     
     // Elimina tutte le prenotazioni di un utente (per eliminazione utente)
     @Modifying

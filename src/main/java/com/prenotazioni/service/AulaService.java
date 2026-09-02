@@ -16,8 +16,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 @Service
 public class AulaService {
@@ -282,9 +284,18 @@ public class AulaService {
         // rispetto a momenti diversi.
         LocalDateTime adesso = LocalDateTime.now();
 
+        // Una query per tutte le aule, non una per aula: prima l'elenco costava 1+N
+        // interrogazioni, e con le relazioni EAGER di Prenotazione anche parecchie di piu'.
+        List<Long> aulaIds = aule.stream().map(Aula::getId).toList();
+        Map<Long, List<Prenotazione>> prenotazioniPerAula = aulaIds.isEmpty()
+                ? Map.of()
+                : prenotazioneRepository.findByAulaIdIn(aulaIds).stream()
+                        .collect(Collectors.groupingBy(prenotazione -> prenotazione.getAula().getId()));
+
         List<RoomDetailsResponse> response = new ArrayList<>();
         for (Aula aula : aule) {
-            response.add(toRoomDetails(aula, prenotazioneRepository.findByAulaId(aula.getId()), adesso));
+            response.add(toRoomDetails(
+                    aula, prenotazioniPerAula.getOrDefault(aula.getId(), List.of()), adesso));
         }
 
         logger.debug("FINE getRoomsDetailsFromList - Completata elaborazione per {} aule", response.size());
