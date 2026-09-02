@@ -1,5 +1,6 @@
 package com.prenotazioni.security;
 
+import com.prenotazioni.model.Ruolo;
 import org.springframework.security.core.AuthenticatedPrincipal;
 
 /**
@@ -16,6 +17,6 @@ public record AppPrincipal(Long id, String email, String ruolo) implements Authe
     }
 
     public boolean isAdmin() {
-        return "admin".equalsIgnoreCase(ruolo);
+        return Ruolo.ADMIN.getValore().equalsIgnoreCase(ruolo);
     }
 }

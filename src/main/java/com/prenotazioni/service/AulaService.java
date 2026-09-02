@@ -1,7 +1,9 @@
 package com.prenotazioni.service;
 
 import com.prenotazioni.model.Aula;
+import com.prenotazioni.model.DisponibilitaAula;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
@@ -21,6 +23,17 @@ import java.util.ArrayList;
 public class AulaService {
 
     private static final Logger logger = LoggerFactory.getLogger(AulaService.class);
+
+    private static final DateTimeFormatter FORMATO_DATA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter FORMATO_ORA = DateTimeFormatter.ofPattern("HH:mm");
+
+    /** Con quanto anticipo una prenotazione futura fa gia' risultare l'aula "prenotata". */
+    private static final int ORE_DI_PREAVVISO = 2;
+
+    private static final String SCOPO_PREDEFINITO = "Lezione";
+    private static final String MOTIVO_BLOCCO_PREDEFINITO = "Aula bloccata";
+    /** Chi risulta autore di un blocco: i blocchi sono per definizione interventi admin. */
+    private static final String BLOCCATA_DA = Ruolo.ADMIN.getValore();
 
     private final IAulaRepository aulaRepository;
 
@@ -184,89 +197,7 @@ public class AulaService {
     // Ottieni i dettagli completi di tutte le aule con informazioni di stato e prenotazioni
     public List<RoomDetailsResponse> getAllRoomsWithDetails() {
         logger.debug("INIZIO getAllRoomsWithDetails");
-        List<Aula> aule = aulaRepository.findAll();
-        logger.debug("Recuperate {} aule per elaborazione dettagli", aule.size());
-        
-        List<RoomDetailsResponse> response = new ArrayList<>();
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        
-        for (Aula aula : aule) {
-            RoomDetailsResponse roomDetails = new RoomDetailsResponse(aula.getId(), aula.getNome(), aula.getPiano(), aula.getCapienza(), aula.isVirtual());
-            
-            // Ottieni tutte le prenotazioni per questa aula
-            List<Prenotazione> prenotazioni = prenotazioneRepository.findByAulaId(aula.getId());
-            
-            // Determina lo stato dell'aula
-            String status = "libera";
-            RoomDetailsResponse.CurrentBooking currentBooking = null;
-            RoomDetailsResponse.BlockInfo blockInfo = null;
-            
-            LocalDateTime now = LocalDateTime.now();
-            
-            // Controllo se l'aula è attualmente occupata o bloccata
-            for (Prenotazione prenotazione : prenotazioni) {
-                if (prenotazione.getInizio().isBefore(now) && prenotazione.getFine().isAfter(now)) {
-                    if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                        status = "prenotata";
-                        currentBooking = new RoomDetailsResponse.CurrentBooking(
-                            prenotazione.getUtente().getNome(),
-                            prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                            prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
-                            prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                        );
-                    } else if (prenotazione.getStato().isInterventoAdmin()) {
-                        status = "bloccata";
-                        blockInfo = new RoomDetailsResponse.BlockInfo(
-                            prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Aula bloccata",
-                            "admin",
-                            prenotazione.getDataCreazione().toLocalDate().format(dateFormatter)
-                        );
-                    }
-                    break;
-                }
-            }
-            
-            // Se non è attualmente occupata, controlla se ci sono prenotazioni future nelle prossime 2 ore
-            if (status.equals("libera")) {
-                LocalDateTime twoHoursLater = now.plusHours(2);
-                for (Prenotazione prenotazione : prenotazioni) {
-                    if (prenotazione.getInizio().isAfter(now) && prenotazione.getInizio().isBefore(twoHoursLater) &&
-                        prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                        status = "prenotata";
-                        currentBooking = new RoomDetailsResponse.CurrentBooking(
-                            prenotazione.getUtente().getNome(),
-                            prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                            prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
-                            prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                        );
-                        break;
-                    }
-                }
-            }
-            
-            // Crea la lista delle prenotazioni
-            List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
-            for (Prenotazione prenotazione : prenotazioni) {
-                if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                    bookingInfos.add(new RoomDetailsResponse.BookingInfo(
-                        prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                        prenotazione.getInizio().format(timeFormatter),
-                        prenotazione.getFine().format(timeFormatter),
-                        prenotazione.getUtente().getNome(),
-                        prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                    ));
-                }
-            }
-            
-            roomDetails.setStatus(status);
-            roomDetails.setBooking(currentBooking);
-            roomDetails.setBlocked(blockInfo);
-            roomDetails.setBookings(bookingInfos);
-            
-            response.add(roomDetails);
-        }
-        
+        List<RoomDetailsResponse> response = getRoomsDetailsFromList(aulaRepository.findAll());
         logger.debug("FINE getAllRoomsWithDetails - Dettagli elaborati per {} aule", response.size());
         return response;
     }
@@ -274,89 +205,17 @@ public class AulaService {
     // Ottieni i dettagli completi di una singola aula
     public RoomDetailsResponse getRoomWithDetails(Long aulaId) {
         logger.debug("INIZIO getRoomWithDetails - ID Aula: {}", aulaId);
-        
+
         Optional<Aula> aulaOpt = aulaRepository.findById(aulaId);
         if (aulaOpt.isEmpty()) {
             logger.debug("FINE getRoomWithDetails - Aula non trovata con ID: {}", aulaId);
             return null;
         }
-        
+
         Aula aula = aulaOpt.get();
-        RoomDetailsResponse roomDetails = new RoomDetailsResponse(aula.getId(), aula.getNome(), aula.getPiano(), aula.getCapienza(), aula.isVirtual());
-        
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        
-        // Ottieni tutte le prenotazioni per questa aula
-        List<Prenotazione> prenotazioni = prenotazioneRepository.findByAulaId(aula.getId());
-        
-        // Determina lo stato dell'aula
-        String status = "libera";
-        RoomDetailsResponse.CurrentBooking currentBooking = null;
-        RoomDetailsResponse.BlockInfo blockInfo = null;
-        
-        LocalDateTime now = LocalDateTime.now();
-        
-        // Controllo se l'aula è attualmente occupata o bloccata
-        for (Prenotazione prenotazione : prenotazioni) {
-            if (prenotazione.getInizio().isBefore(now) && prenotazione.getFine().isAfter(now)) {
-                if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                    status = "prenotata";
-                    currentBooking = new RoomDetailsResponse.CurrentBooking(
-                        prenotazione.getUtente().getNome(),
-                        prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                        prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
-                        prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                    );
-                } else if (prenotazione.getStato().isInterventoAdmin()) {
-                    status = "bloccata";
-                    blockInfo = new RoomDetailsResponse.BlockInfo(
-                        prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Aula bloccata",
-                        "admin",
-                        prenotazione.getDataCreazione().toLocalDate().format(dateFormatter)
-                    );
-                }
-                break;
-            }
-        }
-        
-        // Se non è attualmente occupata, controlla se ci sono prenotazioni future nelle prossime 2 ore
-        if (status.equals("libera")) {
-            LocalDateTime twoHoursLater = now.plusHours(2);
-            for (Prenotazione prenotazione : prenotazioni) {
-                if (prenotazione.getInizio().isAfter(now) && prenotazione.getInizio().isBefore(twoHoursLater) &&
-                    prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                    status = "prenotata";
-                    currentBooking = new RoomDetailsResponse.CurrentBooking(
-                        prenotazione.getUtente().getNome(),
-                        prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                        prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
-                        prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                    );
-                    break;
-                }
-            }
-        }
-        
-        // Crea la lista delle prenotazioni
-        List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
-        for (Prenotazione prenotazione : prenotazioni) {
-            if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                bookingInfos.add(new RoomDetailsResponse.BookingInfo(
-                    prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                    prenotazione.getInizio().format(timeFormatter),
-                    prenotazione.getFine().format(timeFormatter),
-                    prenotazione.getUtente().getNome(),
-                    prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                ));
-            }
-        }
-        
-        roomDetails.setStatus(status);
-        roomDetails.setBooking(currentBooking);
-        roomDetails.setBlocked(blockInfo);
-        roomDetails.setBookings(bookingInfos);
-        
+        RoomDetailsResponse roomDetails = toRoomDetails(
+                aula, prenotazioneRepository.findByAulaId(aula.getId()), LocalDateTime.now());
+
         logger.debug("FINE getRoomWithDetails - Dettagli elaborati per aula: {}", aulaId);
         return roomDetails;
     }
@@ -414,90 +273,103 @@ public class AulaService {
         return count;
     }
     
-    // Metodo di utilità privato per evitare duplicazione del codice
+    // Costruisce i dettagli per un elenco di aule gia' selezionato.
     private List<RoomDetailsResponse> getRoomsDetailsFromList(List<Aula> aule) {
         logger.debug("INIZIO getRoomsDetailsFromList - Elaborazione dettagli per {} aule", aule.size());
+
+        // Un solo istante per tutte le aule. Prima LocalDateTime.now() veniva invocato
+        // dentro il ciclo, quindi aule della stessa risposta potevano essere valutate
+        // rispetto a momenti diversi.
+        LocalDateTime adesso = LocalDateTime.now();
+
         List<RoomDetailsResponse> response = new ArrayList<>();
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        
         for (Aula aula : aule) {
-            RoomDetailsResponse roomDetails = new RoomDetailsResponse(aula.getId(), aula.getNome(), aula.getPiano(), aula.getCapienza(), aula.isVirtual());
-            
-            // Ottieni tutte le prenotazioni per questa aula
-            List<Prenotazione> prenotazioni = prenotazioneRepository.findByAulaId(aula.getId());
-            
-            // Determina lo stato dell'aula
-            String status = "libera";
-            RoomDetailsResponse.CurrentBooking currentBooking = null;
-            RoomDetailsResponse.BlockInfo blockInfo = null;
-            
-            LocalDateTime now = LocalDateTime.now();
-            
-            // Controllo se l'aula è attualmente occupata o bloccata
-            for (Prenotazione prenotazione : prenotazioni) {
-                if (prenotazione.getInizio().isBefore(now) && prenotazione.getFine().isAfter(now)) {
-                    if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                        status = "prenotata";
-                        currentBooking = new RoomDetailsResponse.CurrentBooking(
-                            prenotazione.getUtente().getNome(),
-                            prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                            prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
-                            prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                        );
-                    } else if (prenotazione.getStato().isInterventoAdmin()) {
-                        status = "bloccata";
-                        blockInfo = new RoomDetailsResponse.BlockInfo(
-                            prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Aula bloccata",
-                            "admin",
-                            prenotazione.getDataCreazione().toLocalDate().format(dateFormatter)
-                        );
-                    }
-                    break;
-                }
-            }
-            
-            // Se non è attualmente occupata, controlla se ci sono prenotazioni future nelle prossime 2 ore
-            if (status.equals("libera")) {
-                LocalDateTime twoHoursLater = now.plusHours(2);
-                for (Prenotazione prenotazione : prenotazioni) {
-                    if (prenotazione.getInizio().isAfter(now) && prenotazione.getInizio().isBefore(twoHoursLater) &&
-                        prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                        status = "prenotata";
-                        currentBooking = new RoomDetailsResponse.CurrentBooking(
-                            prenotazione.getUtente().getNome(),
-                            prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                            prenotazione.getInizio().format(timeFormatter) + "-" + prenotazione.getFine().format(timeFormatter),
-                            prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                        );
-                        break;
-                    }
-                }
-            }
-            
-            // Crea la lista delle prenotazioni
-            List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
-            for (Prenotazione prenotazione : prenotazioni) {
-                if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
-                    bookingInfos.add(new RoomDetailsResponse.BookingInfo(
-                        prenotazione.getInizio().toLocalDate().format(dateFormatter),
-                        prenotazione.getInizio().format(timeFormatter),
-                        prenotazione.getFine().format(timeFormatter),
-                        prenotazione.getUtente().getNome(),
-                        prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : "Lezione"
-                    ));
-                }
-            }
-            
-            roomDetails.setStatus(status);
-            roomDetails.setBooking(currentBooking);
-            roomDetails.setBlocked(blockInfo);
-            roomDetails.setBookings(bookingInfos);
-            
-            response.add(roomDetails);
+            response.add(toRoomDetails(aula, prenotazioneRepository.findByAulaId(aula.getId()), adesso));
         }
 
         logger.debug("FINE getRoomsDetailsFromList - Completata elaborazione per {} aule", response.size());
         return response;
+    }
+
+    /**
+     * Vista di dettaglio di UNA aula rispetto a un istante dato.
+     *
+     * Questo blocco esisteva in tre copie identiche (getAllRoomsWithDetails,
+     * getRoomWithDetails e getRoomsDetailsFromList): una modifica alle regole di stato
+     * andava replicata a mano tre volte, e bastava dimenticarne una perche' lo stesso
+     * dato risultasse diverso a seconda dell'endpoint interrogato.
+     *
+     * L'istante arriva dal chiamante invece di essere letto qui: rende il metodo
+     * deterministico e permette a un elenco di aule di condividere lo stesso "adesso".
+     */
+    private RoomDetailsResponse toRoomDetails(Aula aula, List<Prenotazione> prenotazioni, LocalDateTime adesso) {
+        RoomDetailsResponse roomDetails = new RoomDetailsResponse(
+                aula.getId(), aula.getNome(), aula.getPiano(), aula.getCapienza(), aula.isVirtual());
+
+        DisponibilitaAula status = DisponibilitaAula.LIBERA;
+        RoomDetailsResponse.CurrentBooking currentBooking = null;
+        RoomDetailsResponse.BlockInfo blockInfo = null;
+
+        // L'aula e' occupata o bloccata proprio adesso?
+        for (Prenotazione prenotazione : prenotazioni) {
+            if (prenotazione.getInizio().isBefore(adesso) && prenotazione.getFine().isAfter(adesso)) {
+                if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
+                    status = DisponibilitaAula.PRENOTATA;
+                    currentBooking = toCurrentBooking(prenotazione);
+                } else if (prenotazione.getStato().isInterventoAdmin()) {
+                    status = DisponibilitaAula.BLOCCATA;
+                    blockInfo = new RoomDetailsResponse.BlockInfo(
+                        descrizioneOppure(prenotazione, MOTIVO_BLOCCO_PREDEFINITO),
+                        BLOCCATA_DA,
+                        prenotazione.getDataCreazione().toLocalDate().format(FORMATO_DATA)
+                    );
+                }
+                break;
+            }
+        }
+
+        // Se e' libera adesso, guarda se c'e' una prenotazione imminente.
+        if (status == DisponibilitaAula.LIBERA) {
+            LocalDateTime finePreavviso = adesso.plusHours(ORE_DI_PREAVVISO);
+            for (Prenotazione prenotazione : prenotazioni) {
+                if (prenotazione.getInizio().isAfter(adesso) && prenotazione.getInizio().isBefore(finePreavviso) &&
+                    prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
+                    status = DisponibilitaAula.PRENOTATA;
+                    currentBooking = toCurrentBooking(prenotazione);
+                    break;
+                }
+            }
+        }
+
+        List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
+        for (Prenotazione prenotazione : prenotazioni) {
+            if (prenotazione.getStato() == StatoPrenotazione.PRENOTATA) {
+                bookingInfos.add(new RoomDetailsResponse.BookingInfo(
+                    prenotazione.getInizio().toLocalDate().format(FORMATO_DATA),
+                    prenotazione.getInizio().format(FORMATO_ORA),
+                    prenotazione.getFine().format(FORMATO_ORA),
+                    prenotazione.getUtente().getNome(),
+                    descrizioneOppure(prenotazione, SCOPO_PREDEFINITO)
+                ));
+            }
+        }
+
+        roomDetails.setStatus(status);
+        roomDetails.setBooking(currentBooking);
+        roomDetails.setBlocked(blockInfo);
+        roomDetails.setBookings(bookingInfos);
+        return roomDetails;
+    }
+
+    private RoomDetailsResponse.CurrentBooking toCurrentBooking(Prenotazione prenotazione) {
+        return new RoomDetailsResponse.CurrentBooking(
+                prenotazione.getUtente().getNome(),
+                prenotazione.getInizio().toLocalDate().format(FORMATO_DATA),
+                prenotazione.getInizio().format(FORMATO_ORA) + "-" + prenotazione.getFine().format(FORMATO_ORA),
+                descrizioneOppure(prenotazione, SCOPO_PREDEFINITO));
+    }
+
+    private static String descrizioneOppure(Prenotazione prenotazione, String predefinita) {
+        return prenotazione.getDescrizione() != null ? prenotazione.getDescrizione() : predefinita;
     }
 }

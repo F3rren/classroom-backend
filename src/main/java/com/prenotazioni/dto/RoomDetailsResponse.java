@@ -1,5 +1,6 @@
 package com.prenotazioni.dto;
 
+import com.prenotazioni.model.DisponibilitaAula;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +15,9 @@ public class RoomDetailsResponse {
     private int floor;
     private int capacity;
     private boolean isVirtual;
-    private String status;
+    // Enum e non String: @JsonValue lo serializza nel valore minuscolo di prima,
+    // quindi il JSON resta identico, ma i valori possibili sono ora un insieme chiuso.
+    private DisponibilitaAula status;
     private CurrentBooking booking;
     private BlockInfo blocked;
     private List<BookingInfo> bookings;
