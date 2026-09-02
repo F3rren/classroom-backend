@@ -25,16 +25,6 @@ public interface NotificaRepository extends JpaRepository<Notifica, Long> {
     Long countByUtenteIdAndLettaFalse(Long utenteId);
     
     /**
-     * Trova le notifiche per tipo (es: "CANCELLAZIONE_ADMIN")
-     */
-    List<Notifica> findByUtenteIdAndTipoOrderByDataCreazioneDesc(Long utenteId, String tipo);
-    
-    /**
-     * Elimina notifiche vecchie (per cleanup)
-     */
-    void deleteByDataCreazioneBefore(java.time.LocalDateTime dataLimite);
-    
-    /**
      * Elimina tutte le notifiche lette di un utente
      */
     @Modifying

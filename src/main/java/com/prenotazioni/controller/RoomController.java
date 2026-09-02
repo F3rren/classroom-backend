@@ -35,6 +35,9 @@ public class RoomController {
 
     private static final Logger logger = LoggerFactory.getLogger(RoomController.class);
 
+    /** Tetto al filtro per capienza: oltre non e' una richiesta plausibile, e' un errore di battitura. */
+    private static final int CAPIENZA_MASSIMA_RICHIEDIBILE = 1000;
+
     RoomController(AulaService aulaService, PrenotazioneService prenotazioneService) {
         this.aulaService = aulaService;
         this.prenotazioneService = prenotazioneService;
@@ -168,11 +171,12 @@ public class RoomController {
                 HttpStatus.BAD_REQUEST
             );
         }
-        if (minCapienza > 1000) {
+        if (minCapienza > CAPIENZA_MASSIMA_RICHIEDIBILE) {
             logger.warn("[{}] FINE getRoomsByCapacity - Capienza minima troppo alta: {}", sessionId, minCapienza);
             return new ResponseEntity<>(
                 createErrorResponse("CAPACITY_TOO_HIGH", "Capienza troppo elevata",
-                                  "La capienza minima richiesta è troppo alta. Inserisci un valore realistico (massimo 1000).", sessionId),
+                                  "La capienza minima richiesta è troppo alta. Inserisci un valore realistico (massimo "
+                                  + CAPIENZA_MASSIMA_RICHIEDIBILE + ").", sessionId),
                 HttpStatus.BAD_REQUEST
             );
         }

@@ -7,6 +7,7 @@ import com.prenotazioni.model.StatoPrenotazione;
 import com.prenotazioni.model.Utente;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.service.PrenotazioneService;
+import com.prenotazioni.util.Timestamps;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -25,7 +26,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 public class PrenotazioneController {
 
     private static final Logger logger = LoggerFactory.getLogger(PrenotazioneController.class);
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final PrenotazioneService prenotazioneService;
 
@@ -49,7 +48,7 @@ public class PrenotazioneController {
     }
 
     private String formatTimestamp(LocalDateTime dateTime) {
-        return dateTime.format(TIMESTAMP_FORMATTER);
+        return Timestamps.format(dateTime);
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String error, String message, String userMessage, String sessionId) {

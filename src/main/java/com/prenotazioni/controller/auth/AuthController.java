@@ -10,8 +10,9 @@ import com.prenotazioni.service.AuthService;
 import com.prenotazioni.service.JwtService;
 import com.prenotazioni.util.LogSanitizer;
 
+import com.prenotazioni.util.Timestamps;
+
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,7 +36,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // Rate limiting minimo anti brute-force sul login: finestra fissa in memoria, per processo.
     // Non sopravvive a un restart e non e' condiviso tra piu' istanze, ma e' sufficiente per
@@ -90,7 +90,7 @@ public class AuthController {
      * Formatta timestamp in modo consistente
      */
     private String formatTimestamp(LocalDateTime timestamp) {
-        return timestamp.format(TIMESTAMP_FORMATTER);
+        return Timestamps.format(timestamp);
     }
     
     /**

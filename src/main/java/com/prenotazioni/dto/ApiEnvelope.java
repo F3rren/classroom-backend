@@ -4,8 +4,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
+import com.prenotazioni.util.Timestamps;
+
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Envelope generico di risposta, riproduce esattamente lo shape gia' in uso
@@ -21,8 +22,6 @@ import java.time.format.DateTimeFormatter;
 @Getter
 @Schema(description = "Involucro comune a quasi tutte le risposte: distingue esito, messaggi e payload")
 public class ApiEnvelope<T> {
-
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Schema(description = "true se l'operazione e' riuscita", example = "true")
     private boolean success;
@@ -69,6 +68,6 @@ public class ApiEnvelope<T> {
     }
 
     private static String now() {
-        return LocalDateTime.now().format(TIMESTAMP_FORMATTER);
+        return Timestamps.now();
     }
 }

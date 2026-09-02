@@ -48,15 +48,6 @@ public interface IPrenotazioneRepository extends JpaRepository<Prenotazione, Lon
            "ORDER BY p.inizio DESC")
     List<Prenotazione> findByUtenteId(@Param("utenteId") Long utenteId);
     
-    // Trova aule libere in un periodo
-    @Query("SELECT a.id FROM Aula a WHERE a.id NOT IN " +
-           "(SELECT DISTINCT p.aula.id FROM Prenotazione p WHERE p.stato != 'annullata' " +
-           "AND ((p.inizio <= :inizio AND p.fine > :inizio) " +
-           "OR (p.inizio < :fine AND p.fine >= :fine) " +
-           "OR (p.inizio >= :inizio AND p.fine <= :fine)))")
-    List<Long> findAuleLibere(@Param("inizio") LocalDateTime inizio, 
-                              @Param("fine") LocalDateTime fine);
-    
     // Trova prenotazioni per stato
     List<Prenotazione> findByStato(StatoPrenotazione stato);
     

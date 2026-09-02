@@ -2,8 +2,9 @@ package com.prenotazioni.dto;
 
 import lombok.Getter;
 
+import com.prenotazioni.util.Timestamps;
+
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Risposta di successo del login. Il token compare sia al livello radice ("token")
@@ -13,7 +14,6 @@ import java.time.format.DateTimeFormatter;
 @Getter
 public class LoginResponse {
 
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final boolean success = true;
     private final String message;
@@ -26,7 +26,7 @@ public class LoginResponse {
         this.message = message;
         this.token = token;
         this.data = data;
-        this.timestamp = LocalDateTime.now().format(TIMESTAMP_FORMATTER);
+        this.timestamp = Timestamps.now();
         this.sessionId = sessionId;
     }
 }

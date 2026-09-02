@@ -6,13 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface IAulaRepository extends JpaRepository<Aula, Long> {
-    
-    // Trova un'aula per nome (case insensitive)
-    @Query("SELECT a FROM Aula a WHERE LOWER(a.nome) = LOWER(:nome)")
-    Optional<Aula> findByNomeIgnoreCase(@Param("nome") String nome);
     
     // Verifica se esiste un'aula con un certo nome (case insensitive)
     @Query("SELECT COUNT(a) > 0 FROM Aula a WHERE LOWER(a.nome) = LOWER(:nome)")
@@ -27,14 +22,6 @@ public interface IAulaRepository extends JpaRepository<Aula, Long> {
     
     // Trova aule con capienza maggiore o uguale a un valore
     List<Aula> findByCapienzaGreaterThanEqual(int capienza);
-    
-    // Trova aule per range di capienza
-    @Query("SELECT a FROM Aula a WHERE a.capienza BETWEEN :minCapienza AND :maxCapienza ORDER BY a.capienza ASC")
-    List<Aula> findByCapienzaBetween(@Param("minCapienza") int minCapienza, @Param("maxCapienza") int maxCapienza);
-    
-    // Trova aule ordinate per piano e nome
-    @Query("SELECT a FROM Aula a ORDER BY a.piano ASC, a.nome ASC")
-    List<Aula> findAllOrderByPianoAndNome();
     
     // Trova aule fisiche o virtuali
     List<Aula> findByIsVirtual(boolean isVirtual);

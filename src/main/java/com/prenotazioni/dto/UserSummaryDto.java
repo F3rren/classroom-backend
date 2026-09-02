@@ -3,11 +3,9 @@ package com.prenotazioni.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.Utente;
+import com.prenotazioni.util.Timestamps;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Rappresentazione pubblica di un Utente (mai la password), riusata da GET /api/me,
@@ -19,8 +17,6 @@ import java.time.format.DateTimeFormatter;
 @Getter
 @Schema(description = "Vista pubblica di un utente. Non contiene mai la password")
 public class UserSummaryDto {
-
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Schema(description = "Identificativo dell'utente", example = "7")
     private Long id;
@@ -50,11 +46,11 @@ public class UserSummaryDto {
     /** Usato da GET /api/me: ultimoAccesso non impostato "e' adesso", dataRegistrazione mancante e' omessa. */
     public static UserSummaryDto forProfile(Utente utente) {
         UserSummaryDto dto = basic(utente);
-        dto.dataRegistrazione = utente.getDataRegistrazione() != null
-                ? utente.getDataRegistrazione().format(TIMESTAMP_FORMATTER) : null;
+        // Timestamps.format restituisce null su input null: il ternario qui sarebbe ridondante
+        dto.dataRegistrazione = Timestamps.format(utente.getDataRegistrazione());
         dto.ultimoAccesso = utente.getUltimoAccesso() != null
-                ? utente.getUltimoAccesso().format(TIMESTAMP_FORMATTER)
-                : LocalDateTime.now().format(TIMESTAMP_FORMATTER);
+                ? Timestamps.format(utente.getUltimoAccesso())
+                : Timestamps.now();
         return dto;
     }
 
@@ -62,9 +58,9 @@ public class UserSummaryDto {
     public static UserSummaryDto forAdminListing(Utente utente) {
         UserSummaryDto dto = basic(utente);
         dto.dataRegistrazione = utente.getDataRegistrazione() != null
-                ? utente.getDataRegistrazione().format(TIMESTAMP_FORMATTER) : "";
+                ? Timestamps.format(utente.getDataRegistrazione()) : "";
         dto.ultimoAccesso = utente.getUltimoAccesso() != null
-                ? utente.getUltimoAccesso().format(TIMESTAMP_FORMATTER) : "";
+                ? Timestamps.format(utente.getUltimoAccesso()) : "";
         return dto;
     }
 }
