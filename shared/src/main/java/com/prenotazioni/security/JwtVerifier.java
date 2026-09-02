@@ -72,6 +72,19 @@ public class JwtVerifier {
         return extractClaim(token, Claims::getSubject);
     }
 
+    /**
+     * Il nome visualizzato dell'utente.
+     *
+     * Sta nel token per una ragione precisa: e' l'unico dato dell'utente che serve ai
+     * servizi a valle (finisce nel campo "user" dei dettagli aula), e portarlo qui evita
+     * a booking-service una chiamata di rete verso auth-service a ogni prenotazione.
+     * Un token emesso prima di questa modifica non ha il claim: torna null, e chi lo usa
+     * deve gestirlo invece di dare per scontato che ci sia.
+     */
+    public String getNomeFromToken(String token) {
+        return extractClaim(token, claims -> claims.get("nome", String.class));
+    }
+
     public String getRuoloFromToken(String token) {
         return extractClaim(token, claims -> claims.get("ruolo", String.class));
     }

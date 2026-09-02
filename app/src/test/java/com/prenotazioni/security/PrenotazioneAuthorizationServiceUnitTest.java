@@ -49,27 +49,27 @@ class PrenotazioneAuthorizationServiceUnitTest {
         // scelta deliberata: non si maschera un 404 con un 403
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(null);
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "user"))).isTrue();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "Mario Rossi", "user"))).isTrue();
     }
 
     @Test
     void allowsTheOwner() {
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "user"))).isTrue();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "Mario Rossi", "user"))).isTrue();
     }
 
     @Test
     void deniesAnUnrelatedUser() {
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(99L, "altro@test.it", "user"))).isFalse();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(99L, "altro@test.it", "Mario Rossi", "user"))).isFalse();
     }
 
     @Test
     void allowsAnAdminOnSomeoneElsesBooking() {
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
 
-        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "admin"))).isTrue();
+        assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "Mario Rossi", "admin"))).isTrue();
     }
 }

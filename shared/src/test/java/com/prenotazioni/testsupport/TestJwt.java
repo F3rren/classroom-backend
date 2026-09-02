@@ -33,30 +33,45 @@ public final class TestJwt {
     private TestJwt() {
     }
 
-    /** Token per un utente qualunque. */
+    /** Token per un utente qualunque. Il nome e' derivato dall'email. */
     public static String perUtente(Long id, String email) {
-        return firma(id, email, "user");
+        return firma(id, email, nomeDa(email), "user");
+    }
+
+    /** Token per un utente di cui conta il nome: finisce nei dettagli aula. */
+    public static String perUtente(Long id, String email, String nome) {
+        return firma(id, email, nome, "user");
     }
 
     /** Token per un amministratore. */
     public static String perAdmin(Long id, String email) {
-        return firma(id, email, "admin");
+        return firma(id, email, nomeDa(email), "admin");
     }
 
     /** Token gia' scaduto, per verificare che venga rifiutato. */
     public static String scaduto(Long id, String email) {
-        return costruisci(id, email, "user", new Date(System.currentTimeMillis() - DURATA_MS));
+        return costruisci(id, email, nomeDa(email), "user", new Date(System.currentTimeMillis() - DURATA_MS));
     }
 
-    private static String firma(Long id, String email, String ruolo) {
-        return costruisci(id, email, ruolo, new Date(System.currentTimeMillis() + DURATA_MS));
+    /** Token senza il claim "nome": simula un token emesso prima che venisse introdotto. */
+    public static String senzaNome(Long id, String email) {
+        return costruisci(id, email, null, "user", new Date(System.currentTimeMillis() + DURATA_MS));
     }
 
-    private static String costruisci(Long id, String email, String ruolo, Date scadenza) {
+    private static String nomeDa(String email) {
+        return email == null ? null : email.split("@")[0];
+    }
+
+    private static String firma(Long id, String email, String nome, String ruolo) {
+        return costruisci(id, email, nome, ruolo, new Date(System.currentTimeMillis() + DURATA_MS));
+    }
+
+    private static String costruisci(Long id, String email, String nome, String ruolo, Date scadenza) {
         SecretKey chiave = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(SEGRETO_DI_TEST));
         return Jwts.builder()
                 .subject(email)
                 .claim("id", id)
+                .claim("nome", nome)
                 .claim("ruolo", ruolo)
                 .issuedAt(new Date())
                 .expiration(scadenza)

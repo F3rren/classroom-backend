@@ -51,8 +51,8 @@ class PrenotazioneControllerUnitTest {
     void setUp() {
         service = mock(PrenotazioneService.class);
         controller = new PrenotazioneController(service);
-        utente = new AppPrincipal(1L, "user@test.it", "user");
-        admin = new AppPrincipal(2L, "admin@test.it", "admin");
+        utente = new AppPrincipal(1L, "user@test.it", "Mario Rossi", "user");
+        admin = new AppPrincipal(2L, "admin@test.it", "Mario Rossi", "admin");
     }
 
     // ---------- helper ----------

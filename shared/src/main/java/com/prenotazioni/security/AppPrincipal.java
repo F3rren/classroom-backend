@@ -9,7 +9,7 @@ import org.springframework.security.core.AuthenticatedPrincipal;
  * getName() ritorna l'email per restare compatibile con il codice esistente che chiama
  * Authentication.getName() aspettandosi l'email dell'utente.
  */
-public record AppPrincipal(Long id, String email, String ruolo) implements AuthenticatedPrincipal {
+public record AppPrincipal(Long id, String email, String nome, String ruolo) implements AuthenticatedPrincipal {
 
     @Override
     public String getName() {

@@ -76,4 +76,24 @@ class JwtVerifierUnitTest {
         assertThat(verifier.validateToken("non-e-un-token")).isFalse();
         assertThat(verifier.validateToken("")).isFalse();
     }
+
+    @Test
+    void leggeIlNomeDalClaimDedicato() {
+        // Il nome viaggia nel token proprio per evitare che booking-service debba
+        // chiedere ad auth-service chi sta prenotando.
+        String token = TestJwt.perUtente(7L, "mario.rossi@example.it", "Mario Rossi");
+
+        assertThat(verifier.getNomeFromToken(token)).isEqualTo("Mario Rossi");
+    }
+
+    @Test
+    void unTokenEmessoPrimaDelClaimNomeNonFaFallireNulla() {
+        // I token gia' in circolazione non hanno il claim: devono restare validi e
+        // il nome deve semplicemente mancare, non far esplodere il filtro.
+        String tokenVecchio = TestJwt.senzaNome(7L, "mario.rossi@example.it");
+
+        assertThat(verifier.validateToken(tokenVecchio)).isTrue();
+        assertThat(verifier.getNomeFromToken(tokenVecchio)).isNull();
+        assertThat(verifier.getUserIdFromToken(tokenVecchio)).isEqualTo(7L);
+    }
 }
