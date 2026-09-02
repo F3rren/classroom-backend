@@ -64,6 +64,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+
+        <!-- Messaggistica: la notifica di cancellazione viaggia su coda invece che via
+             REST, cosi' sopravvive a notifica-service spento. Versione gestita da Boot. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -133,6 +141,17 @@
             <artifactId>postgresql</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Il broker nei test e' un container vero e NON e' opzionale: la classe che lo usa
+             deve FALLIRE se Docker manca, non essere saltata. Un test sulla messaggistica
+             che si auto-disabilita non prova nulla, ed e' gia' costato quattro asserzioni
+             nascoste altrove in questo progetto. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>rabbitmq</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

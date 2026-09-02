@@ -55,6 +55,20 @@ services:
       interval: 5s
       retries: 12
 
+  broker:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - dati-broker:/var/lib/rabbitmq
+    healthcheck:
+      # Stessa ragione dei database: i servizi partono prima del broker e senza
+      # questo controllo entrerebbero in restart loop al primo tentativo.
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      retries: 12
+
   auth-service:
     build:
       context: .
@@ -78,6 +92,8 @@ services:
       args:
         MODULO: app
     depends_on:
+      broker:
+        condition: service_healthy
       db-prenotazioni: *attesa-db
     environment:
       # In container serve il profilo prod, ed e' una necessita' non una preferenza:
@@ -89,6 +105,9 @@ services:
       # le origini di localhost: qui va quindi passata esplicitamente.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
       DB_HOST: db-prenotazioni
+      RABBITMQ_HOST: broker
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       DB_NAME: prenotazione_aule
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
@@ -100,9 +119,14 @@ services:
       args:
         MODULO: notifica-service
     depends_on:
+      broker:
+        condition: service_healthy
       db-notifiche: *attesa-db
     environment:
       DB_HOST: db-notifiche
+      RABBITMQ_HOST: broker
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       DB_NAME: prenotazione_aule_notifiche
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
@@ -128,6 +152,7 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
 
 volumes:
+  dati-broker:
   dati-utenti:
   dati-prenotazioni:
   dati-notifiche:

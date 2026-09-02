@@ -2,7 +2,8 @@ package com.prenotazioni.controller.admin;
 
 import com.prenotazioni.service.AulaService;
 import com.prenotazioni.service.PrenotazioneService;
-import com.prenotazioni.client.NotificaClient;
+import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
+import com.prenotazioni.messaggistica.PubblicatoreEventi;
 import com.prenotazioni.dto.*;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
@@ -43,13 +44,13 @@ public class AdminController {
 
     private final AulaService aulaService;
     private final PrenotazioneService prenotazioneService;
-    private final NotificaClient notificaClient;
+    private final PubblicatoreEventi pubblicatoreEventi;
 
     AdminController(AulaService aulaService, PrenotazioneService prenotazioneService,
-                     NotificaClient notificaClient) {
+                     PubblicatoreEventi pubblicatoreEventi) {
         this.aulaService = aulaService;
         this.prenotazioneService = prenotazioneService;
-        this.notificaClient = notificaClient;
+        this.pubblicatoreEventi = pubblicatoreEventi;
     }
 
     private String generateSessionId() {
@@ -290,18 +291,13 @@ public class AdminController {
             String oraFine = prenotazione.getFine().toLocalTime().toString();
             String nomeStanza = aulaPrenotazione != null ? aulaPrenotazione.getNome() : "Stanza non specificata";
 
-            // HashMap e non Map.of: adminNome e motivo possono essere null, e Map.of
-            // rifiuta i valori nulli con una NullPointerException.
-            Map<String, Object> notifica = new HashMap<>();
-            notifica.put("utenteId", utentePrenotazione.getId());
-            notifica.put("prenotazioneId", id);
-            notifica.put("nomeStanza", nomeStanza);
-            notifica.put("adminNome", adminNome);
-            notifica.put("dataPrenotazione", dataPrenotazione);
-            notifica.put("oraInizio", oraInizio);
-            notifica.put("oraFine", oraFine);
-            notifica.put("motivo", motivo);
-            notificaClient.notificaCancellazione(notifica);
+            // Pubblicato su coda e non chiamato via REST: cosi' la notifica non si perde
+            // se notifica-service e' spento. Il record tipizzato ha anche sostituito la
+            // mappa di stringhe che c'era prima, dove un nome di campo sbagliato sarebbe
+            // arrivato a destinazione come semplice valore mancante.
+            pubblicatoreEventi.pubblicaCancellazione(new PrenotazioneCancellataEvento(
+                    utentePrenotazione.getId(), id, nomeStanza, adminNome,
+                    dataPrenotazione, oraInizio, oraFine, motivo));
 
             logger.debug("[{}] Notifica di cancellazione creata per utente: {}", sessionId, utentePrenotazione.getId());
         } catch (Exception e) {

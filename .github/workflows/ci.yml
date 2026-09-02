@@ -49,7 +49,7 @@ jobs:
         run: mvn -B clean verify
 
       # Un "BUILD SUCCESS" non basta: passerebbe anche con le classi saltate.
-      - name: Verifica che i vincoli siano stati provati su PostgreSQL reale
+      - name: Verifica che i test su servizi reali siano stati eseguiti
         run: |
           # Le classi che dipendono da Docker si trovano leggendo i sorgenti, non da un
           # elenco: un elenco scade, e questo e' gia' successo una volta.
@@ -94,7 +94,7 @@ jobs:
           if [ "$problemi" -gt 0 ]; then
             exit 1
           fi
-          echo "OK: vincoli verificati su PostgreSQL reale in $controllate classi."
+          echo "OK: $controllate classi eseguite contro servizi reali in container."
 
       - name: Report di copertura
         if: always()

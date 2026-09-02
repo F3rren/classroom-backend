@@ -40,6 +40,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+// I tre test sulla notifica di cancellazione sono spariti da qui insieme all'endpoint
+// REST che verificavano: quella notifica arriva ora come messaggio, ed e'
+// MessaggisticaCancellazioniTest a coprirla, contro un broker vero.
 class NotificaInternaTest {
 
     private static final Long DESTINATARIO = 42L;
@@ -73,51 +76,6 @@ class NotificaInternaTest {
         corpo.put("oraFine", "16:30");
         corpo.put("motivo", "Sessione d'esame");
         return corpo;
-    }
-
-    @Test
-    void anAdminTokenCreatesTheCancellationNotification() {
-        ResponseEntity<Notifica> resp = rest.exchange(
-                "/api/notifiche/interne/cancellazione-prenotazione", HttpMethod.POST,
-                new HttpEntity<>(corpoCancellazione(), headers(TestJwt.perAdmin(1L, "admin@test.it"))),
-                Notifica.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-        List<Notifica> salvate = notificaRepository.findAll();
-        assertThat(salvate).hasSize(1);
-        Notifica notifica = salvate.get(0);
-        assertThat(notifica.getUtenteId()).isEqualTo(DESTINATARIO);
-        assertThat(notifica.getPrenotazioneId()).isEqualTo(99L);
-        // il testo deve contenere i dati arrivati nel corpo: e' cio' che rende la notifica
-        // autosufficiente e questo servizio indipendente da chi lo ha chiamato
-        assertThat(notifica.getMessaggio()).contains("Aula Magna", "Mario Rossi", "Sessione d'esame");
-        assertThat(notifica.getLetta()).isFalse();
-    }
-
-    @Test
-    void aNonAdminTokenIsRefused() {
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/notifiche/interne/cancellazione-prenotazione", HttpMethod.POST,
-                new HttpEntity<>(corpoCancellazione(), headers(TestJwt.perUtente(5L, "utente@test.it"))),
-                String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(notificaRepository.findAll()).isEmpty();
-    }
-
-    @Test
-    void aRequestWithoutTheRecipientIsRejected() {
-        Map<String, Object> senzaDestinatario = corpoCancellazione();
-        senzaDestinatario.remove("utenteId");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/notifiche/interne/cancellazione-prenotazione", HttpMethod.POST,
-                new HttpEntity<>(senzaDestinatario, headers(TestJwt.perAdmin(1L, "admin@test.it"))),
-                String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(notificaRepository.findAll()).isEmpty();
     }
 
     @Test

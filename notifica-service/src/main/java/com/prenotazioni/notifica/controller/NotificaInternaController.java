@@ -43,25 +43,13 @@ public class NotificaInternaController {
         this.notificaService = notificaService;
     }
 
-    @PostMapping("/cancellazione-prenotazione")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Crea la notifica di una prenotazione cancellata da un admin")
-    public ResponseEntity<Notifica> notificaCancellazione(@Valid @RequestBody CancellazionePrenotazioneRequest richiesta) {
-        logger.debug("Notifica di cancellazione richiesta per utenteId={}, prenotazioneId={}",
-                richiesta.getUtenteId(), richiesta.getPrenotazioneId());
-
-        Notifica notifica = notificaService.createNotificaCancellazionePrenotazione(
-                richiesta.getUtenteId(),
-                richiesta.getPrenotazioneId(),
-                richiesta.getNomeStanza(),
-                richiesta.getAdminNome(),
-                richiesta.getDataPrenotazione(),
-                richiesta.getOraInizio(),
-                richiesta.getOraFine(),
-                richiesta.getMotivo());
-
-        return ResponseEntity.ok(notifica);
-    }
+    // L'endpoint POST /cancellazione-prenotazione non esiste piu': quella notifica arriva
+    // ora come messaggio sulla coda, gestito da AscoltatoreCancellazioni. Una chiamata REST
+    // andava persa se questo servizio era spento, un messaggio in coda lo aspetta.
+    //
+    // Questo endpoint di cancellazione dati resta invece sincrono, ed e' voluto: chi lo
+    // chiama (auth-service) deve sapere se e' riuscito, perche' se fallisce non cancella
+    // l'utente. Con una coda quella garanzia si perderebbe.
 
     /**
      * Cancella tutte le notifiche di un utente eliminato.

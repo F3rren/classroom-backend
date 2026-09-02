@@ -76,6 +76,7 @@ un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora 
 | Modulo | Porta | Database | Contenuto |
 |---|---|---|---|
 | `gateway` | **17102** | — | Punto di ingresso unico: instrada per prefisso |
+| `broker` | 5672 | — | RabbitMQ: trasporta la notifica di cancellazione |
 | `app` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi |
 | `auth-service` | 17105 | `prenotazione_aule_utenti` | Utenti, login, amministrazione utenti |
 | `notifica-service` | 17104 | `prenotazione_aule_notifiche` | Le notifiche |
@@ -161,6 +162,22 @@ di pubblicare in produzione le origini di localhost. In `prod` Swagger è disatt
 perché lo schema dell'API è servito su percorsi pubblici.
 
 ---
+
+## Comunicazione fra servizi
+
+Due modi, scelti caso per caso e non per gusto:
+
+**Sincrono (REST)** quando il chiamante *deve* sapere l'esito. La cancellazione di un utente
+è l'unico caso: `auth-service` rimuove prima i dati negli altri servizi e cancella l'utente
+solo se ci è riuscito. Se fallisce, l'utente resta e l'operazione è ripetibile. Con una coda
+questa garanzia si perderebbe, e resterebbero righe orfane che la chiave esterna impediva.
+
+**Asincrono (coda RabbitMQ)** quando il fallimento del destinatario non deve fermare nulla.
+La notifica di una prenotazione cancellata da un admin: prima era una chiamata REST e andava
+persa se `notifica-service` era spento. Ora aspetta in coda. La dipendenza si sposta dal
+servizio al broker — la finestra si restringe, non si chiude: se il broker è irraggiungibile
+il messaggio si perde comunque, e il fallimento resta loggato e non propagato, perché la
+prenotazione è già stata cancellata.
 
 ## Il primo amministratore
 

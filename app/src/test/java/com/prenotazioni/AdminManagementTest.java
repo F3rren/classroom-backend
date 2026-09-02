@@ -10,7 +10,8 @@ import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.client.NotificaClient;
+import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
+import com.prenotazioni.messaggistica.PubblicatoreEventi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,7 +64,7 @@ class AdminManagementTest {
      * servizio sia in esecuzione.
      */
     @MockBean
-    private NotificaClient notificaClient;
+    private PubblicatoreEventi pubblicatoreEventi;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -232,7 +233,7 @@ class AdminManagementTest {
         // la prenotazione risulta annullata e il proprietario riceve una notifica
         Prenotazione dopo = prenotazioneRepository.findById(prenotazioneId).orElseThrow();
         assertThat(dopo.getStato()).isEqualTo(StatoPrenotazione.ANNULLATA);
-        verify(notificaClient).notificaCancellazione(any());
+        verify(pubblicatoreEventi).pubblicaCancellazione(any(PrenotazioneCancellataEvento.class));
     }
 
     @Test
@@ -263,7 +264,7 @@ class AdminManagementTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         // la notifica deve esistere davvero, non essere persa da un catch silenzioso
-        verify(notificaClient).notificaCancellazione(any());
+        verify(pubblicatoreEventi).pubblicaCancellazione(any(PrenotazioneCancellataEvento.class));
     }
 
     @Test
