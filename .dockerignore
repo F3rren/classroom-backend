@@ -1,0 +1,7 @@
+# I target locali non devono finire nel contesto di build: sono grandi e vengono
+# comunque ricostruiti dentro l'immagine.
+**/target/
+.git/
+logs/
+# I segreti restano fuori dalle immagini: arrivano da variabili d'ambiente.
+config/config.properties

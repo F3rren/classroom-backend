@@ -211,4 +211,53 @@ class ValidazioneAuthTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(asMap(resp.getBody()).get("error")).isEqualTo("MISSING_PASSWORD");
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void laFormaDellaRispostaDiLoginEBloccata() throws Exception {
+        // Test di contratto: il frontend legge queste chiavi esatte. Serve a impedire che
+        // un refactor le rinomini o ne aggiunga in silenzio. Stava nel modulo applicativo,
+        // che pero' non serve piu' /api/auth/login.
+        ResponseEntity<String> resp = rest.postForEntity(
+                "/api/auth/login",
+                Map.of("email", "user@validation.test", "password", "user-password"),
+                String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> body = asMap(resp.getBody());
+        assertThat(body.keySet()).containsExactlyInAnyOrder(
+                "success", "message", "token", "data", "timestamp", "sessionId");
+
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        assertThat(data.keySet()).containsExactlyInAnyOrder(
+                "token", "user", "loginTime", "tokenType");
+
+        Map<String, Object> user = (Map<String, Object>) data.get("user");
+        assertThat(user.keySet()).containsExactlyInAnyOrder(
+                "id", "username", "nome", "email", "ruolo");
+    }
+
+    @Test
+    void aggiornareUnUtenteConPasswordVuotaNonNeCambiaLaPassword() {
+        // Una stringa vuota significa "non toccare la password", non "impostala a vuoto".
+        // Se questa distinzione si rompesse, un admin che rinomina un utente lo lascerebbe
+        // senza credenziali funzionanti, e il sintomo comparirebbe solo al login successivo.
+        Long id = utenteRepository.findByEmail("user@validation.test").getId();
+
+        Map<String, Object> corpo = Map.of(
+                "username", "user-validation",
+                "email", "user@validation.test",
+                "password", "",
+                "nome", "User Validation Rinominato",
+                "ruolo", "user");
+
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/admin/users/" + id, HttpMethod.PUT,
+                new HttpEntity<>(corpo, bearerJson(tokenAdmin)), String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // la prova: la vecchia password deve ancora funzionare
+        assertThat(login("user@validation.test", "user-password")).isNotBlank();
+    }
 }

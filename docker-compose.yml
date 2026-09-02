@@ -1,0 +1,125 @@
+# ============================================================================
+# L'intero sistema con un comando:
+#
+#     JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
+#
+# Poi il frontend punta a http://localhost:17102 e nient'altro.
+#
+# UN DATABASE PER SERVIZIO, e non uno con tre schemi: e' il punto della
+# separazione. Ogni servizio puo' raggiungere solo il proprio, quindi una query
+# che attraversa il confine non fallisce a runtime - non compila proprio.
+# ============================================================================
+
+name: prenotazioni-aule
+
+x-attesa-db: &attesa-db
+  condition: service_healthy
+
+services:
+
+  db-utenti:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: prenotazione_aule_utenti
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - dati-utenti:/var/lib/postgresql/data
+    healthcheck:
+      # I servizi partono piu' in fretta di PostgreSQL: senza questo controllo
+      # fallirebbero all'avvio con "connection refused" e andrebbero in restart loop.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule_utenti"]
+      interval: 5s
+      retries: 12
+
+  db-prenotazioni:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: prenotazione_aule
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - dati-prenotazioni:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule"]
+      interval: 5s
+      retries: 12
+
+  db-notifiche:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: prenotazione_aule_notifiche
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - dati-notifiche:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule_notifiche"]
+      interval: 5s
+      retries: 12
+
+  auth-service:
+    build:
+      context: .
+      args:
+        MODULO: auth-service
+    depends_on:
+      db-utenti: *attesa-db
+    environment:
+      DB_HOST: db-utenti
+      DB_NAME: prenotazione_aule_utenti
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Lo STESSO segreto per tutti: e' cio' che permette a ogni servizio di
+      # verificare da solo i token che questo firma, senza chiamarlo.
+      JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
+      NOTIFICA_SERVICE_URL: http://notifica-service:17104
+      BOOKING_SERVICE_URL: http://app:17103
+
+  app:
+    build:
+      context: .
+      args:
+        MODULO: app
+    depends_on:
+      db-prenotazioni: *attesa-db
+    environment:
+      DB_HOST: db-prenotazioni
+      DB_NAME: prenotazione_aule
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
+      NOTIFICA_SERVICE_URL: http://notifica-service:17104
+
+  notifica-service:
+    build:
+      context: .
+      args:
+        MODULO: notifica-service
+    depends_on:
+      db-notifiche: *attesa-db
+    environment:
+      DB_HOST: db-notifiche
+      DB_NAME: prenotazione_aule_notifiche
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
+
+  gateway:
+    build:
+      context: .
+      args:
+        MODULO: gateway
+    # L'unica porta pubblicata. Gli altri servizi si parlano sulla rete interna
+    # di compose e non sono raggiungibili da fuori: le rotte /interne/ restano
+    # cosi' irraggiungibili dall'esterno per costruzione, non solo per regola.
+    ports:
+      - "17102:17102"
+    depends_on:
+      - auth-service
+      - app
+      - notifica-service
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:17105
+      APP_SERVICE_URL: http://app:17103
+      NOTIFICA_SERVICE_URL: http://notifica-service:17104
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+
+volumes:
+  dati-utenti:
+  dati-prenotazioni:
+  dati-notifiche:

@@ -86,7 +86,23 @@ aggiungere un servizio non obbliga a ripensare l'assegnazione (il prossimo servi
 progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'ambiente
 (`GATEWAY_PORT`, `APP_PORT`, `NOTIFICA_PORT`) senza toccare codice.
 
-Servono tre processi, ognuno in un terminale:
+### Con Docker
+
+```bash
+JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
+```
+
+Alza tre PostgreSQL (uno per servizio), i quattro servizi e pubblica **solo la 17102**.
+Gli altri si parlano sulla rete interna e non sono raggiungibili da fuori: le rotte
+`/interne/` diventano così irraggiungibili per costruzione, non solo per regola del gateway.
+
+> **Non ancora provato.** Il `Dockerfile` e il `docker-compose.yml` sono stati scritti e
+> validati come sintassi, ma non eseguiti: sulla macchina di sviluppo Docker non era
+> avviato. Il primo `docker compose up` è anche il primo collaudo.
+
+### Senza Docker
+
+Servono quattro processi, ognuno in un terminale:
 
 ```bash
 mvn spring-boot:run -pl app -am              # 17103
