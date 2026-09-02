@@ -26,6 +26,7 @@
         <module>shared</module>
         <module>notifica-service</module>
         <module>app</module>
+        <module>gateway</module>
     </modules>
 
     <properties>

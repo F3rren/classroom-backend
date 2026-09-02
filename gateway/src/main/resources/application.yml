@@ -1,0 +1,69 @@
+# ============================================================================
+# GATEWAY
+#
+# Il frontend conosce questo indirizzo e nessun altro.
+#
+# PORTE: tutto e' parametrico e i default non cambiano nulla di cio' che gira oggi
+# (app resta sulla 8080, notifiche sulla 8081, il gateway sale sulla 8000). Per
+# mettere il gateway sulla 8080 e spostare app basta:
+#     GATEWAY_PORT=8080  APP_SERVICE_URL=http://localhost:8082
+#     e APP_PORT=8082 sul servizio app
+# Nessuna riga di codice da toccare.
+# ============================================================================
+
+server:
+  port: ${GATEWAY_PORT:8000}
+
+spring:
+  application:
+    name: Gateway
+
+  cloud:
+    gateway:
+      # La CORS sta qui perche' e' il gateway a parlare col browser: i servizi dietro
+      # ricevono solo richieste server-to-server. Ognuno mantiene comunque la propria
+      # configurazione, che serve quando lo si interroga direttamente in sviluppo.
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+            allowedMethods: [GET, POST, PUT, DELETE, OPTIONS, PATCH]
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      routes:
+        # ------------------------------------------------------------------
+        # PRIMA REGOLA, E L'ORDINE CONTA: le rotte interne di notifica-service
+        # sono chiamate da altri servizi, non dal browser. Esporle attraverso il
+        # gateway darebbe a chiunque abbia un token admin la possibilita' di
+        # fabbricare notifiche arbitrarie. Spring Cloud Gateway valuta le rotte
+        # nell'ordine dichiarato: questa deve precedere quella generica sulle
+        # notifiche, altrimenti non verrebbe mai raggiunta.
+        # ------------------------------------------------------------------
+        # forward: e non un filtro SetStatus, che imposterebbe lo stato della risposta
+        # ricevuta dal servizio a valle DOPO averlo interrogato: la richiesta arriverebbe
+        # comunque. forward: la dirotta sul gateway stesso, che non ha alcun handler per
+        # quel percorso e risponde 404 senza inoltrare nulla.
+        - id: notifiche-interne-bloccate
+          uri: forward:/rotta-non-esposta
+          predicates:
+            - Path=/api/notifiche/interne/**
+
+        - id: notifiche
+          uri: ${NOTIFICA_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/notifiche/**
+
+        # Tutto il resto e' ancora il monolite. Quando auth-service si staccara',
+        # /api/auth/** e /api/me diventeranno una voce a se' e questa restera'
+        # a coprire aule, prenotazioni e amministrazione.
+        - id: applicazione
+          uri: ${APP_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/auth/**,/api/me/**,/api/rooms/**,/api/prenotazioni/**,/api/admin/**
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO
