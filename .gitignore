@@ -72,8 +72,11 @@ config/config.properties
 # Senza queste due negazioni i file verrebbero ignorati in silenzio: nessun errore,
 # semplicemente non finirebbero mai in un commit e la produzione partirebbe da un
 # jar che non li contiene.
-!src/main/resources/application-dev.properties
-!src/main/resources/application-prod.properties
+# Le negazioni sono deliberatamente generiche (**/ invece del percorso esatto): con la
+# struttura multi-modulo il percorso e' passato da src/ ad app/src/, e cambiera' ancora
+# quando i servizi verranno separati. Ancorarle al percorso le farebbe scadere in silenzio.
+!**/src/main/resources/application-dev.properties
+!**/src/main/resources/application-prod.properties
 
 # ============================================
 # SISTEMA OPERATIVO

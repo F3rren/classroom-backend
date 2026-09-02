@@ -1,0 +1,93 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.prenotazioni</groupId>
+        <artifactId>prenotazioni-aule-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>gateway</artifactId>
+    <name>Gateway</name>
+    <description>Punto di ingresso unico: il frontend conosce un solo indirizzo</description>
+
+    <!--
+        Perche' esiste: dalla separazione di notifica-service il frontend dovrebbe conoscere
+        due indirizzi, e diventerebbero tre con auth-service. La topologia interna non e'
+        affare del client, ed e' proprio l'accoppiamento che la separazione doveva togliere.
+
+        NON valida i token: instrada e basta. Ogni servizio verifica il JWT da se' con
+        JwtVerifier, quindi resta sicuro anche se raggiunto direttamente. Mettere la
+        validazione qui creerebbe un secondo posto dove sbagliarla e servizi interni che
+        si fidano ciecamente di chi li chiama.
+
+        Spring Cloud Gateway e' reattivo (WebFlux): questo modulo NON dipende da shared,
+        che porta spring-boot-starter-web e in un'applicazione WebFlux farebbe partire
+        Tomcat al posto di Netty.
+    -->
+    <properties>
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <!-- Vedi il commento sul plugin JaCoCo: qui il denominatore e' troppo piccolo
+             perche' una percentuale voglia dire qualcosa. -->
+        <jacoco.line.minimum>0.00</jacoco.line.minimum>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>false</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <!--
+                        Il gateway e' quasi interamente configurazione dichiarativa: le rotte
+                        vivono in application.yml, non in codice Java. Le uniche righe
+                        eseguibili sono la classe main, esclusa qui sotto. Con un denominatore
+                        cosi' piccolo la percentuale non dice nulla, quindi il gate scende:
+                        cio' che conta e' il test sull'instradamento, non il rapporto.
+                    -->
+                    <excludes>
+                        <exclude>com/prenotazioni/gateway/GatewayApplication.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

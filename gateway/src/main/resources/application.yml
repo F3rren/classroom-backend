@@ -1,0 +1,87 @@
+# ============================================================================
+# GATEWAY
+#
+# Il frontend conosce questo indirizzo e nessun altro.
+#
+# PORTE. Il gateway occupa 17102, ed e' l'unica che il frontend deve conoscere. I
+# servizi prendono le successive, in modo che aggiungerne uno non richieda di
+# ripensare l'assegnazione:
+#
+#     17102  gateway            <-- il frontend parla solo con questa
+#     17103  app                (aule, prenotazioni, corsi)
+#     17104  notifica-service
+#     17105  auth-service       (utenti, emissione dei token)
+#
+# La 8080 e' volutamente evitata: e' troppo comune e finisce per collidere con
+# altri progetti sulla stessa macchina.
+#
+# Ogni porta resta sovrascrivibile da variabile d'ambiente, senza toccare codice.
+# ============================================================================
+
+server:
+  port: ${GATEWAY_PORT:17102}
+
+spring:
+  application:
+    name: Gateway
+
+  cloud:
+    gateway:
+      # La CORS sta qui perche' e' il gateway a parlare col browser: i servizi dietro
+      # ricevono solo richieste server-to-server. Ognuno mantiene comunque la propria
+      # configurazione, che serve quando lo si interroga direttamente in sviluppo.
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+            allowedMethods: [GET, POST, PUT, DELETE, OPTIONS, PATCH]
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      routes:
+        # ------------------------------------------------------------------
+        # PRIMA REGOLA, E L'ORDINE CONTA: le rotte interne di notifica-service
+        # sono chiamate da altri servizi, non dal browser. Esporle attraverso il
+        # gateway darebbe a chiunque abbia un token admin la possibilita' di
+        # fabbricare notifiche arbitrarie. Spring Cloud Gateway valuta le rotte
+        # nell'ordine dichiarato: questa deve precedere quella generica sulle
+        # notifiche, altrimenti non verrebbe mai raggiunta.
+        # ------------------------------------------------------------------
+        # forward: e non un filtro SetStatus, che imposterebbe lo stato della risposta
+        # ricevuta dal servizio a valle DOPO averlo interrogato: la richiesta arriverebbe
+        # comunque. forward: la dirotta sul gateway stesso, che non ha alcun handler per
+        # quel percorso e risponde 404 senza inoltrare nulla.
+        - id: notifiche-interne-bloccate
+          uri: forward:/rotta-non-esposta
+          predicates:
+            - Path=/api/notifiche/interne/**
+
+        # Anche le prenotazioni hanno rotte interne fra servizi: auth-service le chiama
+        # per cancellare le prenotazioni di un utente rimosso. Stessa regola, stesso ordine.
+        - id: prenotazioni-interne-bloccate
+          uri: forward:/rotta-non-esposta
+          predicates:
+            - Path=/api/prenotazioni/interne/**
+
+        - id: notifiche
+          uri: ${NOTIFICA_SERVICE_URL:http://localhost:17104}
+          predicates:
+            - Path=/api/notifiche/**
+
+        # Login, profilo e amministrazione utenti: auth-service.
+        - id: autenticazione
+          uri: ${AUTH_SERVICE_URL:http://localhost:17105}
+          predicates:
+            - Path=/api/auth/**,/api/me/**,/api/admin/users/**,/api/admin/register,/api/admin/delete/**
+
+        # Aule, prenotazioni e amministrazione delle stesse.
+        - id: applicazione
+          uri: ${APP_SERVICE_URL:http://localhost:17103}
+          predicates:
+            - Path=/api/rooms/**,/api/prenotazioni/**,/api/admin/**
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO

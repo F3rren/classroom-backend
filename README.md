@@ -48,8 +48,10 @@ openssl rand -base64 48
 ## 3. Avviare
 
 ```bash
-mvn spring-boot:run
+mvn spring-boot:run -pl app -am
 ```
+
+`-pl app` sceglie il modulo applicativo, `-am` costruisce prima `shared` da cui dipende.
 
 Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log:
 `Successfully applied 2 migrations`).
@@ -57,12 +59,81 @@ Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log
 Verifica che funzioni:
 
 ```bash
-curl -i http://localhost:8080/api/rooms
+curl -i http://localhost:17102/api/rooms
 ```
 
 Attendersi **`401 Unauthorized`**: è la risposta corretta senza token, e prova che
 database, migrazioni e configurazione si sono risolti. Documentazione interattiva su
-<http://localhost:8080/swagger-ui.html> (attiva solo in `dev`).
+<http://localhost:17103/swagger-ui.html> (attiva solo in `dev`).
+
+---
+
+## Struttura del progetto
+
+Il progetto e' un build Maven multi-modulo. E' il primo passo della scomposizione verso
+un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora uno solo.
+
+| Modulo | Porta | Database | Contenuto |
+|---|---|---|---|
+| `gateway` | **17102** | — | Punto di ingresso unico: instrada per prefisso |
+| `broker` | 5672 | — | RabbitMQ: trasporta la notifica di cancellazione |
+| `app` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi |
+| `auth-service` | 17105 | `prenotazione_aule_utenti` | Utenti, login, amministrazione utenti |
+| `notifica-service` | 17104 | `prenotazione_aule_notifiche` | Le notifiche |
+| `shared` | — | — | Comune a tutti: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
+
+**Il frontend conosce solo la 17102.** Le porte crescono in sequenza a partire da lì, così
+aggiungere un servizio non obbliga a ripensare l'assegnazione (il prossimo servizio prenderà la 17106). La 8080 è volutamente evitata: è troppo comune e collide con altri
+progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'ambiente
+(`GATEWAY_PORT`, `APP_PORT`, `NOTIFICA_PORT`) senza toccare codice.
+
+### Con Docker
+
+```bash
+JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
+```
+
+Alza tre PostgreSQL (uno per servizio), i quattro servizi e pubblica **solo la 17102**.
+Gli altri si parlano sulla rete interna e non sono raggiungibili da fuori: le rotte
+`/interne/` diventano così irraggiungibili per costruzione, non solo per regola del gateway.
+
+Provato: le quattro immagini si costruiscono, lo stack sale e il giro completo (login →
+creazione aula → notifiche) passa dal gateway. Serve comunque inserire a mano il primo
+admin nel database utenti, per la ragione spiegata più sotto.
+
+> Dentro i container `app` gira con il profilo **`prod`**, e non è una preferenza:
+> `application-dev.properties` ha l'URL del database scritto su `localhost`, quindi con il
+> profilo predefinito `DB_HOST` verrebbe ignorato e il servizio morirebbe alla prima
+> connessione. Solo `prod` legge le variabili d'ambiente.
+
+### Senza Docker
+
+Servono quattro processi, ognuno in un terminale:
+
+```bash
+mvn spring-boot:run -pl app -am              # 17103
+mvn spring-boot:run -pl auth-service -am     # 17105
+mvn spring-boot:run -pl notifica-service -am # 17104
+mvn spring-boot:run -pl gateway -am          # 17102
+```
+
+Il gateway non valida i token: instrada e basta. Ogni servizio verifica il JWT da sé, così
+resta protetto anche se raggiunto direttamente. Il gateway chiude però dall'esterno le
+rotte `/api/notifiche/interne/**`, che sono chiamate fra servizi.
+
+Prima del primo avvio serve il suo database (vuoto: lo schema lo crea Flyway):
+
+```sql
+CREATE DATABASE prenotazione_aule_notifiche;
+```
+
+`jwt.secret` in `config/config.properties` deve essere lo stesso per entrambi i servizi:
+e' cio' che permette a ognuno di validare i token da solo, senza chiamare gli altri. E'
+anche il motivo per cui i test possono firmarsi i propri token invece di creare un utente.
+
+`shared` e' una libreria e non viene ripacchettata come jar eseguibile. Ci entra solo cio'
+la cui chiusura transitiva non tocca il dominio: e' il compilatore, non una convenzione, a
+verificare che il confine regga.
 
 ---
 
@@ -71,7 +142,7 @@ database, migrazioni e configurazione si sono risolti. Documentazione interattiv
 | File | Contenuto |
 |---|---|
 | `application.properties` | chiavi valide ovunque |
-| `application-dev.properties` | database locale, porta 8080, DevTools, CORS su localhost |
+| `application-dev.properties` | database locale, porta 17103, DevTools, CORS su localhost |
 | `application-prod.properties` | valori da variabili d'ambiente, DevTools e Swagger disattivati |
 | `config/config.properties` | **solo segreti**, non versionato |
 
@@ -80,7 +151,7 @@ database, migrazioni e configurazione si sono risolti. Documentazione interattiv
 ```bash
 mvn clean package
 export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
-java -jar target/prenotazioni-aule-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar app/target/prenotazioni-aule-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PORT`, `LOG_FILE`.
@@ -92,16 +163,41 @@ perché lo schema dell'API è servito su percorsi pubblici.
 
 ---
 
+## Comunicazione fra servizi
+
+Due modi, scelti caso per caso e non per gusto:
+
+**Sincrono (REST)** quando il chiamante *deve* sapere l'esito. La cancellazione di un utente
+è l'unico caso: `auth-service` rimuove prima i dati negli altri servizi e cancella l'utente
+solo se ci è riuscito. Se fallisce, l'utente resta e l'operazione è ripetibile. Con una coda
+questa garanzia si perderebbe, e resterebbero righe orfane che la chiave esterna impediva.
+
+**Asincrono (coda RabbitMQ)** quando il fallimento del destinatario non deve fermare nulla.
+La notifica di una prenotazione cancellata da un admin: prima era una chiamata REST e andava
+persa se `notifica-service` era spento. Ora aspetta in coda. La dipendenza si sposta dal
+servizio al broker — la finestra si restringe, non si chiude: se il broker è irraggiungibile
+il messaggio si perde comunque, e il fallimento resta loggato e non propagato, perché la
+prenotazione è già stata cancellata.
+
+## Il primo amministratore
+
+Su un database utenti vuoto **non c'è modo di creare il primo admin dalle API**:
+`/api/admin/register` richiede già un token con ruolo `ADMIN`. Non è una conseguenza della
+separazione — il monolite aveva lo stesso vincolo — ma su database nuovi si incontra subito.
+
+Va inserito a mano nel database `prenotazione_aule_utenti`, dopo che Flyway ha creato lo
+schema al primo avvio di `auth-service`, con una password già cifrata con BCrypt.
+
 ## Schema del database
 
-Gestito da **Flyway**, in `src/main/resources/db/migration/`. `ddl-auto` è `validate`:
+Gestito da **Flyway**, in `app/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
 Hibernate non modifica mai lo schema, verifica soltanto che le entity corrispondano e
 fallisce all'avvio se divergono.
 
 Per modificare lo schema si aggiunge una migrazione (`V3__descrizione.sql`). Quelle già
 applicate non vanno più modificate: Flyway ne verifica il checksum.
 
-> I file in `src/main/java/com/prenotazioni/sql/` **non** sono lo schema: sono dati di
+> I file in `app/src/main/java/com/prenotazioni/sql/` **non** sono lo schema: sono dati di
 > popolamento da eseguire a mano. Vedi il `LEGGIMI.md` in quella cartella.
 
 ---
@@ -109,11 +205,13 @@ applicate non vanno più modificate: Flyway ne verifica il checksum.
 ## Test
 
 ```bash
-mvn test      # esegue la suite
-mvn verify    # esegue la suite e fa fallire la build sotto l'80% di copertura
+mvn test      # esegue la suite di tutti i moduli
+mvn verify    # aggiunge il gate di copertura, per modulo
 ```
 
-Il report di copertura finisce in `target/site/jacoco/index.html`.
+I report di copertura finiscono in `shared/target/site/jacoco/index.html` e
+`app/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
+separatamente, perche' il denominatore cambia da modulo a modulo.
 
 La suite è composta da unit test senza Spring, test di integrazione HTTP su H2, e **una**
 classe su PostgreSQL reale via Testcontainers, che verifica i vincoli di database che H2
