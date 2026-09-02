@@ -1,26 +1,35 @@
 # Integrazione continua.
 #
 # Il motivo per cui questo file esiste: la suite ha tre livelli (unit con Mockito,
-# integrazione su H2, e una classe sui vincoli con PostgreSQL vero via Testcontainers)
-# ma il terzo gira solo se la macchina ha Docker acceso. Senza Docker la classe viene
-# saltata e la build resta VERDE: e' successo davvero, e per un periodo i test sui
-# vincoli non sono mai stati eseguiti pur risultando "a posto".
+# integrazione su H2, e due classi sui vincoli con PostgreSQL vero via Testcontainers)
+# ma il terzo gira solo se la macchina ha Docker acceso. Senza Docker quelle classi
+# vengono saltate e la build resta VERDE: e' successo davvero, e quando finalmente sono
+# state eseguite nascondevano quattro asserzioni fallite.
 #
 # Sui runner ubuntu-latest Docker c'e' sempre, quindi qui i vincoli vengono verificati
 # a ogni push. Il passo "Verifica che..." trasforma lo skip silenzioso in un errore.
+#
+# PRINCIPIO: in questo file non ci sono elenchi di moduli o di classi scritti a mano.
+# Ce n'erano, e sono scaduti: il workflow conosceva tre moduli su cinque e una sola
+# delle due classi Testcontainers. Tutto cio' che puo' essere scoperto viene scoperto,
+# cosi' aggiungere un modulo non richiede di ricordarsi di tornare qui.
 
 name: CI
 
 on:
   push:
-    branches: [main]
+    # develop e non solo main: e' il ramo su cui si lavora. Senza, questo workflow
+    # resta decorativo - com'e' stato finora, senza che nessuno se ne accorgesse.
+    branches: [main, develop]
   pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 30 e non 20: i moduli sono cinque e al primo giro la cache Maven e' vuota,
+    # mentre due classi scaricano immagini Docker.
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -32,44 +41,69 @@ jobs:
           distribution: temurin
           cache: maven
 
-      # verify e non test: e' la fase in cui gira il gate JaCoCo all'80%.
+      # verify e non test: e' la fase in cui gira il gate JaCoCo, applicato per modulo.
       # Nessun segreto da iniettare: config/config.properties e' importato come
       # "optional:" e i profili test/pgtest portano da soli jwt.secret, le origini
       # CORS e il rate limit.
       - name: Build, test e gate di copertura
         run: mvn -B clean verify
 
-      # Un "BUILD SUCCESS" non basta: passerebbe anche con la classe saltata.
+      # Un "BUILD SUCCESS" non basta: passerebbe anche con le classi saltate.
       - name: Verifica che i vincoli siano stati provati su PostgreSQL reale
         run: |
-          # Percorso di modulo: la classe dei vincoli vive in app, e vivra' in
-          # booking-service quando i servizi saranno separati.
-          REPORT=app/target/surefire-reports/TEST-com.prenotazioni.PostgresSchemaConstraintsTest.xml
-          if [ ! -f "$REPORT" ]; then
-            echo "::error::PostgresSchemaConstraintsTest non ha prodotto un report: non e' stata eseguita."
-            echo "Se la classe e' stata rinominata in *IT, surefire non la raccoglie piu'."
+          # Le classi che dipendono da Docker si trovano leggendo i sorgenti, non da un
+          # elenco: un elenco scade, e questo e' gia' successo una volta.
+          controllate=0
+          problemi=0
+
+          for sorgente in $(grep -rl "@Testcontainers" --include=*.java */src/test); do
+            modulo="${sorgente%%/*}"
+            classe="$(basename "$sorgente" .java)"
+            pacchetto="$(sed -n 's/^package \(.*\);/\1/p' "$sorgente" | head -1)"
+            report="$modulo/target/surefire-reports/TEST-$pacchetto.$classe.xml"
+
+            if [ ! -f "$report" ]; then
+              echo "::error::$classe non ha prodotto un report: non e' stata eseguita."
+              echo "  Atteso in $report"
+              echo "  Se la classe e' stata rinominata in *IT, surefire non la raccoglie piu'."
+              problemi=$((problemi + 1))
+              continue
+            fi
+            if ! grep -q 'skipped="0"' "$report"; then
+              echo "::error::$classe e' stata saltata: Testcontainers non ha raggiunto Docker."
+              grep -oE 'tests="[0-9]+"|skipped="[0-9]+"' "$report" | head -2
+              problemi=$((problemi + 1))
+              continue
+            fi
+            if grep -q 'tests="0"' "$report"; then
+              echo "::error::$classe non contiene test."
+              problemi=$((problemi + 1))
+              continue
+            fi
+            echo "  ok: $modulo/$classe"
+            controllate=$((controllate + 1))
+          done
+
+          # Una scoperta che non trova nulla passerebbe in silenzio, che e' di nuovo
+          # lo stesso difetto travestito: se il grep smettesse di trovare le classi,
+          # questo passo direbbe "tutto bene" senza aver guardato niente.
+          if [ "$controllate" -eq 0 ] && [ "$problemi" -eq 0 ]; then
+            echo "::error::Nessuna classe @Testcontainers trovata: la ricerca non funziona piu'."
             exit 1
           fi
-          if ! grep -q 'skipped="0"' "$REPORT"; then
-            echo "::error::PostgresSchemaConstraintsTest e' stata saltata: Testcontainers non ha raggiunto Docker."
-            grep -oE 'tests="[0-9]+"|skipped="[0-9]+"' "$REPORT" | head -2
+          if [ "$problemi" -gt 0 ]; then
             exit 1
           fi
-          if grep -q 'tests="0"' "$REPORT"; then
-            echo "::error::PostgresSchemaConstraintsTest non contiene test."
-            exit 1
-          fi
-          echo "OK: vincoli verificati su PostgreSQL reale."
+          echo "OK: vincoli verificati su PostgreSQL reale in $controllate classi."
 
       - name: Report di copertura
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report
-          path: |
-            shared/target/site/jacoco/
-            notifica-service/target/site/jacoco/
-            app/target/site/jacoco/
+          # Glob e non elenco, per la stessa ragione del passo qui sopra. L'aggregatore
+          # non ha target e semplicemente non corrisponde.
+          path: '*/target/site/jacoco/'
           if-no-files-found: warn
 
       - name: Report dei test falliti
@@ -77,7 +111,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: surefire-reports
-          path: |
-            shared/target/surefire-reports/
-            notifica-service/target/surefire-reports/
-            app/target/surefire-reports/
+          path: '*/target/surefire-reports/'
+          if-no-files-found: warn
