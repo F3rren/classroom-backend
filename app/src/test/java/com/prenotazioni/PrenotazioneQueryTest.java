@@ -1,16 +1,15 @@
 package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +20,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -50,16 +48,10 @@ class PrenotazioneQueryTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private IAulaRepository aulaRepository;
 
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -73,16 +65,7 @@ class PrenotazioneQueryTest {
     void setUp() {
         prenotazioneRepository.deleteAll();
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        Utente user = new Utente();
-        user.setEmail("query-user@test.it");
-        user.setUsername("query-user");
-        user.setPassword(passwordEncoder.encode("query-password"));
-        user.setNome("Query User");
-        user.setRuolo(Ruolo.USER);
-        user.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(user);
 
         Aula aula = new Aula();
         aula.setNome("Aula Query");
@@ -95,9 +78,11 @@ class PrenotazioneQueryTest {
         inizio = LocalDateTime.now().plusDays(2).withNano(0);
         fine = inizio.plusHours(2);
 
+        ProprietarioPrenotazione user = new ProprietarioPrenotazione(1L, "query-user", "Query User");
+
         Prenotazione p = new Prenotazione();
         p.setAula(aula);
-        p.setUtente(istantaneaDi(user));
+        p.setUtente(user);
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(StatoPrenotazione.PRENOTATA);
@@ -105,17 +90,10 @@ class PrenotazioneQueryTest {
         p.setDataCreazione(LocalDateTime.now());
         prenotazioneId = prenotazioneRepository.save(p).getId();
 
-        token = login("query-user@test.it", "query-password");
+        token = TestJwt.perUtente(1L, "prenotazionequerytest@test.it", "Utente Test");
     }
 
     @SuppressWarnings("unchecked")
-    private String login(String email, String password) {
-        ResponseEntity<Map> resp = rest.postForEntity(
-                "/api/auth/login", Map.of("email", email, "password", password), Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
-    }
-
     private HttpHeaders bearer() {
         HttpHeaders h = new HttpHeaders();
         h.setBearerAuth(token);
@@ -281,8 +259,4 @@ class PrenotazioneQueryTest {
         return (Map<String, Object>) o;
     }
 
-    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
-    }
 }

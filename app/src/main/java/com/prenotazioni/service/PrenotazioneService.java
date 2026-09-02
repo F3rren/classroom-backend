@@ -8,11 +8,9 @@ import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,29 +32,18 @@ public class PrenotazioneService {
     
     private final ICorsoRepository corsoRepository;
     
-    private final IUtenteRepository utenteRepository;
 
-    PrenotazioneService(IPrenotazioneRepository prenotazioneRepository, IAulaRepository aulaRepository, ICorsoRepository corsoRepository, IUtenteRepository utenteRepository) {
+    PrenotazioneService(IPrenotazioneRepository prenotazioneRepository, IAulaRepository aulaRepository, ICorsoRepository corsoRepository) {
         this.prenotazioneRepository = prenotazioneRepository;
         this.aulaRepository = aulaRepository;
         this.corsoRepository = corsoRepository;
-        this.utenteRepository = utenteRepository;
     }
 
     // Prenota un'aula per una lezione
-    /**
-     * L'istantanea del proprietario salvata sulla prenotazione. Finche' utenti e
-     * prenotazioni condividono il database la si ricava dall'entita'; dopo la
-     * separazione arrivera' dai claim del token, senza cambiare nulla qui intorno.
-     */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
-    }
-
     @Transactional
-    public Prenotazione prenotaAula(Long aulaId, Long corsoId, Long utenteId, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
+    public Prenotazione prenotaAula(Long aulaId, Long corsoId, ProprietarioPrenotazione proprietario, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         logger.debug("INIZIO METODO prenotaAula");
-        logger.debug("Richiesta prenotazione aula - AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", aulaId, corsoId, utenteId, inizio, fine);
+        logger.debug("Richiesta prenotazione aula - AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", aulaId, corsoId, proprietario.getId(), inizio, fine);
         
         // Verifica disponibilità
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
@@ -65,16 +52,14 @@ public class PrenotazioneService {
         }
         
         Optional<Aula> aula = aulaRepository.findById(aulaId);
-        Optional<Utente> utente = utenteRepository.findById(utenteId);
-        
+
         if (aula.isEmpty()) {
             logger.warn("Aula con ID {} non trovata nel database", aulaId);
             return null;
         }
-        if (utente.isEmpty()) {
-            logger.warn("Utente con ID {} non trovato nel database", utenteId);
-            return null;
-        }
+        // Non si verifica piu' che l'utente esista: questo servizio non ha piu' la tabella
+        // utenti. A garantirlo e' il token, che auth-service ha firmato al login. La finestra
+        // di un utente cancellato con un token ancora valido e' limitata dalla scadenza.
         
         // Corso opzionale - può essere null per prenotazioni libere
         Optional<Corso> corso = Optional.empty();
@@ -87,11 +72,11 @@ public class PrenotazioneService {
             }
         }
 
-        logger.debug("Creazione prenotazione per aula - AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", aulaId, corsoId, utenteId, inizio, fine);
+        logger.debug("Creazione prenotazione per aula - AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", aulaId, corsoId, proprietario.getId(), inizio, fine);
         Prenotazione prenotazione = new Prenotazione();
         prenotazione.setAula(aula.get());
         prenotazione.setCorso(corso.orElse(null)); // Può essere null
-        prenotazione.setUtente(istantaneaDi(utente.get()));
+        prenotazione.setUtente(proprietario);
         prenotazione.setInizio(inizio);
         prenotazione.setFine(fine);
         prenotazione.setStato(StatoPrenotazione.PRENOTATA);
@@ -103,16 +88,16 @@ public class PrenotazioneService {
         // Aggiorna lo stato dell'aula se la prenotazione è attiva ADESSO
         aggiornaStatoAula(aulaId);
         
-        logger.info("Prenotazione creata - id={} aula='{}' utenteId={} periodo={} - {}", savedPrenotazione.getId(), aula.get().getNome(), utente.get().getId(), inizio, fine);
+        logger.info("Prenotazione creata - id={} aula='{}' utenteId={} periodo={} - {}", savedPrenotazione.getId(), aula.get().getNome(), proprietario.getId(), inizio, fine);
         logger.debug("FINE METODO prenotaAula");
         return savedPrenotazione;
     }
     
     // Blocca un'aula (solo admin)
     @Transactional
-    public Prenotazione bloccaAula(Long aulaId, Long utenteAdminId, LocalDateTime inizio, LocalDateTime fine, String motivo) {
+    public Prenotazione bloccaAula(Long aulaId, ProprietarioPrenotazione admin, LocalDateTime inizio, LocalDateTime fine, String motivo) {
         logger.debug("INIZIO METODO bloccaAula");
-        logger.debug("Richiesta blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, utenteAdminId, inizio, fine);
+        logger.debug("Richiesta blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, admin.getId(), inizio, fine);
         
         // Verifica disponibilità
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
@@ -121,26 +106,27 @@ public class PrenotazioneService {
         }
         
         Optional<Aula> aula = aulaRepository.findById(aulaId);
-        Optional<Utente> admin = utenteRepository.findById(utenteAdminId);
-        
-        if (aula.isEmpty() || admin.isEmpty() || admin.get().getRuolo() != Ruolo.ADMIN) {
+
+        // Il ruolo non si rilegge dal database: arriva dal token, e il controller
+        // e' gia' annotato @PreAuthorize("hasRole('ADMIN')").
+        if (aula.isEmpty()) {
             logger.warn("Errore nel blocco aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", 
-                         aulaId, utenteAdminId);
+                         aulaId, admin.getId());
             return null;
         }
         
-        logger.debug("Blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, utenteAdminId, inizio, fine);
+        logger.debug("Blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, admin.getId(), inizio, fine);
         Prenotazione blocco = new Prenotazione();
         blocco.setAula(aula.get());
         blocco.setCorso(null); // Nessun corso per i blocchi
-        blocco.setUtente(istantaneaDi(admin.get()));
+        blocco.setUtente(admin);
         blocco.setInizio(inizio);
         blocco.setFine(fine);
         blocco.setStato(StatoPrenotazione.BLOCCATA);
         blocco.setDescrizione(motivo);
         blocco.setDataCreazione(LocalDateTime.now());
         
-        logger.info("Blocco aula creato - id={} aula='{}' adminId={} periodo={} - {}", blocco.getId(), aula.get().getNome(), admin.get().getId(), inizio, fine);
+        logger.info("Blocco aula creato - id={} aula='{}' adminId={} periodo={} - {}", blocco.getId(), aula.get().getNome(), admin.getId(), inizio, fine);
         logger.debug("FINE METODO bloccaAula");
         return prenotazioneRepository.save(blocco);
     }
@@ -235,7 +221,7 @@ public class PrenotazioneService {
     
     // Annulla una prenotazione
     @Transactional
-    public boolean annullaPrenotazione(Long prenotazioneId, Long utenteId) {
+    public boolean annullaPrenotazione(Long prenotazioneId, Long utenteId, boolean isAdmin) {
         logger.debug("INIZIO METODO annullaPrenotazione");
         logger.debug("Richiesta annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", prenotazioneId, utenteId);
         Optional<Prenotazione> prenotazione = prenotazioneRepository.findById(prenotazioneId);
@@ -249,16 +235,10 @@ public class PrenotazioneService {
         Prenotazione p = prenotazione.get();
         
         // Solo il creatore o un admin può annullare
-        Optional<Utente> utente = utenteRepository.findById(utenteId);
-        if (utente.isEmpty()) {
-            logger.warn("Utente con ID {} non trovato nel database per annullamento prenotazione", utenteId);
-            return false;
-        }
-        
+
         logger.debug("Verifica permessi annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", prenotazioneId, utenteId);
         boolean isCreatore = p.getUtente().getId().equals(utenteId);
-        boolean isAdmin = utente.get().getRuolo() == Ruolo.ADMIN;
-        
+                
         if (!isCreatore && !isAdmin) {
             logger.warn("Utente ID {} non autorizzato ad annullare la prenotazione ID {}", utenteId, prenotazioneId);
             return false;
@@ -368,13 +348,8 @@ public class PrenotazioneService {
         logger.debug("Richiesta annullamento prenotazione da admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         Prenotazione prenotazione = prenotazioneOpt.get();
         
-        // Verifica che l'admin esista
-        logger.debug("Verifica esistenza admin - AdminId: {}", adminId);
-        Optional<Utente> admin = utenteRepository.findById(adminId);
-        if (admin.isEmpty() || admin.get().getRuolo() != Ruolo.ADMIN) {
-            logger.warn("Utente non è un admin valido - AdminId: {}", adminId);
-            return false;
-        }
+        // Il ruolo admin e' gia' stato verificato dal filtro JWT e da @PreAuthorize:
+        // rileggerlo qui richiederebbe una chiamata ad auth-service a ogni cancellazione.
         
         logger.debug("Annullamento prenotazione da parte dell'admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         // Gli admin possono eliminare qualsiasi prenotazione, indipendentemente dallo stato
@@ -400,7 +375,7 @@ public class PrenotazioneService {
 
     // Aggiorna una prenotazione esistente
     @Transactional
-    public Prenotazione updatePrenotazione(Long prenotazioneId, Long aulaId, Long corsoId, Long utenteId, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
+    public Prenotazione updatePrenotazione(Long prenotazioneId, Long aulaId, Long corsoId, Long utenteId, boolean isAdmin, LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         logger.debug("INIZIO METODO updatePrenotazione");
         logger.debug("Richiesta aggiornamento prenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", prenotazioneId, aulaId, corsoId, utenteId, inizio, fine);
         
@@ -414,15 +389,8 @@ public class PrenotazioneService {
         Prenotazione prenotazione = prenotazioneOpt.get();
         
         // Verifica autorizzazione - solo il creatore o un admin può modificare
-        Optional<Utente> utente = utenteRepository.findById(utenteId);
-        if (utente.isEmpty()) {
-            logger.warn("Utente con ID {} non trovato nel database per aggiornamento prenotazione", utenteId);
-            return null;
-        }
-        
         boolean isCreatore = prenotazione.getUtente().getId().equals(utenteId);
-        boolean isAdmin = utente.get().getRuolo() == Ruolo.ADMIN;
-        
+                
         if (!isCreatore && !isAdmin) {
             logger.warn("Utente ID {} non autorizzato a modificare la prenotazione ID {}", utenteId, prenotazioneId);
             return null;
@@ -460,7 +428,7 @@ public class PrenotazioneService {
         prenotazione.setDescrizione(descrizione);
         
         Prenotazione savedPrenotazione = prenotazioneRepository.save(prenotazione);
-        logger.info("Prenotazione aggiornata - id={} aula='{}' utenteId={} periodo={} - {}", savedPrenotazione.getId(), aula.get().getNome(), utente.get().getId(), inizio, fine);
+        logger.info("Prenotazione aggiornata - id={} aula='{}' utenteId={} periodo={} - {}", savedPrenotazione.getId(), aula.get().getNome(), utenteId, inizio, fine);
         logger.debug("FINE METODO updatePrenotazione");
         return savedPrenotazione;
     }

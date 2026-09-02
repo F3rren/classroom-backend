@@ -20,6 +20,17 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- TestJwt: firma token di prova con lo stesso segreto, cosi' i test di questo
+             servizio non hanno bisogno che auth-service giri. E' la conseguenza pratica
+             del fatto che la validazione JWT sia offline. -->
+        <dependency>
+            <groupId>com.prenotazioni</groupId>
+            <artifactId>shared</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

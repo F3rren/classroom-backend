@@ -1,16 +1,15 @@
 package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +20,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -54,16 +52,10 @@ class RoomDetailsWithBookingsTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private IAulaRepository aulaRepository;
 
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -78,16 +70,9 @@ class RoomDetailsWithBookingsTest {
     void setUp() {
         prenotazioneRepository.deleteAll();
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        Utente user = new Utente();
-        user.setEmail("dettagli@test.it");
-        user.setUsername("dettagli");
-        user.setPassword(passwordEncoder.encode("dettagli-password"));
-        user.setNome("Mario Rossi"); // il nome finisce dentro currentBooking: non puo' essere null
-        user.setRuolo(Ruolo.USER);
-        user.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(user);
+        // Il nome finisce dentro currentBooking, quindi conta che sia valorizzato.
+        ProprietarioPrenotazione user = new ProprietarioPrenotazione(1L, "dettagli", "Mario Rossi");
 
         LocalDateTime ora = LocalDateTime.now();
 
@@ -107,7 +92,7 @@ class RoomDetailsWithBookingsTest {
 
         aulaLiberaId = salvaAula("Aula Libera", 3, 10, false);
 
-        token = login("dettagli@test.it", "dettagli-password");
+        token = TestJwt.perUtente(1L, "roomdetailswithbookingstest@test.it", "Utente Test");
     }
 
     private Long salvaAula(String nome, int piano, int capienza, boolean virtuale) {
@@ -120,11 +105,11 @@ class RoomDetailsWithBookingsTest {
         return aulaRepository.save(a).getId();
     }
 
-    private void prenota(Long aulaId, Utente utente, StatoPrenotazione stato,
+    private void prenota(Long aulaId, ProprietarioPrenotazione utente, StatoPrenotazione stato,
                          LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         Prenotazione p = new Prenotazione();
         p.setAula(aulaRepository.findById(aulaId).orElseThrow());
-        p.setUtente(istantaneaDi(utente));
+        p.setUtente(utente);
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(stato);
@@ -134,13 +119,6 @@ class RoomDetailsWithBookingsTest {
     }
 
     @SuppressWarnings("unchecked")
-    private String login(String email, String password) {
-        ResponseEntity<Map> resp = rest.postForEntity(
-                "/api/auth/login", Map.of("email", email, "password", password), Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
-    }
-
     private ResponseEntity<String> get(String url) {
         HttpHeaders h = new HttpHeaders();
         h.setBearerAuth(token);
@@ -323,8 +301,4 @@ class RoomDetailsWithBookingsTest {
         return (String) asMap(resp.getBody()).get("stato");
     }
 
-    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
-    }
 }

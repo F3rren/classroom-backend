@@ -6,7 +6,6 @@ import com.prenotazioni.exception.BookingConflictException;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.service.PrenotazioneService;
@@ -22,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -77,12 +77,11 @@ class PrenotazioneControllerUnitTest {
         Aula aula = new Aula();
         aula.setId(10L);
         aula.setNome("Aula Finta");
-        Utente u = new Utente();
-        u.setId(1L);
+        ProprietarioPrenotazione u = new ProprietarioPrenotazione(1L, "utente", "Utente Test");
         Prenotazione p = new Prenotazione();
         p.setId(99L);
         p.setAula(aula);
-        p.setUtente(istantaneaDi(u));
+        p.setUtente(istantaneaDi(u.getId(), u.getUsername(), u.getNome()));
         p.setInizio(LocalDateTime.now().plusDays(1));
         p.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
         p.setStato(StatoPrenotazione.PRENOTATA);
@@ -133,7 +132,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void prenotaAulaReturns409WhenServiceRefuses() {
-        when(service.prenotaAula(anyLong(), any(), anyLong(), any(), any(), anyString())).thenReturn(null);
+        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString())).thenReturn(null);
 
         ResponseEntity<?> resp = controller.prenotaAula(richiestaValida(), utente);
 
@@ -143,7 +142,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void prenotaAulaTranslatesDbConstraintIntoBookingConflict() {
-        when(service.prenotaAula(anyLong(), any(), anyLong(), any(), any(), anyString()))
+        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
 
         PrenotazioneRequest req = richiestaValida();
@@ -154,7 +153,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void prenotaAulaReturns201OnSuccess() {
-        when(service.prenotaAula(anyLong(), any(), anyLong(), any(), any(), anyString()))
+        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString()))
                 .thenReturn(prenotazioneFinta());
 
         ResponseEntity<?> resp = controller.prenotaAula(richiestaValida(), utente);
@@ -203,7 +202,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void modificaReturns409WhenServiceRefuses() {
-        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), any(), any(), anyString()))
+        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenReturn(null);
 
         ResponseEntity<?> resp = controller.modificaPrenotazione(5L, richiestaValida(), utente);
@@ -214,7 +213,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void modificaTranslatesDbConstraintIntoUpdateConflict() {
-        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), any(), any(), anyString()))
+        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
 
         PrenotazioneRequest req = richiestaValida();
@@ -225,7 +224,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void modificaReturns200OnSuccess() {
-        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), any(), any(), anyString()))
+        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenReturn(prenotazioneFinta());
 
         ResponseEntity<?> resp = controller.modificaPrenotazione(5L, richiestaValida(), utente);
@@ -262,7 +261,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void bloccaReturns409WhenServiceRefuses() {
-        when(service.bloccaAula(anyLong(), anyLong(), any(), any(), anyString())).thenReturn(null);
+        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString())).thenReturn(null);
 
         ResponseEntity<?> resp = controller.bloccaAula(richiestaValida(), admin);
 
@@ -272,7 +271,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void bloccaTranslatesDbConstraintIntoBlockConflict() {
-        when(service.bloccaAula(anyLong(), anyLong(), any(), any(), anyString()))
+        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
 
         PrenotazioneRequest req = richiestaValida();
@@ -283,7 +282,7 @@ class PrenotazioneControllerUnitTest {
 
     @Test
     void bloccaReturns201OnSuccess() {
-        when(service.bloccaAula(anyLong(), anyLong(), any(), any(), anyString()))
+        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString()))
                 .thenReturn(prenotazioneFinta());
 
         ResponseEntity<?> resp = controller.bloccaAula(richiestaValida(), admin);
@@ -308,7 +307,7 @@ class PrenotazioneControllerUnitTest {
         Prenotazione altrui = prenotazioneFinta();
         altrui.getUtente().setId(42L); // proprietario diverso dal chiamante (id 1)
         when(service.getPrenotazioneById(7L)).thenReturn(altrui);
-        when(service.annullaPrenotazione(7L, 1L)).thenReturn(false);
+        when(service.annullaPrenotazione(7L, 1L, false)).thenReturn(false);
 
         ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
 
@@ -322,7 +321,7 @@ class PrenotazioneControllerUnitTest {
         Prenotazione gia = prenotazioneFinta();
         gia.setStato(StatoPrenotazione.ANNULLATA);
         when(service.getPrenotazioneById(7L)).thenReturn(gia);
-        when(service.annullaPrenotazione(7L, 1L)).thenReturn(false);
+        when(service.annullaPrenotazione(7L, 1L, false)).thenReturn(false);
 
         ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
 
@@ -338,7 +337,7 @@ class PrenotazioneControllerUnitTest {
         altrui.getUtente().setId(42L);
         altrui.setStato(StatoPrenotazione.ANNULLATA);
         when(service.getPrenotazioneById(7L)).thenReturn(altrui);
-        when(service.annullaPrenotazione(7L, 2L)).thenReturn(false);
+        when(service.annullaPrenotazione(7L, 2L, false)).thenReturn(false);
 
         ResponseEntity<?> resp = controller.annullaPrenotazione(7L, admin);
 
@@ -349,15 +348,15 @@ class PrenotazioneControllerUnitTest {
     @Test
     void annullaReturns200ForOwner() {
         when(service.getPrenotazioneById(7L)).thenReturn(prenotazioneFinta());
-        when(service.annullaPrenotazione(7L, 1L)).thenReturn(true);
+        when(service.annullaPrenotazione(7L, 1L, false)).thenReturn(true);
 
         ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
-    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
+    /** L'istantanea del proprietario, ora costruita a mano: la tabella utenti non e' piu' qui. */
+    private static ProprietarioPrenotazione istantaneaDi(Long id, String username, String nome) {
+        return new ProprietarioPrenotazione(id, username, nome);
     }
 }

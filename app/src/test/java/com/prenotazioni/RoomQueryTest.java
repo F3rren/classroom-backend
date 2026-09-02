@@ -1,13 +1,12 @@
 package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.StatoAula;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -43,16 +41,10 @@ class RoomQueryTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private IAulaRepository aulaRepository;
 
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -63,22 +55,13 @@ class RoomQueryTest {
     void setUp() {
         prenotazioneRepository.deleteAll();
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        Utente user = new Utente();
-        user.setEmail("roomquery@test.it");
-        user.setUsername("roomquery");
-        user.setPassword(passwordEncoder.encode("roomquery-password"));
-        user.setNome("Room Query");
-        user.setRuolo(Ruolo.USER);
-        user.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(user);
 
         aulaFisicaGrandeId = salvaAula("Aula Grande", 1, 100, false);
         salvaAula("Aula Piccola", 2, 10, false);
         salvaAula("Aula Virtuale", 0, 50, true);
 
-        token = login("roomquery@test.it", "roomquery-password");
+        token = TestJwt.perUtente(1L, "roomquery@test.it", "Room Query");
     }
 
     private Long salvaAula(String nome, int piano, int capienza, boolean virtuale) {
@@ -92,13 +75,6 @@ class RoomQueryTest {
     }
 
     @SuppressWarnings("unchecked")
-    private String login(String email, String password) {
-        ResponseEntity<Map> resp = rest.postForEntity(
-                "/api/auth/login", Map.of("email", email, "password", password), Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
-    }
-
     private ResponseEntity<String> get(String url) {
         HttpHeaders h = new HttpHeaders();
         h.setBearerAuth(token);

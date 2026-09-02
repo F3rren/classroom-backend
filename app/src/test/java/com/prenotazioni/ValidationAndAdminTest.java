@@ -1,11 +1,10 @@
 package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.prenotazioni.model.Utente;
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +16,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -41,16 +39,10 @@ class ValidationAndAdminTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private IAulaRepository aulaRepository;
 
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -61,38 +53,14 @@ class ValidationAndAdminTest {
     void setUp() {
         prenotazioneRepository.deleteAll();
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        Utente admin = new Utente();
-        admin.setEmail("admin@validation.test");
-        admin.setUsername("admin-validation");
-        admin.setPassword(passwordEncoder.encode("admin-password"));
-        admin.setNome("Admin Validation");
-        admin.setRuolo(Ruolo.ADMIN);
-        admin.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(admin);
 
-        Utente user = new Utente();
-        user.setEmail("user@validation.test");
-        user.setUsername("user-validation");
-        user.setPassword(passwordEncoder.encode("user-password"));
-        user.setNome("User Validation");
-        user.setRuolo(Ruolo.USER);
-        user.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(user);
 
-        tokenAdmin = login("admin@validation.test", "admin-password");
-        tokenUser = login("user@validation.test", "user-password");
+        tokenAdmin = TestJwt.perAdmin(1L, "admin@validation.test");
+        tokenUser = TestJwt.perUtente(2L, "user@validation.test", "User Validation");
     }
 
     @SuppressWarnings("unchecked")
-    private String login(String email, String password) {
-        Map<String, String> body = Map.of("email", email, "password", password);
-        ResponseEntity<Map> resp = rest.postForEntity("/api/auth/login", body, Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
-    }
-
     private HttpHeaders bearerJson(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
@@ -107,105 +75,7 @@ class ValidationAndAdminTest {
 
     // ==================== CreateUserRequest ====================
 
-    @Test
-    void adminRegisterWithInvalidEmailIsRejectedByBeanValidation() throws Exception {
-        Map<String, Object> body = Map.of(
-                "username", "nuovoutente",
-                "email", "non-e-una-email",
-                "password", "password1234",
-                "nome", "Nuovo Utente",
-                "ruolo", "user");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/register", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        Map<String, Object> responseBody = asMap(resp.getBody());
-        assertThat(responseBody.get("error")).isEqualTo("VALIDATION_ERROR");
-        assertThat(responseBody.get("success")).isEqualTo(false);
-    }
-
-    @Test
-    void adminRegisterWithShortPasswordIsRejected() throws Exception {
-        Map<String, Object> body = Map.of(
-                "username", "nuovoutente2",
-                "email", "nuovoutente2@validation.test",
-                "password", "short",
-                "nome", "Nuovo Utente 2",
-                "ruolo", "user");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/register", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
-    }
-
-    @Test
-    void adminRegisterWithInvalidRuoloIsRejected() throws Exception {
-        Map<String, Object> body = Map.of(
-                "username", "nuovoutente3",
-                "email", "nuovoutente3@validation.test",
-                "password", "password1234",
-                "nome", "Nuovo Utente 3",
-                "ruolo", "superadmin");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/register", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
-    }
-
-    @Test
-    void adminRegisterWithValidDataSucceeds() throws Exception {
-        Map<String, Object> body = Map.of(
-                "username", "nuovoutente4",
-                "email", "nuovoutente4@validation.test",
-                "password", "password1234",
-                "nome", "Nuovo Utente 4",
-                "ruolo", "user");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/register", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(asMap(resp.getBody()).get("success")).isEqualTo(true);
-    }
-
-    @Test
-    void nonAdminCannotRegisterUsers() {
-        Map<String, Object> body = Map.of(
-                "username", "x", "email", "x@validation.test", "password", "password1234", "nome", "X");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/register", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenUser)), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    }
-
     // ==================== UpdateUserRequest ====================
-
-    @Test
-    void adminUpdateWithBlankPasswordKeepsExistingPassword() throws Exception {
-        Utente target = utenteRepository.findByEmail("user@validation.test");
-
-        Map<String, Object> body = Map.of(
-                "username", "user-validation",
-                "email", "user@validation.test",
-                "password", "",
-                "nome", "User Validation Rinominato",
-                "ruolo", "user");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/users/" + target.getId(), HttpMethod.PUT,
-                new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-        // La vecchia password deve continuare a funzionare
-        login("user@validation.test", "user-password");
-    }
 
     // ==================== AulaRequest ====================
 
@@ -257,33 +127,6 @@ class ValidationAndAdminTest {
     }
 
     // ==================== AuthController.login: comportamento invariato (nessun @Valid) ====================
-
-    @Test
-    void loginWithBlankEmailStillReturnsLegacyMissingEmailCode() throws Exception {
-        Map<String, Object> body = Map.of("email", "", "password", "irrilevante");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/auth/login", HttpMethod.POST,
-                new HttpEntity<>(body, jsonHeaders()), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        // Deve restituire ESATTAMENTE il codice legacy, non il generico VALIDATION_ERROR:
-        // conferma che @Valid non e' stato aggiunto al login (altrimenti l'ordine con
-        // il rate limiter cambierebbe).
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("MISSING_EMAIL");
-    }
-
-    @Test
-    void loginWithBlankPasswordStillReturnsLegacyMissingPasswordCode() throws Exception {
-        Map<String, Object> body = Map.of("email", "admin@validation.test", "password", "");
-
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/auth/login", HttpMethod.POST,
-                new HttpEntity<>(body, jsonHeaders()), String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("MISSING_PASSWORD");
-    }
 
     private HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();

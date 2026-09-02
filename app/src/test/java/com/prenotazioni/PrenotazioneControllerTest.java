@@ -1,16 +1,15 @@
 package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +21,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -51,16 +49,10 @@ class PrenotazioneControllerTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private IAulaRepository aulaRepository;
 
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     private Long prenotazioneIdDiOwner;
     private Long aulaId;
@@ -71,13 +63,10 @@ class PrenotazioneControllerTest {
     void setUp() {
         prenotazioneRepository.deleteAll();
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        Utente owner = nuovoUtente("owner@test.it", "owner", "password-owner", "Owner Test");
-        utenteRepository.save(owner);
+        ProprietarioPrenotazione owner = nuovoUtente(1L, "owner", "Owner Test");
 
-        Utente other = nuovoUtente("other@test.it", "other", "password-other", "Other Test");
-        utenteRepository.save(other);
+        ProprietarioPrenotazione other = nuovoUtente(2L, "other", "Other Test");
 
         Aula aula = new Aula();
         aula.setNome("Aula IT Test");
@@ -90,7 +79,7 @@ class PrenotazioneControllerTest {
 
         Prenotazione prenotazione = new Prenotazione();
         prenotazione.setAula(aula);
-        prenotazione.setUtente(istantaneaDi(owner));
+        prenotazione.setUtente(owner);
         prenotazione.setInizio(LocalDateTime.now().plusDays(1));
         prenotazione.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
         prenotazione.setStato(StatoPrenotazione.PRENOTATA);
@@ -99,29 +88,16 @@ class PrenotazioneControllerTest {
         prenotazioneRepository.save(prenotazione);
         prenotazioneIdDiOwner = prenotazione.getId();
 
-        tokenOwner = login("owner@test.it", "password-owner");
-        tokenOther = login("other@test.it", "password-other");
+        tokenOwner = TestJwt.perUtente(1L, "owner@test.it", "Owner Test");
+        tokenOther = TestJwt.perUtente(2L, "other@test.it", "Other Test");
     }
 
-    private Utente nuovoUtente(String email, String username, String rawPassword, String nome) {
-        Utente u = new Utente();
-        u.setEmail(email);
-        u.setUsername(username);
-        u.setPassword(passwordEncoder.encode(rawPassword));
-        u.setNome(nome);
-        u.setRuolo(Ruolo.USER);
-        u.setDataRegistrazione(LocalDateTime.now());
-        return u;
+    /** L'istantanea di un proprietario. Prima creava un utente vero: la tabella non e' piu' qui. */
+    private ProprietarioPrenotazione nuovoUtente(Long id, String username, String nome) {
+        return new ProprietarioPrenotazione(id, username, nome);
     }
 
     @SuppressWarnings("unchecked")
-    private String login(String email, String password) {
-        Map<String, String> body = Map.of("email", email, "password", password);
-        ResponseEntity<Map> resp = rest.postForEntity("/api/auth/login", body, Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
-    }
-
     private HttpHeaders bearer(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
@@ -203,26 +179,8 @@ class PrenotazioneControllerTest {
         return objectMapper.readValue(json, Map.class);
     }
 
-    @Test
-    void loginSuccessResponseShapeIsLocked() throws Exception {
-        ResponseEntity<String> resp = rest.postForEntity(
-                "/api/auth/login",
-                Map.of("email", "owner@test.it", "password", "password-owner"),
-                String.class);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = asMap(resp.getBody());
-        assertThat(body.keySet()).containsExactlyInAnyOrder(
-                "success", "message", "token", "data", "timestamp", "sessionId");
-
-        Map<String, Object> data = (Map<String, Object>) body.get("data");
-        assertThat(data.keySet()).containsExactlyInAnyOrder(
-                "token", "user", "loginTime", "tokenType");
-
-        Map<String, Object> user = (Map<String, Object>) data.get("user");
-        assertThat(user.keySet()).containsExactlyInAnyOrder(
-                "id", "username", "nome", "email", "ruolo");
-    }
+    // La forma della risposta di login e' verificata in auth-service, che ora possiede
+    // /api/auth/login: da qui quell'endpoint risponde 404.
 
     @Test
     void prenotaSuccessResponseShapeIsLocked() throws Exception {
@@ -318,8 +276,4 @@ class PrenotazioneControllerTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
-    }
 }

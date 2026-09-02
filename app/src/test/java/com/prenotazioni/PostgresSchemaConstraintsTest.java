@@ -1,16 +1,15 @@
 package com.prenotazioni;
 
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.ICorsoRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -93,7 +92,6 @@ class PostgresSchemaConstraintsTest {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
-    @Autowired private IUtenteRepository utenteRepository;
     @Autowired private IAulaRepository aulaRepository;
     @Autowired private IPrenotazioneRepository prenotazioneRepository;
     @Autowired private ICorsoRepository corsoRepository;
@@ -107,7 +105,7 @@ class PostgresSchemaConstraintsTest {
      */
     private static final LocalDateTime BASE = LocalDate.now().plusDays(7).atTime(10, 0);
 
-    private Utente utente;
+    private ProprietarioPrenotazione utente;
     private Aula aula;
 
     @BeforeEach
@@ -117,16 +115,11 @@ class PostgresSchemaConstraintsTest {
         prenotazioneRepository.deleteAll();
         corsoRepository.deleteAll();
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        utente = new Utente();
-        utente.setUsername("pg-user");
-        utente.setNome("Utente Postgres");
-        utente.setEmail("pg-user@test.it");
-        utente.setPassword("hash-non-usato");
-        utente.setRuolo(Ruolo.USER);
-        utente.setDataRegistrazione(BASE.minusDays(30));
-        utente = utenteRepository.save(utente);
+        // L'utente non esiste piu' in questo database: la prenotazione conserva solo
+        // la sua istantanea. L'id e' un valore qualunque, perche' nessuna chiave esterna
+        // lo vincola piu' - ed e' esattamente cio' che la V4 ha reso possibile.
+        utente = new ProprietarioPrenotazione(42L, "pg-user", "Utente Postgres");
 
         aula = nuovaAula("Aula Postgres");
     }
@@ -145,7 +138,7 @@ class PostgresSchemaConstraintsTest {
     private Prenotazione salva(Aula suAula, LocalDateTime inizio, LocalDateTime fine, StatoPrenotazione stato) {
         Prenotazione p = new Prenotazione();
         p.setAula(suAula);
-        p.setUtente(istantaneaDi(utente));
+        p.setUtente(utente);
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(stato);
@@ -363,8 +356,4 @@ class PostgresSchemaConstraintsTest {
         }
     }
 
-    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
-    }
 }

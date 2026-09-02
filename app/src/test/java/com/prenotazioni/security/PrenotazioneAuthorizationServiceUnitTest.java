@@ -2,7 +2,6 @@ package com.prenotazioni.security;
 
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.service.PrenotazioneService;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,13 +28,12 @@ class PrenotazioneAuthorizationServiceUnitTest {
     }
 
     private Prenotazione prenotazioneDi(Long proprietarioId) {
-        Utente u = new Utente();
-        u.setId(proprietarioId);
+        ProprietarioPrenotazione u = new ProprietarioPrenotazione(proprietarioId, "u" + proprietarioId, "Utente");
         Aula a = new Aula();
         a.setId(1L);
         Prenotazione p = new Prenotazione();
         p.setId(5L);
-        p.setUtente(istantaneaDi(u));
+        p.setUtente(istantaneaDi(u.getId(), u.getUsername(), u.getNome()));
         p.setAula(a);
         return p;
     }
@@ -74,8 +72,8 @@ class PrenotazioneAuthorizationServiceUnitTest {
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin"))).isTrue();
     }
 
-    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
+    /** L'istantanea del proprietario, ora costruita a mano: la tabella utenti non e' piu' qui. */
+    private static ProprietarioPrenotazione istantaneaDi(Long id, String username, String nome) {
+        return new ProprietarioPrenotazione(id, username, nome);
     }
 }

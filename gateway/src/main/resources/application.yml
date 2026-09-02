@@ -8,9 +8,9 @@
 # ripensare l'assegnazione:
 #
 #     17102  gateway            <-- il frontend parla solo con questa
-#     17103  app                (aule, prenotazioni, corsi, utenti)
+#     17103  app                (aule, prenotazioni, corsi)
 #     17104  notifica-service
-#     17105  auth-service       (riservata, non ancora esistente)
+#     17105  auth-service       (utenti, emissione dei token)
 #
 # La 8080 e' volutamente evitata: e' troppo comune e finisce per collidere con
 # altri progetti sulla stessa macchina.
@@ -57,18 +57,29 @@ spring:
           predicates:
             - Path=/api/notifiche/interne/**
 
+        # Anche le prenotazioni hanno rotte interne fra servizi: auth-service le chiama
+        # per cancellare le prenotazioni di un utente rimosso. Stessa regola, stesso ordine.
+        - id: prenotazioni-interne-bloccate
+          uri: forward:/rotta-non-esposta
+          predicates:
+            - Path=/api/prenotazioni/interne/**
+
         - id: notifiche
           uri: ${NOTIFICA_SERVICE_URL:http://localhost:17104}
           predicates:
             - Path=/api/notifiche/**
 
-        # Tutto il resto e' ancora il monolite. Quando auth-service si staccara',
-        # /api/auth/** e /api/me diventeranno una voce a se' e questa restera'
-        # a coprire aule, prenotazioni e amministrazione.
+        # Login, profilo e amministrazione utenti: auth-service.
+        - id: autenticazione
+          uri: ${AUTH_SERVICE_URL:http://localhost:17105}
+          predicates:
+            - Path=/api/auth/**,/api/me/**,/api/admin/users/**,/api/admin/register,/api/admin/delete/**
+
+        # Aule, prenotazioni e amministrazione delle stesse.
         - id: applicazione
           uri: ${APP_SERVICE_URL:http://localhost:17103}
           predicates:
-            - Path=/api/auth/**,/api/me/**,/api/rooms/**,/api/prenotazioni/**,/api/admin/**
+            - Path=/api/rooms/**,/api/prenotazioni/**,/api/admin/**
 
 logging:
   level:

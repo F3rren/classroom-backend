@@ -1,12 +1,9 @@
 package com.prenotazioni.controller.admin;
 
-import com.prenotazioni.service.AuthService;
 import com.prenotazioni.service.AulaService;
 import com.prenotazioni.service.PrenotazioneService;
 import com.prenotazioni.client.NotificaClient;
-import com.prenotazioni.service.UtenteService;
 import com.prenotazioni.dto.*;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.ProprietarioPrenotazione;
@@ -44,19 +41,15 @@ public class AdminController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
-    private final AuthService authService;
     private final AulaService aulaService;
     private final PrenotazioneService prenotazioneService;
     private final NotificaClient notificaClient;
-    private final UtenteService utenteService;
 
-    AdminController(AuthService authService, AulaService aulaService, PrenotazioneService prenotazioneService,
-                     NotificaClient notificaClient, UtenteService utenteService) {
-        this.authService = authService;
+    AdminController(AulaService aulaService, PrenotazioneService prenotazioneService,
+                     NotificaClient notificaClient) {
         this.aulaService = aulaService;
         this.prenotazioneService = prenotazioneService;
         this.notificaClient = notificaClient;
-        this.utenteService = utenteService;
     }
 
     private String generateSessionId() {
@@ -73,124 +66,6 @@ public class AdminController {
 
     // ==================== USER MANAGEMENT ENDPOINTS ====================
 
-    @PostMapping("/register")
-    @Operation(summary = "Crea un nuovo utente (solo admin)")
-    public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
-        String sessionId = generateSessionId();
-        logger.debug("[{}] register - creazione utente da admin | {} | ruolo={}",
-                   sessionId, LogSanitizer.maskEmail(request.getEmail()), request.getRuolo());
-
-        Utente utente = authService.register(request);
-
-        if (utente == null) {
-            logger.warn("[{}] register - rifiutata, email o username già esistenti ({})",
-                       sessionId, LogSanitizer.maskEmail(request.getEmail()));
-            return new ResponseEntity<>(
-                createErrorResponse("USER_ALREADY_EXISTS",
-                                  "Email o username già esistenti",
-                                  String.format("Un utente con email %s o username %s esiste già. Usa credenziali diverse.",
-                                               request.getEmail(), request.getUsername()),
-                                  sessionId),
-                HttpStatus.CONFLICT
-            );
-        }
-
-        logger.info("[{}] Utente creato da admin - utenteId={} ruolo={}",
-                   sessionId, utente.getId(), utente.getRuolo());
-
-        return new ResponseEntity<>(
-            createSuccessResponse("Utente registrato con successo dall'amministratore", new UserRegisterAck(utente), sessionId),
-            HttpStatus.CREATED
-        );
-    }
-
-    @GetMapping("/users")
-    @Operation(summary = "Elenca tutti gli utenti (solo admin)")
-    public ResponseEntity<ApiEnvelope<UserListPayload>> getAllUsers() {
-        String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getAllUsers - Richiesta lista completa utenti", sessionId);
-
-        List<Utente> users = authService.getAllUsers();
-        List<UserSummaryDto> safeUsers = users.stream()
-            .map(UserSummaryDto::forAdminListing)
-            .collect(Collectors.toList());
-
-        logger.debug("[{}] FINE getAllUsers - Utenti recuperati con successo, totale: {}", sessionId, users.size());
-        return new ResponseEntity<>(
-            createSuccessResponse("Lista utenti recuperata con successo", new UserListPayload(safeUsers), sessionId),
-            HttpStatus.OK
-        );
-    }
-
-    @PutMapping("/users/{id}")
-    @Operation(summary = "Modifica un utente esistente (solo admin)")
-    public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUtente(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
-        String sessionId = generateSessionId();
-        logger.debug("[{}] updateUtente - utenteId={} ruolo={}", sessionId, id, request.getRuolo());
-
-        if (id == null || id <= 0) {
-            logger.warn("[{}] FINE updateUtente - ID utente non valido: {}", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "ID utente non valido",
-                                  "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
-        Utente updated = authService.updateUtente(id, request);
-        if (updated == null) {
-            logger.warn("[{}] FINE updateUtente - Utente non trovato o non modificabile - ID: {}", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("USER_NOT_FOUND", "Utente non trovato o non modificabile",
-                                  String.format("L'utente con ID %d non esiste o non può essere modificato.", id), sessionId),
-                HttpStatus.NOT_FOUND
-            );
-        }
-
-        logger.info("[{}] Utente modificato da admin - utenteId={}", sessionId, updated.getId());
-
-        return new ResponseEntity<>(
-            createSuccessResponse("Utente aggiornato con successo dall'amministratore", new UserUpdateAck(updated), sessionId),
-            HttpStatus.OK
-        );
-    }
-
-    @DeleteMapping("/delete/{id}")
-    @Operation(summary = "Elimina un utente e i suoi dati (solo admin)")
-    public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUtente(@PathVariable Long id) {
-        String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO deleteUtente - ID Utente: {}", sessionId, id);
-
-        if (id == null || id <= 0) {
-            logger.warn("[{}] FINE deleteUtente - ID utente non valido: {}", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "ID utente non valido",
-                                  "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
-        if (utenteService.findById(id) == null) {
-            logger.warn("[{}] FINE deleteUtente - Utente non trovato - ID: {}", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("USER_NOT_FOUND", "Utente non trovato o non eliminabile",
-                                  String.format("L'utente con ID %d non esiste o non può essere eliminato.", id), sessionId),
-                HttpStatus.NOT_FOUND
-            );
-        }
-
-        // Elimina in cascata notifiche e prenotazioni dell'utente prima dell'utente stesso
-        // (in un'unica transazione, cosi' non si rischia di lasciare righe orfane o un FK violation non gestito)
-        utenteService.deleteById(id);
-
-        logger.debug("[{}] FINE deleteUtente - Utente eliminato con successo - ID: {}", sessionId, id);
-        return new ResponseEntity<>(
-            createSuccessResponse("Utente eliminato con successo", new DeletedUserResponse(id), sessionId),
-            HttpStatus.OK
-        );
-    }
-
-    // ==================== ROOM MANAGEMENT ENDPOINTS ====================
 
     @GetMapping("/rooms")
     @Operation(summary = "Elenca tutte le aule (solo admin)")
@@ -390,7 +265,6 @@ public class AdminController {
 
         ProprietarioPrenotazione utentePrenotazione = prenotazione.getUtente();
         Aula aulaPrenotazione = prenotazione.getAula();
-        Utente adminUtente = utenteService.findById(adminId);
 
         String motivo = (requestBody != null && requestBody.getReason() != null)
             ? requestBody.getReason()
@@ -408,7 +282,9 @@ public class AdminController {
         }
 
         try {
-            String adminNome = adminUtente != null ? adminUtente.getNome() : "Amministratore";
+            // Il nome dell'admin arriva dal token: chiederlo ad auth-service significherebbe
+            // una chiamata di rete per compilare il testo di una notifica.
+            String adminNome = principal.nome() != null ? principal.nome() : "Amministratore";
             String dataPrenotazione = prenotazione.getInizio().toLocalDate().toString();
             String oraInizio = prenotazione.getInizio().toLocalTime().toString();
             String oraFine = prenotazione.getFine().toLocalTime().toString();

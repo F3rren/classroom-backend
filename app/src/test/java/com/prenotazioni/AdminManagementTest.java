@@ -1,16 +1,15 @@
 package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.StatoAula;
 import com.prenotazioni.model.Prenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.repository.IAulaRepository;
 import com.prenotazioni.repository.IPrenotazioneRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import com.prenotazioni.client.NotificaClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +23,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -52,9 +50,6 @@ class AdminManagementTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private IAulaRepository aulaRepository;
 
     @Autowired
@@ -70,9 +65,6 @@ class AdminManagementTest {
     @MockBean
     private NotificaClient notificaClient;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String tokenAdmin;
@@ -81,14 +73,18 @@ class AdminManagementTest {
     private Long utenteNormaleId;
     private Long prenotazioneId;
 
+    /** Gli id non arrivano piu' da un insert: li sceglie il test e li firma nel token. */
+    private static final Long ID_ADMIN = 1L;
+    private static final Long ID_UTENTE_NORMALE = 2L;
+
     @BeforeEach
     void setUp() {
         prenotazioneRepository.deleteAll();
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        salvaUtente("admin-mgmt@test.it", "admin-mgmt", "admin-password", Ruolo.ADMIN);
-        utenteNormaleId = salvaUtente("user-mgmt@test.it", "user-mgmt", "user-password", Ruolo.USER);
+        // Nessun utente da creare: la tabella utenti appartiene ad auth-service e i token
+        // sono firmati in locale con lo stesso segreto (vedi TestJwt).
+        utenteNormaleId = ID_UTENTE_NORMALE;
 
         Aula aula = new Aula();
         aula.setNome("Aula Admin");
@@ -100,7 +96,7 @@ class AdminManagementTest {
 
         Prenotazione p = new Prenotazione();
         p.setAula(aula);
-        p.setUtente(istantaneaDi(utenteRepository.findById(utenteNormaleId).orElseThrow()));
+        p.setUtente(new ProprietarioPrenotazione(utenteNormaleId, "user-mgmt", "User Mgmt"));
         p.setInizio(LocalDateTime.now().plusDays(3).withNano(0));
         p.setFine(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
         p.setStato(StatoPrenotazione.PRENOTATA);
@@ -108,29 +104,12 @@ class AdminManagementTest {
         p.setDataCreazione(LocalDateTime.now());
         prenotazioneId = prenotazioneRepository.save(p).getId();
 
-        tokenAdmin = login("admin-mgmt@test.it", "admin-password");
-        tokenUser = login("user-mgmt@test.it", "user-password");
+        tokenAdmin = TestJwt.perAdmin(ID_ADMIN, "admin-mgmt@test.it");
+        tokenUser = TestJwt.perUtente(ID_UTENTE_NORMALE, "user-mgmt@test.it", "User Mgmt");
     }
 
-    private Long salvaUtente(String email, String username, String rawPassword, Ruolo ruolo) {
-        Utente u = new Utente();
-        u.setEmail(email);
-        u.setUsername(username);
-        u.setPassword(passwordEncoder.encode(rawPassword));
-        u.setNome(username);
-        u.setRuolo(ruolo);
-        u.setDataRegistrazione(LocalDateTime.now());
-        return utenteRepository.save(u).getId();
-    }
 
     @SuppressWarnings("unchecked")
-    private String login(String email, String password) {
-        ResponseEntity<Map> resp = rest.postForEntity(
-                "/api/auth/login", Map.of("email", email, "password", password), Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
-    }
-
     private HttpHeaders bearer(String token) {
         HttpHeaders h = new HttpHeaders();
         h.setBearerAuth(token);
@@ -220,32 +199,6 @@ class AdminManagementTest {
     }
 
     // ==================== Gestione utenti ====================
-
-    @Test
-    void adminDeletesUserCascadingBookings() {
-        ResponseEntity<String> resp = exchange(
-                "/api/admin/delete/" + utenteNormaleId, HttpMethod.DELETE, tokenAdmin, null);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(utenteRepository.existsById(utenteNormaleId)).isFalse();
-        // le prenotazioni dell'utente non devono restare orfane
-        assertThat(prenotazioneRepository.existsById(prenotazioneId)).isFalse();
-    }
-
-    @Test
-    void adminDeleteUserNotFoundReturns404() {
-        ResponseEntity<String> resp = exchange("/api/admin/delete/999999", HttpMethod.DELETE, tokenAdmin, null);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    }
-
-    @Test
-    void adminDeleteUserRejectsInvalidId() throws Exception {
-        ResponseEntity<String> resp = exchange("/api/admin/delete/0", HttpMethod.DELETE, tokenAdmin, null);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("INVALID_USER_ID");
-    }
 
     // ==================== Gestione prenotazioni ====================
 
@@ -341,7 +294,8 @@ class AdminManagementTest {
                 new Chiamata("/api/admin/rooms/" + aulaId, HttpMethod.DELETE),
                 new Chiamata("/api/admin/prenotazioni", HttpMethod.GET),
                 new Chiamata("/api/admin/prenotazioni/" + prenotazioneId, HttpMethod.DELETE),
-                new Chiamata("/api/admin/delete/" + utenteNormaleId, HttpMethod.DELETE),
+                // /api/admin/delete/{id} non e' piu' servito da questo servizio:
+                // la gestione utenti e' passata ad auth-service.
         };
 
         for (Chiamata c : chiamate) {
@@ -353,67 +307,9 @@ class AdminManagementTest {
 
         // e nulla e' stato modificato
         assertThat(aulaRepository.existsById(aulaId)).isTrue();
-        assertThat(utenteRepository.existsById(utenteNormaleId)).isTrue();
     }
 
     // ==================== Elenco utenti ====================
-
-    @Test
-    void adminListsUsersWithoutLeakingPasswords() throws Exception {
-        ResponseEntity<String> resp = exchange("/api/admin/users", HttpMethod.GET, tokenAdmin, null);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> data = dataOf(resp);
-        assertThat(data.keySet()).containsExactlyInAnyOrder("users", "totalUsers");
-        assertThat(data.get("totalUsers")).isEqualTo(2);
-        // nessun hash di password deve comparire nella risposta
-        assertThat(resp.getBody()).doesNotContain("password");
-        assertThat(resp.getBody()).doesNotContain("$2a$");
-    }
-
-    @Test
-    void adminRegisterRejectsDuplicateEmail() throws Exception {
-        Map<String, Object> body = Map.of(
-                "username", "utente-nuovo",
-                "email", "user-mgmt@test.it", // gia' esistente
-                "password", "password123",
-                "nome", "Utente Nuovo",
-                "ruolo", "user");
-
-        ResponseEntity<String> resp = exchange("/api/admin/register", HttpMethod.POST, tokenAdmin, body);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("USER_ALREADY_EXISTS");
-    }
-
-    @Test
-    void adminRegisterRejectsDuplicateUsername() throws Exception {
-        Map<String, Object> body = Map.of(
-                "username", "user-mgmt", // gia' esistente
-                "email", "email-mai-vista@test.it",
-                "password", "password123",
-                "nome", "Utente Nuovo",
-                "ruolo", "user");
-
-        ResponseEntity<String> resp = exchange("/api/admin/register", HttpMethod.POST, tokenAdmin, body);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    }
-
-    @Test
-    void adminUpdateUserNotFoundReturns404() throws Exception {
-        Map<String, Object> body = Map.of(
-                "username", "chiunque",
-                "email", "chiunque@test.it",
-                "nome", "Chiunque",
-                "password", "",
-                "ruolo", "user");
-
-        ResponseEntity<String> resp = exchange("/api/admin/users/999999", HttpMethod.PUT, tokenAdmin, body);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("USER_NOT_FOUND");
-    }
 
     @Test
     void adminCreateRoomRejectsDuplicateName() throws Exception {
@@ -453,8 +349,4 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
-    /** L'istantanea del proprietario che la prenotazione conserva al posto della relazione JPA. */
-    private static ProprietarioPrenotazione istantaneaDi(Utente utente) {
-        return new ProprietarioPrenotazione(utente.getId(), utente.getUsername(), utente.getNome());
-    }
 }

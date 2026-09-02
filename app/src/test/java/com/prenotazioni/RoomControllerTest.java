@@ -1,12 +1,12 @@
 package com.prenotazioni;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.model.ProprietarioPrenotazione;
+import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.model.Aula;
 import com.prenotazioni.model.StatoAula;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.repository.IAulaRepository;
-import com.prenotazioni.repository.IUtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -39,9 +38,6 @@ class RoomControllerTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
-
-    @Autowired
     private IAulaRepository aulaRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -52,16 +48,8 @@ class RoomControllerTest {
     @BeforeEach
     void setUp() {
         aulaRepository.deleteAll();
-        utenteRepository.deleteAll();
 
-        Utente user = new Utente();
-        user.setEmail("room-user@test.it");
-        user.setUsername("room-user");
-        user.setPassword("{noop}"); // placeholder, sovrascritto sotto
-        user.setNome("Room User");
-        user.setRuolo(Ruolo.USER);
-        user.setDataRegistrazione(LocalDateTime.now());
-        user = utenteRepository.save(user);
+        ProprietarioPrenotazione user = new ProprietarioPrenotazione(1L, "room-user", "Room User");
 
         Aula aula = new Aula();
         aula.setNome("Aula Room Test");
@@ -71,21 +59,9 @@ class RoomControllerTest {
         aula.setStato(StatoAula.LIBERA);
         aulaId = aulaRepository.save(aula).getId();
 
-        token = login("room-user@test.it", "room-password", user);
+        token = TestJwt.perUtente(1L, "room-user@test.it", "Room User");
     }
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @SuppressWarnings("unchecked")
-    private String login(String email, String rawPassword, Utente user) {
-        user.setPassword(passwordEncoder.encode(rawPassword));
-        utenteRepository.save(user);
-        Map<String, String> body = Map.of("email", email, "password", rawPassword);
-        ResponseEntity<Map> resp = rest.postForEntity("/api/auth/login", body, Map.class);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
-    }
 
     private HttpHeaders bearer() {
         HttpHeaders headers = new HttpHeaders();

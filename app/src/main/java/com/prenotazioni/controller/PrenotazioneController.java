@@ -3,8 +3,8 @@ package com.prenotazioni.controller;
 import com.prenotazioni.dto.*;
 import com.prenotazioni.exception.BookingConflictException;
 import com.prenotazioni.model.Prenotazione;
+import com.prenotazioni.model.ProprietarioPrenotazione;
 import com.prenotazioni.model.StatoPrenotazione;
-import com.prenotazioni.model.Utente;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.service.PrenotazioneService;
 import com.prenotazioni.util.Timestamps;
@@ -41,6 +41,17 @@ public class PrenotazioneController {
 
     PrenotazioneController(PrenotazioneService prenotazioneService) {
         this.prenotazioneService = prenotazioneService;
+    }
+
+    /**
+     * L'istantanea di chi sta prenotando, presa dai claim del token.
+     *
+     * Prima veniva letta dalla tabella utenti. Quella tabella ora appartiene ad
+     * auth-service: leggerla richiederebbe una chiamata di rete a ogni prenotazione,
+     * e il token porta gia' esattamente questi tre campi.
+     */
+    private static ProprietarioPrenotazione istantaneaDi(AppPrincipal principal) {
+        return new ProprietarioPrenotazione(principal.id(), principal.username(), principal.nome());
     }
 
     private String generateSessionId() {
@@ -122,7 +133,7 @@ public class PrenotazioneController {
         Prenotazione prenotazione;
         try {
             prenotazione = prenotazioneService.prenotaAula(
-                request.getAulaId(), request.getCorsoId(), principal.id(), inizio, fine, request.getDescrizione());
+                request.getAulaId(), request.getCorsoId(), istantaneaDi(principal), inizio, fine, request.getDescrizione());
         } catch (DataIntegrityViolationException e) {
             logger.warn("[{}] FINE prenotaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}",
                        sessionId, request.getAulaId());
@@ -206,7 +217,7 @@ public class PrenotazioneController {
         Prenotazione prenotazione;
         try {
             prenotazione = prenotazioneService.updatePrenotazione(
-                prenotazioneId, request.getAulaId(), request.getCorsoId(), principal.id(), inizio, fine, request.getDescrizione());
+                prenotazioneId, request.getAulaId(), request.getCorsoId(), principal.id(), principal.isAdmin(), inizio, fine, request.getDescrizione());
         } catch (DataIntegrityViolationException e) {
             logger.warn("[{}] FINE modificaPrenotazione - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - PrenotazioneId: {}, AulaId: {}",
                        sessionId, prenotazioneId, request.getAulaId());
@@ -280,7 +291,7 @@ public class PrenotazioneController {
 
         Prenotazione blocco;
         try {
-            blocco = prenotazioneService.bloccaAula(request.getAulaId(), principal.id(), inizio, fine, request.getDescrizione());
+            blocco = prenotazioneService.bloccaAula(request.getAulaId(), istantaneaDi(principal), inizio, fine, request.getDescrizione());
         } catch (DataIntegrityViolationException e) {
             logger.warn("[{}] FINE bloccaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}",
                        sessionId, request.getAulaId());
@@ -413,7 +424,7 @@ public class PrenotazioneController {
         logger.debug("[{}] Prenotazione trovata: ID {}, proprietario: {}, stato: {}",
                     sessionId, prenotazioneId, prenotazioneEsistente.getUtente().getId(), prenotazioneEsistente.getStato());
 
-        boolean annullata = prenotazioneService.annullaPrenotazione(prenotazioneId, principal.id());
+        boolean annullata = prenotazioneService.annullaPrenotazione(prenotazioneId, principal.id(), principal.isAdmin());
 
         if (!annullata) {
             // L'ordine conta: si allinea alla regola del service, che accetta il proprietario
