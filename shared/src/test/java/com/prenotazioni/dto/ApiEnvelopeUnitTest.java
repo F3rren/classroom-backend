@@ -49,4 +49,17 @@ class ApiEnvelopeUnitTest {
         assertThat(json.has("data")).isFalse();
         assertThat(json.get("success").asBoolean()).isTrue();
     }
+
+    @Test
+    void unErroreEsponeEsattamenteSeiChiavi() throws Exception {
+        // Contratto condiviso col gateway. Quello non puo' riusare questa classe (shared
+        // porta spring-boot-starter-web, che in un'applicazione WebFlux farebbe partire
+        // Tomcat), quindi ricostruisce l'envelope a mano. Questo test e' il gemello di
+        // RisposteErroreTest: insieme impediscono alle due forme di divergere in silenzio.
+        JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(
+                ApiEnvelope.error("CODICE", "messaggio tecnico", "messaggio per l'utente", "S1")));
+
+        assertThat(json.fieldNames()).toIterable().containsExactlyInAnyOrder(
+                "success", "error", "message", "userMessage", "timestamp", "sessionId");
+    }
 }
