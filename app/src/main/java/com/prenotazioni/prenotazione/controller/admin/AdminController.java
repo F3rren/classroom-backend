@@ -127,16 +127,6 @@ public class AdminController {
                    sessionId, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
 
         Aula nuovaAula = aulaService.createAula(roomRequest);
-        if (nuovaAula == null) {
-            logger.warn("[{}] FINE createRoom - Impossibile creare aula | Nome: {}", sessionId, roomRequest.getNome());
-            return new ResponseEntity<>(
-                createErrorResponse("ROOM_CREATION_FAILED", "Impossibile creare aula",
-                                  String.format("Impossibile creare l'aula '%s'. Verifica che il nome non sia già esistente.",
-                                               roomRequest.getNome()), sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
         logger.debug("[{}] FINE createRoom - Aula creata con successo | ID: {} | Nome: {}",
                    sessionId, nuovaAula.getId(), nuovaAula.getNome());
         return new ResponseEntity<>(
@@ -162,15 +152,6 @@ public class AdminController {
         }
 
         Aula aulaAggiornata = aulaService.updateAula(id, roomRequest);
-        if (aulaAggiornata == null) {
-            logger.warn("[{}] FINE updateRoom - Impossibile aggiornare aula ID: {}", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("ROOM_UPDATE_FAILED", "Impossibile aggiornare aula",
-                                  String.format("L'aula con ID %d non esiste o non può essere aggiornata.", id), sessionId),
-                HttpStatus.NOT_FOUND
-            );
-        }
-
         logger.debug("[{}] FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}",
                    sessionId, aulaAggiornata.getId(), aulaAggiornata.getNome());
         return new ResponseEntity<>(
@@ -194,15 +175,11 @@ public class AdminController {
             );
         }
 
-        boolean eliminata = aulaService.deleteAula(id);
-        if (!eliminata) {
-            logger.warn("[{}] FINE deleteRoom - Impossibile eliminare aula ID: {}", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("ROOM_NOT_FOUND", "Impossibile eliminare aula",
-                                  String.format("L'aula con ID %d non esiste o non può essere eliminata.", id), sessionId),
-                HttpStatus.NOT_FOUND
-            );
-        }
+        // Nessun controllo sull'esito: deleteAula lancia ResourceNotFoundException se
+        // l'aula non c'e', e il gestore globale la traduce in 404. Prima il booleano
+        // confondeva "non esiste" con "non si e' potuta eliminare", e il messaggio lo
+        // ammetteva: "non esiste O non puo' essere eliminata".
+        aulaService.deleteAula(id);
 
         logger.debug("[{}] FINE deleteRoom - Aula eliminata con successo - ID: {}", sessionId, id);
         return new ResponseEntity<>(

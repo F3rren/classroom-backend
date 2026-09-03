@@ -65,6 +65,38 @@ public class GlobalExceptionHandler {
         );
     }
 
+    /**
+     * Risorsa inesistente. Prima questo caso arrivava qui come null, e ogni controller
+     * decideva da se' che fosse un 404 e con quale messaggio: sedici controlli "== null"
+     * sparsi, ognuno con la sua frase scritta a mano.
+     */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
+        String sessionId = newSessionId();
+        // debug e non warn: una risorsa cercata e non trovata e' un esito normale
+        // dell'uso dell'applicazione, non un sintomo di qualcosa che non va.
+        logger.debug("[{}] Risorsa non trovata: {}", sessionId, ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
+                HttpStatus.NOT_FOUND
+        );
+    }
+
+    /**
+     * Conflitto con lo stato attuale dei dati. Cattura anche BookingConflictException, che
+     * ne e' un sottotipo: il gestore piu' specifico qui sotto resta comunque preferito da
+     * Spring, e serve a distinguere il caso nei log.
+     */
+    @ExceptionHandler(DomainConflictException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleDomainConflict(DomainConflictException ex) {
+        String sessionId = newSessionId();
+        logger.warn("[{}] Conflitto di dominio: {}", sessionId, ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
+                HttpStatus.CONFLICT
+        );
+    }
+
     @ExceptionHandler(BookingConflictException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleBookingConflict(BookingConflictException ex) {
         String sessionId = newSessionId();

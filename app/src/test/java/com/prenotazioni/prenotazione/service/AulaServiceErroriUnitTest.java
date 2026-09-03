@@ -1,5 +1,7 @@
 package com.prenotazioni.prenotazione.service;
 
+import com.prenotazioni.exception.DomainConflictException;
+import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.prenotazione.dto.AulaRequest;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.repository.IAulaRepository;
@@ -76,12 +78,14 @@ class AulaServiceErroriUnitTest {
     }
 
     @Test
-    void unNomeGiaUsatoRestaUnRifiutoPulitoENonUnEccezione() {
-        // Il controllo preventivo continua a fare il suo lavoro: il caso normale di nome
-        // duplicato resta un null, e il messaggio del controller li' e' corretto.
+    void unNomeGiaUsatoDiventaUnConflittoDiDominio() {
+        // Prima era un null, che il controller presentava come 400. Ora e' un tipo, e
+        // il gestore globale lo traduce in 409 con un codice che nomina la causa.
         when(aulaRepository.existsByNomeIgnoreCase("Aula Magna")).thenReturn(true);
 
-        assertThat(service.createAula(richiesta("Aula Magna"))).isNull();
+        assertThatThrownBy(() -> service.createAula(richiesta("Aula Magna")))
+                .isInstanceOf(DomainConflictException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "ROOM_NAME_TAKEN");
     }
 
     @Test
@@ -102,7 +106,7 @@ class AulaServiceErroriUnitTest {
     void unaCancellazioneImpeditaDaUnVincoloNonSiTravesteDaAulaInesistente() {
         Aula esistente = new Aula();
         esistente.setId(1L);
-        when(aulaRepository.findById(1L)).thenReturn(Optional.of(esistente));
+        when(aulaRepository.existsById(1L)).thenReturn(true);
         doThrow(new DataIntegrityViolationException("prenotazioni_aula_id_fkey"))
                 .when(aulaRepository).deleteById(1L);
 
@@ -114,9 +118,13 @@ class AulaServiceErroriUnitTest {
     }
 
     @Test
-    void unAulaInesistenteRestaUnFalseENonUnEccezione() {
-        when(aulaRepository.findById(99L)).thenReturn(Optional.empty());
+    void cancellareUnAulaInesistenteDiceCheNonEsiste() {
+        // Prima tornava false, indistinguibile da "cancellazione fallita". Ora e' un 404
+        // che nomina la risorsa, e "cancellazione fallita" e' un caso diverso e separato.
+        when(aulaRepository.existsById(99L)).thenReturn(false);
 
-        assertThat(service.deleteAula(99L)).isFalse();
+        assertThatThrownBy(() -> service.deleteAula(99L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "ROOM_NOT_FOUND");
     }
 }

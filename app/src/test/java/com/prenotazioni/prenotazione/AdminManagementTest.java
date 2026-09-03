@@ -318,8 +318,11 @@ class AdminManagementTest {
 
         ResponseEntity<String> resp = exchange("/api/admin/createrooms", HttpMethod.POST, tokenAdmin, body);
 
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_CREATION_FAILED");
+        // 409 e non piu' 400: un nome gia' preso non e' una richiesta malformata, e il
+        // chiamante non la risolve correggendo la sintassi. Il codice dice ora quale dei
+        // tanti motivi di fallimento e' stato, invece del generico ROOM_CREATION_FAILED.
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NAME_TAKEN");
     }
 
     @Test
@@ -339,7 +342,9 @@ class AdminManagementTest {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_UPDATE_FAILED");
+        // ROOM_NOT_FOUND e non ROOM_UPDATE_FAILED: lo stato era gia' 404, ma il codice
+        // diceva "aggiornamento fallito" senza dire perche'. Ora nomina la causa.
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 
     @Test

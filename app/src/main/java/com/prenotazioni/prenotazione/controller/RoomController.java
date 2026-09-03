@@ -234,15 +234,6 @@ public class RoomController {
         }
 
         RoomDetailsResponse roomDetails = aulaService.getRoomWithDetails(id);
-        if (roomDetails == null) {
-            logger.warn("[{}] FINE getRoomDetailed - Aula con ID {} non trovata", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("ROOM_NOT_FOUND", "Aula non trovata",
-                                  String.format("Non è stata trovata nessuna aula con ID %d", id), sessionId),
-                HttpStatus.NOT_FOUND
-            );
-        }
-
         logger.debug("[{}] FINE getRoomDetailed - Dettagli aula recuperati con successo: ID: {}, Nome: {}",
                    sessionId, roomDetails.getId(), roomDetails.getName());
         return new ResponseEntity<>(

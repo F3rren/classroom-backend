@@ -1,5 +1,7 @@
 package com.prenotazioni.prenotazione.service;
 
+import com.prenotazioni.exception.DomainConflictException;
+import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.DisponibilitaAula;
 import com.prenotazioni.prenotazione.model.Prenotazione;
@@ -67,26 +69,18 @@ public class AulaService {
         logger.debug("INIZIO createAula - Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    request.getNome(), request.getCapienza(), request.getPiano(), request.isVirtual());
         
-        // Verifica che il nome non sia già esistente
         if (aulaRepository.existsByNomeIgnoreCase(request.getNome())) {
-            logger.debug("FINE createAula - Nome già esistente: {}", request.getNome());
-            return null; // Nome già esistente
+            logger.debug("FINE createAula - Nome gia' esistente: {}", request.getNome());
+            throw new DomainConflictException("ROOM_NAME_TAKEN",
+                    "Nome aula gia' esistente: " + request.getNome(),
+                    "Esiste gia' un'aula con questo nome.");
         }
         
 
-        // Validazioni
-        if (request.getNome() == null || request.getNome().trim().isEmpty()) {
-            logger.debug("FINE createAula - Nome non valido");
-            return null; // Nome non valido
-        }
-        if (request.getCapienza() <= 0) {
-            logger.debug("FINE createAula - Capienza non valida: {}", request.getCapienza());
-            return null; // Capienza non valida
-        }
-        if (request.getPiano() < 0) {
-            logger.debug("FINE createAula - Piano non valido: {}", request.getPiano());
-            return null; // Piano non valido
-        }
+        // Nessuna validazione qui: AulaRequest porta gia' @NotBlank, @Positive e
+        // @PositiveOrZero e il controller usa @Valid, quindi Bean Validation respinge
+        // prima e con un messaggio migliore. Ripeterle a mano significava tenere due
+        // punti in cui la stessa regola poteva divergere.
 
         Aula aula = new Aula();
         aula.setNome(request.getNome().trim());
@@ -112,35 +106,19 @@ public class AulaService {
         logger.debug("INIZIO updateAula - ID: {}, Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    id, request.getNome(), request.getCapienza(), request.getPiano(), request.isVirtual());
         
-        Optional<Aula> aulaOptional = aulaRepository.findById(id);
-        if (aulaOptional.isEmpty()) {
-            logger.debug("FINE updateAula - Aula non trovata con ID: {}", id);
-            return null; // Aula non trovata
-        }
-
-        Aula aula = aulaOptional.get();
+        Aula aula = aulaRepository.findById(id)
+                .orElseThrow(() -> ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", id));
         logger.debug("Aula esistente trovata - Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
                    aula.getNome(), aula.getCapienza(), aula.getPiano(), aula.isVirtual());
 
-        // Verifica che il nome non sia già esistente (escludendo l'aula corrente)
         if (aulaRepository.existsByNomeIgnoreCaseAndIdNot(request.getNome(), id)) {
-            logger.debug("FINE updateAula - Nome già esistente: {}", request.getNome());
-            return null; // Nome già esistente
+            logger.debug("FINE updateAula - Nome gia' esistente: {}", request.getNome());
+            throw new DomainConflictException("ROOM_NAME_TAKEN",
+                    "Nome aula gia' esistente: " + request.getNome(),
+                    "Esiste gia' un'aula con questo nome.");
         }
 
-        // Validazioni
-        if (request.getNome() == null || request.getNome().trim().isEmpty()) {
-            logger.debug("FINE updateAula - Nome non valido");
-            return null; // Nome non valido
-        }
-        if (request.getCapienza() <= 0) {
-            logger.debug("FINE updateAula - Capienza non valida: {}", request.getCapienza());
-            return null; // Capienza non valida
-        }
-        if (request.getPiano() < 0) {
-            logger.debug("FINE updateAula - Piano non valido: {}", request.getPiano());
-            return null; // Piano non valido
-        }
+        // Come in createAula: le validazioni le fa @Valid, non questo metodo.
 
         aula.setNome(request.getNome().trim());
         aula.setCapienza(request.getCapienza());
@@ -157,13 +135,11 @@ public class AulaService {
     }
 
     // Elimina un'aula
-    public boolean deleteAula(Long id) {
+    public void deleteAula(Long id) {
         logger.debug("INIZIO deleteAula - ID: {}", id);
         
-        Optional<Aula> aulaOptional = aulaRepository.findById(id);
-        if (aulaOptional.isEmpty()) {
-            logger.debug("FINE deleteAula - Aula non trovata con ID: {}", id);
-            return false; // Aula non trovata
+        if (!aulaRepository.existsById(id)) {
+            throw ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", id);
         }
 
         // false significava due cose opposte: "aula inesistente" (sopra) e "cancellazione
@@ -172,7 +148,6 @@ public class AulaService {
         // dirlo e' piu' utile che rispondere "aula non trovata" su un'aula che esiste.
         aulaRepository.deleteById(id);
         logger.debug("FINE deleteAula - Aula eliminata con successo - ID: {}", id);
-        return true;
     }
 
     // Filtra aule per piano
@@ -203,13 +178,9 @@ public class AulaService {
     public RoomDetailsResponse getRoomWithDetails(Long aulaId) {
         logger.debug("INIZIO getRoomWithDetails - ID Aula: {}", aulaId);
 
-        Optional<Aula> aulaOpt = aulaRepository.findById(aulaId);
-        if (aulaOpt.isEmpty()) {
-            logger.debug("FINE getRoomWithDetails - Aula non trovata con ID: {}", aulaId);
-            return null;
-        }
+        Aula aula = aulaRepository.findById(aulaId)
+                .orElseThrow(() -> ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", aulaId));
 
-        Aula aula = aulaOpt.get();
         RoomDetailsResponse roomDetails = toRoomDetails(
                 aula, prenotazioneRepository.findByAulaId(aula.getId()), LocalDateTime.now());
 
