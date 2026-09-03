@@ -23,6 +23,37 @@ Il database può restare **vuoto**: lo schema viene creato da Flyway al primo av
 
 ## 2. Configurare i segreti
 
+Tutti i segreti stanno in **`.env`**, ignorato da git. Il modello versionato è
+`.env.example`, che non contiene valori.
+
+```bash
+cp .env.example .env
+openssl rand -base64 48     # -> JWT_SECRET
+# poi valorizzare SPRING_DATASOURCE_PASSWORD con la password del PostgreSQL locale
+```
+
+Lo stack in container lo legge da solo. Per i servizi avviati a mano va caricato
+nell'ambiente, una volta per terminale:
+
+```bash
+set -a; source .env; set +a        # Git Bash
+```
+
+```powershell
+Get-Content .env | Where-Object { $_ -match '^([^#=]+)=(.*)$' } |
+    ForEach-Object { [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2]) }
+```
+
+Spring riconosce le variabili per convenzione: `JWT_SECRET` diventa `jwt.secret`,
+`SPRING_DATASOURCE_PASSWORD` diventa `spring.datasource.password`.
+
+> `config/config.properties` continua a funzionare come riserva, ma non serve più tenerlo
+> allineato: **l'ambiente ha la precedenza**, verificato avviando l'applicazione con un
+> `JWT_SECRET` volutamente troppo corto e ottenendo l'errore sulla lunghezza della chiave
+> invece dell'avvio con il valore del file.
+
+### Il vecchio percorso
+
 Le credenziali **non** stanno in `application.properties`, che è versionato. Vanno in
 `config/config.properties`, ignorato da git e letto dall'esterno del jar.
 
