@@ -172,6 +172,11 @@ public class NotificaService {
      * cancellazione che fallisce per un timestamp malformato no.
      */
     private static LocalDateTime componiIstante(String data, String ora) {
+        // I due null di questo metodo NON sono un segnale d'errore che attraversa un
+        // confine: e' un helper privato di parsing, e null significa "non interpretabile",
+        // che e' l'unico significato possibile. Convertirli in eccezioni farebbe fallire
+        // la creazione di una notifica per una data malformata, quando la notifica ha
+        // ancora senso senza quel campo.
         if (data == null || ora == null) {
             return null;
         }

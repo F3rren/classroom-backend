@@ -132,4 +132,71 @@ class GlobalExceptionHandlerUnitTest {
 
         assertThat(resp.getBody().getUserMessage()).isEqualTo("La capienza deve essere un numero positivo.");
     }
+
+    @Test
+    void unaRisorsaInesistenteDiventa404ConIlSuoCodice() {
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
+                new ResourceNotFoundException("ROOM_NOT_FOUND", "Aula non trovata con ID: 42",
+                        "L'aula richiesta non esiste."));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(resp.getBody().getError()).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(resp.getBody().getUserMessage()).isEqualTo("L'aula richiesta non esiste.");
+        assertThat(resp.getBody().isSuccess()).isFalse();
+    }
+
+    @Test
+    void laScorciatoiaPerIdComponeMessaggioTecnicoEMessaggioUtente() {
+        ResourceNotFoundException ex = ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", 42L);
+
+        // il tecnico porta l'id, utile nei log; quello per l'utente no, perche' non gli serve
+        assertThat(ex.getMessage()).contains("42");
+        assertThat(ex.getUserMessage()).doesNotContain("42");
+        assertThat(ex.getErrorCode()).isEqualTo("ROOM_NOT_FOUND");
+    }
+
+    @Test
+    void unConflittoDiDominioDiventa409() {
+        // 409 e non 400: un nome gia' in uso non e' una richiesta malformata, e il
+        // chiamante non lo risolve correggendo la sintassi.
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDomainConflict(
+                new DomainConflictException("ROOM_NAME_TAKEN", "Nome gia' esistente: Aula Magna",
+                        "Esiste gia' un'aula con questo nome."));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(resp.getBody().getError()).isEqualTo("ROOM_NAME_TAKEN");
+    }
+
+    @Test
+    void unConflittoDiPrenotazioneRestaGestibileComeConflittoGenerico() {
+        // BookingConflictException e' un sottotipo: il gestore specifico ha la precedenza,
+        // ma se un giorno venisse rimosso il caso resterebbe comunque coperto, con lo
+        // stesso stato. Questo test blocca quella relazione.
+        BookingConflictException ex = new BookingConflictException(
+                "BOOKING_CONFLICT", "Sovrapposizione", "L'aula e' gia' prenotata.");
+
+        assertThat(ex).isInstanceOf(DomainConflictException.class);
+        assertThat(handler.handleDomainConflict(ex).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void unaRichiestaNonValidaDiventa400() {
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleInvalidRequest(
+                new InvalidRequestException("INVALID_STATE", "Stato non valido: inventato",
+                        "Stato non riconosciuto."));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(resp.getBody().getError()).isEqualTo("INVALID_STATE");
+    }
+
+    @Test
+    void unIllegalArgumentRestaUn500ENonDiventaColpaDelChiamante() {
+        // Deliberato: IllegalArgumentException segnala un errore di programmazione.
+        // Mapparla a 400 farebbe passare i bug del server per richieste sbagliate, e
+        // nasconderebbe proprio i casi che vanno visti.
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleGeneric(
+                new IllegalArgumentException("argomento non valido"));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

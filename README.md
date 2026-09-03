@@ -23,6 +23,37 @@ Il database può restare **vuoto**: lo schema viene creato da Flyway al primo av
 
 ## 2. Configurare i segreti
 
+Tutti i segreti stanno in **`.env`**, ignorato da git. Il modello versionato è
+`.env.example`, che non contiene valori.
+
+```bash
+cp .env.example .env
+openssl rand -base64 48     # -> JWT_SECRET
+# poi valorizzare SPRING_DATASOURCE_PASSWORD con la password del PostgreSQL locale
+```
+
+Lo stack in container lo legge da solo. Per i servizi avviati a mano va caricato
+nell'ambiente, una volta per terminale:
+
+```bash
+set -a; source .env; set +a        # Git Bash
+```
+
+```powershell
+Get-Content .env | Where-Object { $_ -match '^([^#=]+)=(.*)$' } |
+    ForEach-Object { [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2]) }
+```
+
+Spring riconosce le variabili per convenzione: `JWT_SECRET` diventa `jwt.secret`,
+`SPRING_DATASOURCE_PASSWORD` diventa `spring.datasource.password`.
+
+> `config/config.properties` continua a funzionare come riserva, ma non serve più tenerlo
+> allineato: **l'ambiente ha la precedenza**, verificato avviando l'applicazione con un
+> `JWT_SECRET` volutamente troppo corto e ottenendo l'errore sulla lunghezza della chiave
+> invece dell'avvio con il valore del file.
+
+### Il vecchio percorso
+
 Le credenziali **non** stanno in `application.properties`, che è versionato. Vanno in
 `config/config.properties`, ignorato da git e letto dall'esterno del jar.
 
@@ -89,9 +120,26 @@ progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'
 
 ### Con Docker
 
+Al primo avvio, una volta sola:
+
 ```bash
-JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
+cp .env.example .env
+openssl rand -base64 48    # incollare il risultato in JWT_SECRET dentro .env
 ```
+
+Poi, sempre:
+
+```bash
+docker compose up --build
+```
+
+Docker Compose legge `.env` da solo. `JWT_SECRET` non ha un default di proposito: un
+segreto con un valore di comodo prima o poi finisce in produzione, quindi lo stack si
+rifiuta di partire finché non ne esiste uno vero. Va tenuto **stabile** fra un avvio e
+l'altro — cambiarlo invalida tutti i token già emessi, e chi era autenticato riceve un 401
+senza una ragione visibile.
+
+`.env` è ignorato da git; il modello versionato è `.env.example`, che non contiene valori.
 
 Alza tre PostgreSQL (uno per servizio), i quattro servizi e pubblica **solo la 17102**.
 Gli altri si parlano sulla rete interna e non sono raggiungibili da fuori: le rotte
@@ -163,6 +211,29 @@ perché lo schema dell'API è servito su percorsi pubblici.
 
 ---
 
+## Organizzazione dei package
+
+Ogni servizio ha un namespace proprio, e `shared` tiene la radice:
+
+| Modulo | Package |
+|---|---|
+| `shared` | `com.prenotazioni.{dto,model,security,setting,util,exception,eventi}` |
+| `app` | `com.prenotazioni.prenotazione.*` |
+| `auth-service` | `com.prenotazioni.auth.*` |
+| `notifica-service` | `com.prenotazioni.notifica.*` |
+| `gateway` | `com.prenotazioni.gateway.*` |
+
+Non è una convenzione estetica. Finché `app` stava sotto `com.prenotazioni.*` come `shared`,
+tre package erano pubblicati da entrambi i jar e il confine fra i due moduli non era
+verificato dal compilatore: una classe poteva usare un membro package-private dell'altro
+modulo e compilare. Separando i namespace è successo davvero — `PrenotazioneAuthorizationService`
+usava `AppPrincipal` senza import, e ora deve dichiararlo.
+
+Conseguenza pratica: ogni servizio dichiara un `@ComponentScan` esplicito che include i
+package di `shared`. Senza, i bean condivisi (filtro JWT, configurazione di sicurezza,
+gestore degli errori) resterebbero fuori dalla scansione e il servizio partirebbe senza
+autenticazione.
+
 ## Comunicazione fra servizi
 
 Due modi, scelti caso per caso e non per gusto:
@@ -197,7 +268,7 @@ fallisce all'avvio se divergono.
 Per modificare lo schema si aggiunge una migrazione (`V3__descrizione.sql`). Quelle già
 applicate non vanno più modificate: Flyway ne verifica il checksum.
 
-> I file in `app/src/main/java/com/prenotazioni/sql/` **non** sono lo schema: sono dati di
+> I file in `scripts/dati-di-esempio/` **non** sono lo schema: sono dati di
 > popolamento da eseguire a mano. Vedi il `LEGGIMI.md` in quella cartella.
 
 ---

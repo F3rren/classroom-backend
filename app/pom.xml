@@ -178,7 +178,7 @@
                              in modo significativo. Volutamente NON si escludono i dto: quelle
                              righe sono gia' quasi tutte coperte (Jackson invoca i getter
                              serializzando), quindi escluderle abbasserebbe la percentuale. -->
-                        <exclude>com/prenotazioni/PrenotazioniAuleBackendApplication.class</exclude>
+                        <exclude>com/prenotazioni/prenotazione/PrenotazioniAuleBackendApplication.class</exclude>
                     </excludes>
                 </configuration>
             </plugin>

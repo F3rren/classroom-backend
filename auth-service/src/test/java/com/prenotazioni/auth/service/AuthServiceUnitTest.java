@@ -1,5 +1,7 @@
 package com.prenotazioni.auth.service;
 
+import com.prenotazioni.exception.DomainConflictException;
+import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.auth.dto.CreateUserRequest;
 import com.prenotazioni.auth.dto.UpdateUserRequest;
 import com.prenotazioni.auth.model.Utente;
@@ -14,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -106,19 +109,21 @@ class AuthServiceUnitTest {
     // ==================== register ====================
 
     @Test
-    void registerRejectsDuplicateEmail() {
+    void registerSegnalaEmailGiaRegistrata() {
         when(utenteRepository.findByEmail("gia@test.it")).thenReturn(utente(1L, "gia@test.it"));
 
-        assertThat(service.register(creazione("gia@test.it", "nuovo"))).isNull();
+        assertThatThrownBy(() -> service.register(creazione("gia@test.it", "nuovo")))
+                .isInstanceOf(DomainConflictException.class);
         verify(utenteRepository, never()).save(any());
     }
 
     @Test
-    void registerRejectsDuplicateUsername() {
+    void registerSegnalaUsernameGiaRegistrato() {
         when(utenteRepository.findByEmail("nuova@test.it")).thenReturn(null);
         when(utenteRepository.findByUsername("occupato")).thenReturn(utente(2L, "altro@test.it"));
 
-        assertThat(service.register(creazione("nuova@test.it", "occupato"))).isNull();
+        assertThatThrownBy(() -> service.register(creazione("nuova@test.it", "occupato")))
+                .isInstanceOf(DomainConflictException.class);
         verify(utenteRepository, never()).save(any());
     }
 
@@ -153,28 +158,31 @@ class AuthServiceUnitTest {
     // ==================== updateUtente ====================
 
     @Test
-    void updateReturnsNullWhenUserMissing() {
+    void updateSegnalaUtenteInesistente() {
         when(utenteRepository.findById(9L)).thenReturn(Optional.empty());
 
-        assertThat(service.updateUtente(9L, modifica("x@test.it", "x", ""))).isNull();
+        assertThatThrownBy(() -> service.updateUtente(9L, modifica("x@test.it", "x", "")))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
-    void updateRejectsEmailAlreadyUsedBySomeoneElse() {
+    void updateSegnalaEmailDiUnAltroUtente() {
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "mia@test.it")));
         when(utenteRepository.findByEmail("altrui@test.it")).thenReturn(utente(2L, "altrui@test.it"));
 
-        assertThat(service.updateUtente(1L, modifica("altrui@test.it", "mio", ""))).isNull();
+        assertThatThrownBy(() -> service.updateUtente(1L, modifica("altrui@test.it", "mio", "")))
+                .isInstanceOf(DomainConflictException.class);
         verify(utenteRepository, never()).save(any());
     }
 
     @Test
-    void updateRejectsUsernameAlreadyUsedBySomeoneElse() {
+    void updateSegnalaUsernameDiUnAltroUtente() {
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente(1L, "mia@test.it")));
         when(utenteRepository.findByEmail("mia@test.it")).thenReturn(utente(1L, "mia@test.it"));
         when(utenteRepository.findByUsername("altrui")).thenReturn(utente(2L, "altro@test.it"));
 
-        assertThat(service.updateUtente(1L, modifica("mia@test.it", "altrui", ""))).isNull();
+        assertThatThrownBy(() -> service.updateUtente(1L, modifica("mia@test.it", "altrui", "")))
+                .isInstanceOf(DomainConflictException.class);
     }
 
     @Test

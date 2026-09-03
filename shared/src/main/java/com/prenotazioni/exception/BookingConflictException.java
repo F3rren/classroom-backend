@@ -1,27 +1,16 @@
 package com.prenotazioni.exception;
 
 /**
- * Sollevata quando una scrittura su una prenotazione viola il vincolo DB
- * anti-sovrapposizione (prenotazioni_no_overlap) per una prenotazione concorrente.
- * Consolida in un unico punto (GlobalExceptionHandler) i 3 cataloghi di
- * DataIntegrityViolationException gia' presenti in PrenotazioneController.
+ * Conflitto specifico delle prenotazioni: la fascia oraria e' gia' occupata.
+ *
+ * Resta un tipo a se' anche se non aggiunge campi a DomainConflictException, perche'
+ * PrenotazioneController lo lancia esplicitamente quando traduce la violazione del vincolo
+ * anti-sovrapposizione, ed e' quel nome a rendere leggibile il punto in cui accade.
+ * Ereditando, non duplica piu' errorCode e userMessage.
  */
-public class BookingConflictException extends RuntimeException {
-
-    private final String errorCode;
-    private final String userMessage;
+public class BookingConflictException extends DomainConflictException {
 
     public BookingConflictException(String errorCode, String message, String userMessage) {
-        super(message);
-        this.errorCode = errorCode;
-        this.userMessage = userMessage;
-    }
-
-    public String getErrorCode() {
-        return errorCode;
-    }
-
-    public String getUserMessage() {
-        return userMessage;
+        super(errorCode, message, userMessage);
     }
 }

@@ -42,8 +42,7 @@ public class JwtVerifier {
     public void init() {
         // Il segreto e' codificato in BASE64URL, non sono byte grezzi: decodificarlo
         // diversamente produrrebbe una chiave diversa e ogni token verrebbe rifiutato.
-        byte[] keyBytes = Decoders.BASE64URL.decode(secret);
-        this.key = Keys.hmacShaKeyFor(keyBytes);
+        this.key = ChiaveJwt.da(secret);
     }
 
     public boolean validateToken(String token) {
