@@ -60,6 +60,12 @@ logs/
 # File con credenziali database e altre configurazioni sensibili
 config/config.properties
 
+# Variabili d'ambiente dello stack compose: contiene JWT_SECRET e le password dei
+# servizi. Docker Compose legge questo file da solo, quindi e' comodissimo - ed e'
+# esattamente per questo che va tenuto fuori da git. Il modello versionato e' .env.example.
+.env
+.env.local
+
 # File di configurazione ambiente-specifici.
 # Le regole generiche restano come rete di sicurezza per copie sparse fuori dal progetto.
 **/application-local.properties

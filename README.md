@@ -89,9 +89,26 @@ progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'
 
 ### Con Docker
 
+Al primo avvio, una volta sola:
+
 ```bash
-JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
+cp .env.example .env
+openssl rand -base64 48    # incollare il risultato in JWT_SECRET dentro .env
 ```
+
+Poi, sempre:
+
+```bash
+docker compose up --build
+```
+
+Docker Compose legge `.env` da solo. `JWT_SECRET` non ha un default di proposito: un
+segreto con un valore di comodo prima o poi finisce in produzione, quindi lo stack si
+rifiuta di partire finché non ne esiste uno vero. Va tenuto **stabile** fra un avvio e
+l'altro — cambiarlo invalida tutti i token già emessi, e chi era autenticato riceve un 401
+senza una ragione visibile.
+
+`.env` è ignorato da git; il modello versionato è `.env.example`, che non contiene valori.
 
 Alza tre PostgreSQL (uno per servizio), i quattro servizi e pubblica **solo la 17102**.
 Gli altri si parlano sulla rete interna e non sono raggiungibili da fuori: le rotte
