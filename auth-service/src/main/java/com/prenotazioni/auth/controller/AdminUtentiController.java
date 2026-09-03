@@ -74,19 +74,6 @@ public class AdminUtentiController {
 
         Utente utente = authService.register(request);
 
-        if (utente == null) {
-            logger.warn("[{}] register - rifiutata, email o username già esistenti ({})",
-                       sessionId, LogSanitizer.maskEmail(request.getEmail()));
-            return new ResponseEntity<>(
-                createErrorResponse("USER_ALREADY_EXISTS",
-                                  "Email o username già esistenti",
-                                  String.format("Un utente con email %s o username %s esiste già. Usa credenziali diverse.",
-                                               request.getEmail(), request.getUsername()),
-                                  sessionId),
-                HttpStatus.CONFLICT
-            );
-        }
-
         logger.info("[{}] Utente creato da admin - utenteId={} ruolo={}",
                    sessionId, utente.getId(), utente.getRuolo());
 
@@ -130,15 +117,6 @@ public class AdminUtentiController {
         }
 
         Utente updated = authService.updateUtente(id, request);
-        if (updated == null) {
-            logger.warn("[{}] FINE updateUtente - Utente non trovato o non modificabile - ID: {}", sessionId, id);
-            return new ResponseEntity<>(
-                createErrorResponse("USER_NOT_FOUND", "Utente non trovato o non modificabile",
-                                  String.format("L'utente con ID %d non esiste o non può essere modificato.", id), sessionId),
-                HttpStatus.NOT_FOUND
-            );
-        }
-
         logger.info("[{}] Utente modificato da admin - utenteId={}", sessionId, updated.getId());
 
         return new ResponseEntity<>(

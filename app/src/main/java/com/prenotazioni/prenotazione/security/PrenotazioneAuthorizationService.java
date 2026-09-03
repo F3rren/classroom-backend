@@ -20,6 +20,8 @@ public class PrenotazioneAuthorizationService {
     }
 
     public boolean isOwnerOrAdmin(Long prenotazioneId, AppPrincipal principal) {
+        // false qui non e' un errore mascherato: questo metodo E' un predicato, e
+        // rispondere "no" a "puoi agire?" e' esattamente il suo lavoro.
         if (principal == null) {
             return false;
         }

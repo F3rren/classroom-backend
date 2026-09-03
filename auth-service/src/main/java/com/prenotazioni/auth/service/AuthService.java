@@ -1,6 +1,8 @@
 package com.prenotazioni.auth.service;
 
 import com.prenotazioni.auth.model.Utente;
+import com.prenotazioni.exception.DomainConflictException;
+import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.auth.repository.IUtenteRepository;
 import com.prenotazioni.auth.dto.CreateUserRequest;
@@ -35,6 +37,9 @@ public class AuthService {
             // WARN e non INFO: un login fallito e' un segnale di sicurezza (brute-force,
             // credenziali compromesse) e deve restare visibile anche alzando il livello.
             logger.warn("Login fallito - credenziali non valide per {}", LogSanitizer.maskEmail(email));
+            // Questo null RESTA, a differenza degli altri di questa classe: ha un solo
+            // significato possibile, credenziali sbagliate, quindi il chiamante non deve
+            // dedurre nulla. E' il null AMBIGUO il problema, non il null in se'.
             return null;
         }
         utente.setUltimoAccesso(LocalDateTime.now());
@@ -46,13 +51,17 @@ public class AuthService {
     public Utente register(CreateUserRequest request) {
         // Controlla se email o username sono già registrati
         if (utenteRepository.findByEmail(request.getEmail()) != null) {
-            logger.warn("Registrazione rifiutata - email già esistente: {}", LogSanitizer.maskEmail(request.getEmail()));
-            return null;
+            // Il codice resta USER_ALREADY_EXISTS, gia' esposto e veritiero. A cambiare e'
+            // il messaggio: prima non diceva QUALE dei due campi fosse in conflitto, e chi
+            // lo leggeva non sapeva cosa correggere.
+            throw new DomainConflictException("USER_ALREADY_EXISTS",
+                    "Email gia' registrata",
+                    "Questa email e' gia' associata a un altro utente.");
         }
         if (utenteRepository.findByUsername(request.getUsername()) != null) {
-            logger.warn("Registrazione rifiutata - username già esistente: {}",
-                    LogSanitizer.maskUsername(request.getUsername()));
-            return null;
+            throw new DomainConflictException("USER_ALREADY_EXISTS",
+                    "Username gia' registrato: " + request.getUsername(),
+                    "Questo username e' gia' in uso.");
         }
         Utente utente = new Utente();
         utente.setEmail(request.getEmail());
@@ -78,20 +87,24 @@ public class AuthService {
     public Utente updateUtente(Long id, UpdateUserRequest request) {
         Utente utente = utenteRepository.findById(id).orElse(null);
         if (utente == null) {
-            logger.warn("Aggiornamento rifiutato - utenteId={} non trovato", id);
-            return null;
+            throw ResourceNotFoundException.perId("Utente", "USER_NOT_FOUND", id);
         }
 
         // Controlla se la nuova email o username sono già in uso da un altro utente
         Utente utenteConEmail = utenteRepository.findByEmail(request.getEmail());
         if (utenteConEmail != null && !utenteConEmail.getId().equals(id)) {
-            logger.warn("Aggiornamento rifiutato - email già in uso da un altro utente (utenteId={})", id);
-            return null;
+            // 409 e non piu' 404: prima questo caso tornava lo stesso null di "utente
+            // inesistente", e la risposta diceva "utente non trovato" di un utente che
+            // esiste eccome. Era una risposta falsa, non solo imprecisa.
+            throw new DomainConflictException("USER_ALREADY_EXISTS",
+                    "Email gia' in uso da un altro utente",
+                    "Questa email e' gia' associata a un altro utente.");
         }
         Utente utenteConUsername = utenteRepository.findByUsername(request.getUsername());
         if (utenteConUsername != null && !utenteConUsername.getId().equals(id)) {
-            logger.warn("Aggiornamento rifiutato - username già in uso da un altro utente (utenteId={})", id);
-            return null;
+            throw new DomainConflictException("USER_ALREADY_EXISTS",
+                    "Username gia' in uso da un altro utente",
+                    "Questo username e' gia' in uso.");
         }
         // Aggiorna i campi modificabili
         utente.setEmail(request.getEmail());
