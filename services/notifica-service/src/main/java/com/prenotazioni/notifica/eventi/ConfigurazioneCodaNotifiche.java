@@ -1,5 +1,9 @@
 package com.prenotazioni.notifica.eventi;
 
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.retry.MessageRecoverer;
+import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
 import com.prenotazioni.eventi.TopologiaEventi;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -45,5 +49,42 @@ public class ConfigurazioneCodaNotifiche {
     @Bean
     MessageConverter convertitoreJson() {
         return new Jackson2JsonMessageConverter();
+    }
+
+    // ==================== recupero dei messaggi non trattabili ====================
+
+    @Bean
+    Queue codaErrori() {
+        return new Queue(TopologiaEventi.CODA_ERRORI_CANCELLAZIONE, true);
+    }
+
+    @Bean
+    DirectExchange exchangeErrori() {
+        return new DirectExchange(TopologiaEventi.EXCHANGE_ERRORI, true, false);
+    }
+
+    @Bean
+    Binding bindingErrori(Queue codaErrori, DirectExchange exchangeErrori) {
+        return BindingBuilder.bind(codaErrori)
+                .to(exchangeErrori)
+                .with(TopologiaEventi.ROUTING_KEY_ERRORI);
+    }
+
+    /**
+     * Dove va a finire un messaggio dopo che i tentativi si sono esauriti.
+     *
+     * Senza questo bean il comportamento predefinito dopo i tentativi sarebbe scartarlo e
+     * basta: nessun ciclo infinito, ma anche nessuna traccia di cosa non e' riuscito.
+     * RepublishMessageRecoverer lo ripubblica sulla coda degli errori insieme allo stack
+     * trace del guasto, quindi resta li' da guardare e, se serve, da rimettere in circolo.
+     *
+     * Il messaggio viene poi confermato: e' questo che chiude il ciclo di riconsegna
+     * infinito descritto nel reperto 04.
+     */
+    @Bean
+    MessageRecoverer recuperoMessaggiFalliti(RabbitTemplate rabbitTemplate) {
+        return new RepublishMessageRecoverer(rabbitTemplate,
+                TopologiaEventi.EXCHANGE_ERRORI,
+                TopologiaEventi.ROUTING_KEY_ERRORI);
     }
 }

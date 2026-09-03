@@ -4,7 +4,7 @@ import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.auth.model.Utente;
 import lombok.Getter;
 
-/** Riepilogo di un utente appena creato da un admin (POST /api/admin/register). */
+/** Riepilogo di un utente appena creato da un admin (POST /api/admin/utenti). */
 @Getter
 public class UserRegisterAck {
     private final Long userId;

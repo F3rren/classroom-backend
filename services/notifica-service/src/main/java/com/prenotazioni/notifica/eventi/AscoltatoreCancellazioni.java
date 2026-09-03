@@ -1,5 +1,7 @@
 package com.prenotazioni.notifica.eventi;
 
+import org.springframework.messaging.handler.annotation.Header;
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
 import com.prenotazioni.eventi.TopologiaEventi;
 import com.prenotazioni.notifica.service.NotificaService;
@@ -33,27 +35,39 @@ public class AscoltatoreCancellazioni {
     }
 
     @RabbitListener(queues = TopologiaEventi.CODA_NOTIFICHE_CANCELLAZIONE)
-    public void suCancellazione(PrenotazioneCancellataEvento evento) {
-        if (evento == null || evento.utenteId() == null) {
-            // Scartato di proposito: senza destinatario la notifica non ha a chi andare, e
-            // rimetterlo in coda lo farebbe girare per sempre.
-            logger.error("Evento di cancellazione scartato perche' privo di destinatario: {}", evento);
-            return;
+    public void suCancellazione(
+            PrenotazioneCancellataEvento evento,
+            @Header(name = CorrelazioneRichiesta.INTESTAZIONE, required = false) String idRichiesta) {
+        // Rimesso in MDC per la durata del trattamento: e' cio' che permette di leggere in
+        // fila la richiesta HTTP che ha annullato la prenotazione e la notifica creata qui,
+        // che avviene su un altro servizio, un altro thread e qualche istante dopo.
+        // required = false perche' un messaggio pubblicato prima di questa modifica, o da
+        // un'altra versione, deve continuare a essere consumato.
+        CorrelazioneRichiesta.applicaAMdc(idRichiesta);
+        try {
+            if (evento == null || evento.utenteId() == null) {
+                // Scartato di proposito: senza destinatario la notifica non ha a chi andare, e
+                // rimetterlo in coda lo farebbe girare per sempre.
+                logger.error("Evento di cancellazione scartato perche' privo di destinatario: {}", evento);
+                return;
+            }
+
+            logger.debug("Evento di cancellazione ricevuto per utenteId={}, prenotazioneId={}",
+                    evento.utenteId(), evento.prenotazioneId());
+
+            notificaService.createNotificaCancellazionePrenotazione(
+                    evento.utenteId(),
+                    evento.prenotazioneId(),
+                    evento.nomeStanza(),
+                    evento.adminNome(),
+                    evento.dataPrenotazione(),
+                    evento.oraInizio(),
+                    evento.oraFine(),
+                    evento.motivo());
+
+            logger.info("Notifica di cancellazione creata da evento per utenteId={}", evento.utenteId());
+        } finally {
+            CorrelazioneRichiesta.svuotaMdc();
         }
-
-        logger.debug("Evento di cancellazione ricevuto per utenteId={}, prenotazioneId={}",
-                evento.utenteId(), evento.prenotazioneId());
-
-        notificaService.createNotificaCancellazionePrenotazione(
-                evento.utenteId(),
-                evento.prenotazioneId(),
-                evento.nomeStanza(),
-                evento.adminNome(),
-                evento.dataPrenotazione(),
-                evento.oraInizio(),
-                evento.oraFine(),
-                evento.motivo());
-
-        logger.info("Notifica di cancellazione creata da evento per utenteId={}", evento.utenteId());
     }
 }

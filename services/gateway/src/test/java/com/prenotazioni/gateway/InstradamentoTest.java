@@ -60,7 +60,7 @@ class InstradamentoTest {
 
     @Test
     void leRottePrincipaliDellApplicazioneVengonoInstradate() {
-        for (String percorso : new String[]{"/api/rooms", "/api/prenotazioni", "/api/me", "/api/admin/users"}) {
+        for (String percorso : new String[]{"/api/rooms", "/api/prenotazioni", "/api/me", "/api/admin/utenti"}) {
             client.get().uri(percorso)
                     .exchange()
                     .expectStatus().is5xxServerError();

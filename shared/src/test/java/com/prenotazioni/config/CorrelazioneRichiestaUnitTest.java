@@ -87,6 +87,35 @@ class CorrelazioneRichiestaUnitTest {
     }
 
     @Test
+    void applicaAMdcUsaLIdentificativoRicevuto() {
+        // La meta' della catena che non passa da HTTP: un ascoltatore AMQP gira su un
+        // thread suo, fuori da qualunque richiesta, e senza questo la notifica creata da
+        // un evento comparirebbe nei log scollegata dalla cancellazione che l'ha causata.
+        CorrelazioneRichiesta.applicaAMdc("REQ_DALLEVENTO");
+
+        assertThat(MDC.get("requestId")).isEqualTo("REQ_DALLEVENTO");
+    }
+
+    @Test
+    void applicaAMdcRipiegaSuUnoGeneratoSeManca() {
+        // Un messaggio pubblicato prima che l'intestazione esistesse deve continuare a
+        // essere consumato: assente non e' un errore, e "null" nei log sarebbe peggio.
+        CorrelazioneRichiesta.applicaAMdc(null);
+        assertThat(MDC.get("requestId")).isNotBlank().isNotEqualTo("null");
+
+        CorrelazioneRichiesta.applicaAMdc("   ");
+        assertThat(MDC.get("requestId")).isNotBlank().doesNotContain(" ");
+    }
+
+    @Test
+    void svuotaMdcTogliLIdentificativo() {
+        CorrelazioneRichiesta.applicaAMdc("REQ_QUALCOSA");
+        CorrelazioneRichiesta.svuotaMdc();
+
+        assertThat(MDC.get("requestId")).isNull();
+    }
+
+    @Test
     void svuotaMdcAlTermine() throws Exception {
         // I thread vengono riusati: un MDC non ripulito farebbe comparire l'identificativo
         // di questa richiesta nei log di quella successiva, che e' peggio di non averlo.

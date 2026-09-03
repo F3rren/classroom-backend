@@ -86,7 +86,7 @@ services:
       NOTIFICA_SERVICE_URL: http://notifica-service:17104
       PRENOTAZIONE_SERVICE_URL: http://prenotazione-service:17103
       # Primo amministratore, usato SOLO se la tabella utenti e' vuota. Senza, su un
-      # database nuovo non ci sarebbe modo di crearne uno: /api/admin/register richiede
+      # database nuovo non ci sarebbe modo di crearne uno: /api/admin/utenti richiede
       # gia' un token da amministratore. I default vuoti rendono il meccanismo inattivo
       # per chi non lo vuole, invece di obbligare a dichiarare le variabili in .env.
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}

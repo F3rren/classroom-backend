@@ -1,5 +1,6 @@
 package com.prenotazioni.prenotazione.messaggistica;
 
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
 import com.prenotazioni.eventi.TopologiaEventi;
 import org.slf4j.Logger;
@@ -42,10 +43,20 @@ public class PubblicatoreEventi {
      */
     public boolean pubblicaCancellazione(PrenotazioneCancellataEvento evento) {
         try {
+            // L'identificativo viaggia come intestazione del messaggio e non come campo
+            // del record: il payload e' un contratto fra due servizi, e non va allargato
+            // per un dato che serve solo a leggere i log. Cosi' la notifica creata piu'
+            // tardi dal consumatore si ricollega alla cancellazione che l'ha causata.
+            String idRichiesta = CorrelazioneRichiesta.corrente();
             rabbitTemplate.convertAndSend(
                     TopologiaEventi.EXCHANGE,
                     TopologiaEventi.ROUTING_KEY_CANCELLAZIONE,
-                    evento);
+                    evento,
+                    messaggio -> {
+                        messaggio.getMessageProperties()
+                                .setHeader(CorrelazioneRichiesta.INTESTAZIONE, idRichiesta);
+                        return messaggio;
+                    });
             logger.debug("Evento di cancellazione pubblicato per utenteId={}, prenotazioneId={}",
                     evento.utenteId(), evento.prenotazioneId());
             return true;

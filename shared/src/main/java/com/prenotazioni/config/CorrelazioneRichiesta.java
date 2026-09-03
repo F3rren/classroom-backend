@@ -81,6 +81,29 @@ public class CorrelazioneRichiesta extends OncePerRequestFilter {
         return genera();
     }
 
+    /**
+     * Mette in MDC un identificativo che NON arriva da una richiesta HTTP.
+     *
+     * Serve a chi consuma messaggi: un ascoltatore AMQP gira su un thread suo, fuori da
+     * qualunque richiesta, e senza questo l'evento comparirebbe nei log con un
+     * identificativo scollegato da quello dell'operazione che lo ha causato.
+     *
+     * Un valore assente non e' un errore: un messaggio pubblicato prima che
+     * l'intestazione esistesse deve continuare a essere consumato, semplicemente con un
+     * identificativo proprio.
+     */
+    public static void applicaAMdc(String id) {
+        MDC.put(CHIAVE_MDC, (id == null || id.isBlank()) ? genera() : id);
+    }
+
+    /**
+     * Da chiamare in un finally: i thread vengono riusati, e un MDC non ripulito farebbe
+     * comparire l'identificativo di questo messaggio nei log del successivo.
+     */
+    public static void svuotaMdc() {
+        MDC.remove(CHIAVE_MDC);
+    }
+
     private static String genera() {
         return "REQ_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }

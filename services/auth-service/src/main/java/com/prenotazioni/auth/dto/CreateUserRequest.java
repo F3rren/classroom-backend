@@ -11,7 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Richiesta di creazione di un nuovo utente da parte di un admin (POST /api/admin/register).
+ * Richiesta di creazione di un nuovo utente da parte di un admin (POST /api/admin/utenti).
  * La password e' obbligatoria qui, a differenza di UpdateUserRequest dove e' opzionale.
  */
 @Data

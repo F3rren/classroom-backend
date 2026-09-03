@@ -295,7 +295,7 @@ class AdminManagementTest {
                 new Chiamata("/api/admin/rooms/" + aulaId, HttpMethod.DELETE),
                 new Chiamata("/api/admin/prenotazioni", HttpMethod.GET),
                 new Chiamata("/api/admin/prenotazioni/" + prenotazioneId, HttpMethod.DELETE),
-                // /api/admin/delete/{id} non e' piu' servito da questo servizio:
+                // /api/admin/utenti/{id} non e' piu' servito da questo servizio:
                 // la gestione utenti e' passata ad auth-service.
         };
 

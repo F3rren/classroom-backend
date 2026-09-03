@@ -268,7 +268,7 @@ prenotazione è già stata cancellata.
 
 ## Il primo amministratore
 
-Su un database utenti vuoto `/api/admin/register` non è raggiungibile: richiede già un
+Su un database utenti vuoto `/api/admin/utenti` non è raggiungibile: richiede già un
 token con ruolo `ADMIN`. Non è una conseguenza della separazione — il monolite aveva lo
 stesso vincolo — ma su database nuovi si incontra subito, e prima si usciva dal cerchio
 solo con una `INSERT` a mano e un hash BCrypt calcolato fuori.

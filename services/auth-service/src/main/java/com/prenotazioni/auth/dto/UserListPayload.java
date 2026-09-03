@@ -4,7 +4,7 @@ import lombok.Getter;
 
 import java.util.List;
 
-/** Lista utenti per GET /api/admin/users, senza password (UserSummaryDto). */
+/** Lista utenti per GET /api/admin/utenti, senza password (UserSummaryDto). */
 @Getter
 public class UserListPayload {
     private final List<UserSummaryDto> users;

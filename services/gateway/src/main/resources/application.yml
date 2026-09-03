@@ -30,6 +30,18 @@ spring:
       # La CORS sta qui perche' e' il gateway a parlare col browser: i servizi dietro
       # ricevono solo richieste server-to-server. Ognuno mantiene comunque la propria
       # configurazione, che serve quando lo si interroga direttamente in sviluppo.
+      # Senza questi due, il gateway aspetta un servizio a valle SENZA LIMITE. Un servizio
+      # spento e' gestito bene - la connessione viene rifiutata e si risponde 503 - ma un
+      # servizio LENTO, che accetta la connessione e non risponde, tiene occupate le
+      # risorse del gateway finche' non si arrende da solo. Ed essendo il gateway l'unico
+      # ingresso, un servizio lento diventa un sistema lento.
+      #
+      # 10 secondi e' largo per queste API, dove la richiesta piu' pesante e' un elenco di
+      # prenotazioni: se ci mette di piu' e' rotta, non lenta.
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 10s
+
       globalcors:
         cors-configurations:
           '[/**]':
@@ -73,7 +85,11 @@ spring:
         - id: autenticazione
           uri: ${AUTH_SERVICE_URL:http://localhost:17105}
           predicates:
-            - Path=/api/auth/**,/api/me/**,/api/admin/users/**,/api/admin/register,/api/admin/delete/**
+            # Un prefisso, non un elenco. Prima qui c'era la lista degli endpoint admin di
+            # auth-service, copiata dal controller: aggiungerne uno la' senza toccare
+            # questa riga lo avrebbe mandato a prenotazione-service, con un 404 e niente
+            # che indicasse il perche'. Ora la rotta descrive un confine fra servizi.
+            - Path=/api/auth/**,/api/me/**,/api/admin/utenti,/api/admin/utenti/**
 
         # Aule, prenotazioni e amministrazione delle stesse.
         - id: applicazione

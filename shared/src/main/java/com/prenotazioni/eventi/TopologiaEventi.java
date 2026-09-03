@@ -26,6 +26,27 @@ public final class TopologiaEventi {
      */
     public static final String CODA_NOTIFICHE_CANCELLAZIONE = "notifiche.prenotazione-cancellata";
 
+    /**
+     * Dove finisce un messaggio che non si e' riusciti a trattare.
+     *
+     * Senza, il comportamento predefinito di Spring AMQP rimette in coda un messaggio il
+     * cui ascoltatore solleva un'eccezione: se il salvataggio fallisce - database
+     * irraggiungibile, vincolo violato - quel messaggio rientra e riparte all'infinito,
+     * bruciando risorse e coprendo tutto il resto nei log.
+     *
+     * Sono nomi NUOVI di proposito. Il modo canonico sarebbe dichiarare la coda esistente
+     * con x-dead-letter-exchange, ma RabbitMQ rifiuta di ridichiarare una coda durabile
+     * con argomenti diversi da quelli con cui e' nata: su un broker che ha gia' la coda -
+     * cioe' su qualunque ambiente gia' avviato una volta - la dichiarazione fallirebbe con
+     * un 406 e il servizio non partirebbe. Recuperare dal lato applicativo evita del tutto
+     * quel problema, e non chiede di cancellare code a mano prima di un aggiornamento.
+     */
+    public static final String EXCHANGE_ERRORI = "prenotazioni.eventi.errori";
+
+    public static final String ROUTING_KEY_ERRORI = "prenotazione.cancellata.fallita";
+
+    public static final String CODA_ERRORI_CANCELLAZIONE = "notifiche.prenotazione-cancellata.errori";
+
     private TopologiaEventi() {
     }
 }

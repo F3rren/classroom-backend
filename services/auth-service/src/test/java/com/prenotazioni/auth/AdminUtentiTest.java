@@ -101,7 +101,7 @@ class AdminUtentiTest {
     @Test
     @SuppressWarnings("unchecked")
     void listaUtentiNonEsponeLePassword() throws Exception {
-        ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.GET, null);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.GET, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).doesNotContain("password");
@@ -115,7 +115,7 @@ class AdminUtentiTest {
         Map<String, String> corpo = Map.of("username", "nuovo", "nome", "Nuovo",
                 "email", "normale@test.it", "password", "password-lunga", "ruolo", "user");
 
-        ResponseEntity<String> resp = chiama("/api/admin/register", HttpMethod.POST, corpo);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.POST, corpo);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(corpoDi(resp).get("success")).isEqualTo(false);
@@ -126,7 +126,7 @@ class AdminUtentiTest {
         Map<String, String> corpo = Map.of("username", "normale", "nome", "Nuovo",
                 "email", "un-altra@test.it", "password", "password-lunga", "ruolo", "user");
 
-        ResponseEntity<String> resp = chiama("/api/admin/register", HttpMethod.POST, corpo);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.POST, corpo);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
@@ -135,14 +135,14 @@ class AdminUtentiTest {
     void aggiornamentoDiUnUtenteInesistenteRisponde404() {
         Map<String, String> corpo = Map.of("username", "x", "nome", "X", "email", "x@test.it");
 
-        ResponseEntity<String> resp = chiama("/api/admin/users/999999", HttpMethod.PUT, corpo);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti/999999", HttpMethod.PUT, corpo);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void cancellazioneDiUnUtenteInesistenteRisponde404() {
-        ResponseEntity<String> resp = chiama("/api/admin/delete/999999", HttpMethod.DELETE, null);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti/999999", HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -152,7 +152,7 @@ class AdminUtentiTest {
         // In questo test non esistono ne' prenotazione-service ne' notifica-service: le chiamate
         // falliscono, e l'utente deve restare. E' la garanzia che sostituisce la chiave
         // esterna persa con la separazione.
-        ResponseEntity<String> resp = chiama("/api/admin/delete/" + idUtenteNormale, HttpMethod.DELETE, null);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti/" + idUtenteNormale, HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isNotEqualTo(HttpStatus.OK);
         assertThat(utenteRepository.findById(idUtenteNormale))

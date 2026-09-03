@@ -1,5 +1,6 @@
 package com.prenotazioni.auth.client;
 
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,12 @@ public class DatiUtenteClient {
             client.delete()
                     .uri(uri, utenteId)
                     .header(HttpHeaders.AUTHORIZATION, authorizationCorrente())
+                    // Senza questa riga la catena di correlazione si spezza proprio qui:
+                    // i servizi a valle non ricevono l'identificativo, se ne generano uno
+                    // nuovo, e un'operazione che attraversa tre servizi finisce nei log
+                    // sotto tre chiavi diverse. Cioe' la correlazione funzionerebbe
+                    // ovunque tranne dove serve.
+                    .header(CorrelazioneRichiesta.INTESTAZIONE, CorrelazioneRichiesta.corrente())
                     .retrieve()
                     .toBodilessEntity();
             return true;

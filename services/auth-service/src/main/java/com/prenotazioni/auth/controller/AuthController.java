@@ -9,13 +9,13 @@ import com.prenotazioni.auth.dto.LoginResponse;
 import com.prenotazioni.auth.dto.UserSummaryDto;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.auth.service.AuthService;
+import com.prenotazioni.auth.service.LimitatoreTentativiLogin;
 import com.prenotazioni.auth.service.JwtService;
 import com.prenotazioni.util.LogSanitizer;
 
 import com.prenotazioni.util.Timestamps;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.ConcurrentHashMap;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,43 +38,18 @@ public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
-    // Rate limiting minimo anti brute-force sul login: finestra fissa in memoria, per processo.
-    // Non sopravvive a un restart e non e' condiviso tra piu' istanze, ma e' sufficiente per
-    // rallentare un attacco a dizionario contro una singola istanza in sviluppo/produzione singola.
-    // Configurabile via property cosi' i test possono alzare il limite senza disattivare la protezione.
-    @Value("${auth.rate-limit.max-attempts:5}")
-    private int maxLoginAttempts;
-
-    @Value("${auth.rate-limit.window-ms:60000}")
-    private long rateLimitWindowMs;
-
-    private static final ConcurrentHashMap<String, RateLimitEntry> loginAttempts = new ConcurrentHashMap<>();
-
     private final AuthService authService;
 
     private final JwtService jwtService;
 
-    private static class RateLimitEntry {
-        int count;
-        long windowStart = System.currentTimeMillis();
-    }
+    // Il conteggio dei tentativi sta in LimitatoreTentativiLogin e non piu' qui: era un
+    // campo static dentro il controller, e la mappa non veniva mai svuotata.
+    private final LimitatoreTentativiLogin limitatore;
 
-    AuthController(AuthService authService, JwtService jwtService) {
+    AuthController(AuthService authService, JwtService jwtService, LimitatoreTentativiLogin limitatore) {
         this.authService = authService;
         this.jwtService = jwtService;
-    }
-
-    private boolean isLoginRateLimited(String key) {
-        long now = System.currentTimeMillis();
-        RateLimitEntry entry = loginAttempts.computeIfAbsent(key, k -> new RateLimitEntry());
-        synchronized (entry) {
-            if (now - entry.windowStart > rateLimitWindowMs) {
-                entry.windowStart = now;
-                entry.count = 0;
-            }
-            entry.count++;
-            return entry.count > maxLoginAttempts;
-        }
+        this.limitatore = limitatore;
     }
 
 
@@ -150,8 +125,13 @@ public class AuthController {
             String maskedEmail = LogSanitizer.maskEmail(email);
 
             // Rate limiting anti brute-force, per IP + email
+            // getRemoteAddr() e' l'indirizzo di chi ha aperto la connessione. Dietro il
+            // gateway sarebbe SEMPRE il gateway, e la meta' IP della chiave diventerebbe
+            // costante: chiunque potrebbe cosi' esaurire il contatore di un indirizzo altrui
+            // e tenerlo fuori dal proprio account. server.forward-headers-strategy=framework,
+            // in application.properties, e' cio' che rende questa riga di nuovo vera.
             String rateLimitKey = httpRequest.getRemoteAddr() + "|" + email;
-            if (isLoginRateLimited(rateLimitKey)) {
+            if (limitatore.troppiTentativi(rateLimitKey)) {
                 logger.warn("[{}] FINE login - Troppi tentativi di login per: {}", sessionId, maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("TOO_MANY_ATTEMPTS",

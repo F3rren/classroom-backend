@@ -39,7 +39,11 @@ import java.util.stream.Collectors;
  * non serve interrogare nulla per autorizzare.
  */
 @RestController
-@RequestMapping("/api/admin")
+// Prefisso proprio, non condiviso con prenotazione-service. Prima entrambi i servizi
+// esponevano /api/admin e il gateway li separava elencando i percorsi esatti di questo:
+// un elenco copiato da qui, che nessuno teneva allineato. Aggiungere un endpoint lo
+// avrebbe fatto finire in silenzio all'altro servizio, con un 404 senza spiegazione.
+@RequestMapping("/api/admin/utenti")
 @Tag(name = "Amministrazione utenti")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUtentiController {
@@ -67,7 +71,7 @@ public class AdminUtentiController {
         return ApiEnvelope.success(message, data, sessionId);
     }
 
-    @PostMapping("/register")
+    @PostMapping
     @Operation(summary = "Crea un nuovo utente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
         String sessionId = generateSessionId();
@@ -85,7 +89,7 @@ public class AdminUtentiController {
         );
     }
 
-    @GetMapping("/users")
+    @GetMapping
     @Operation(summary = "Elenca tutti gli utenti (solo admin)")
     public ResponseEntity<ApiEnvelope<UserListPayload>> getAllUsers() {
         String sessionId = generateSessionId();
@@ -103,7 +107,7 @@ public class AdminUtentiController {
         );
     }
 
-    @PutMapping("/users/{id}")
+    @PutMapping("/{id}")
     @Operation(summary = "Modifica un utente esistente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUtente(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         String sessionId = generateSessionId();
@@ -127,7 +131,7 @@ public class AdminUtentiController {
         );
     }
 
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     @Operation(summary = "Elimina un utente e i suoi dati (solo admin)")
     public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUtente(@PathVariable Long id) {
         String sessionId = generateSessionId();

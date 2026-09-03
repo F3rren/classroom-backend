@@ -6,13 +6,13 @@ import com.prenotazioni.auth.dto.LoginResponse;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.auth.service.AuthService;
+import com.prenotazioni.auth.service.LimitatoreTentativiLogin;
 import com.prenotazioni.auth.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -38,6 +38,7 @@ class AuthControllerUnitTest {
     private AuthService authService;
     private JwtService jwtService;
     private AuthController controller;
+    private LimitatoreTentativiLogin limitatore;
     private HttpServletRequest httpRequest;
 
     @BeforeEach
@@ -45,15 +46,12 @@ class AuthControllerUnitTest {
     void setUp() {
         authService = mock(AuthService.class);
         jwtService = mock(JwtService.class);
-        controller = new AuthController(authService, jwtService);
-
-        // maxLoginAttempts e rateLimitWindowMs sono @Value: senza contesto Spring valgono 0,
-        // e con max=0 ogni chiamata risulterebbe gia' oltre soglia.
-        ReflectionTestUtils.setField(controller, "maxLoginAttempts", 100);
-        ReflectionTestUtils.setField(controller, "rateLimitWindowMs", 60000L);
-
-        // la mappa dei tentativi e' static: va azzerata fra un test e l'altro
-        ((Map<?, ?>) ReflectionTestUtils.getField(AuthController.class, "loginAttempts")).clear();
+        // Il limitatore e' un componente a se': si costruisce con i suoi parametri invece
+        // di iniettarli per riflessione, e ogni test ne ha uno pulito. Prima il contatore
+        // era static e andava azzerato a mano fra un caso e l'altro, perche' surefire
+        // riusa la JVM fra i contesti.
+        limitatore = new LimitatoreTentativiLogin(100, 60_000L, 1000);
+        controller = new AuthController(authService, jwtService, limitatore);
 
         httpRequest = mock(HttpServletRequest.class);
         when(httpRequest.getRemoteAddr()).thenReturn("10.0.0.1");
@@ -86,7 +84,8 @@ class AuthControllerUnitTest {
 
     @Test
     void blocksWithTooManyRequestsOnceTheAttemptLimitIsExceeded() {
-        ReflectionTestUtils.setField(controller, "maxLoginAttempts", 1);
+        controller = new AuthController(authService, jwtService,
+                new LimitatoreTentativiLogin(1, 60_000L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         // primo tentativo: consuma la quota e fallisce per credenziali errate
@@ -101,9 +100,10 @@ class AuthControllerUnitTest {
 
     @Test
     void countersResetAfterTheWindowExpires() {
-        ReflectionTestUtils.setField(controller, "maxLoginAttempts", 1);
-        // finestra negativa: ogni chiamata risulta fuori finestra, quindi il contatore riparte
-        ReflectionTestUtils.setField(controller, "rateLimitWindowMs", -1L);
+        // finestra negativa: ogni chiamata risulta fuori finestra, quindi il contatore
+        // riparte. Ora e' un parametro del costruttore invece di un campo da forzare.
+        controller = new AuthController(authService, jwtService,
+                new LimitatoreTentativiLogin(1, -1L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
@@ -115,7 +115,8 @@ class AuthControllerUnitTest {
 
     @Test
     void rateLimitIsPerEmailNotGlobal() {
-        ReflectionTestUtils.setField(controller, "maxLoginAttempts", 1);
+        controller = new AuthController(authService, jwtService,
+                new LimitatoreTentativiLogin(1, 60_000L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         controller.login(credenziali("primo@test.it", "password"), httpRequest);
