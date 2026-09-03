@@ -163,6 +163,29 @@ perché lo schema dell'API è servito su percorsi pubblici.
 
 ---
 
+## Organizzazione dei package
+
+Ogni servizio ha un namespace proprio, e `shared` tiene la radice:
+
+| Modulo | Package |
+|---|---|
+| `shared` | `com.prenotazioni.{dto,model,security,setting,util,exception,eventi}` |
+| `app` | `com.prenotazioni.prenotazione.*` |
+| `auth-service` | `com.prenotazioni.auth.*` |
+| `notifica-service` | `com.prenotazioni.notifica.*` |
+| `gateway` | `com.prenotazioni.gateway.*` |
+
+Non è una convenzione estetica. Finché `app` stava sotto `com.prenotazioni.*` come `shared`,
+tre package erano pubblicati da entrambi i jar e il confine fra i due moduli non era
+verificato dal compilatore: una classe poteva usare un membro package-private dell'altro
+modulo e compilare. Separando i namespace è successo davvero — `PrenotazioneAuthorizationService`
+usava `AppPrincipal` senza import, e ora deve dichiararlo.
+
+Conseguenza pratica: ogni servizio dichiara un `@ComponentScan` esplicito che include i
+package di `shared`. Senza, i bean condivisi (filtro JWT, configurazione di sicurezza,
+gestore degli errori) resterebbero fuori dalla scansione e il servizio partirebbe senza
+autenticazione.
+
 ## Comunicazione fra servizi
 
 Due modi, scelti caso per caso e non per gusto:
@@ -197,7 +220,7 @@ fallisce all'avvio se divergono.
 Per modificare lo schema si aggiunge una migrazione (`V3__descrizione.sql`). Quelle già
 applicate non vanno più modificate: Flyway ne verifica il checksum.
 
-> I file in `app/src/main/java/com/prenotazioni/sql/` **non** sono lo schema: sono dati di
+> I file in `scripts/dati-di-esempio/` **non** sono lo schema: sono dati di
 > popolamento da eseguire a mano. Vedi il `LEGGIMI.md` in quella cartella.
 
 ---
