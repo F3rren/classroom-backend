@@ -144,16 +144,6 @@ public class PrenotazioneController {
                     "L'aula è appena stata prenotata da un'altra richiesta per lo stesso periodo. Riprova con un altro orario.");
         }
 
-        if (prenotazione == null) {
-            logger.warn("[{}] FINE prenotaAula - Prenotazione rifiutata dal servizio - AulaId: {}, Periodo: {} - {}",
-                       sessionId, request.getAulaId(), formatTimestamp(inizio), formatTimestamp(fine));
-            return new ResponseEntity<>(
-                createErrorResponse("BOOKING_CONFLICT", "Impossibile prenotare l'aula",
-                                  "L'aula non è disponibile nel periodo richiesto. Potrebbe essere già prenotata o fuori servizio.", sessionId),
-                HttpStatus.CONFLICT
-            );
-        }
-
         logger.debug("[{}] FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}",
                    sessionId, prenotazione.getId(), request.getAulaId(), principal.id());
         return new ResponseEntity<>(
@@ -228,16 +218,6 @@ public class PrenotazioneController {
                     "L'aula è appena stata prenotata da un'altra richiesta per il nuovo periodo. Riprova con un altro orario.");
         }
 
-        if (prenotazione == null) {
-            logger.warn("[{}] FINE modificaPrenotazione - Modifica rifiutata dal servizio - PrenotazioneId: {}, AulaId: {}, Periodo: {} - {}",
-                       sessionId, prenotazioneId, request.getAulaId(), formatTimestamp(inizio), formatTimestamp(fine));
-            return new ResponseEntity<>(
-                createErrorResponse("UPDATE_FAILED", "Impossibile modificare la prenotazione",
-                                  "La prenotazione non può essere modificata. Potrebbe non esistere, non avere i permessi o l'aula non è disponibile nel nuovo periodo.", sessionId),
-                HttpStatus.CONFLICT
-            );
-        }
-
         logger.debug("[{}] FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}",
                    sessionId, prenotazione.getId(), request.getAulaId(), principal.id());
         return new ResponseEntity<>(
@@ -300,16 +280,6 @@ public class PrenotazioneController {
                        sessionId, request.getAulaId());
             throw new BookingConflictException("BLOCK_CONFLICT", "Impossibile bloccare l'aula",
                     "L'aula è appena stata occupata da un'altra richiesta per lo stesso periodo.");
-        }
-
-        if (blocco == null) {
-            logger.warn("[{}] FINE bloccaAula - Blocco rifiutato dal servizio - AulaId: {}, Periodo: {} - {}",
-                       sessionId, request.getAulaId(), formatTimestamp(inizio), formatTimestamp(fine));
-            return new ResponseEntity<>(
-                createErrorResponse("BLOCK_CONFLICT", "Impossibile bloccare l'aula",
-                                  "L'aula non può essere bloccata nel periodo richiesto. Potrebbe essere già occupata.", sessionId),
-                HttpStatus.CONFLICT
-            );
         }
 
         logger.debug("[{}] FINE bloccaAula - Aula bloccata con successo - ID blocco: {}, AulaId: {}, Admin: {}",
@@ -414,54 +384,15 @@ public class PrenotazioneController {
         String sessionId = generateSessionId();
         logger.debug("[{}] INIZIO annullaPrenotazione - PrenotazioneId: {}", sessionId, prenotazioneId);
 
-        Prenotazione prenotazioneEsistente = prenotazioneService.getPrenotazioneById(prenotazioneId);
-        if (prenotazioneEsistente == null) {
-            logger.warn("[{}] FINE annullaPrenotazione - Prenotazione non trovata: ID {}", sessionId, prenotazioneId);
-            return new ResponseEntity<>(
-                createErrorResponse("PRENOTAZIONE_NOT_FOUND", "Prenotazione non trovata",
-                                  "La prenotazione che stai cercando di annullare non esiste.", sessionId),
-                HttpStatus.NOT_FOUND
-            );
-        }
 
-        logger.debug("[{}] Prenotazione trovata: ID {}, proprietario: {}, stato: {}",
-                    sessionId, prenotazioneId, prenotazioneEsistente.getUtente().getId(), prenotazioneEsistente.getStato());
+        // Nessun controllo sull'esito, e soprattutto nessuna ricostruzione del perche':
+        // il service lancia gia' AccessDeniedException per il proprietario sbagliato,
+        // DomainConflictException per lo stato non annullabile e ResourceNotFoundException
+        // se non esiste. Prima questo blocco RIFACEVA quei controlli per interpretare un
+        // booleano, e un commento avvertiva di tenerne l'ordine allineato a quello del
+        // service: due copie della stessa regola da sincronizzare a mano.
+        prenotazioneService.annullaPrenotazione(prenotazioneId, principal.id(), principal.isAdmin());
 
-        boolean annullata = prenotazioneService.annullaPrenotazione(prenotazioneId, principal.id(), principal.isAdmin());
-
-        if (!annullata) {
-            // L'ordine conta: si allinea alla regola del service, che accetta il proprietario
-            // OPPURE un admin. Controllando solo la proprieta' un admin che annulla la
-            // prenotazione altrui gia' annullata riceverebbe un fuorviante 403 "puoi annullare
-            // solo le tue prenotazioni" invece del 409 sullo stato.
-            boolean puoAgire = prenotazioneEsistente.getUtente().getId().equals(principal.id())
-                    || principal.isAdmin();
-            if (!puoAgire) {
-                logger.warn("[{}] FINE annullaPrenotazione - Tentativo di annullare prenotazione di altro utente | PrenotazioneId: {} | Proprietario: {} | Richiedente: {}",
-                           sessionId, prenotazioneId, prenotazioneEsistente.getUtente().getId(), principal.id());
-                return new ResponseEntity<>(
-                    createErrorResponse("ACCESS_DENIED", "Accesso negato",
-                                      "Puoi annullare solo le tue prenotazioni.", sessionId),
-                    HttpStatus.FORBIDDEN
-                );
-            }
-            if (!prenotazioneEsistente.getStato().isAttiva()) {
-                logger.warn("[{}] FINE annullaPrenotazione - Tentativo di annullare prenotazione con stato non valido | PrenotazioneId: {} | Stato: {}",
-                           sessionId, prenotazioneId, prenotazioneEsistente.getStato());
-                return new ResponseEntity<>(
-                    createErrorResponse("INVALID_STATE", "Stato prenotazione non valido",
-                                      "Puoi annullare solo prenotazioni attive. Questa prenotazione è nello stato: " + prenotazioneEsistente.getStato().getValore(), sessionId),
-                    HttpStatus.CONFLICT
-                );
-            }
-            logger.warn("[{}] FINE annullaPrenotazione - Annullamento fallito per motivo sconosciuto | PrenotazioneId: {} | UtenteId: {}",
-                       sessionId, prenotazioneId, principal.id());
-            return new ResponseEntity<>(
-                createErrorResponse("CANCELLATION_FAILED", "Impossibile annullare la prenotazione",
-                                  "La prenotazione non può essere annullata al momento. Riprova più tardi.", sessionId),
-                HttpStatus.CONFLICT
-            );
-        }
 
         logger.debug("[{}] FINE annullaPrenotazione - Prenotazione annullata con successo | PrenotazioneId: {} | UtenteId: {}",
                    sessionId, prenotazioneId, principal.id());

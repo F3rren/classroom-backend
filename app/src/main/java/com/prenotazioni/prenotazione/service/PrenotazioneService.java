@@ -3,6 +3,9 @@ package com.prenotazioni.prenotazione.service;
 import com.prenotazioni.prenotazione.dto.PrenotazioneDettaglioDto;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.Corso;
+import com.prenotazioni.exception.BookingConflictException;
+import com.prenotazioni.exception.DomainConflictException;
+import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.prenotazione.model.Prenotazione;
 import com.prenotazioni.prenotazione.model.ProprietarioPrenotazione;
 import com.prenotazioni.model.Ruolo;
@@ -48,14 +51,17 @@ public class PrenotazioneService {
         // Verifica disponibilità
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
             logger.warn("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
-            return null; // Aula non disponibile
+            throw new BookingConflictException("BOOKING_CONFLICT",
+                    "Aula " + aulaId + " occupata dal " + inizio + " al " + fine,
+                    "L'aula non e' disponibile nel periodo richiesto.");
         }
         
         Optional<Aula> aula = aulaRepository.findById(aulaId);
 
         if (aula.isEmpty()) {
-            logger.warn("Aula con ID {} non trovata nel database", aulaId);
-            return null;
+            // 404 e non piu' 409: aula inesistente e aula occupata erano entrambe un null,
+            // e il controller le presentava tutte come conflitto. Sono cose diverse.
+            throw ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", aulaId);
         }
         // Non si verifica piu' che l'utente esista: questo servizio non ha piu' la tabella
         // utenti. A garantirlo e' il token, che auth-service ha firmato al login. La finestra
@@ -66,9 +72,9 @@ public class PrenotazioneService {
         if (corsoId != null) {
             corso = corsoRepository.findById(corsoId);
             if (corso.isEmpty()) {
-                logger.warn("Corso con ID {} non trovato nel database", corsoId);
-                // Se viene fornito un corsoId ma non esiste, fallisce
-                return null;
+                // Il corso e' facoltativo, ma se indicato deve esistere: passarne uno
+                // inesistente e' un errore del chiamante, non una prenotazione libera.
+                throw ResourceNotFoundException.perId("Corso", "COURSE_NOT_FOUND", corsoId);
             }
         }
 
@@ -102,7 +108,9 @@ public class PrenotazioneService {
         // Verifica disponibilità
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
             logger.warn("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
-            return null; // Aula non disponibile
+            throw new BookingConflictException("BLOCK_CONFLICT",
+                    "Aula " + aulaId + " occupata dal " + inizio + " al " + fine,
+                    "L'aula non e' disponibile nel periodo richiesto.");
         }
         
         Optional<Aula> aula = aulaRepository.findById(aulaId);
@@ -110,9 +118,7 @@ public class PrenotazioneService {
         // Il ruolo non si rilegge dal database: arriva dal token, e il controller
         // e' gia' annotato @PreAuthorize("hasRole('ADMIN')").
         if (aula.isEmpty()) {
-            logger.warn("Errore nel blocco aula - AulaId: {}, AdminId: {}. Verifica esistenza e ruolo admin.", 
-                         aulaId, admin.getId());
-            return null;
+            throw ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", aulaId);
         }
         
         logger.debug("Blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", aulaId, admin.getId(), inizio, fine);
@@ -227,8 +233,7 @@ public class PrenotazioneService {
         Optional<Prenotazione> prenotazione = prenotazioneRepository.findById(prenotazioneId);
         
         if (prenotazione.isEmpty()) {
-            logger.warn("Prenotazione con ID {} non trovata per annullamento", prenotazioneId);
-            return false;
+            throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", prenotazioneId);
         }
         
         logger.debug("Verifica permessi annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", prenotazioneId, utenteId);
@@ -240,8 +245,11 @@ public class PrenotazioneService {
         boolean isCreatore = p.getUtente().getId().equals(utenteId);
                 
         if (!isCreatore && !isAdmin) {
-            logger.warn("Utente ID {} non autorizzato ad annullare la prenotazione ID {}", utenteId, prenotazioneId);
-            return false;
+            // AccessDeniedException e non un booleano: il gestore globale la traduce gia'
+            // in 403. Prima il controller doveva RIFARE questo stesso controllo per capire
+            // se il false significasse "non autorizzato" o qualcos'altro.
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Puoi annullare solo le tue prenotazioni.");
         }
 
         // Solo una prenotazione attiva puo' essere annullata da questo endpoint. Senza questo
@@ -250,8 +258,11 @@ public class PrenotazioneService {
         // si annullano dall'endpoint admin (annullaPrenotazioneAsAdmin, volutamente permissivo
         // sullo stato). La regola e' sullo stato, non sul ruolo: vale anche per gli admin.
         if (!p.getStato().isAttiva()) {
-            logger.warn("Prenotazione ID {} non annullabile: stato attuale '{}'", prenotazioneId, p.getStato());
-            return false;
+            // 409: la prenotazione esiste ed e' visibile, ma il suo stato non ammette
+            // l'annullamento. Non e' "non trovata" e non e' "non autorizzato".
+            throw new DomainConflictException("INVALID_STATE",
+                    "Prenotazione " + prenotazioneId + " in stato " + p.getStato().getValore(),
+                    "Questa prenotazione non puo' essere annullata nello stato attuale.");
         }
 
         p.setStato(StatoPrenotazione.ANNULLATA);
@@ -341,8 +352,7 @@ public class PrenotazioneService {
         logger.debug("Richiesta annullamento prenotazione da admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
         Optional<Prenotazione> prenotazioneOpt = prenotazioneRepository.findById(prenotazioneId);
         if (prenotazioneOpt.isEmpty()) {
-            logger.warn("Prenotazione non trovata - PrenotazioneId: {}", prenotazioneId);
-            return false;
+            throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", prenotazioneId);
         }
         
         logger.debug("Richiesta annullamento prenotazione da admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", prenotazioneId, adminId, motivo);
@@ -382,8 +392,7 @@ public class PrenotazioneService {
         // Trova la prenotazione esistente
         Optional<Prenotazione> prenotazioneOpt = prenotazioneRepository.findById(prenotazioneId);
         if (prenotazioneOpt.isEmpty()) {
-            logger.warn("Prenotazione con ID {} non trovata per aggiornamento", prenotazioneId);
-            return null;
+            throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", prenotazioneId);
         }
         
         Prenotazione prenotazione = prenotazioneOpt.get();
@@ -392,21 +401,23 @@ public class PrenotazioneService {
         boolean isCreatore = prenotazione.getUtente().getId().equals(utenteId);
                 
         if (!isCreatore && !isAdmin) {
-            logger.warn("Utente ID {} non autorizzato a modificare la prenotazione ID {}", utenteId, prenotazioneId);
-            return null;
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Puoi modificare solo le tue prenotazioni.");
         }
         
         // Verifica che l'aula esista
         Optional<Aula> aula = aulaRepository.findById(aulaId);
         if (aula.isEmpty()) {
-            logger.warn("Aula con ID {} non trovata nel database", aulaId);
-            return null;
+            // 404 e non piu' 409: aula inesistente e aula occupata erano entrambe un null,
+            // e il controller le presentava tutte come conflitto. Sono cose diverse.
+            throw ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", aulaId);
         }
         
         // Verifica disponibilità aula per il nuovo periodo (escludendo questa prenotazione)
         if (!isAulaDisponibileEscludendo(aulaId, inizio, fine, prenotazioneId)) {
-            logger.warn("Aula ID {} non disponibile per il periodo {} - {} (esclusa prenotazione {})", aulaId, inizio, fine, prenotazioneId);
-            return null;
+            throw new BookingConflictException("UPDATE_CONFLICT",
+                    "Aula " + aulaId + " occupata dal " + inizio + " al " + fine,
+                    "L'aula non e' disponibile nel nuovo periodo richiesto.");
         }
         
         // Corso opzionale
@@ -414,8 +425,9 @@ public class PrenotazioneService {
         if (corsoId != null) {
             corso = corsoRepository.findById(corsoId);
             if (corso.isEmpty()) {
-                logger.warn("Corso con ID {} non trovato nel database", corsoId);
-                return null;
+                // Il corso e' facoltativo, ma se indicato deve esistere: passarne uno
+                // inesistente e' un errore del chiamante, non una prenotazione libera.
+                throw ResourceNotFoundException.perId("Corso", "COURSE_NOT_FOUND", corsoId);
             }
         }
         

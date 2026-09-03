@@ -3,6 +3,7 @@ package com.prenotazioni.prenotazione.controller;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.prenotazione.dto.PrenotazioneRequest;
 import com.prenotazioni.exception.BookingConflictException;
+import com.prenotazioni.exception.DomainConflictException;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.Prenotazione;
 import com.prenotazioni.prenotazione.model.StatoPrenotazione;
@@ -39,6 +40,11 @@ import static org.mockito.Mockito.when;
  * Vive in com.prenotazioni.controller e non nella root come gli altri test, perche' il
  * costruttore del controller e' package-private.
  */
+// I tre test annullaReturns404/403/409 sono stati rimossi con i rami che verificavano:
+// il controller non ricostruisce piu' il motivo di un fallimento per scegliere lo status.
+// Quei casi sono ora coperti da PrenotazioneServiceUnitTest, che verifica quale eccezione
+// venga lanciata, e da GlobalExceptionHandlerUnitTest, che verifica in quale status si
+// traduca. Prima erano un solo test perche' erano un solo blocco di codice.
 class PrenotazioneControllerUnitTest {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -131,13 +137,14 @@ class PrenotazioneControllerUnitTest {
     }
 
     @Test
-    void prenotaAulaReturns409WhenServiceRefuses() {
-        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString())).thenReturn(null);
+    void prenotaAulaLasciaSalireIlConflitto() {
+        // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
+        // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
+        // non la intercetti, che e' il comportamento corretto dopo la conversione.
+        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BOOKING_CONFLICT", "occupata", "L'aula non e' disponibile."));
 
-        ResponseEntity<?> resp = controller.prenotaAula(richiestaValida(), utente);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(errorCode(resp)).isEqualTo("BOOKING_CONFLICT");
+        assertThatThrownBy(() -> controller.prenotaAula(richiestaValida(), utente))
+                .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
@@ -201,14 +208,14 @@ class PrenotazioneControllerUnitTest {
     }
 
     @Test
-    void modificaReturns409WhenServiceRefuses() {
-        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
-                .thenReturn(null);
+    void modificaLasciaSalireIlConflitto() {
+        // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
+        // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
+        // non la intercetti, che e' il comportamento corretto dopo la conversione.
+        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "occupata", "L'aula non e' disponibile."));
 
-        ResponseEntity<?> resp = controller.modificaPrenotazione(5L, richiestaValida(), utente);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(errorCode(resp)).isEqualTo("UPDATE_FAILED");
+        assertThatThrownBy(() -> controller.modificaPrenotazione(5L, richiestaValida(), utente))
+                .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
@@ -260,13 +267,14 @@ class PrenotazioneControllerUnitTest {
     }
 
     @Test
-    void bloccaReturns409WhenServiceRefuses() {
-        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString())).thenReturn(null);
+    void bloccaLasciaSalireIlConflitto() {
+        // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
+        // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
+        // non la intercetti, che e' il comportamento corretto dopo la conversione.
+        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BLOCK_CONFLICT", "occupata", "L'aula non e' disponibile."));
 
-        ResponseEntity<?> resp = controller.bloccaAula(richiestaValida(), admin);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(errorCode(resp)).isEqualTo("BLOCK_CONFLICT");
+        assertThatThrownBy(() -> controller.bloccaAula(richiestaValida(), admin))
+                .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
@@ -293,56 +301,19 @@ class PrenotazioneControllerUnitTest {
     // ==================== annullaPrenotazione (DELETE) ====================
 
     @Test
-    void annullaReturns404WhenBookingDoesNotExist() {
-        when(service.getPrenotazioneById(7L)).thenReturn(null);
+    void unAdminSuUnaPrenotazioneAltruiGiaAnnullataOttieneIlConflittoNonUnDivieto() {
+        // Il test nasceva per proteggere da un 403 fuorviante: il controller riderivava
+        // la regola di proprieta' e, se sbagliava l'ordine dei controlli, un admin che
+        // annullava una prenotazione altrui gia' annullata si vedeva dire "puoi annullare
+        // solo le tue". Ora quella duplicazione non esiste: e' il service a decidere, e
+        // lancia il conflitto sullo stato. Qui resta a fissare che il controller non
+        // reintroduca una propria interpretazione.
+        when(service.annullaPrenotazione(7L, 2L, true))
+                .thenThrow(new DomainConflictException("INVALID_STATE", "gia' annullata",
+                        "Questa prenotazione non puo' essere annullata nello stato attuale."));
 
-        ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(errorCode(resp)).isEqualTo("PRENOTAZIONE_NOT_FOUND");
-    }
-
-    @Test
-    void annullaReturns403WhenCallerIsNotTheOwner() {
-        Prenotazione altrui = prenotazioneFinta();
-        altrui.getUtente().setId(42L); // proprietario diverso dal chiamante (id 1)
-        when(service.getPrenotazioneById(7L)).thenReturn(altrui);
-        when(service.annullaPrenotazione(7L, 1L, false)).thenReturn(false);
-
-        ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(errorCode(resp)).isEqualTo("ACCESS_DENIED");
-    }
-
-    @Test
-    void annullaReturns409WhenBookingIsAlreadyCancelled() {
-        // Ramo INVALID_STATE: era irraggiungibile finche' il service non controllava lo stato.
-        Prenotazione gia = prenotazioneFinta();
-        gia.setStato(StatoPrenotazione.ANNULLATA);
-        when(service.getPrenotazioneById(7L)).thenReturn(gia);
-        when(service.annullaPrenotazione(7L, 1L, false)).thenReturn(false);
-
-        ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_STATE");
-    }
-
-    @Test
-    void adminGets409NotForbiddenOnSomeoneElsesCancelledBooking() {
-        // Senza l'allineamento del controllo di proprieta' alla regola del service
-        // (proprietario OPPURE admin), qui sarebbe uscito un fuorviante 403.
-        Prenotazione altrui = prenotazioneFinta();
-        altrui.getUtente().setId(42L);
-        altrui.setStato(StatoPrenotazione.ANNULLATA);
-        when(service.getPrenotazioneById(7L)).thenReturn(altrui);
-        when(service.annullaPrenotazione(7L, 2L, false)).thenReturn(false);
-
-        ResponseEntity<?> resp = controller.annullaPrenotazione(7L, admin);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_STATE");
+        assertThatThrownBy(() -> controller.annullaPrenotazione(7L, admin))
+                .isInstanceOf(DomainConflictException.class);
     }
 
     @Test

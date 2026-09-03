@@ -1,5 +1,9 @@
 package com.prenotazioni.prenotazione.service;
 
+import com.prenotazioni.exception.BookingConflictException;
+import com.prenotazioni.exception.DomainConflictException;
+import com.prenotazioni.exception.ResourceNotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.StatoAula;
 import com.prenotazioni.prenotazione.model.Corso;
@@ -18,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -99,20 +104,22 @@ class PrenotazioneServiceUnitTest {
     // ==================== prenotaAula ====================
 
     @Test
-    void prenotaAulaReturnsNullWhenRoomIsBusy() {
+    void prenotaAulaRifiutaSeLAulaEOccupata() {
         when(prenotazioneRepository.findConflittingReservations(anyLong(), any(), any()))
                 .thenReturn(List.of(prenotazione(1L, aula(10L, StatoAula.LIBERA), utente(1L), StatoPrenotazione.PRENOTATA)));
 
-        assertThat(service.prenotaAula(10L, null, utente(1L), inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.prenotaAula(10L, null, utente(1L), inizio, fine, "x"))
+                .isInstanceOf(BookingConflictException.class);
         verify(prenotazioneRepository, never()).save(any());
     }
 
     @Test
-    void prenotaAulaReturnsNullWhenRoomDoesNotExist() {
+    void prenotaAulaSegnalaAulaInesistente() {
         aulaLibera();
         when(aulaRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThat(service.prenotaAula(10L, null, utente(1L), inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.prenotaAula(10L, null, utente(1L), inizio, fine, "x"))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     // Il test "utente inesistente" e' stato rimosso con la separazione: questo servizio non
@@ -120,12 +127,13 @@ class PrenotazioneServiceUnitTest {
     // l'esistenza e' il token firmato da auth-service, entro la sua scadenza.
 
     @Test
-    void prenotaAulaReturnsNullWhenCourseIdIsGivenButMissing() {
+    void prenotaAulaSegnalaCorsoInesistente() {
         aulaLibera();
         when(aulaRepository.findById(10L)).thenReturn(Optional.of(aula(10L, StatoAula.LIBERA)));
         when(corsoRepository.findById(77L)).thenReturn(Optional.empty());
 
-        assertThat(service.prenotaAula(10L, 77L, utente(1L), inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.prenotaAula(10L, 77L, utente(1L), inizio, fine, "x"))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -205,19 +213,21 @@ class PrenotazioneServiceUnitTest {
     // ==================== bloccaAula ====================
 
     @Test
-    void bloccaAulaReturnsNullWhenRoomIsBusy() {
+    void bloccaAulaRifiutaSeLAulaEOccupata() {
         when(prenotazioneRepository.findConflittingReservations(anyLong(), any(), any()))
                 .thenReturn(List.of(prenotazione(1L, aula(10L, StatoAula.LIBERA), utente(1L), StatoPrenotazione.PRENOTATA)));
 
-        assertThat(service.bloccaAula(10L, utente(2L), inizio, fine, "motivo")).isNull();
+        assertThatThrownBy(() -> service.bloccaAula(10L, utente(2L), inizio, fine, "motivo"))
+                .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
-    void bloccaAulaReturnsNullWhenRoomMissing() {
+    void bloccaAulaSegnalaAulaInesistente() {
         aulaLibera();
         when(aulaRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThat(service.bloccaAula(10L, utente(2L), inizio, fine, "motivo")).isNull();
+        assertThatThrownBy(() -> service.bloccaAula(10L, utente(2L), inizio, fine, "motivo"))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     // Rimosso: bloccaAula non rilegge piu' il ruolo dal database. A filtrare i non-admin
@@ -241,22 +251,24 @@ class PrenotazioneServiceUnitTest {
     // ==================== annullaPrenotazione ====================
 
     @Test
-    void annullaReturnsFalseWhenBookingMissing() {
+    void annullaSegnalaPrenotazioneInesistente() {
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThat(service.annullaPrenotazione(5L, 1L, false)).isFalse();
+        assertThatThrownBy(() -> service.annullaPrenotazione(5L, 1L, false))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     // Rimosso con la separazione: "utente inesistente" non e' piu' un caso che questo
     // servizio possa distinguere, perche' non consulta piu' la tabella utenti.
 
     @Test
-    void annullaReturnsFalseForUnrelatedUser() {
+    void annullaRifiutaUnUtenteEstraneo() {
         Aula a = aula(10L, StatoAula.LIBERA);
         when(prenotazioneRepository.findById(5L))
                 .thenReturn(Optional.of(prenotazione(5L, a, utente(1L), StatoPrenotazione.PRENOTATA)));
 
-        assertThat(service.annullaPrenotazione(5L, 9L, false)).isFalse();
+        assertThatThrownBy(() -> service.annullaPrenotazione(5L, 9L, false))
+                .isInstanceOf(AccessDeniedException.class);
         verify(prenotazioneRepository, never()).save(any());
     }
 
@@ -302,26 +314,28 @@ class PrenotazioneServiceUnitTest {
     }
 
     @Test
-    void annullaReturnsFalseWhenBookingIsAlreadyCancelled() {
+    void annullaRifiutaUnaPrenotazioneGiaAnnullata() {
         // Annullare due volte non deve riuscire: il chiamante riceverebbe un "annullata
         // con successo" per un'operazione che non ha cambiato nulla.
         Aula a = aula(10L, StatoAula.LIBERA);
         Prenotazione p = prenotazione(5L, a, utente(1L), StatoPrenotazione.ANNULLATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
 
-        assertThat(service.annullaPrenotazione(5L, 1L, false)).isFalse();
+        assertThatThrownBy(() -> service.annullaPrenotazione(5L, 1L, false))
+                .isInstanceOf(DomainConflictException.class);
         verify(prenotazioneRepository, never()).save(any());
     }
 
     @Test
-    void annullaReturnsFalseForABlockedBooking() {
+    void annullaRifiutaUnBloccoAmministrativo() {
         // I blocchi e le manutenzioni sono roba da admin: si annullano dall'endpoint
         // admin dedicato, non da DELETE /api/prenotazioni/{id}.
         Aula a = aula(10L, StatoAula.BLOCCATA);
         Prenotazione p = prenotazione(5L, a, utente(1L), StatoPrenotazione.BLOCCATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
 
-        assertThat(service.annullaPrenotazione(5L, 1L, false)).isFalse();
+        assertThatThrownBy(() -> service.annullaPrenotazione(5L, 1L, false))
+                .isInstanceOf(DomainConflictException.class);
     }
 
     @Test
@@ -332,45 +346,49 @@ class PrenotazioneServiceUnitTest {
         Prenotazione p = prenotazione(5L, a, utente(1L), StatoPrenotazione.ANNULLATA);
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.of(p));
 
-        assertThat(service.annullaPrenotazione(5L, 2L, false)).isFalse();
+        // isAdmin=true e non false: prima era false, quindi a respingere era il controllo
+        // di PROPRIETA', non la regola di stato che il test dice di verificare. Con i
+        // booleani le due cose erano indistinguibili e il test passava lo stesso; con le
+        // eccezioni tipizzate la differenza si vede, e il test ora prova cio' che dichiara.
+        assertThatThrownBy(() -> service.annullaPrenotazione(5L, 2L, true))
+                .isInstanceOf(DomainConflictException.class);
     }
 
     // ==================== updatePrenotazione ====================
 
     @Test
-    void updateReturnsNullWhenBookingMissing() {
+    void updateSegnalaPrenotazioneInesistente() {
         when(prenotazioneRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThat(service.updatePrenotazione(5L, 10L, null, 1L, false, inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.updatePrenotazione(5L, 10L, null, 1L, false, inizio, fine, "x"))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    // Rimosso: "utente inesistente" non e' piu' un caso che questo servizio possa
+    // distinguere. Non consulta la tabella utenti dalla separazione di auth-service, e a
+    // garantire l'esistenza e' il token firmato, entro la sua scadenza.
+
     @Test
-    void updateReturnsNullWhenUserMissing() {
+    void updateRifiutaUnUtenteEstraneo() {
         when(prenotazioneRepository.findById(5L)).thenReturn(
                 Optional.of(prenotazione(5L, aula(10L, StatoAula.LIBERA), utente(1L), StatoPrenotazione.PRENOTATA)));
 
-        assertThat(service.updatePrenotazione(5L, 10L, null, 1L, false, inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.updatePrenotazione(5L, 10L, null, 9L, false, inizio, fine, "x"))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
-    void updateReturnsNullForUnrelatedUser() {
-        when(prenotazioneRepository.findById(5L)).thenReturn(
-                Optional.of(prenotazione(5L, aula(10L, StatoAula.LIBERA), utente(1L), StatoPrenotazione.PRENOTATA)));
-
-        assertThat(service.updatePrenotazione(5L, 10L, null, 9L, false, inizio, fine, "x")).isNull();
-    }
-
-    @Test
-    void updateReturnsNullWhenRoomMissing() {
+    void updateSegnalaAulaInesistente() {
         when(prenotazioneRepository.findById(5L)).thenReturn(
                 Optional.of(prenotazione(5L, aula(10L, StatoAula.LIBERA), utente(1L), StatoPrenotazione.PRENOTATA)));
         when(aulaRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThat(service.updatePrenotazione(5L, 99L, null, 1L, false, inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.updatePrenotazione(5L, 99L, null, 1L, false, inizio, fine, "x"))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
-    void updateReturnsNullWhenNewSlotOverlapsAnotherBooking() {
+    void updateRifiutaSeIlNuovoOrarioSiSovrappone() {
         Aula a = aula(10L, StatoAula.LIBERA);
         when(prenotazioneRepository.findById(5L)).thenReturn(
                 Optional.of(prenotazione(5L, a, utente(1L), StatoPrenotazione.PRENOTATA)));
@@ -378,11 +396,12 @@ class PrenotazioneServiceUnitTest {
         when(prenotazioneRepository.findConflittingReservationsExcluding(anyLong(), any(), any(), anyLong()))
                 .thenReturn(List.of(prenotazione(6L, a, utente(2L), StatoPrenotazione.PRENOTATA)));
 
-        assertThat(service.updatePrenotazione(5L, 10L, null, 1L, false, inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.updatePrenotazione(5L, 10L, null, 1L, false, inizio, fine, "x"))
+                .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
-    void updateReturnsNullWhenCourseIdIsGivenButMissing() {
+    void updateSegnalaCorsoInesistente() {
         Aula a = aula(10L, StatoAula.LIBERA);
         when(prenotazioneRepository.findById(5L)).thenReturn(
                 Optional.of(prenotazione(5L, a, utente(1L), StatoPrenotazione.PRENOTATA)));
@@ -391,7 +410,8 @@ class PrenotazioneServiceUnitTest {
                 .thenReturn(List.of());
         when(corsoRepository.findById(77L)).thenReturn(Optional.empty());
 
-        assertThat(service.updatePrenotazione(5L, 10L, 77L, 1L, false, inizio, fine, "x")).isNull();
+        assertThatThrownBy(() -> service.updatePrenotazione(5L, 10L, 77L, 1L, false, inizio, fine, "x"))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
