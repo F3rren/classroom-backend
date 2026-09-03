@@ -16,26 +16,23 @@ WORKDIR /sorgenti
 
 COPY pom.xml .
 COPY shared/pom.xml shared/
-COPY auth-service/pom.xml auth-service/
-COPY notifica-service/pom.xml notifica-service/
-COPY prenotazione-service/pom.xml prenotazione-service/
-COPY gateway/pom.xml gateway/
+COPY services/auth-service/pom.xml services/auth-service/
+COPY services/notifica-service/pom.xml services/notifica-service/
+COPY services/prenotazione-service/pom.xml services/prenotazione-service/
+COPY services/gateway/pom.xml services/gateway/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
 
 COPY shared shared
-COPY auth-service auth-service
-COPY notifica-service notifica-service
-COPY prenotazione-service prenotazione-service
-COPY gateway gateway
+COPY services services
 
 ARG MODULO
 # -am costruisce anche shared, da cui tutti dipendono. I test girano nella pipeline
 # di CI, non qui: un'immagine non e' il posto dove scoprire che la suite fallisce.
-RUN mvn -B -q package -pl ${MODULO} -am -DskipTests
+RUN mvn -B -q package -pl services/${MODULO} -am -DskipTests
 
 # Il nome del jar cambia da modulo a modulo, quindi si isola qui invece di
 # ripeterlo nel comando di avvio.
-RUN cp ${MODULO}/target/*.jar /applicazione.jar
+RUN cp services/${MODULO}/target/*.jar /applicazione.jar
 
 FROM eclipse-temurin:17-jre
 WORKDIR /opt/prenotazioni

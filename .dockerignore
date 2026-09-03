@@ -3,5 +3,3 @@
 **/target/
 .git/
 logs/
-# I segreti restano fuori dalle immagini: arrivano da variabili d'ambiente.
-config/config.properties

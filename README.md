@@ -100,6 +100,18 @@ database, migrazioni e configurazione si sono risolti. Documentazione interattiv
 
 ## Struttura del progetto
 
+```
+services/           i quattro deployable: uno per servizio
+  gateway/            l'unico esposto (17102)
+  auth-service/
+  prenotazione-service/
+  notifica-service/
+shared/             non e' un servizio: e' la libreria che i quattro importano
+```
+
+La distinzione fra `services/` e `shared/` e' l'unica cosa che quell'albero deve dire, ed e'
+il motivo per cui `shared` non sta dentro `services/`: non si avvia, non ha una porta.
+
 Il progetto e' un build Maven multi-modulo, e la scomposizione e' completa: ogni servizio
 ha il proprio database, il proprio deployable e il proprio Dockerfile (lo stesso, con il
 modulo passato come argomento). Il nome di ciascun modulo dice cosa fa — il servizio delle
@@ -200,10 +212,12 @@ verificare che il confine regga.
 ```bash
 mvn clean package
 export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
-java -jar prenotazione-service/target/prenotazione-service-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar services/prenotazione-service/target/prenotazione-service-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
-Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PORT`, `LOG_FILE`.
+Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PRENOTAZIONE_PORT`.
+I log vanno su stdout: in container li raccoglie Docker (`docker compose logs`). La
+scrittura su file resta solo nel profilo `dev`.
 La password arriva da `SPRING_DATASOURCE_PASSWORD`: variabile d'ambiente nei container,
 letta da `.env` fuori.
 
@@ -279,19 +293,16 @@ Se il database è vuoto e le variabili non ci sono, il servizio parte comunque m
 `WARN`** come procedere: un database vuoto e silenzioso è esattamente il modo in cui questo
 problema si ripresenta.
 
-Vedi [AvvioPrimoAdmin.java](auth-service/src/main/java/com/prenotazioni/auth/AvvioPrimoAdmin.java).
+Vedi [AvvioPrimoAdmin.java](services/auth-service/src/main/java/com/prenotazioni/auth/AvvioPrimoAdmin.java).
 
 ## Schema del database
 
-Gestito da **Flyway**, in `prenotazione-service/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
+Gestito da **Flyway**, in `services/prenotazione-service/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
 Hibernate non modifica mai lo schema, verifica soltanto che le entity corrispondano e
 fallisce all'avvio se divergono.
 
 Per modificare lo schema si aggiunge una migrazione (`V3__descrizione.sql`). Quelle già
 applicate non vanno più modificate: Flyway ne verifica il checksum.
-
-> I file in `scripts/dati-di-esempio/` **non** sono lo schema: sono dati di
-> popolamento da eseguire a mano. Vedi il `LEGGIMI.md` in quella cartella.
 
 ---
 
@@ -303,7 +314,7 @@ mvn verify    # aggiunge il gate di copertura, per modulo
 ```
 
 I report di copertura finiscono in `shared/target/site/jacoco/index.html` e
-`prenotazione-service/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
+`services/prenotazione-service/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
 separatamente, perche' il denominatore cambia da modulo a modulo.
 
 La suite è composta da unit test senza Spring, test di integrazione HTTP su H2, e **una**

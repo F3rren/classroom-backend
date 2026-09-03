@@ -7,6 +7,8 @@
         <groupId>com.prenotazioni</groupId>
         <artifactId>prenotazioni-aule-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
+        <!-- Il default sarebbe ../pom.xml, che da services/<modulo>/ non esiste. -->
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>gateway</artifactId>

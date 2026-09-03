@@ -56,8 +56,12 @@ jobs:
           controllate=0
           problemi=0
 
-          for sorgente in $(grep -rl "@Testcontainers" --include=*.java */src/test); do
-            modulo="${sorgente%%/*}"
+          # Ne' un elenco ne' una profondita' fissa: "*/src/test" e' scaduto nel momento
+          # in cui i servizi sono finiti sotto services/, e "*/*/src/test" scadrebbe alla
+          # ristrutturazione successiva. Il modulo si ricava tagliando la parte fissa del
+          # percorso, che non dipende da quanto e' annidato.
+          for sorgente in $(grep -rl "@Testcontainers" --include=*.java --exclude-dir=target . | sed 's|^\./||'); do
+            modulo="${sorgente%%/src/test/*}"
             classe="$(basename "$sorgente" .java)"
             pacchetto="$(sed -n 's/^package \(.*\);/\1/p' "$sorgente" | head -1)"
             report="$modulo/target/surefire-reports/TEST-$pacchetto.$classe.xml"
@@ -103,7 +107,7 @@ jobs:
           name: jacoco-report
           # Glob e non elenco, per la stessa ragione del passo qui sopra. L'aggregatore
           # non ha target e semplicemente non corrisponde.
-          path: '*/target/site/jacoco/'
+          path: '**/target/site/jacoco/'
           if-no-files-found: warn
 
       - name: Report dei test falliti
@@ -111,5 +115,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: surefire-reports
-          path: '*/target/surefire-reports/'
+          path: '**/target/surefire-reports/'
           if-no-files-found: warn

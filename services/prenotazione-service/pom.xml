@@ -7,23 +7,30 @@
         <groupId>com.prenotazioni</groupId>
         <artifactId>prenotazioni-aule-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
+        <!-- Il default sarebbe ../pom.xml, che da services/<modulo>/ non esiste. -->
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>notifica-service</artifactId>
-    <name>NotificaService</name>
-    <description>Servizio notifiche: possiede la tabella notifiche e nient'altro</description>
+    <artifactId>prenotazione-service</artifactId>
+    <name>PrenotazioneService</name>
+    <description>Applicazione: aule, prenotazioni, utenti e notifiche (ancora un solo deployable)</description>
 
-    <!--
-        Il primo dominio staccato, perche' e' il piu' isolato: le notifiche portano gia'
-        denormalizzati i dati che mostrano (nome stanza, nome admin, id prenotazione),
-        quindi per rispondere non devono chiamare nessuno. L'unico legame era la
-        @ManyToOne verso Utente, diventata una colonna utente_id senza chiave esterna.
-    -->
     <dependencies>
         <dependency>
             <groupId>com.prenotazioni</groupId>
             <artifactId>shared</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- TestJwt: firma token di prova con lo stesso segreto, cosi' i test di questo
+             servizio non hanno bisogno che auth-service giri. E' la conseguenza pratica
+             del fatto che la validazione JWT sia offline. -->
+        <dependency>
+            <groupId>com.prenotazioni</groupId>
+            <artifactId>shared</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -33,6 +40,27 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Migrazioni versionate dello schema. Prima lo schema reale era quello
+             generato da ddl-auto=update e i file .sql del progetto non venivano
+             mai eseguiti, con la conseguenza che i vincoli di dominio mancavano. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -47,17 +75,21 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -66,10 +98,15 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
 
+        <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -85,10 +122,25 @@
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
+        <!--
+            Testcontainers: una sola classe di test gira su PostgreSQL reale, per coprire
+            cio' che H2 non sa esprimere (EXCLUDE USING gist, CHECK constraint, migrazioni
+            Flyway). Le altre 9 classi di integrazione restano su H2, veloci.
 
+            Nessun <version>: la 1.19.8 e' gia' gestita da spring-boot-dependencies.
+
+            junit:junit (JUnit 4) arriva transitivo e NON va escluso: PostgreSQLContainer
+            eredita da una gerarchia che implementa org.junit.rules.TestRule, quindi serve
+            a compile-time anche se i test sono tutti su JUnit 5.
+        -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -102,15 +154,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- TestJwt: permette ai test di firmarsi i propri token invece di dover
-             creare un utente e passare da auth-service. -->
-        <dependency>
-            <groupId>com.prenotazioni</groupId>
-            <artifactId>shared</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -119,6 +162,8 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- L'aggregatore disattiva il plugin per non far fallire
+                         "spring-boot:run -pl prenotazione-service -am": qui va riacceso. -->
                     <skip>false</skip>
                 </configuration>
             </plugin>
@@ -131,7 +176,11 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <configuration>
                     <excludes>
-                        <exclude>com/prenotazioni/notifica/NotificaServiceApplication.class</exclude>
+                        <!-- Solo la classe @SpringBootApplication: il main() non e' testabile
+                             in modo significativo. Volutamente NON si escludono i dto: quelle
+                             righe sono gia' quasi tutte coperte (Jackson invoca i getter
+                             serializzando), quindi escluderle abbasserebbe la percentuale. -->
+                        <exclude>com/prenotazioni/prenotazione/PrenotazioneServiceApplication.class</exclude>
                     </excludes>
                 </configuration>
             </plugin>
