@@ -19,11 +19,11 @@ import org.springframework.context.annotation.ComponentScan;
  * due moduli invisibile al compilatore.
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {"com.prenotazioni.prenotazione", "com.prenotazioni.setting",
+@ComponentScan(basePackages = {"com.prenotazioni.prenotazione", "com.prenotazioni.config",
         "com.prenotazioni.security", "com.prenotazioni.exception"})
-public class PrenotazioniAuleBackendApplication {
+public class PrenotazioneServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PrenotazioniAuleBackendApplication.class, args);
+        SpringApplication.run(PrenotazioneServiceApplication.class, args);
     }
 }

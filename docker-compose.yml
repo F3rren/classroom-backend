@@ -84,7 +84,7 @@ services:
       # verificare da solo i token che questo firma, senza chiamarlo.
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
       NOTIFICA_SERVICE_URL: http://notifica-service:17104
-      BOOKING_SERVICE_URL: http://app:17103
+      PRENOTAZIONE_SERVICE_URL: http://prenotazione-service:17103
       # Primo amministratore, usato SOLO se la tabella utenti e' vuota. Senza, su un
       # database nuovo non ci sarebbe modo di crearne uno: /api/admin/register richiede
       # gia' un token da amministratore. I default vuoti rendono il meccanismo inattivo
@@ -93,11 +93,11 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       BOOTSTRAP_ADMIN_NOME: ${BOOTSTRAP_ADMIN_NOME:-Amministratore}
 
-  app:
+  prenotazione-service:
     build:
       context: .
       args:
-        MODULO: app
+        MODULO: prenotazione-service
     depends_on:
       broker:
         condition: service_healthy
@@ -150,11 +150,11 @@ services:
       - "17102:17102"
     depends_on:
       - auth-service
-      - app
+      - prenotazione-service
       - notifica-service
     environment:
       AUTH_SERVICE_URL: http://auth-service:17105
-      APP_SERVICE_URL: http://app:17103
+      PRENOTAZIONE_SERVICE_URL: http://prenotazione-service:17103
       NOTIFICA_SERVICE_URL: http://notifica-service:17104
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
 

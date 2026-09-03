@@ -18,14 +18,14 @@ COPY pom.xml .
 COPY shared/pom.xml shared/
 COPY auth-service/pom.xml auth-service/
 COPY notifica-service/pom.xml notifica-service/
-COPY app/pom.xml app/
+COPY prenotazione-service/pom.xml prenotazione-service/
 COPY gateway/pom.xml gateway/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
 
 COPY shared shared
 COPY auth-service auth-service
 COPY notifica-service notifica-service
-COPY app app
+COPY prenotazione-service prenotazione-service
 COPY gateway gateway
 
 ARG MODULO

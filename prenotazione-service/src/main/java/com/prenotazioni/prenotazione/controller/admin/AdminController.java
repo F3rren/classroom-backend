@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione.controller.admin;
 
-import com.prenotazioni.setting.CorrelazioneRichiesta;
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.prenotazione.service.AulaService;
 import com.prenotazioni.prenotazione.service.PrenotazioneService;
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;

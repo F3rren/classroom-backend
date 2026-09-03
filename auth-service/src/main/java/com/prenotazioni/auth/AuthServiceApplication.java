@@ -10,7 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
  *
  * E' l'unico servizio che FIRMA i token: possiede jjwt-impl e la tabella utenti. Gli altri
  * si limitano a verificarli, con JwtVerifier in shared, conoscendo lo stesso segreto. E'
- * cio' che permette a booking-service di autorizzare una richiesta senza mai chiamare
+ * cio' che permette a prenotazione-service di autorizzare una richiesta senza mai chiamare
  * questo servizio.
  *
  * Il componentScan risale a com.prenotazioni per raccogliere i bean condivisi (JwtVerifier,
@@ -18,7 +18,7 @@ import org.springframework.context.annotation.ComponentScan;
  * package: senza, il servizio partirebbe senza filtro JWT.
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {"com.prenotazioni.auth", "com.prenotazioni.setting", "com.prenotazioni.security", "com.prenotazioni.exception"})
+@ComponentScan(basePackages = {"com.prenotazioni.auth", "com.prenotazioni.config", "com.prenotazioni.security", "com.prenotazioni.exception"})
 // com.prenotazioni.model serve per Ruolo.JpaConverter, che e' @Converter(autoApply = true)
 // ma vive in shared: fuori dal raggio di scansione l'autoApply non si applica, e Hibernate
 // tornerebbe a mappare l'enum per ORDINALE. Il sintomo qui e' un DDL che fallisce, ma su uno

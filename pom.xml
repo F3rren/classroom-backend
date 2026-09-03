@@ -26,7 +26,7 @@
         <module>shared</module>
         <module>notifica-service</module>
         <module>auth-service</module>
-        <module>app</module>
+        <module>prenotazione-service</module>
         <module>gateway</module>
     </modules>
 
@@ -55,7 +55,7 @@
     <build>
         <plugins>
             <!--
-                "mvn spring-boot:run -pl app -am" applica il goal a ogni progetto del
+                "mvn spring-boot:run -pl prenotazione-service -am" applica il goal a ogni progetto del
                 reattore, aggregatore e shared inclusi, che non hanno una main class e
                 farebbero fallire il comando. Qui il goal diventa un no-op; app lo
                 riabilita esplicitamente.
@@ -85,7 +85,7 @@
                     gia' da Engine 19.03, quindi copre la banda piu' ampia di daemon.
 
                     Sta in pluginManagement perche' vale per ogni modulo che ospiti test
-                    Testcontainers: oggi solo app, domani booking-service.
+                    Testcontainers: oggi solo app, domani prenotazione-service.
 
                     ATTENZIONE: non aggiungere qui un <argLine>. La property "argLine" e'
                     impostata da jacoco:prepare-agent; sovrascriverla senza @{argLine} manda

@@ -1,6 +1,6 @@
 package com.prenotazioni.auth.controller;
 
-import com.prenotazioni.setting.CorrelazioneRichiesta;
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.auth.dto.CreateUserRequest;
 import com.prenotazioni.auth.dto.DeletedUserResponse;
 import com.prenotazioni.auth.dto.UpdateUserRequest;

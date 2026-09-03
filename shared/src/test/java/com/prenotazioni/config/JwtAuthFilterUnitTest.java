@@ -1,4 +1,4 @@
-package com.prenotazioni.setting;
+package com.prenotazioni.config;
 
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.security.JwtVerifier;

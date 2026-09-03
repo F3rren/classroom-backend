@@ -79,7 +79,7 @@ class JwtVerifierUnitTest {
 
     @Test
     void leggeIlNomeDalClaimDedicato() {
-        // Il nome viaggia nel token proprio per evitare che booking-service debba
+        // Il nome viaggia nel token proprio per evitare che prenotazione-service debba
         // chiedere ad auth-service chi sta prenotando.
         String token = TestJwt.perUtente(7L, "mario.rossi@example.it", "Mario Rossi");
 

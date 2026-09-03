@@ -1,6 +1,6 @@
 package com.prenotazioni.exception;
 
-import com.prenotazioni.setting.CorrelazioneRichiesta;
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.dto.ApiEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

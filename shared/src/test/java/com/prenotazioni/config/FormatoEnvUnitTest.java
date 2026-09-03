@@ -1,4 +1,4 @@
-package com.prenotazioni.setting;
+package com.prenotazioni.config;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

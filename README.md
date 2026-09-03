@@ -78,10 +78,10 @@ openssl rand -base64 48
 ## 3. Avviare
 
 ```bash
-mvn spring-boot:run -pl app -am
+mvn spring-boot:run -pl prenotazione-service -am
 ```
 
-`-pl app` sceglie il modulo applicativo, `-am` costruisce prima `shared` da cui dipende.
+`-pl prenotazione-service` sceglie il modulo, `-am` costruisce prima `shared` da cui dipende.
 
 Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log:
 `Successfully applied 2 migrations`).
@@ -100,14 +100,16 @@ database, migrazioni e configurazione si sono risolti. Documentazione interattiv
 
 ## Struttura del progetto
 
-Il progetto e' un build Maven multi-modulo. E' il primo passo della scomposizione verso
-un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora uno solo.
+Il progetto e' un build Maven multi-modulo, e la scomposizione e' completa: ogni servizio
+ha il proprio database, il proprio deployable e il proprio Dockerfile (lo stesso, con il
+modulo passato come argomento). Il nome di ciascun modulo dice cosa fa — il servizio delle
+prenotazioni si chiamava `app`, che non diceva niente.
 
 | Modulo | Porta | Database | Contenuto |
 |---|---|---|---|
 | `gateway` | **17102** | — | Punto di ingresso unico: instrada per prefisso |
 | `broker` | 5672 | — | RabbitMQ: trasporta la notifica di cancellazione |
-| `app` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi |
+| `prenotazione-service` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi |
 | `auth-service` | 17105 | `prenotazione_aule_utenti` | Utenti, login, amministrazione utenti |
 | `notifica-service` | 17104 | `prenotazione_aule_notifiche` | Le notifiche |
 | `shared` | — | — | Comune a tutti: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
@@ -115,7 +117,7 @@ un'architettura a microservizi: la struttura e' divisa, il deployable e' ancora 
 **Il frontend conosce solo la 17102.** Le porte crescono in sequenza a partire da lì, così
 aggiungere un servizio non obbliga a ripensare l'assegnazione (il prossimo servizio prenderà la 17106). La 8080 è volutamente evitata: è troppo comune e collide con altri
 progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'ambiente
-(`GATEWAY_PORT`, `APP_PORT`, `NOTIFICA_PORT`) senza toccare codice.
+(`GATEWAY_PORT`, `PRENOTAZIONE_PORT`, `AUTH_PORT`, `NOTIFICA_PORT`) senza toccare codice.
 
 ### Con Docker
 
@@ -148,7 +150,7 @@ Provato: le quattro immagini si costruiscono, lo stack sale e il giro completo (
 creazione aula → notifiche) passa dal gateway. Serve comunque inserire a mano il primo
 admin nel database utenti, per la ragione spiegata più sotto.
 
-> Dentro i container `app` gira con il profilo **`prod`**, e non è una preferenza:
+> Dentro i container `prenotazione-service` gira con il profilo **`prod`**, e non è una preferenza:
 > `application-dev.properties` ha l'URL del database scritto su `localhost`, quindi con il
 > profilo predefinito `DB_HOST` verrebbe ignorato e il servizio morirebbe alla prima
 > connessione. Solo `prod` legge le variabili d'ambiente.
@@ -158,7 +160,7 @@ admin nel database utenti, per la ragione spiegata più sotto.
 Servono quattro processi, ognuno in un terminale:
 
 ```bash
-mvn spring-boot:run -pl app -am              # 17103
+mvn spring-boot:run -pl prenotazione-service -am              # 17103
 mvn spring-boot:run -pl auth-service -am     # 17105
 mvn spring-boot:run -pl notifica-service -am # 17104
 mvn spring-boot:run -pl gateway -am          # 17102
@@ -198,7 +200,7 @@ verificare che il confine regga.
 ```bash
 mvn clean package
 export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
-java -jar app/target/prenotazioni-aule-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar prenotazione-service/target/prenotazione-service-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PORT`, `LOG_FILE`.
@@ -217,13 +219,13 @@ Ogni servizio ha un namespace proprio, e `shared` tiene la radice:
 
 | Modulo | Package |
 |---|---|
-| `shared` | `com.prenotazioni.{dto,model,security,setting,util,exception,eventi}` |
-| `app` | `com.prenotazioni.prenotazione.*` |
+| `shared` | `com.prenotazioni.{dto,model,security,config,util,exception,eventi}` |
+| `prenotazione-service` | `com.prenotazioni.prenotazione.*` |
 | `auth-service` | `com.prenotazioni.auth.*` |
 | `notifica-service` | `com.prenotazioni.notifica.*` |
 | `gateway` | `com.prenotazioni.gateway.*` |
 
-Non è una convenzione estetica. Finché `app` stava sotto `com.prenotazioni.*` come `shared`,
+Non è una convenzione estetica. Finché `prenotazione-service` stava sotto `com.prenotazioni.*` come `shared`,
 tre package erano pubblicati da entrambi i jar e il confine fra i due moduli non era
 verificato dal compilatore: una classe poteva usare un membro package-private dell'altro
 modulo e compilare. Separando i namespace è successo davvero — `PrenotazioneAuthorizationService`
@@ -281,7 +283,7 @@ Vedi [AvvioPrimoAdmin.java](auth-service/src/main/java/com/prenotazioni/auth/Avv
 
 ## Schema del database
 
-Gestito da **Flyway**, in `app/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
+Gestito da **Flyway**, in `prenotazione-service/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
 Hibernate non modifica mai lo schema, verifica soltanto che le entity corrispondano e
 fallisce all'avvio se divergono.
 
@@ -301,7 +303,7 @@ mvn verify    # aggiunge il gate di copertura, per modulo
 ```
 
 I report di copertura finiscono in `shared/target/site/jacoco/index.html` e
-`app/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
+`prenotazione-service/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
 separatamente, perche' il denominatore cambia da modulo a modulo.
 
 La suite è composta da unit test senza Spring, test di integrazione HTTP su H2, e **una**

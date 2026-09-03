@@ -38,7 +38,7 @@ public class DatiUtenteClient {
 
     DatiUtenteClient(RestClient.Builder builder,
                      @Value("${prenotazioni.notifica-service.url:http://localhost:17104}") String urlNotifiche,
-                     @Value("${prenotazioni.booking-service.url:http://localhost:17103}") String urlPrenotazioni,
+                     @Value("${prenotazioni.prenotazione-service.url:http://localhost:17103}") String urlPrenotazioni,
                      HttpServletRequest richiestaCorrente) {
         this.notifiche = builder.clone().baseUrl(urlNotifiche).build();
         this.prenotazioni = builder.clone().baseUrl(urlPrenotazioni).build();

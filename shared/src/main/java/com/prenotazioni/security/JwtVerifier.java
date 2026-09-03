@@ -76,7 +76,7 @@ public class JwtVerifier {
      *
      * Sta nel token per una ragione precisa: e' l'unico dato dell'utente che serve ai
      * servizi a valle (finisce nel campo "user" dei dettagli aula), e portarlo qui evita
-     * a booking-service una chiamata di rete verso auth-service a ogni prenotazione.
+     * a prenotazione-service una chiamata di rete verso auth-service a ogni prenotazione.
      * Un token emesso prima di questa modifica non ha il claim: torna null, e chi lo usa
      * deve gestirlo invece di dare per scontato che ci sia.
      */

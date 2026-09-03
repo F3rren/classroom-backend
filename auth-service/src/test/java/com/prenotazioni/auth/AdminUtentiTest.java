@@ -149,7 +149,7 @@ class AdminUtentiTest {
 
     @Test
     void seIServiziAValleNonRispondonoLUtenteNonVieneCancellato() {
-        // In questo test non esistono ne' booking-service ne' notifica-service: le chiamate
+        // In questo test non esistono ne' prenotazione-service ne' notifica-service: le chiamate
         // falliscono, e l'utente deve restare. E' la garanzia che sostituisce la chiave
         // esterna persa con la separazione.
         ResponseEntity<String> resp = chiama("/api/admin/delete/" + idUtenteNormale, HttpMethod.DELETE, null);

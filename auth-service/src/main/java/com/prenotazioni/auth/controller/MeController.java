@@ -1,6 +1,6 @@
 package com.prenotazioni.auth.controller;
 
-import com.prenotazioni.setting.CorrelazioneRichiesta;
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.UserSummaryDto;

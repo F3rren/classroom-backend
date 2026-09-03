@@ -9,8 +9,8 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>prenotazioni-aule-backend</artifactId>
-    <name>PrenotazioniAuleBackend</name>
+    <artifactId>prenotazione-service</artifactId>
+    <name>PrenotazioneService</name>
     <description>Applicazione: aule, prenotazioni, utenti e notifiche (ancora un solo deployable)</description>
 
     <dependencies>
@@ -161,7 +161,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <!-- L'aggregatore disattiva il plugin per non far fallire
-                         "spring-boot:run -pl app -am": qui va riacceso. -->
+                         "spring-boot:run -pl prenotazione-service -am": qui va riacceso. -->
                     <skip>false</skip>
                 </configuration>
             </plugin>
@@ -178,7 +178,7 @@
                              in modo significativo. Volutamente NON si escludono i dto: quelle
                              righe sono gia' quasi tutte coperte (Jackson invoca i getter
                              serializzando), quindi escluderle abbasserebbe la percentuale. -->
-                        <exclude>com/prenotazioni/prenotazione/PrenotazioniAuleBackendApplication.class</exclude>
+                        <exclude>com/prenotazioni/prenotazione/PrenotazioneServiceApplication.class</exclude>
                     </excludes>
                 </configuration>
             </plugin>

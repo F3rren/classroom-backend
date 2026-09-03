@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * Il messaggio che booking-service manda quando un admin cancella una prenotazione.
+ * Il messaggio che prenotazione-service manda quando un admin cancella una prenotazione.
  *
  * Porta con se' tutto cio' che la notifica deve mostrare (nome della stanza, orari, nome
  * dell'admin) invece del solo id della prenotazione: e' cio' che permette a questo

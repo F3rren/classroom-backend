@@ -37,7 +37,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(utente.getEmail())
                 .claim("id", utente.getId())
-                // Serve a booking-service per salvare il nome di chi prenota senza
+                // Serve a prenotazione-service per salvare il nome di chi prenota senza
                 // interrogare il servizio utenti: vedi JwtVerifier.getNomeFromToken.
                 .claim("nome", utente.getNome())
                 .claim("username", utente.getUsername())

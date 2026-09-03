@@ -16,7 +16,7 @@ import org.springframework.context.annotation.ComponentScan;
  * puo' accidentalmente mappare tabelle che non possiede.
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {"com.prenotazioni.notifica", "com.prenotazioni.setting", "com.prenotazioni.security", "com.prenotazioni.exception"})
+@ComponentScan(basePackages = {"com.prenotazioni.notifica", "com.prenotazioni.config", "com.prenotazioni.security", "com.prenotazioni.exception"})
 public class NotificaServiceApplication {
 
     public static void main(String[] args) {

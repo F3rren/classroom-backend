@@ -1,4 +1,4 @@
-package com.prenotazioni.setting;
+package com.prenotazioni.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prenotazioni.dto.ApiEnvelope;

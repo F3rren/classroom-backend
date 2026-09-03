@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione.controller;
 
-import com.prenotazioni.setting.CorrelazioneRichiesta;
+import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.exception.InvalidRequestException;
 import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.dto.*;

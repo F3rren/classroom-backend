@@ -1,4 +1,4 @@
-package com.prenotazioni.setting;
+package com.prenotazioni.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import org.junit.jupiter.api.Test;
