@@ -20,7 +20,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Le risposte d'errore del gateway, nella stessa forma di quelle dei servizi.
@@ -68,7 +67,14 @@ public class GestoreErroriGateway implements ErrorWebExceptionHandler {
         }
 
         Esito esito = classifica(errore);
-        String sessionId = "GW_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        // L'id lo conia CorrelazioneAlBordo all'ingresso, e i servizi a valle lo riusano:
+        // un 503 mostrato qui porta cosi' la stessa chiave che l'utente vedrebbe se la
+        // richiesta fosse arrivata a destinazione. Il ripiego copre i casi in cui si
+        // fallisce prima ancora di entrare in quel filtro.
+        String sessionId = CorrelazioneAlBordo.dellaRichiesta(exchange);
+        // Su un percorso che non corrisponde a nessuna rotta il 404 nasce prima dei
+        // GlobalFilter, quindi qui l'intestazione non l'ha ancora scritta nessuno.
+        exchange.getResponse().getHeaders().set(CorrelazioneAlBordo.INTESTAZIONE, sessionId);
 
         // Il percorso e' nel log, non nella risposta: al client non serve e a chi indaga si'.
         logger.error("[{}] {} su {} -> {}: {}", sessionId, esito.codice,

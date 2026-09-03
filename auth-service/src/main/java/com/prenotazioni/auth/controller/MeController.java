@@ -1,5 +1,6 @@
 package com.prenotazioni.auth.controller;
 
+import com.prenotazioni.setting.CorrelazioneRichiesta;
 import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.UserSummaryDto;
@@ -32,8 +33,10 @@ public class MeController {
         this.utenteRepository = utenteRepository;
     }
 
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return "ME_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return CorrelazioneRichiesta.corrente();
     }
 
     @GetMapping

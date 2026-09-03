@@ -1,5 +1,6 @@
 package com.prenotazioni.exception;
 
+import com.prenotazioni.setting.CorrelazioneRichiesta;
 import com.prenotazioni.dto.ApiEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,16 @@ public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /**
+     * L'identificativo della richiesta in corso, non uno nuovo.
+     *
+     * Prima questo metodo ne generava uno proprio, quindi la stessa richiesta compariva
+     * nei log con due identificativi diversi: quello del controller e quello prodotto
+     * qui rispondendo. Erano scollegati, e non c'era modo di sapere che appartenessero
+     * alla stessa chiamata.
+     */
     private String newSessionId() {
-        return "ERR_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return CorrelazioneRichiesta.corrente();
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

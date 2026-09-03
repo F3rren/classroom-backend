@@ -1,5 +1,6 @@
 package com.prenotazioni.prenotazione.controller;
 
+import com.prenotazioni.setting.CorrelazioneRichiesta;
 import com.prenotazioni.exception.InvalidRequestException;
 import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.dto.*;
@@ -59,8 +60,10 @@ public class PrenotazioneController {
         return new ProprietarioPrenotazione(principal.id(), principal.username(), principal.nome());
     }
 
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return "S" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return CorrelazioneRichiesta.corrente();
     }
 
     private String formatTimestamp(LocalDateTime dateTime) {

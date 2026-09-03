@@ -1,5 +1,6 @@
 package com.prenotazioni.auth.controller;
 
+import com.prenotazioni.setting.CorrelazioneRichiesta;
 import com.prenotazioni.auth.dto.CreateUserRequest;
 import com.prenotazioni.auth.dto.DeletedUserResponse;
 import com.prenotazioni.auth.dto.UpdateUserRequest;
@@ -53,8 +54,10 @@ public class AdminUtentiController {
         this.utenteService = utenteService;
     }
 
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return "ADM_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return CorrelazioneRichiesta.corrente();
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {

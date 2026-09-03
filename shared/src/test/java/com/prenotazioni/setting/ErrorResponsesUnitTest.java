@@ -37,8 +37,11 @@ class ErrorResponsesUnitTest {
         assertThat(body.get("success").asBoolean()).isFalse();
         assertThat(body.get("error").asText()).isEqualTo("UNAUTHORIZED");
         assertThat(body.get("userMessage").asText()).isEqualTo("Devi effettuare il login per accedere a questa funzionalità.");
-        // il sessionId serve a correlare i log: deve esserci ed essere riconoscibile
-        assertThat(body.get("sessionId").asText()).startsWith("AUTH_");
+        // Il sessionId serve a correlare i log. Il prefisso non e' piu' AUTH_ perche' non
+        // e' piu' il controller a inventarselo: e' l'id della richiesta, lo stesso che vede
+        // il gestore degli errori. Fuori da una richiesta HTTP - come qui - si ripiega su
+        // uno generato, e cio' che conta e' che il campo non sia mai vuoto.
+        assertThat(body.get("sessionId").asText()).isNotBlank();
     }
 
     @Test

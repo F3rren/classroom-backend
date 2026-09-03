@@ -1,5 +1,6 @@
 package com.prenotazioni.prenotazione.controller;
 
+import com.prenotazioni.setting.CorrelazioneRichiesta;
 import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.prenotazione.service.AulaService;
 import com.prenotazioni.prenotazione.service.PrenotazioneService;
@@ -47,8 +48,10 @@ public class RoomController {
         this.prenotazioneService = prenotazioneService;
     }
 
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
+    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return "R" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return CorrelazioneRichiesta.corrente();
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String error, String message, String userMessage, String sessionId) {

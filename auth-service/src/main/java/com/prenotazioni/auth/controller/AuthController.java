@@ -1,5 +1,6 @@
 package com.prenotazioni.auth.controller;
 
+import com.prenotazioni.setting.CorrelazioneRichiesta;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.LoginPayload;
@@ -14,7 +15,6 @@ import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.util.Timestamps;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -81,10 +81,13 @@ public class AuthController {
     // ==================== UTILITY METHODS ====================
     
     /**
-     * Genera un ID sessione univoco per il tracking delle operazioni di autenticazione
+     * L'identificativo della richiesta in corso, non uno nuovo: e' lo stesso che
+     * GlobalExceptionHandler mettera' nella risposta e nel log dello stack trace.
+     * Prima erano due valori scorrelati e una richiesta fallita compariva nei log
+     * sotto due id diversi, uno per il controller e uno per il gestore.
      */
     private String generateSessionId() {
-        return "AUTH_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return CorrelazioneRichiesta.corrente();
     }
     
     /**
