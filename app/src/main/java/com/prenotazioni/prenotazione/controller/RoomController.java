@@ -1,5 +1,6 @@
 package com.prenotazioni.prenotazione.controller;
 
+import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.prenotazione.service.AulaService;
 import com.prenotazioni.prenotazione.service.PrenotazioneService;
 import com.prenotazioni.prenotazione.model.Aula;
@@ -124,8 +125,10 @@ public class RoomController {
 
         Optional<Aula> aula = aulaService.getAulaById(id);
         if (aula.isEmpty()) {
-            logger.warn("FINE getRoomDetailsById - Aula non trovata con ID: {}", id);
-            return new ResponseEntity<>(new SimpleErrorResponse("Aula non trovata"), HttpStatus.NOT_FOUND);
+            // Prima: {"error":"Aula non trovata"}, una forma diversa dall'envelope usato
+            // ovunque: niente "success", niente "userMessage", e "error" con dentro una
+            // frase invece di un codice.
+            throw ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", id);
         }
 
         logger.debug("Aula trovata: ID: {}, Nome: {}", aula.get().getId(), aula.get().getNome());

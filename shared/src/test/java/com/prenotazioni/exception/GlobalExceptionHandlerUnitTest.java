@@ -178,4 +178,25 @@ class GlobalExceptionHandlerUnitTest {
         assertThat(ex).isInstanceOf(DomainConflictException.class);
         assertThat(handler.handleDomainConflict(ex).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
+
+    @Test
+    void unaRichiestaNonValidaDiventa400() {
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleInvalidRequest(
+                new InvalidRequestException("INVALID_STATE", "Stato non valido: inventato",
+                        "Stato non riconosciuto."));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(resp.getBody().getError()).isEqualTo("INVALID_STATE");
+    }
+
+    @Test
+    void unIllegalArgumentRestaUn500ENonDiventaColpaDelChiamante() {
+        // Deliberato: IllegalArgumentException segnala un errore di programmazione.
+        // Mapparla a 400 farebbe passare i bug del server per richieste sbagliate, e
+        // nasconderebbe proprio i casi che vanno visti.
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleGeneric(
+                new IllegalArgumentException("argomento non valido"));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

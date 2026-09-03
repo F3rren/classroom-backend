@@ -1,5 +1,7 @@
 package com.prenotazioni.prenotazione.controller;
 
+import com.prenotazioni.exception.InvalidRequestException;
+import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.dto.*;
 // entrambe: in com.prenotazioni.dto restano le classi comuni di shared,
 // in com.prenotazioni.prenotazione.dto quelle di questo servizio
@@ -441,8 +443,10 @@ public class PrenotazioneController {
 
         Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
         if (prenotazione == null) {
-            logger.debug("[{}] FINE getPrenotazioneById - Prenotazione non trovata con ID: {}", sessionId, id);
-            return new ResponseEntity<>(new SimpleErrorResponse("Prenotazione non trovata"), HttpStatus.NOT_FOUND);
+            // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
+            // "userMessage", e "error" conteneva una frase invece di un codice. Un client
+            // che legge userMessage otteneva undefined proprio su questi due endpoint.
+            throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", id);
         }
 
         logger.debug("[{}] FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", sessionId, prenotazione.getId());
@@ -461,8 +465,10 @@ public class PrenotazioneController {
 
         Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
         if (prenotazione == null) {
-            logger.debug("[{}] FINE getPrenotazioneDetailsById - Prenotazione non trovata con ID: {}", sessionId, id);
-            return new ResponseEntity<>(new SimpleErrorResponse("Prenotazione non trovata"), HttpStatus.NOT_FOUND);
+            // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
+            // "userMessage", e "error" conteneva una frase invece di un codice. Un client
+            // che legge userMessage otteneva undefined proprio su questi due endpoint.
+            throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", id);
         }
 
         logger.debug("Prenotazione trovata: ID: {}", prenotazione.getId());
@@ -496,10 +502,16 @@ public class PrenotazioneController {
             return ResponseEntity.ok(new PrenotazioniByStatoPayload(stato, prenotazioni));
         } catch (IllegalArgumentException e) {
             logger.debug("FINE getPrenotazioniByStato - Stato non valido: {}", stato);
-            return new ResponseEntity<>(
-                new SimpleErrorResponse("Stato non valido. Stati disponibili: PRENOTATA, BLOCCATA, MANUTENZIONE, ANNULLATA"),
-                HttpStatus.BAD_REQUEST
-            );
+            // Uno stato inesistente e' un dato non valido, quindi 400 con l'envelope
+            // comune. L'elenco degli stati ammessi si ricava dall'enum invece di essere
+            // scritto a mano: la versione scritta a mano si sarebbe scollata al primo
+            // valore aggiunto, e nessuno se ne sarebbe accorto.
+            throw new InvalidRequestException("INVALID_STATE",
+                    "Stato non valido: " + stato
+                            + ". Ammessi: " + java.util.Arrays.stream(StatoPrenotazione.values())
+                            .map(StatoPrenotazione::getValore).collect(Collectors.joining(", ")),
+                    "Stato non riconosciuto. Ammessi: " + java.util.Arrays.stream(StatoPrenotazione.values())
+                            .map(StatoPrenotazione::getValore).collect(Collectors.joining(", ")));
         }
     }
 

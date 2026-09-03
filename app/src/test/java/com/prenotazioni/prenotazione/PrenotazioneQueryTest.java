@@ -259,4 +259,40 @@ class PrenotazioneQueryTest {
         return (Map<String, Object>) o;
     }
 
+
+    @Test
+    void unaPrenotazioneInesistenteRispondeNellaFormaComune() throws Exception {
+        // Questi endpoint rispondevano {"error":"Prenotazione non trovata"}: una forma
+        // tutta loro, senza "success" ne' "userMessage", con "error" che conteneva una
+        // frase invece di un codice. Nessun test lo copriva, ed e' il motivo per cui la
+        // divergenza e' sopravvissuta cosi' a lungo.
+        ResponseEntity<String> resp = get("/api/prenotazioni/999999");
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        Map<String, Object> body = asMap(resp.getBody());
+        assertThat(body.get("success")).isEqualTo(false);
+        assertThat(body.get("error")).isEqualTo("PRENOTAZIONE_NOT_FOUND");
+        assertThat(body.get("userMessage")).isNotNull();
+        assertThat(body.get("sessionId")).isNotNull();
+    }
+
+    @Test
+    void ancheIDettagliDiUnaPrenotazioneInesistenteUsanoLaFormaComune() throws Exception {
+        ResponseEntity<String> resp = get("/api/prenotazioni/999999/details");
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("PRENOTAZIONE_NOT_FOUND");
+    }
+
+    @Test
+    void unoStatoInesistenteRispondeNellaFormaComuneEDiceQualiSonoAmmessi() throws Exception {
+        ResponseEntity<String> resp = get("/api/prenotazioni/stato/inventato");
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Map<String, Object> body = asMap(resp.getBody());
+        assertThat(body.get("success")).isEqualTo(false);
+        // L'elenco degli stati ammessi si ricava dall'enum: se ne aggiungessero uno e il
+        // messaggio restasse indietro, questo assert se ne accorgerebbe.
+        assertThat(String.valueOf(body.get("userMessage"))).contains("prenotata", "annullata");
+    }
 }

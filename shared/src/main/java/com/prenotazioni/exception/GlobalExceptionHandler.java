@@ -70,6 +70,22 @@ public class GlobalExceptionHandler {
      * decideva da se' che fosse un 404 e con quale messaggio: sedici controlli "== null"
      * sparsi, ognuno con la sua frase scritta a mano.
      */
+    /**
+     * Dato non accettabile che Bean Validation non poteva intercettare, tipicamente perche'
+     * dipende dal dominio. Volutamente NON si mappa qui IllegalArgumentException: quella
+     * segnala un errore di programmazione, e trasformarla in 400 farebbe passare i bug del
+     * server per colpa di chi chiama.
+     */
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleInvalidRequest(InvalidRequestException ex) {
+        String sessionId = newSessionId();
+        logger.debug("[{}] Richiesta non valida: {}", sessionId, ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
         String sessionId = newSessionId();
