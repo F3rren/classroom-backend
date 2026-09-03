@@ -32,40 +32,39 @@ openssl rand -base64 48     # -> JWT_SECRET
 # poi valorizzare SPRING_DATASOURCE_PASSWORD con la password del PostgreSQL locale
 ```
 
-Lo stack in container lo legge da solo. Per i servizi avviati a mano va caricato
-nell'ambiente, una volta per terminale:
-
-```bash
-set -a; source .env; set +a        # Git Bash
-```
-
-```powershell
-Get-Content .env | Where-Object { $_ -match '^([^#=]+)=(.*)$' } |
-    ForEach-Object { [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2]) }
-```
-
-Spring riconosce le variabili per convenzione: `JWT_SECRET` diventa `jwt.secret`,
-`SPRING_DATASOURCE_PASSWORD` diventa `spring.datasource.password`.
-
-> `config/config.properties` continua a funzionare come riserva, ma non serve più tenerlo
-> allineato: **l'ambiente ha la precedenza**, verificato avviando l'applicazione con un
-> `JWT_SECRET` volutamente troppo corto e ottenendo l'errore sulla lunghezza della chiave
-> invece dell'avvio con il valore del file.
-
-### Il vecchio percorso
-
-Le credenziali **non** stanno in `application.properties`, che è versionato. Vanno in
-`config/config.properties`, ignorato da git e letto dall'esterno del jar.
-
-Copiare `config/config.properties.example` in `config/config.properties` e valorizzarlo:
+Non serve fare altro, né in container né fuori: **`.env` lo leggono in due**. Docker
+Compose lo trova da solo e inietta i valori nei container; Spring lo importa direttamente,
+perché ogni `application.properties` dichiara
 
 ```properties
-spring.datasource.password=LA_TUA_PASSWORD
-jwt.secret=UN_SEGRETO_LUNGO_E_CASUALE
+spring.config.import=optional:file:./.env[.properties],optional:file:../.env[.properties]
 ```
 
-Il file deve contenere **solo segreti**. Host, porta e nome del database si cambiano nel
-profilo (vedi sotto), non qui.
+Il formato `KEY=valore` di Compose è anche quello dei file `.properties` di Java, e
+`[.properties]` è come lo si dichiara a Spring. `optional:` perché nei container il file
+non c'è affatto — i valori arrivano già come variabili d'ambiente.
+
+I nomi però non combaciano, e **la conversione automatica non avviene**: il *relaxed
+binding* di Spring tratta le maiuscole con underscore solo per le variabili d'ambiente
+vere, non per le chiavi lette da un file. Il ponte è esplicito, in ogni servizio:
+
+```properties
+jwt.secret=${JWT_SECRET}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:}
+```
+
+> **Niente virgolette e niente backslash nei valori di `.env`.** Compose toglie le
+> virgolette, Java le tiene: violarlo non dà errore, dà due letture diverse *dello stesso
+> file*, con il file che a guardarlo sembra giusto. I segreti base64 non ne contengono, e
+> il vincolo è fissato da `FormatoEnvUnitTest` in `shared`.
+
+`jwt.secret` è **senza valore di ripiego** apposta: se manca, il servizio si rifiuta di
+partire invece di firmare token con una chiave vuota. Verificato spostando `.env` e
+ottenendo `Could not resolve placeholder 'JWT_SECRET'` — se fosse partito lo stesso,
+significherebbe che il segreto arriva da un'altra parte.
+
+`.env` deve contenere **solo segreti e parametri d'ambiente**. Host, porta e nome del
+database si cambiano nel profilo (vedi sotto), non qui.
 
 > `jwt.secret` non ha un valore di default nel codice: se manca, l'avvio **fallisce
 > esplicitamente** invece di usare un segreto noto. È voluto.
@@ -175,7 +174,7 @@ Prima del primo avvio serve il suo database (vuoto: lo schema lo crea Flyway):
 CREATE DATABASE prenotazione_aule_notifiche;
 ```
 
-`jwt.secret` in `config/config.properties` deve essere lo stesso per entrambi i servizi:
+`JWT_SECRET` in `.env` deve essere lo stesso per tutti i servizi:
 e' cio' che permette a ognuno di validare i token da solo, senza chiamare gli altri. E'
 anche il motivo per cui i test possono firmarsi i propri token invece di creare un utente.
 
@@ -192,7 +191,7 @@ verificare che il confine regga.
 | `application.properties` | chiavi valide ovunque |
 | `application-dev.properties` | database locale, porta 17103, DevTools, CORS su localhost |
 | `application-prod.properties` | valori da variabili d'ambiente, DevTools e Swagger disattivati |
-| `config/config.properties` | **solo segreti**, non versionato |
+| `.env` | **solo segreti e parametri d'ambiente**, non versionato |
 
 ### Produzione
 
@@ -203,7 +202,8 @@ java -jar app/target/prenotazioni-aule-backend-0.0.1-SNAPSHOT.jar --spring.profi
 ```
 
 Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PORT`, `LOG_FILE`.
-La password arriva da `config/config.properties` oppure da `SPRING_DATASOURCE_PASSWORD`.
+La password arriva da `SPRING_DATASOURCE_PASSWORD`: variabile d'ambiente nei container,
+letta da `.env` fuori.
 
 `CORS_ALLOWED_ORIGINS` **non ha un default**: se non è impostata l'avvio fallisce, invece
 di pubblicare in produzione le origini di localhost. In `prod` Swagger è disattivato,
@@ -252,12 +252,32 @@ prenotazione è già stata cancellata.
 
 ## Il primo amministratore
 
-Su un database utenti vuoto **non c'è modo di creare il primo admin dalle API**:
-`/api/admin/register` richiede già un token con ruolo `ADMIN`. Non è una conseguenza della
-separazione — il monolite aveva lo stesso vincolo — ma su database nuovi si incontra subito.
+Su un database utenti vuoto `/api/admin/register` non è raggiungibile: richiede già un
+token con ruolo `ADMIN`. Non è una conseguenza della separazione — il monolite aveva lo
+stesso vincolo — ma su database nuovi si incontra subito, e prima si usciva dal cerchio
+solo con una `INSERT` a mano e un hash BCrypt calcolato fuori.
 
-Va inserito a mano nel database `prenotazione_aule_utenti`, dopo che Flyway ha creato lo
-schema al primo avvio di `auth-service`, con una password già cifrata con BCrypt.
+Ora bastano due variabili in `.env`:
+
+```bash
+BOOTSTRAP_ADMIN_EMAIL=tua@email.it
+BOOTSTRAP_ADMIN_PASSWORD=unaPasswordLunga
+```
+
+All'avvio di `auth-service`, **e solo se la tabella utenti è vuota**, viene creato un
+amministratore con quelle credenziali. Poi vanno svuotate, insieme al cambio della password.
+
+La condizione è stretta apposta: a tabella non vuota il meccanismo è **inerte** — non
+promuove, non aggiorna, non tocca nessun utente esistente. È ciò che separa un aiuto
+all'avvio da una scorciatoia per ottenere privilegi da amministratore, ed è tenuto fermo dai
+test in `AvvioPrimoAdminUnitTest`. La creazione passa da `AuthService.register`, la stessa
+strada di ogni altro utente, quindi la password attraversa lo stesso `PasswordEncoder`.
+
+Se il database è vuoto e le variabili non ci sono, il servizio parte comunque ma **logga a
+`WARN`** come procedere: un database vuoto e silenzioso è esattamente il modo in cui questo
+problema si ripresenta.
+
+Vedi [AvvioPrimoAdmin.java](auth-service/src/main/java/com/prenotazioni/auth/AvvioPrimoAdmin.java).
 
 ## Schema del database
 

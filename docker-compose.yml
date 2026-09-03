@@ -85,6 +85,13 @@ services:
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
       NOTIFICA_SERVICE_URL: http://notifica-service:17104
       BOOKING_SERVICE_URL: http://app:17103
+      # Primo amministratore, usato SOLO se la tabella utenti e' vuota. Senza, su un
+      # database nuovo non ci sarebbe modo di crearne uno: /api/admin/register richiede
+      # gia' un token da amministratore. I default vuoti rendono il meccanismo inattivo
+      # per chi non lo vuole, invece di obbligare a dichiarare le variabili in .env.
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_NOME: ${BOOTSTRAP_ADMIN_NOME:-Amministratore}
 
   app:
     build:

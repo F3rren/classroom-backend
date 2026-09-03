@@ -55,7 +55,6 @@ public class AdminUtentiController {
     }
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
-    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
         return CorrelazioneRichiesta.corrente();
     }

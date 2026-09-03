@@ -190,7 +190,7 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void ilDatasourcePuntaAlContainerENonAlDatabaseLocale() {
-        // Se config/config.properties riuscisse a scavalcare @DynamicPropertySource,
+        // Se .env riuscisse a scavalcare @DynamicPropertySource,
         // questi test girerebbero sul database di sviluppo. Meglio accorgersene qui.
         assertThat(env.getProperty("spring.datasource.url"))
                 .contains(String.valueOf(POSTGRES.getFirstMappedPort()));

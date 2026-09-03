@@ -57,9 +57,6 @@ logs/
 # ============================================
 # CONFIGURAZIONI SENSIBILI (IMPORTANTE!)
 # ============================================
-# File con credenziali database e altre configurazioni sensibili
-config/config.properties
-
 # Variabili d'ambiente dello stack compose: contiene JWT_SECRET e le password dei
 # servizi. Docker Compose legge questo file da solo, quindi e' comodissimo - ed e'
 # esattamente per questo che va tenuto fuori da git. Il modello versionato e' .env.example.
@@ -74,7 +71,7 @@ config/config.properties
 
 # ...ma i due profili versionati del progetto vanno committati: contengono SOLO
 # valori non sensibili (url, porte, livelli di log, origini CORS). I segreti restano
-# in config/config.properties, ignorato qui sopra.
+# in .env, ignorato qui sopra.
 # Senza queste due negazioni i file verrebbero ignorati in silenzio: nessun errore,
 # semplicemente non finirebbero mai in un commit e la produzione partirebbe da un
 # jar che non li contiene.

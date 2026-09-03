@@ -42,9 +42,9 @@ jobs:
           cache: maven
 
       # verify e non test: e' la fase in cui gira il gate JaCoCo, applicato per modulo.
-      # Nessun segreto da iniettare: config/config.properties e' importato come
-      # "optional:" e i profili test/pgtest portano da soli jwt.secret, le origini
-      # CORS e il rate limit.
+      # Nessun segreto da iniettare: .env e' importato come "optional:" e sul runner
+      # non esiste, mentre i profili test/pgtest portano da soli jwt.secret, le
+      # origini CORS e il rate limit.
       - name: Build, test e gate di copertura
         run: mvn -B clean verify
 
