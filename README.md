@@ -309,22 +309,52 @@ applicate non vanno più modificate: Flyway ne verifica il checksum.
 ## Test
 
 ```bash
-mvn test      # esegue la suite di tutti i moduli
-mvn verify    # aggiunge il gate di copertura, per modulo
+mvn test      # la suite di tutti i moduli. Funziona SENZA Docker.
+mvn verify    # aggiunge il gate di copertura. RICHIEDE Docker.
 ```
+
+**Senza Docker si usa `mvn test`.** Le tre classi Testcontainers si saltano da sole
+(`Skipped: 20`, segnalato da Maven come warning perche' resti visibile) e il resto gira
+normalmente: e' il comando del ciclo di sviluppo.
+
+`mvn verify` invece richiede Docker, e non e' una svista. Il gate certifica che il codice
+sia provato, e non puo' certificare cio' che non ha potuto eseguire: saltata
+`MessaggisticaCancellazioniTest`, notifica-service scende a **0.67** contro una soglia di
+0.80, perche' quella classe e' l'unica a esercitare la topologia AMQP. Abbassare la soglia
+renderebbe il gate una formalita'.
+
+> Il messaggio di Maven in quel caso dice solo `Coverage checks have not been met`, **senza
+> nominare Docker**. Se lo incontri, la causa e' quasi sempre questa.
 
 I report di copertura finiscono in `shared/target/site/jacoco/index.html` e
 `services/prenotazione-service/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
 separatamente, perche' il denominatore cambia da modulo a modulo.
 
-La suite è composta da unit test senza Spring, test di integrazione HTTP su H2, e **una**
-classe su PostgreSQL reale via Testcontainers, che verifica i vincoli di database che H2
-non sa esprimere (il vincolo anti-sovrapposizione e i CHECK).
+La suite è unit test senza Spring, test di integrazione HTTP su H2, e **tre** classi su
+servizi reali in container:
 
-Quella classe richiede Docker: **senza, viene saltata e la build resta verde**. Alla prima
-esecuzione con Docker attivo serve la rete per scaricare le immagini:
+| Classe | Serve a verificare cosa non si puo' verificare altrimenti |
+|---|---|
+| `PostgresSchemaConstraintsTest` | il vincolo anti-sovrapposizione `EXCLUDE USING gist`, che in H2 non esiste |
+| `VincoliUtentiTest` | i `CHECK` sui ruoli, che H2 applica in modo diverso — su H2 un test passerebbe **anche col vincolo assente** |
+| `MessaggisticaCancellazioniTest` | l'intera topologia AMQP: exchange, routing key, binding, converter, listener. Chiamare il metodo del consumatore proverebbe il metodo, non che il messaggio arrivi |
+
+Tutte e tre hanno `disabledWithoutDocker = true`, quindi senza Docker si saltano invece di
+far fallire la build.
+
+**Il salto e' innocuo in locale e impossibile in CI**, ed e' una distinzione voluta: il passo
+di guardia in `.github/workflows/ci.yml` cerca da se' le classi `@Testcontainers` e fallisce
+se un report dice `skipped` diverso da zero, se manca, o se contiene zero test. Verificato
+spegnendo Docker davvero: le tre classi producono report con `skipped` 3, 4 e 13, e la
+guardia le nomina tutte e tre.
+
+> Non e' una precauzione teorica. Prima che quella guardia esistesse, **quattro asserzioni
+> fallite sono rimaste nascoste per giorni** dietro una classe che si saltava in silenzio.
+
+Alla prima esecuzione con Docker attivo serve la rete per scaricare le immagini:
 
 ```bash
 docker pull postgres:16-alpine
+docker pull rabbitmq:3.13-management-alpine
 docker pull testcontainers/ryuk:0.7.0
 ```

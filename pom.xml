@@ -38,7 +38,18 @@
         <jjwt.version>0.12.3</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
         <!-- Soglia del gate di copertura. I moduli possono sovrascriverla: il denominatore
-             cambia da modulo a modulo, quindi una soglia unica non e' automaticamente sensata. -->
+             cambia da modulo a modulo, quindi una soglia unica non e' automaticamente sensata.
+
+             SENZA DOCKER QUESTO GATE FALLISCE, ed e' corretto che lo faccia. Le classi
+             @Testcontainers si saltano da sole quando Docker non c'e' (skipped, non errore),
+             ma il codice che coprivano resta scoperto: notifica-service scende a 0.67 perche'
+             MessaggisticaCancellazioniTest e' l'unica a esercitare la topologia AMQP. Il gate
+             certifica che il codice sia provato, e non puo' certificare cio' che non ha girato.
+
+             Il messaggio di Maven pero' dice solo "Coverage checks have not been met", senza
+             nominare Docker: chi ci finisce sopra cerca test mancanti che non mancano. Per il
+             ciclo di sviluppo senza Docker si usa "mvn test", che passa; "mvn verify" richiede
+             Docker acceso. E' scritto anche nel README. -->
         <jacoco.line.minimum>0.80</jacoco.line.minimum>
     </properties>
 
