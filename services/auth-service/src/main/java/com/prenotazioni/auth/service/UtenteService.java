@@ -1,5 +1,7 @@
 package com.prenotazioni.auth.service;
 
+import java.util.List;
+import com.prenotazioni.exception.ServizioNonDisponibileException;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.auth.repository.IUtenteRepository;
 import com.prenotazioni.auth.client.DatiUtenteClient;
@@ -53,11 +55,18 @@ public class UtenteService {
     public void deleteById(Long id) {
         logger.debug("INIZIO - Eliminazione utente e dati associati per ID: {}", id);
 
-        if (!datiUtenteClient.eliminaDatiDi(id)) {
-            logger.error("Utente ID {} NON eliminato: la cancellazione dei suoi dati in un altro "
-                    + "servizio e' fallita. L'operazione e' ripetibile.", id);
-            throw new IllegalStateException(
-                    "Impossibile eliminare i dati dell'utente negli altri servizi.");
+        List<String> nonEliminati = datiUtenteClient.eliminaDatiDi(id);
+        if (!nonEliminati.isEmpty()) {
+            String cosa = String.join(" e ", nonEliminati);
+            logger.error("Utente ID {} NON eliminato: {} non si sono potute cancellare. "
+                    + "L'operazione e' ripetibile e va ripetuta.", id, cosa);
+            // 503 e non 500: dice a chi legge che ripetere ha senso, ed e' l'unica cosa che
+            // porta a termine la cancellazione. Con "errore interno del server" ripetere non
+            // era la conclusione ovvia, e la meta' fatta restava li'.
+            throw new ServizioNonDisponibileException("USER_DELETE_INCOMPLETE",
+                    "Non e' stato possibile eliminare " + cosa + " dell'utente " + id,
+                    "L'utente non e' stato eliminato perche' " + cosa + " non si sono potute "
+                            + "rimuovere. Riprova fra qualche istante.");
         }
 
         logger.info("Eliminazione utente ID: {}", id);

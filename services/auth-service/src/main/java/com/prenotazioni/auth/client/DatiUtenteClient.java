@@ -1,5 +1,8 @@
 package com.prenotazioni.auth.client;
 
+import java.util.List;
+import java.util.ArrayList;
+import org.springframework.web.client.HttpClientErrorException;
 import com.prenotazioni.config.CorrelazioneRichiesta;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -33,6 +36,12 @@ public class DatiUtenteClient {
 
     private static final Logger logger = LoggerFactory.getLogger(DatiUtenteClient.class);
 
+    /** Tre tentativi: il primo, piu' due per i guasti che durano meno di un secondo. */
+    private static final int TENTATIVI = 3;
+
+    /** Cresce a ogni giro (0.2s, 0.4s): un servizio che riavvia non torna in un istante. */
+    private static final long ATTESA_INIZIALE_MS = 200;
+
     private final RestClient notifiche;
     private final RestClient prenotazioni;
     private final HttpServletRequest richiestaCorrente;
@@ -46,32 +55,87 @@ public class DatiUtenteClient {
         this.richiestaCorrente = richiestaCorrente;
     }
 
-    /** @return true se la cancellazione a valle e' riuscita del tutto. */
-    public boolean eliminaDatiDi(Long utenteId) {
-        boolean tutto = elimina(notifiche, "/api/notifiche/interne/utente/{id}", utenteId, "notifiche");
-        tutto &= elimina(prenotazioni, "/api/prenotazioni/interne/utente/{id}", utenteId, "prenotazioni");
-        return tutto;
+    /**
+     * Cancella i dati dell'utente negli altri servizi.
+     *
+     * @return i nomi dei dati che NON si e' riusciti a cancellare, vuoto se e' andato tutto.
+     *         Un booleano non bastava: chi chiama deve poter dire nel messaggio d'errore
+     *         cosa e' rimasto indietro, altrimenti l'unica informazione e' "qualcosa e'
+     *         fallito" e chi ripete non sa cosa aspettarsi.
+     */
+    public List<String> eliminaDatiDi(Long utenteId) {
+        List<String> falliti = new ArrayList<>();
+        // Entrambe le chiamate vengono tentate anche se la prima fallisce: fermarsi
+        // lascerebbe piu' roba indietro senza dire di piu' a chi legge l'errore.
+        if (!elimina(notifiche, "/api/notifiche/interne/utente/{id}", utenteId, "notifiche")) {
+            falliti.add("notifiche");
+        }
+        if (!elimina(prenotazioni, "/api/prenotazioni/interne/utente/{id}", utenteId, "prenotazioni")) {
+            falliti.add("prenotazioni");
+        }
+        return falliti;
     }
 
+    /**
+     * Un DELETE con qualche tentativo, perche' la maggior parte dei guasti qui e' passeggera.
+     *
+     * Un servizio che sta riavviando, una connessione rifiutata per un istante, un 5xx
+     * momentaneo: al primo colpo falliscono, al secondo spesso no. Senza tentativi ognuno di
+     * questi lasciava l'operazione a meta' e la sua conclusione dipendeva da un essere umano
+     * che se ne accorgesse e la ripetesse.
+     *
+     * NON si ritenta su un 4xx: e' il servizio a valle che rifiuta la richiesta, e ripeterla
+     * darebbe lo stesso esito ritardando solo la risposta. La distinzione conta: ritentare
+     * cio' che non puo' riuscire e' il modo per trasformare un errore chiaro in un timeout.
+     *
+     * I DELETE sono idempotenti, quindi un tentativo che era in realta' riuscito ma la cui
+     * risposta si e' persa non fa danni al giro successivo.
+     */
     private boolean elimina(RestClient client, String uri, Long utenteId, String cosa) {
+        Exception ultima = null;
+        for (int tentativo = 1; tentativo <= TENTATIVI; tentativo++) {
+            try {
+                client.delete()
+                        .uri(uri, utenteId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationCorrente())
+                        // Senza questa riga la catena di correlazione si spezza proprio qui:
+                        // i servizi a valle non ricevono l'identificativo, se ne generano uno
+                        // nuovo, e un'operazione che attraversa tre servizi finisce nei log
+                        // sotto tre chiavi diverse. Cioe' la correlazione funzionerebbe
+                        // ovunque tranne dove serve.
+                        .header(CorrelazioneRichiesta.INTESTAZIONE, CorrelazioneRichiesta.corrente())
+                        .retrieve()
+                        .toBodilessEntity();
+                if (tentativo > 1) {
+                    logger.info("{} dell'utenteId={} eliminate al tentativo {}", cosa, utenteId, tentativo);
+                }
+                return true;
+            } catch (HttpClientErrorException e) {
+                logger.error("{} dell'utenteId={}: il servizio a valle ha rifiutato la richiesta "
+                        + "({}). Non si ritenta: ripetere darebbe lo stesso esito.",
+                        cosa, utenteId, e.getStatusCode());
+                return false;
+            } catch (Exception e) {
+                ultima = e;
+                if (tentativo < TENTATIVI) {
+                    attendi(ATTESA_INIZIALE_MS * tentativo);
+                }
+            }
+        }
+        logger.error("{} dell'utenteId={} non eliminate dopo {} tentativi: l'utente NON viene "
+                + "rimosso, cosi' quelle righe hanno ancora un proprietario e l'operazione "
+                + "resta ripetibile. Causa: {}",
+                cosa, utenteId, TENTATIVI, ultima != null ? ultima.getMessage() : "sconosciuta");
+        return false;
+    }
+
+    private void attendi(long millisecondi) {
         try {
-            client.delete()
-                    .uri(uri, utenteId)
-                    .header(HttpHeaders.AUTHORIZATION, authorizationCorrente())
-                    // Senza questa riga la catena di correlazione si spezza proprio qui:
-                    // i servizi a valle non ricevono l'identificativo, se ne generano uno
-                    // nuovo, e un'operazione che attraversa tre servizi finisce nei log
-                    // sotto tre chiavi diverse. Cioe' la correlazione funzionerebbe
-                    // ovunque tranne dove serve.
-                    .header(CorrelazioneRichiesta.INTESTAZIONE, CorrelazioneRichiesta.corrente())
-                    .retrieve()
-                    .toBodilessEntity();
-            return true;
-        } catch (Exception e) {
-            logger.error("{} dell'utenteId={} non eliminate: restano righe orfane, che la chiave "
-                    + "esterna rendeva impossibili prima della separazione. Causa: {}",
-                    cosa, utenteId, e.getMessage());
-            return false;
+            Thread.sleep(millisecondi);
+        } catch (InterruptedException e) {
+            // Rimettere il flag e smettere di ritentare: chi ha interrotto il thread vuole
+            // che si fermi, non che dorma di nuovo.
+            Thread.currentThread().interrupt();
         }
     }
 

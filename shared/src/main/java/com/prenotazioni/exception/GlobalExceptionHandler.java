@@ -152,6 +152,23 @@ public class GlobalExceptionHandler {
      * e /swagger-ui.html percorsi permitAll ma inesistenti. Sui percorsi protetti non
      * si notava, perche' la sicurezza risponde 401 prima di arrivare qui.
      */
+    /**
+     * 503 e non 500: la differenza e' l'azione che suggerisce a chi legge.
+     *
+     * Si logga a WARN e non a ERROR, con lo stack trace: un servizio a valle irraggiungibile
+     * non e' un difetto di questo servizio, ma la causa va potuta vedere - "non risponde" da
+     * solo non distingue una connessione rifiutata da un timeout, e sono due diagnosi diverse.
+     */
+    @ExceptionHandler(ServizioNonDisponibileException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleServizioNonDisponibile(ServizioNonDisponibileException ex) {
+        String sessionId = newSessionId();
+        logger.warn("[{}] Servizio a valle non disponibile: {}", sessionId, ex.getMessage(), ex);
+        return new ResponseEntity<>(
+                ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
+                HttpStatus.SERVICE_UNAVAILABLE
+        );
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleResourceNotFound(NoResourceFoundException ex) {
         String sessionId = newSessionId();
