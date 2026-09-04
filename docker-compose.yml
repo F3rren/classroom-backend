@@ -77,6 +77,10 @@ services:
     depends_on:
       db-utenti: *attesa-db
     environment:
+      # prod contiene SOLO irrobustimento - Swagger spento, pool piu' largo, CORS
+      # senza ripiego. Senza questa riga il servizio parte lo stesso, solo meno
+      # protetto: e' voluto, cosi' dimenticarla degrada invece di rompere.
+      SPRING_PROFILES_ACTIVE: prod
       DB_HOST: db-utenti
       DB_NAME: prenotazione_aule_utenti
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
@@ -103,13 +107,17 @@ services:
         condition: service_healthy
       db-prenotazioni: *attesa-db
     environment:
-      # In container serve il profilo prod, ed e' una necessita' non una preferenza:
-      # application-dev.properties ha l'URL del database scritto su localhost, quindi
-      # con il profilo predefinito DB_HOST verrebbe ignorato e il servizio morirebbe
-      # al primo tentativo di connessione. Solo prod legge le variabili d'ambiente.
+      # prod contiene SOLO irrobustimento, come per gli altri due. Non e' piu' una
+      # necessita': la connessione sta in application.properties con i segnaposto, quindi
+      # senza questa riga il servizio parte lo stesso, solo meno protetto.
+      #
+      # Prima non era cosi', ed e' costato caro: l'URL viveva solo in
+      # application-dev.properties, scritto su localhost, e con spring.profiles.default=dev
+      # un container senza questa riga partiva puntando a localhost e moriva alla prima
+      # query. Il sintomo era un 503 dal gateway, e la causa tre file piu' in la'.
       SPRING_PROFILES_ACTIVE: prod
-      # prod pretende questa variabile senza default, per non spedire in produzione
-      # le origini di localhost: qui va quindi passata esplicitamente.
+      # Questo servizio e' l'unico il cui prod pretende le origini CORS senza ripiego,
+      # quindi qui vanno passate esplicitamente.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
       DB_HOST: db-prenotazioni
       RABBITMQ_HOST: broker
@@ -130,6 +138,10 @@ services:
         condition: service_healthy
       db-notifiche: *attesa-db
     environment:
+      # prod contiene SOLO irrobustimento - Swagger spento, pool piu' largo, CORS
+      # senza ripiego. Senza questa riga il servizio parte lo stesso, solo meno
+      # protetto: e' voluto, cosi' dimenticarla degrada invece di rompere.
+      SPRING_PROFILES_ACTIVE: prod
       DB_HOST: db-notifiche
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}

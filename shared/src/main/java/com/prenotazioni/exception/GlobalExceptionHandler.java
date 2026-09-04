@@ -1,5 +1,6 @@
 package com.prenotazioni.exception;
 
+import org.springframework.web.servlet.NoHandlerFoundException;
 import com.prenotazioni.config.CorrelazioneRichiesta;
 import com.prenotazioni.dto.ApiEnvelope;
 import org.slf4j.Logger;
@@ -173,6 +174,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiEnvelope<Void>> handleResourceNotFound(NoResourceFoundException ex) {
         String sessionId = newSessionId();
         logger.debug("[{}] Risorsa non trovata: {}", sessionId, ex.getResourcePath());
+        return new ResponseEntity<>(
+                ApiEnvelope.error("NOT_FOUND", "Risorsa non trovata",
+                        "L'indirizzo richiesto non esiste.", sessionId),
+                HttpStatus.NOT_FOUND
+        );
+    }
+
+    /**
+     * Percorso inesistente, quando NON esiste un gestore di risorse statiche.
+     *
+     * E' il gemello di handleResourceNotFound, e serve perche' Spring sceglie l'una o
+     * l'altra eccezione a seconda della configurazione: con le risorse statiche attive un
+     * percorso ignoto finisce sul loro gestore e produce NoResourceFoundException; senza -
+     * e prenotazione-service e' senza, da quando la SPA e' stata rimossa - arriva qui come
+     * NoHandlerFoundException.
+     *
+     * Mancava, e la conseguenza era che quel servizio rispondeva 500 "errore interno" a
+     * qualunque indirizzo sbagliato, invece di 404. Un difetto emerso interrogando i tre
+     * servizi e notando che uno rispondeva diversamente dagli altri due.
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleNoHandler(NoHandlerFoundException ex) {
+        String sessionId = newSessionId();
+        logger.debug("[{}] Nessun gestore per {} {}", sessionId, ex.getHttpMethod(), ex.getRequestURL());
         return new ResponseEntity<>(
                 ApiEnvelope.error("NOT_FOUND", "Risorsa non trovata",
                         "L'indirizzo richiesto non esiste.", sessionId),

@@ -231,10 +231,25 @@ verificare che il confine regga.
 
 | File | Contenuto |
 |---|---|
-| `application.properties` | chiavi valide ovunque |
-| `application-dev.properties` | database locale, porta 17103, DevTools, CORS su localhost |
-| `application-prod.properties` | valori da variabili d'ambiente, DevTools e Swagger disattivati |
+| `application.properties` | tutto cio' che serve a partire, con segnaposto `${VAR:default}` |
+| `application-dev.properties` | comodita' di sviluppo: DevTools, log su file, baseline Flyway |
+| `application-prod.properties` | **solo irrobustimento**: Swagger spento, pool piu' largo, Flyway in sicurezza |
 | `.env` | **solo segreti e parametri d'ambiente**, non versionato |
+
+**Nessun servizio dipende da un profilo per vivere.** La connessione, la porta e la CORS
+stanno in `application.properties` con la forma `${DB_HOST:localhost}`, che in container
+prende i valori veri e fuori ripiega sui default di sviluppo. Un profilo aggiunge o toglie
+comportamento, non lo fornisce: dimenticare `SPRING_PROFILES_ACTIVE` **degrada** — si resta
+meno protetti — invece di rompere.
+
+Non e' sempre stato cosi', ed e' costato caro: l'URL del database viveva solo in
+`application-dev.properties`, scritto su `localhost`, e con `spring.profiles.default=dev` un
+container senza quella variabile partiva puntando a localhost e moriva alla prima query. Il
+sintomo era un 503 dal gateway, e la causa stava tre file piu' in la'.
+
+`application-dev.properties` esiste solo per `prenotazione-service`, ed e' voluto: e' l'unico
+con DevTools e log su file. Gli altri due non hanno nulla di specifico dello sviluppo, e un
+file vuoto non sarebbe coerenza — sarebbe un file da leggere per scoprire che non dice niente.
 
 ### Perche' un file e' .yml e dieci sono .properties
 

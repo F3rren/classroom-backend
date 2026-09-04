@@ -1,5 +1,7 @@
 package com.prenotazioni.exception;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import com.prenotazioni.dto.ApiEnvelope;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
@@ -198,5 +200,18 @@ class GlobalExceptionHandlerUnitTest {
                 new IllegalArgumentException("argomento non valido"));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void unPercorsoInesistenteSenzaRisorseStaticheResta404() {
+        // Spring sceglie fra due eccezioni diverse a seconda che esista un gestore di
+        // risorse statiche. Quella coperta qui e' il caso SENZA - prenotazione-service,
+        // da quando la SPA e' stata rimossa - e mancava: quel servizio rispondeva 500
+        // "errore interno" a qualunque indirizzo sbagliato.
+        var risposta = handler.handleNoHandler(
+                new NoHandlerFoundException("GET", "/percorso/inventato", new HttpHeaders()));
+
+        assertThat(risposta.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(risposta.getBody().getError()).isEqualTo("NOT_FOUND");
     }
 }
