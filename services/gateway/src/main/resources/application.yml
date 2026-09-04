@@ -30,6 +30,30 @@ spring:
       # La CORS sta qui perche' e' il gateway a parlare col browser: i servizi dietro
       # ricevono solo richieste server-to-server. Ognuno mantiene comunque la propria
       # configurazione, che serve quando lo si interroga direttamente in sviluppo.
+      # QUALE indirizzo arriva ai servizi come indirizzo del chiamante.
+      #
+      # Il default e' AGGIUNGERE in coda a un X-Forwarded-For gia' presente invece di
+      # sostituirlo. Siccome ForwardedHeaderFilter, a valle, legge il PRIMO valore, quel
+      # default lascia scegliere al chiamante il proprio indirizzo apparente: chi manda
+      # "X-Forwarded-For: 9.9.9.9" fa arrivare "9.9.9.9,<indirizzo reale>" e viene letto
+      # come 9.9.9.9.
+      #
+      # Non e' teorico: auth-service limita i tentativi di login su una chiave che comincia
+      # con quell'indirizzo. Col default, cambiarlo a ogni richiesta evita del tutto il
+      # limite. Con for-append: false il gateway scrive solo il proprio interlocutore
+      # diretto e scarta cio' che il client dichiara.
+      #
+      # QUESTA RIGA E "server.forward-headers-strategy=framework" NEI TRE SERVIZI SI
+      # REGGONO A VICENDA: la' ci si fida dell'intestazione, qui la si rende affidabile.
+      # Togliendone una senza sapere dell'altra il buco si riapre in silenzio.
+      # Fissata da IndirizzoDelChiamanteTest.
+      #
+      # Se un giorno davanti al gateway ci fosse un proxy vero, questa scelta va rifatta:
+      # li' l'intestazione in arrivo sarebbe legittima e andrebbe conservata, fidandosi del
+      # proxy - non del client.
+      x-forwarded:
+        for-append: false
+
       # Senza questi due, il gateway aspetta un servizio a valle SENZA LIMITE. Un servizio
       # spento e' gestito bene - la connessione viene rifiutata e si risponde 503 - ma un
       # servizio LENTO, che accetta la connessione e non risponde, tiene occupate le
