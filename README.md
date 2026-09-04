@@ -236,6 +236,36 @@ verificare che il confine regga.
 | `application-prod.properties` | valori da variabili d'ambiente, DevTools e Swagger disattivati |
 | `.env` | **solo segreti e parametri d'ambiente**, non versionato |
 
+### Perche' un file e' .yml e dieci sono .properties
+
+Non e' una svista rimasta indietro: e' una regola, ed e' **`.properties` ovunque, `.yml`
+solo dove la configurazione e' una lista di oggetti annidati**. Oggi succede in un posto
+solo, le rotte del gateway.
+
+La differenza si vede meglio guardando cosa diventerebbero quelle rotte in properties:
+
+```properties
+spring.cloud.gateway.routes[3].id=autenticazione
+spring.cloud.gateway.routes[3].uri=${AUTH_SERVICE_URL:http://localhost:17105}
+spring.cloud.gateway.routes[3].predicates[0]=Path=/api/auth/**,/api/admin/utenti/**
+```
+
+L'ordine delle rotte non e' decorativo: e' cio' che manda `/api/admin/utenti` ad
+auth-service invece che a prenotazione-service, perche' entrambe le rotte accettano quel
+percorso e vince la prima. Scritto in properties, quell'ordine vive negli **indici**, e
+inserire una rotta a meta' vuol dire rinumerare tutte quelle sotto. Sbagliare la
+rinumerazione da' un 404 senza errori di configurazione e senza niente nei log.
+
+Nella direzione opposta, convertire i dieci file a YAML costerebbe piu' di quanto renda:
+sono 243 righe di configurazione e **501 di commento**, cioe' due righe di spiegazione per
+ogni impostazione, da portare attraverso un formato sensibile all'indentazione — e un
+errore di configurazione non fa fallire la build, si vede all'avvio o non si vede affatto.
+
+> **Mai i due formati insieme nella stessa cartella.** Spring caricherebbe entrambi i file
+> e `.properties` vincerebbe: chi ha appena scritto il `.yml` lo vedrebbe ignorato senza
+> alcun segnale, e cercherebbe il difetto nel codice invece che nel file accanto. La CI ha
+> un passo che si rifiuta di proseguire se trova una coppia del genere.
+
 ### Produzione
 
 ```bash

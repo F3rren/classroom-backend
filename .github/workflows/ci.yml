@@ -41,6 +41,32 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # Un modulo con application.properties E application.yml nella stessa cartella non
+      # da' errore: Spring li carica ENTRAMBI, e .properties vince. Chi ha appena scritto
+      # il .yml lo vede ignorato senza che niente glielo dica - e cerca il difetto nel
+      # codice, non nel file accanto.
+      #
+      # E' il modo concreto in cui la regola "properties ovunque, yml solo per le liste
+      # annidate" puo' rompersi: non violandola apertamente, ma a meta'.
+      - name: Nessun modulo con due formati di configurazione
+        run: |
+          doppi=0
+          for cartella in $(find . -path '*/src/*/resources' -type d -not -path '*/target/*'); do
+            for properties in "$cartella"/application*.properties; do
+              [ -f "$properties" ] || continue
+              senza="${properties%.properties}"
+              for yaml in "$senza.yml" "$senza.yaml"; do
+                if [ -f "$yaml" ]; then
+                  echo "::error::$properties e $yaml convivono: Spring li carica entrambi e"
+                  echo "  .properties vince. Il .yml risulta ignorato senza alcun segnale."
+                  doppi=$((doppi + 1))
+                fi
+              done
+            done
+          done
+          if [ "$doppi" -gt 0 ]; then exit 1; fi
+          echo "OK: nessun modulo dichiara la stessa configurazione in due formati."
+
       # verify e non test: e' la fase in cui gira il gate JaCoCo, applicato per modulo.
       # Nessun segreto da iniettare: .env e' importato come "optional:" e sul runner
       # non esiste, mentre i profili test/pgtest portano da soli jwt.secret, le
