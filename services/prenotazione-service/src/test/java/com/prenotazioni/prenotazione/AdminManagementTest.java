@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.StatoAula;
@@ -24,7 +24,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -44,7 +43,6 @@ import static org.mockito.Mockito.verify;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AdminManagementTest {
 
     @Autowired
@@ -56,7 +54,6 @@ class AdminManagementTest {
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
 
-    @Autowired
     /**
      * La notifica non e' piu' una riga scritta in questo processo ma una chiamata a
      * notifica-service. Il test conserva il proprio intento verificando che la chiamata
@@ -65,8 +62,6 @@ class AdminManagementTest {
      */
     @MockBean
     private PubblicatoreEventi pubblicatoreEventi;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String tokenAdmin;
     private String tokenUser;
@@ -125,20 +120,16 @@ class AdminManagementTest {
         return rest.exchange(url, method, entity, String.class);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> dataOf(ResponseEntity<String> resp) throws Exception {
-        return (Map<String, Object>) asMap(resp.getBody()).get("data");
+        return (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
     }
 
     // ==================== Gestione aule ====================
 
     @Test
-    void adminListsRooms() throws Exception {
+    void lAdminElencaLeAule() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/rooms", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -146,7 +137,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void adminGetsSingleRoomWrappedInRoomKey() throws Exception {
+    void lAdminLeggeUnAulaAvvoltaNellaChiaveRoom() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + aulaId, HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -154,11 +145,11 @@ class AdminManagementTest {
     }
 
     @Test
-    void adminGetsRoomNotFound() throws Exception {
+    void lAdminSuUnAulaInesistenteRiceve404() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 
     @Test
@@ -175,7 +166,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void adminUpdateRoomRejectsInvalidPayload() {
+    void laModificaDiUnAulaRifiutaUnCorpoNonValido() {
         // capienza negativa viola @Positive su AulaRequest
         Map<String, Object> body = Map.of("nome", "X", "capienza", -5, "piano", 1);
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + aulaId, HttpMethod.PUT, tokenAdmin, body);
@@ -204,7 +195,7 @@ class AdminManagementTest {
     // ==================== Gestione prenotazioni ====================
 
     @Test
-    void adminListsAllBookingsWithStats() throws Exception {
+    void lAdminElencaTutteLePrenotazioniConLeStatistiche() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/prenotazioni", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -255,7 +246,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void aReasonWithinTheLimitStillNotifiesTheOwner() {
+    void unMotivoEntroIlLimiteAvvisaComunqueIlProprietario() {
         String motivoLungoMaValido = "y".repeat(400);
 
         ResponseEntity<String> resp = exchange(
@@ -322,21 +313,21 @@ class AdminManagementTest {
         // chiamante non la risolve correggendo la sintassi. Il codice dice ora quale dei
         // tanti motivi di fallimento e' stato, invece del generico ROOM_CREATION_FAILED.
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NAME_TAKEN");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NAME_TAKEN");
     }
 
     @Test
-    void adminUpdateRoomWithInvalidIdIsRejected() throws Exception {
+    void laModificaConUnIdNonValidoVieneRifiutata() throws Exception {
         Map<String, Object> body = Map.of("nome", "Qualsiasi", "capienza", 10, "piano", 1);
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("INVALID_ROOM_ID");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_ROOM_ID");
     }
 
     @Test
-    void adminUpdateRoomNotFoundReturns404() throws Exception {
+    void laModificaDiUnAulaInesistenteRisponde404() throws Exception {
         Map<String, Object> body = Map.of("nome", "Inesistente", "capienza", 10, "piano", 1);
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, body);
@@ -344,11 +335,11 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         // ROOM_NOT_FOUND e non ROOM_UPDATE_FAILED: lo stato era gia' 404, ma il codice
         // diceva "aggiornamento fallito" senza dire perche'. Ora nomina la causa.
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 
     @Test
-    void adminEndpointsRequireAuthentication() {
+    void gliEndpointAdminRichiedonoAutenticazione() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/rooms", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 

@@ -28,20 +28,34 @@ import static org.awaitility.Awaitility.await;
 /**
  * La notifica di cancellazione arriva come messaggio, non piu' come chiamata REST.
  *
- * NOTA SULL'ANNOTAZIONE: qui NON c'e' disabledWithoutDocker, a differenza delle classi sui
- * vincoli del database. E' deliberato. Un test sulla messaggistica che si auto-disabilita
- * quando il broker manca non prova nulla e lo fa in silenzio, ed e' esattamente il modo in
- * cui in questo progetto quattro asserzioni sono rimaste nascoste per giorni dietro un
- * "verde". Senza Docker questa classe deve FALLIRE, rumorosamente.
+ * NOTA SULL'ANNOTAZIONE: disabledWithoutDocker c'e', come nelle classi sui vincoli del
+ * database. Non e' sempre stato cosi'. Prima non c'era, di proposito, perche' un test che si
+ * auto-disabilita quando il broker manca non prova nulla e lo fa in silenzio - ed e'
+ * esattamente il modo in cui in questo progetto quattro asserzioni sono rimaste nascoste per
+ * giorni dietro un "verde".
+ *
+ * Quel ragionamento valeva finche' NIENTE si accorgeva del salto. Ora il passo di guardia
+ * nella CI cerca da se' le classi @Testcontainers e fallisce se un report dice skipped
+ * diverso da zero, se manca, o se contiene zero test: il salto in CI e' impossibile da
+ * nascondere. Far fallire anche la build locale non aggiungeva protezione, aggiungeva solo
+ * l'impossibilita' di lavorare senza Docker acceso.
+ *
+ * LA PROTEZIONE E' ORA ALTROVE, non e' sparita: sta in .github/workflows/ci.yml. Toglierla
+ * di la' rimetterebbe in piedi il difetto che era costato quattro asserzioni.
  *
  * Cosa si verifica davvero: che un evento pubblicato sull'exchange venga instradato alla
  * coda giusta e diventi una notifica sul database. Copre quindi l'intera topologia -
  * exchange, routing key, binding, converter JSON e listener - e non solo il metodo del
  * consumatore, che si potrebbe chiamare direttamente senza toccare un broker.
  */
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
 @ActiveProfiles("test")
+// L'UNICA classe che lo tiene, e non per simmetria: uno dei test ferma il registro dei
+// listener AMQP con registro.stop() e lo riavvia. Il contesto non torna nello stato di
+// partenza da solo, quindi riusarlo per la classe successiva significherebbe consegnarle
+// un ascoltatore in uno stato che non ha scelto. Nelle altre quindici era copiato senza
+// motivo, e costava una ricostruzione completa del contesto a testa.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class MessaggisticaCancellazioniTest {
 
@@ -113,10 +127,14 @@ class MessaggisticaCancellazioniTest {
 
         // Con il consumatore fermo non deve succedere nulla: se una notifica comparisse qui,
         // significherebbe che il listener non era davvero spento e il test non proverebbe nulla.
-        Thread.sleep(1000);
-        assertThat(notificaRepository.findAll())
-                .as("con il consumatore fermo la notifica non puo' esistere ancora")
-                .isEmpty();
+        //
+        // during() e non un'attesa fissa: verifica che la condizione resti vera per TUTTA la
+        // finestra, invece di dormire e guardare una volta sola alla fine. E' piu' severo -
+        // intercetta anche una notifica che comparisse e sparisse - e costa meno della meta'.
+        await().during(Duration.ofMillis(400)).atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                assertThat(notificaRepository.findAll())
+                        .as("con il consumatore fermo la notifica non puo' esistere ancora")
+                        .isEmpty());
 
         registro.start();
 

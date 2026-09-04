@@ -76,14 +76,14 @@ class AuthServiceUnitTest {
     // ==================== login ====================
 
     @Test
-    void loginReturnsNullWhenEmailIsUnknown() {
+    void loginTornaNullSeLEmailNonEsiste() {
         when(utenteRepository.findByEmail("assente@test.it")).thenReturn(null);
 
         assertThat(service.login("assente@test.it", "qualsiasi")).isNull();
     }
 
     @Test
-    void loginReturnsNullWhenPasswordDoesNotMatch() {
+    void loginTornaNullSeLaPasswordNonCorrisponde() {
         when(utenteRepository.findByEmail("u@test.it")).thenReturn(utente(1L, "u@test.it"));
         when(passwordEncoder.matches("sbagliata", "hash")).thenReturn(false);
 
@@ -93,7 +93,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    void loginSucceedsAndRecordsLastAccess() {
+    void loginRiuscitoRegistraLUltimoAccesso() {
         Utente u = utente(1L, "u@test.it");
         u.setUltimoAccesso(null);
         when(utenteRepository.findByEmail("u@test.it")).thenReturn(u);
@@ -200,7 +200,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    void updateReencodesPasswordWhenProvided() {
+    void laModificaRicifraLaPasswordSeIndicata() {
         Utente esistente = utente(1L, "mia@test.it");
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(esistente));
         when(utenteRepository.findByEmail("mia@test.it")).thenReturn(esistente);

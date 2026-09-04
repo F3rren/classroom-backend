@@ -52,7 +52,7 @@ class JwtAuthFilterUnitTest {
     }
 
     @Test
-    void aValidTokenBecomesAnAuthenticatedPrincipal() throws Exception {
+    void unTokenValidoDiventaUnUtenteAutenticato() throws Exception {
         Authentication auth = eseguiConHeader("Bearer " + TestJwt.perUtente(7L, "mario@example.it"));
 
         assertThat(auth).isNotNull();
@@ -63,7 +63,7 @@ class JwtAuthFilterUnitTest {
     }
 
     @Test
-    void anAdminTokenCarriesTheAuthorityThatPreAuthorizeLooksFor() throws Exception {
+    void unTokenDaAdminPortaLAuthorityCheCercaPreAuthorize() throws Exception {
         Authentication auth = eseguiConHeader("Bearer " + TestJwt.perAdmin(1L, "admin@example.it"));
 
         // hasRole('ADMIN') cerca esattamente questa stringa
@@ -76,7 +76,7 @@ class JwtAuthFilterUnitTest {
     }
 
     @Test
-    void aHeaderWithoutTheBearerPrefixIsIgnored() throws Exception {
+    void unaIntestazioneSenzaIlPrefissoBearerVieneIgnorata() throws Exception {
         assertThat(eseguiConHeader(TestJwt.perUtente(7L, "mario@example.it"))).isNull();
     }
 
@@ -89,7 +89,7 @@ class JwtAuthFilterUnitTest {
     }
 
     @Test
-    void theLoginRouteSkipsTheFilterEntirely() throws Exception {
+    void laRottaDiLoginSaltaDelTuttoIlFiltro() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
         MockFilterChain catena = new MockFilterChain();
 

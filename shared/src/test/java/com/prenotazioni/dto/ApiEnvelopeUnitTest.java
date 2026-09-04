@@ -18,7 +18,7 @@ class ApiEnvelopeUnitTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void successCarriesThePayloadAndOmitsTheErrorFields() throws Exception {
+    void ilSuccessoPortaIlDatoEOmetteICampiDiErrore() throws Exception {
         ApiEnvelope<String> envelope = ApiEnvelope.success("Operazione riuscita", "payload", "S1234");
 
         assertThat(envelope.isSuccess()).isTrue();
@@ -42,7 +42,7 @@ class ApiEnvelopeUnitTest {
     }
 
     @Test
-    void aSuccessWithoutDataOmitsTheFieldEntirely() throws Exception {
+    void unSuccessoSenzaDatoOmetteDelTuttoIlCampo() throws Exception {
         JsonNode json = objectMapper.readTree(
                 objectMapper.writeValueAsString(ApiEnvelope.success("fatto", null, "S2")));
 

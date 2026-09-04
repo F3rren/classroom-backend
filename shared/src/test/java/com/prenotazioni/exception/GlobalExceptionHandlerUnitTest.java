@@ -63,7 +63,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void dataIntegrityViolationBecomesGeneric409() {
+    void laViolazioneDiIntegritaDiventaUn409Generico() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDataIntegrityViolation(
                 new DataIntegrityViolationException("vincolo violato"));
 
@@ -72,7 +72,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void missingResourceStays404AndDoesNotBecomeAnInternalError() {
+    void unaRisorsaMancanteResta404ENonDiventaErroreInterno() {
         // Regressione: senza un handler dedicato, NoResourceFoundException finiva in
         // handleGeneric e un percorso inesistente rispondeva 500 INTERNAL_ERROR.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
@@ -83,7 +83,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unexpectedExceptionBecomes500WithoutLeakingDetails() {
+    void unEccezioneImprevistaDiventa500SenzaEsporreDettagli() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleGeneric(
                 new IllegalStateException("dettaglio interno che non deve uscire"));
 
@@ -94,7 +94,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void accessDeniedKeepsAnExplicitMessage() {
+    void lAccessoNegatoMantieneUnMessaggioEsplicito() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleAccessDenied(
                 new AccessDeniedException("Puoi vedere solo le tue prenotazioni."));
 
@@ -103,7 +103,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void validationWithoutFieldErrorsFallsBackToGenericMessage() throws Exception {
+    void laValidazioneSenzaErroriDiCampoRipiegaSuUnMessaggioGenerico() throws Exception {
         // ramo firstError == null: un BindingResult senza errori di campo
         Method metodo = getClass().getDeclaredMethod("metodoDiComodo", String.class);
         MethodParameter parametro = new MethodParameter(metodo, 0);

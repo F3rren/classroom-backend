@@ -1,6 +1,6 @@
 package com.prenotazioni.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.auth.repository.IUtenteRepository;
 import com.prenotazioni.model.Ruolo;
@@ -16,7 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -40,7 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AdminUtentiTest {
 
     @Autowired
@@ -49,8 +47,6 @@ class AdminUtentiTest {
     private IUtenteRepository utenteRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String tokenAdmin;
     private Long idUtenteNormale;
@@ -93,10 +89,6 @@ class AdminUtentiTest {
         return rest.exchange(url, metodo, new HttpEntity<>(corpo, headers()), String.class);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> corpoDi(ResponseEntity<String> resp) throws Exception {
-        return objectMapper.readValue(resp.getBody(), Map.class);
-    }
 
     @Test
     @SuppressWarnings("unchecked")
@@ -106,7 +98,7 @@ class AdminUtentiTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).doesNotContain("password");
 
-        Map<String, Object> data = (Map<String, Object>) corpoDi(resp).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.corpoDi(resp).get("data");
         assertThat((List<Object>) data.get("users")).hasSize(2);
     }
 
@@ -118,7 +110,7 @@ class AdminUtentiTest {
         ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.POST, corpo);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(corpoDi(resp).get("success")).isEqualTo(false);
+        assertThat(TestJson.corpoDi(resp).get("success")).isEqualTo(false);
     }
 
     @Test

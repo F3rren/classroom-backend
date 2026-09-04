@@ -40,7 +40,7 @@ class PrenotazioneAuthorizationServiceUnitTest {
     }
 
     @Test
-    void deniesWhenThereIsNoPrincipal() {
+    void negaSeNonCEUnUtenteAutenticato() {
         assertThat(auth.isOwnerOrAdmin(5L, null)).isFalse();
     }
 
@@ -53,7 +53,7 @@ class PrenotazioneAuthorizationServiceUnitTest {
     }
 
     @Test
-    void allowsTheOwner() {
+    void consenteAlProprietario() {
         when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();

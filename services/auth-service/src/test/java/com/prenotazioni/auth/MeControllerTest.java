@@ -1,6 +1,6 @@
 package com.prenotazioni.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.auth.repository.IUtenteRepository;
@@ -15,7 +15,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -32,7 +31,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class MeControllerTest {
 
     @Autowired
@@ -43,8 +41,6 @@ class MeControllerTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private Utente owner;
     private Utente other;
@@ -91,20 +87,16 @@ class MeControllerTest {
         return headers;
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     // ==================== MeController ====================
 
     @Test
-    void getMeReturnsOwnProfileWithoutPassword() throws Exception {
+    void restituisceIlProprioProfiloSenzaLaPassword() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/me", HttpMethod.GET, new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = asMap(resp.getBody());
+        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
         assertThat(body.get("success")).isEqualTo(true);
         Map<String, Object> data = (Map<String, Object>) body.get("data");
         assertThat(data.get("email")).isEqualTo("me-owner@test.it");
@@ -114,7 +106,7 @@ class MeControllerTest {
     }
 
     @Test
-    void getMeWithoutTokenReturns401() {
+    void senzaTokenRisponde401() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/me", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 

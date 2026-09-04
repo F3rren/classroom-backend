@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.StatoAula;
@@ -20,7 +20,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -45,7 +44,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class RoomDetailsWithBookingsTest {
 
     @Autowired
@@ -56,8 +54,6 @@ class RoomDetailsWithBookingsTest {
 
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String token;
     private Long aulaOccupataId;
@@ -125,14 +121,10 @@ class RoomDetailsWithBookingsTest {
         return rest.exchange(url, HttpMethod.GET, new HttpEntity<>(h), String.class);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> roomsOf(ResponseEntity<String> resp) throws Exception {
-        Map<String, Object> data = (Map<String, Object>) asMap(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
         return (List<Map<String, Object>>) data.get("rooms");
     }
 
@@ -146,7 +138,7 @@ class RoomDetailsWithBookingsTest {
     // ==================== clone 1: /api/rooms/detailed ====================
 
     @Test
-    void detailedMarksCurrentlyBookedRoomWithCurrentBooking() throws Exception {
+    void ilDettaglioSegnalaLAulaOccupataAdesso() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> occupata = byName(rooms, "Aula Occupata");
 
@@ -161,7 +153,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void detailedMarksBlockedRoomWithBlockInfo() throws Exception {
+    void ilDettaglioSegnalaLAulaBloccataConIDatiDelBlocco() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> bloccata = byName(rooms, "Aula Bloccata");
 
@@ -175,7 +167,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void detailedTreatsMaintenanceAsBlocked() throws Exception {
+    void ilDettaglioTrattaLaManutenzioneComeBlocco() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> manutenzione = byName(rooms, "Aula Manutenzione");
 
@@ -184,7 +176,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void detailedFlagsBookingStartingWithinTwoHours() throws Exception {
+    void ilDettaglioSegnalaUnaPrenotazioneEntroDueOre() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> imminente = byName(rooms, "Aula Virtuale Imminente");
 
@@ -199,7 +191,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void detailedLeavesRoomWithoutBookingsFree() throws Exception {
+    void ilDettaglioLasciaLiberaUnAulaSenzaPrenotazioni() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> libera = byName(rooms, "Aula Libera");
 
@@ -209,7 +201,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void detailedIncludesBookingList() throws Exception {
+    void ilDettaglioIncludeLElencoDellePrenotazioni() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
 
         @SuppressWarnings("unchecked")
@@ -225,12 +217,12 @@ class RoomDetailsWithBookingsTest {
     // ==================== clone 2: /api/rooms/{id}/detailed ====================
 
     @Test
-    void singleRoomDetailedReportsCurrentBooking() throws Exception {
+    void ilDettaglioDiUnaSolaAulaRiportaLaPrenotazioneInCorso() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + aulaOccupataId + "/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) asMap(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
@@ -239,11 +231,11 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void singleRoomDetailedReportsBlockInfo() throws Exception {
+    void ilDettaglioDiUnaSolaAulaRiportaIDatiDelBlocco() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + aulaBloccataId + "/detailed");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) asMap(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
@@ -252,11 +244,11 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void singleRoomDetailedFlagsImminentBooking() throws Exception {
+    void ilDettaglioDiUnaSolaAulaSegnalaLaPrenotazioneImminente() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + aulaImminenteId + "/detailed");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) asMap(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
@@ -266,7 +258,7 @@ class RoomDetailsWithBookingsTest {
     // ==================== clone 3: physical/virtual detailed ====================
 
     @Test
-    void physicalDetailedCarriesBookingStateForPhysicalRoomsOnly() throws Exception {
+    void ilDettaglioFisicoPortaLoStatoSoloPerLeAuleFisiche() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/physical/detailed"));
 
         assertThat(rooms).hasSize(4); // le 4 aule fisiche, l'aula virtuale e' esclusa
@@ -276,7 +268,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void virtualDetailedCarriesBookingStateForVirtualRoomsOnly() throws Exception {
+    void ilDettaglioVirtualePortaLoStatoSoloPerLeAuleVirtuali() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/virtual/detailed"));
 
         assertThat(rooms).hasSize(1);
@@ -298,7 +290,7 @@ class RoomDetailsWithBookingsTest {
     private String statoDi(Long aulaId) throws Exception {
         ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + aulaId);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) asMap(resp.getBody()).get("stato");
+        return (String) TestJson.comeMappa(resp.getBody()).get("stato");
     }
 
 }

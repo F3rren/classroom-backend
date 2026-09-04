@@ -1,6 +1,6 @@
 package com.prenotazioni.notifica;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.notifica.model.Notifica;
 import com.prenotazioni.notifica.repository.NotificaRepository;
 import com.prenotazioni.testsupport.TestJwt;
@@ -14,7 +14,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Map;
@@ -33,7 +32,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class NotificaOwnershipTest {
 
     private static final Long OWNER_ID = 10L;
@@ -44,8 +42,6 @@ class NotificaOwnershipTest {
 
     @Autowired
     private NotificaRepository notificaRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String tokenOwner;
     private String tokenOther;
@@ -69,10 +65,6 @@ class NotificaOwnershipTest {
         return headers;
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     @Test
     void ownerSeesTheirOwnNotifications() {
@@ -120,7 +112,7 @@ class NotificaOwnershipTest {
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(asMap(resp.getBody()).get("count")).isEqualTo(1);
+        assertThat(TestJson.comeMappa(resp.getBody()).get("count")).isEqualTo(1);
     }
 
     @Test

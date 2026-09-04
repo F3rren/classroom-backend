@@ -1,6 +1,6 @@
 package com.prenotazioni.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.auth.repository.IUtenteRepository;
 import com.prenotazioni.model.Ruolo;
@@ -15,7 +15,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -39,7 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ValidazioneAuthTest {
 
     @Autowired
@@ -50,8 +48,6 @@ class ValidazioneAuthTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String tokenAdmin;
     private String tokenUser;
@@ -103,13 +99,9 @@ class ValidazioneAuthTest {
         return h;
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     @Test
-    void adminRegisterWithInvalidEmailIsRejectedByBeanValidation() throws Exception {
+    void emailNonValidaVieneRifiutataDallaValidazione() throws Exception {
         Map<String, Object> body = Map.of(
                 "username", "nuovoutente",
                 "email", "non-e-una-email",
@@ -121,13 +113,13 @@ class ValidazioneAuthTest {
                 "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        Map<String, Object> responseBody = asMap(resp.getBody());
+        Map<String, Object> responseBody = TestJson.comeMappa(resp.getBody());
         assertThat(responseBody.get("error")).isEqualTo("VALIDATION_ERROR");
         assertThat(responseBody.get("success")).isEqualTo(false);
     }
 
     @Test
-    void adminRegisterWithShortPasswordIsRejected() throws Exception {
+    void passwordTroppoCortaVieneRifiutata() throws Exception {
         Map<String, Object> body = Map.of(
                 "username", "nuovoutente2",
                 "email", "nuovoutente2@validation.test",
@@ -139,7 +131,7 @@ class ValidazioneAuthTest {
                 "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
     }
 
     @Test
@@ -155,11 +147,11 @@ class ValidazioneAuthTest {
                 "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
     }
 
     @Test
-    void adminRegisterWithValidDataSucceeds() throws Exception {
+    void datiValidiCreanoLUtente() throws Exception {
         Map<String, Object> body = Map.of(
                 "username", "nuovoutente4",
                 "email", "nuovoutente4@validation.test",
@@ -171,7 +163,7 @@ class ValidazioneAuthTest {
                 "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(asMap(resp.getBody()).get("success")).isEqualTo(true);
+        assertThat(TestJson.comeMappa(resp.getBody()).get("success")).isEqualTo(true);
     }
 
     @Test
@@ -186,7 +178,7 @@ class ValidazioneAuthTest {
     }
 
     @Test
-    void loginWithBlankEmailStillReturnsLegacyMissingEmailCode() throws Exception {
+    void emailVuotaRestituisceIlCodiceStoricoMissingEmail() throws Exception {
         Map<String, Object> body = Map.of("email", "", "password", "irrilevante");
 
         ResponseEntity<String> resp = rest.exchange(
@@ -197,11 +189,11 @@ class ValidazioneAuthTest {
         // Deve restituire ESATTAMENTE il codice legacy, non il generico VALIDATION_ERROR:
         // conferma che @Valid non e' stato aggiunto al login (altrimenti l'ordine con
         // il rate limiter cambierebbe).
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("MISSING_EMAIL");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("MISSING_EMAIL");
     }
 
     @Test
-    void loginWithBlankPasswordStillReturnsLegacyMissingPasswordCode() throws Exception {
+    void passwordVuotaRestituisceIlCodiceStoricoMissingPassword() throws Exception {
         Map<String, Object> body = Map.of("email", "admin@validation.test", "password", "");
 
         ResponseEntity<String> resp = rest.exchange(
@@ -209,7 +201,7 @@ class ValidazioneAuthTest {
                 new HttpEntity<>(body, jsonHeaders()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("MISSING_PASSWORD");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("MISSING_PASSWORD");
     }
 
     @Test
@@ -224,7 +216,7 @@ class ValidazioneAuthTest {
                 String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = asMap(resp.getBody());
+        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder(
                 "success", "message", "token", "data", "timestamp", "sessionId");
 

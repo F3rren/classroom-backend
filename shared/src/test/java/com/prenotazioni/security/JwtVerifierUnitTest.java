@@ -38,7 +38,7 @@ class JwtVerifierUnitTest {
     }
 
     @Test
-    void readsTheAdminRoleFromTheClaim() {
+    void leggeIlRuoloAdminDalClaim() {
         String token = TestJwt.perAdmin(1L, "admin@example.it");
 
         assertThat(verifier.getRuoloFromToken(token)).isEqualTo("admin");
@@ -65,12 +65,12 @@ class JwtVerifierUnitTest {
     }
 
     @Test
-    void rejectsAnExpiredToken() {
+    void rifiutaUnTokenScaduto() {
         assertThat(verifier.validateToken(TestJwt.scaduto(7L, "mario@example.it"))).isFalse();
     }
 
     @Test
-    void rejectsGarbageWithoutThrowing() {
+    void rifiutaSpazzaturaSenzaSollevareEccezioni() {
         // Il filtro chiama validateToken su qualunque cosa arrivi nell'header:
         // deve rispondere false, non propagare un'eccezione.
         assertThat(verifier.validateToken("non-e-un-token")).isFalse();

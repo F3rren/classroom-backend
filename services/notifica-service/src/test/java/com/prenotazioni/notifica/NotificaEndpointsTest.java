@@ -1,6 +1,6 @@
 package com.prenotazioni.notifica;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.notifica.model.Notifica;
 import com.prenotazioni.notifica.repository.NotificaRepository;
 import com.prenotazioni.testsupport.TestJwt;
@@ -14,7 +14,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Map;
@@ -30,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class NotificaEndpointsTest {
 
     @Autowired
@@ -38,8 +36,6 @@ class NotificaEndpointsTest {
 
     @Autowired
     private NotificaRepository notificaRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // Identificativi arbitrari: questo servizio non possiede la tabella utenti e non
     // verifica che esistano. E' proprio il punto della separazione.
@@ -75,10 +71,6 @@ class NotificaEndpointsTest {
         return rest.exchange(url, method, new HttpEntity<>(h), String.class);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     private long contaNonLette(Long utenteId) {
         return notificaRepository.findAll().stream()
@@ -103,7 +95,7 @@ class NotificaEndpointsTest {
         ResponseEntity<String> resp = exchange("/api/notifiche/mark-all-read", HttpMethod.PUT, tokenOwner);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(asMap(resp.getBody()).get("message"))
+        assertThat(TestJson.comeMappa(resp.getBody()).get("message"))
                 .isEqualTo("Tutte le notifiche sono state segnate come lette");
 
         assertThat(contaNonLette(OWNER_ID)).isZero();
@@ -116,7 +108,7 @@ class NotificaEndpointsTest {
         exchange("/api/notifiche/mark-all-read", HttpMethod.PUT, tokenOwner);
 
         ResponseEntity<String> resp = exchange("/api/notifiche/count-non-lette", HttpMethod.GET, tokenOwner);
-        assertThat(asMap(resp.getBody()).get("count")).isEqualTo(0);
+        assertThat(TestJson.comeMappa(resp.getBody()).get("count")).isEqualTo(0);
     }
 
     @Test
@@ -124,7 +116,7 @@ class NotificaEndpointsTest {
         ResponseEntity<String> resp = exchange("/api/notifiche/read", HttpMethod.DELETE, tokenOwner);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(asMap(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
 
         // sparisce solo quella gia' letta; le 2 non lette restano
         assertThat(notificaRepository.existsById(notificaLettaId)).isFalse();

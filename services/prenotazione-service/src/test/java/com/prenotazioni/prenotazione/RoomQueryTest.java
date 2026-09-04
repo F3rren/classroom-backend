@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.StatoAula;
@@ -17,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -34,7 +33,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class RoomQueryTest {
 
     @Autowired
@@ -45,8 +43,6 @@ class RoomQueryTest {
 
     @Autowired
     private IPrenotazioneRepository prenotazioneRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String token;
     private Long aulaFisicaGrandeId;
@@ -81,18 +77,14 @@ class RoomQueryTest {
         return rest.exchange(url, HttpMethod.GET, new HttpEntity<>(h), String.class);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> dataOf(ResponseEntity<String> resp) throws Exception {
-        return (Map<String, Object>) asMap(resp.getBody()).get("data");
+        return (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
     }
 
     @Test
-    void capienzaFiltersRoomsAboveThreshold() throws Exception {
+    void laCapienzaFiltraLeAuleSopraLaSoglia() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=50");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -104,7 +96,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void capienzaWithNoMatchReturnsSuggestion() throws Exception {
+    void laCapienzaSenzaRisultatiTornaUnSuggerimento() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=999");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -115,19 +107,19 @@ class RoomQueryTest {
     }
 
     @Test
-    void capienzaAboveHardLimitIsRejected() throws Exception {
+    void unaCapienzaOltreIlMassimoVieneRifiutata() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=1001");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("CAPACITY_TOO_HIGH");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("CAPACITY_TOO_HIGH");
     }
 
     @Test
-    void negativeCapienzaIsRejected() throws Exception {
+    void unaCapienzaNegativaVieneRifiutata() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=-1");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("INVALID_CAPACITY");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_CAPACITY");
     }
 
     @Test
@@ -142,20 +134,20 @@ class RoomQueryTest {
     }
 
     @Test
-    void detailedVariantsReturnSameCountsAsPlainVariants() throws Exception {
+    void leVariantiDettagliateTornanoGliStessiConteggi() throws Exception {
         assertThat(dataOf(get("/api/rooms/detailed")).get("totalRooms")).isEqualTo(3);
         assertThat(dataOf(get("/api/rooms/physical/detailed")).get("totalRooms")).isEqualTo(2);
         assertThat(dataOf(get("/api/rooms/virtual/detailed")).get("totalRooms")).isEqualTo(1);
     }
 
     @Test
-    void physicalDetailedIsTaggedPhysical() throws Exception {
+    void ilDettaglioFisicoEEtichettatoComeFisico() throws Exception {
         assertThat(dataOf(get("/api/rooms/physical/detailed"))).containsEntry("type", "physical");
         assertThat(dataOf(get("/api/rooms/virtual/detailed"))).containsEntry("type", "virtual");
     }
 
     @Test
-    void roomStatsSplitPhysicalAndVirtual() throws Exception {
+    void leStatisticheSeparanoAuleFisicheEVirtuali() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/stats");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -171,7 +163,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void roomDetailedByIdIsWrappedInRoomKey() throws Exception {
+    void ilDettaglioPerIdEAvvoltoNellaChiaveRoom() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + aulaFisicaGrandeId + "/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -180,25 +172,25 @@ class RoomQueryTest {
     }
 
     @Test
-    void roomDetailedByIdNotFoundReturns404() throws Exception {
+    void ilDettaglioDiUnAulaInesistenteRisponde404() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/999999/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 
     @Test
-    void allRoomsDetailsIsNotWrappedInEnvelope() throws Exception {
+    void ilDettaglioDiTutteLeAuleNonEAvvoltoNellaBusta() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = asMap(resp.getBody());
+        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
         // shape storica: nessun envelope success/data
         assertThat(body.keySet()).containsExactlyInAnyOrder("prenotazioni", "totalPrenotazioni");
     }
 
     @Test
-    void roomQueryEndpointsRequireAuthentication() {
+    void gliEndpointDiInterrogazioneAuleRichiedonoAutenticazione() {
         for (String url : new String[]{
                 "/api/rooms/stats", "/api/rooms/virtual", "/api/rooms/detailed",
                 "/api/rooms/capienza?minCapienza=1"}) {

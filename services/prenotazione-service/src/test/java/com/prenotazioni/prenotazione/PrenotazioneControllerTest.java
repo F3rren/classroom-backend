@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.prenotazione.model.Aula;
 import com.prenotazioni.prenotazione.model.StatoAula;
@@ -21,7 +21,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -39,7 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 // Isola il contesto (e quindi lo schema H2) da questa classe: senza, dati lasciati da
 // altre classi di test @SpringBootTest nello stesso DB in-memory condiviso possono violare
 // vincoli FK qui (es. un Utente referenziato da una Notifica creata da un'altra classe).
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PrenotazioneControllerTest {
 
     @LocalServerPort
@@ -128,7 +126,7 @@ class PrenotazioneControllerTest {
     }
 
     @Test
-    void ownerCanStillReadTheirOwnBooking() {
+    void ilProprietarioPuoLeggereLaPropriaPrenotazione() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/prenotazioni/" + prenotazioneIdDiOwner,
                 HttpMethod.GET,
@@ -172,12 +170,6 @@ class PrenotazioneControllerTest {
 
     // ==================== SHAPE-LOCK: blocca derive accidentali di forma durante il refactor Swagger ====================
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(String json) throws Exception {
-        return objectMapper.readValue(json, Map.class);
-    }
 
     // La forma della risposta di login e' verificata in auth-service, che ora possiede
     // /api/auth/login: da qui quell'endpoint risponde 404.
@@ -198,7 +190,7 @@ class PrenotazioneControllerTest {
                 String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        Map<String, Object> responseBody = asMap(resp.getBody());
+        Map<String, Object> responseBody = TestJson.comeMappa(resp.getBody());
         assertThat(responseBody.keySet()).containsExactlyInAnyOrder(
                 "success", "message", "data", "timestamp", "sessionId");
 
@@ -222,7 +214,7 @@ class PrenotazioneControllerTest {
                 String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        Map<String, Object> responseBody = asMap(resp.getBody());
+        Map<String, Object> responseBody = TestJson.comeMappa(resp.getBody());
         assertThat(responseBody.keySet()).containsExactlyInAnyOrder(
                 "success", "error", "message", "userMessage", "timestamp", "sessionId");
         assertThat(responseBody.get("success")).isEqualTo(false);
@@ -231,7 +223,7 @@ class PrenotazioneControllerTest {
     // ==================== Annullamento: regressione doppio annullamento ====================
 
     @Test
-    void ownerCanCancelTheirOwnBooking() {
+    void ilProprietarioPuoAnnullareLaPropriaPrenotazione() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
@@ -242,7 +234,7 @@ class PrenotazioneControllerTest {
     }
 
     @Test
-    void cancellingTwiceIsRejectedInsteadOfSilentlySucceeding() throws Exception {
+    void annullareDueVolteVieneRifiutatoInveceCheRiuscireInSilenzio() throws Exception {
         rest.exchange("/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
@@ -251,7 +243,7 @@ class PrenotazioneControllerTest {
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(secondo.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(asMap(secondo.getBody()).get("error")).isEqualTo("INVALID_STATE");
+        assertThat(TestJson.comeMappa(secondo.getBody()).get("error")).isEqualTo("INVALID_STATE");
     }
 
     @Test
@@ -261,14 +253,14 @@ class PrenotazioneControllerTest {
                 new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(asMap(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
+        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
         // la prenotazione resta intatta
         assertThat(prenotazioneRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
                 .isEqualTo(StatoPrenotazione.PRENOTATA);
     }
 
     @Test
-    void cancellingAMissingBookingReturns404() {
+    void annullareUnaPrenotazioneInesistenteRisponde404() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/prenotazioni/999999", HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);

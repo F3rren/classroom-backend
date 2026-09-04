@@ -339,7 +339,7 @@ class PrenotazioneServiceUnitTest {
     }
 
     @Test
-    void theStateRuleAppliesToAdminsToo() {
+    void laRegolaSulloStatoValeAnchePerGliAdmin() {
         // La regola e' sullo stato, non sul ruolo: per annullare comunque una
         // prenotazione gia' annullata l'admin ha annullaPrenotazioneAsAdmin.
         Aula a = aula(10L, StatoAula.LIBERA);
@@ -415,7 +415,7 @@ class PrenotazioneServiceUnitTest {
     }
 
     @Test
-    void updateAppliesNewValuesForOwner() {
+    void laModificaApplicaINuoviValoriPerIlProprietario() {
         Aula vecchia = aula(10L, StatoAula.LIBERA);
         Aula nuova = aula(20L, StatoAula.LIBERA);
         Prenotazione p = prenotazione(5L, vecchia, utente(1L), StatoPrenotazione.PRENOTATA);

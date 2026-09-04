@@ -40,7 +40,7 @@ class StatoPrenotazioneTest {
     }
 
     @Test
-    void unknownValueIsRejected() {
+    void unValoreSconosciutoVieneRifiutato() {
         assertThatThrownBy(() -> StatoPrenotazione.da("inventato"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -53,7 +53,7 @@ class StatoPrenotazioneTest {
     }
 
     @Test
-    void adminInterventionsAreBlockedAndMaintenance() {
+    void gliInterventiDellAdminSonoBloccoEManutenzione() {
         assertThat(StatoPrenotazione.BLOCCATA.isInterventoAdmin()).isTrue();
         assertThat(StatoPrenotazione.MANUTENZIONE.isInterventoAdmin()).isTrue();
         assertThat(StatoPrenotazione.PRENOTATA.isInterventoAdmin()).isFalse();
