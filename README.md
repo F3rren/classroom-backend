@@ -126,6 +126,35 @@ prenotazioni si chiamava `app`, che non diceva niente.
 | `notifica-service` | 17104 | `prenotazione_aule_notifiche` | Le notifiche |
 | `shared` | — | — | Comune a tutti: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
 
+### Dentro un servizio
+
+Tutti e tre i servizi applicativi hanno la stessa forma, così passare dall'uno all'altro non
+richiede di reimparare dove stanno le cose:
+
+```
+services/auth-service/src/main/java/com/prenotazioni/auth/
+  controller/     riceve HTTP, non decide nulla di dominio
+  service/        le regole; e' qui che nascono le eccezioni di dominio
+  repository/     interfacce Spring Data
+  model/          entita' JPA
+  dto/            cio' che entra ed esce, separato dalle entita'
+  client/         chiamate verso GLI ALTRI servizi (solo dove servono)
+
+shared/src/main/java/com/prenotazioni/
+  config/         SecurityConfig, JwtAuthFilter, CorrelazioneRichiesta, gestori 401/403
+  exception/      GlobalExceptionHandler e le eccezioni di dominio
+  security/       JwtVerifier, AppPrincipal
+  eventi/         i messaggi che viaggiano su RabbitMQ e i nomi di code ed exchange
+  dto/            ApiEnvelope, l'involucro di ogni risposta
+  model/          Ruolo
+  util/           LogSanitizer
+```
+
+I nomi tecnici restano in inglese perché sono la convenzione di Spring e chiunque li
+riconosce; i nomi di dominio sono in italiano, come il dominio. `messaggistica/` in
+`prenotazione-service` e `eventi/` in `notifica-service` sono i due lati della stessa coda:
+chi pubblica e chi ascolta.
+
 **Il frontend conosce solo la 17102.** Le porte crescono in sequenza a partire da lì, così
 aggiungere un servizio non obbliga a ripensare l'assegnazione (il prossimo servizio prenderà la 17106). La 8080 è volutamente evitata: è troppo comune e collide con altri
 progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'ambiente
@@ -250,14 +279,142 @@ package di `shared`. Senza, i bean condivisi (filtro JWT, configurazione di sicu
 gestore degli errori) resterebbero fuori dalla scansione e il servizio partirebbe senza
 autenticazione.
 
+## Flusso di una richiesta
+
+Dal browser alla riga di database, con i punti in cui qualcosa può fermarla:
+
+```
+  browser
+     |  POST /api/prenotazioni      Authorization: Bearer <token>
+     v
+  gateway :17102 ------------------------------------------------ l'unica porta pubblicata
+     |  1. CorrelazioneAlBordo conia X-Request-Id (o riusa quello ricevuto)
+     |  2. sceglie la rotta per prefisso del percorso
+     |     -> nessuna rotta corrisponde ......................... 404
+     |     -> il servizio non risponde ......................... 503
+     v
+  prenotazione-service :17103 ------------------------- non raggiungibile dall'esterno
+     |  3. CorrelazioneRichiesta rimette X-Request-Id in MDC
+     |  4. JwtAuthFilter verifica la firma del token, da solo
+     |     -> token assente, scaduto o falso .................... 401
+     |  5. SecurityConfig controlla il ruolo
+     |     -> ruolo insufficiente ............................... 403
+     |  6. Bean Validation sul corpo
+     |     -> campo mancante o fuori intervallo ................. 400
+     v
+  controller -> service -> repository -> PostgreSQL
+     |     -> aula gia' occupata ............................... 409
+     |     -> vincolo del database violato ..................... 409
+     v
+  risposta: sempre lo stesso involucro JSON, con lo stesso X-Request-Id
+```
+
+**Il gateway non valida i token.** Non ha alcuna configurazione di sicurezza: instrada e
+basta. La verifica la fa ogni servizio per conto proprio, ed è una scelta — un gateway che
+autentica diventa il punto in cui tutto passa e tutto si ferma, e i servizi dietro finirebbero
+per fidarsi di lui senza controllare, restando indifesi il giorno in cui qualcuno li
+raggiungesse per altra via.
+
+**L'identificativo di richiesta attraversa tutto.** Nasce al gateway, viaggia
+nell'intestazione `X-Request-Id`, finisce in MDC dentro ogni servizio, e viene rimandato
+indietro nella risposta e nel campo `sessionId` del corpo. Attraversa anche le chiamate REST
+fra servizi e gli eventi su RabbitMQ. È l'unica chiave che permette di ricostruire
+un'operazione che tocca tre servizi, tre database e due thread diversi.
+
+## Token e autenticazione
+
+**Li emette solo `auth-service`.** È l'unico modulo con `jjwt-impl` fra le dipendenze di
+compilazione: gli altri hanno solo `jjwt-api` e possono verificare, non firmare. Il confine è
+imposto dal classpath, non da una regola scritta.
+
+**Li verifica ogni servizio da solo**, senza chiamare nessuno. È possibile perché la firma è
+HMAC con un segreto condiviso — `JWT_SECRET`, lo stesso per tutti — e il token porta con sé
+tutto ciò che serve a decidere:
+
+| Claim | A cosa serve |
+|---|---|
+| `sub` | l'email di chi ha fatto il login |
+| `id` | l'id numerico, usato come proprietario di prenotazioni e notifiche |
+| `nome`, `username` | denormalizzati nelle prenotazioni, così mostrarle non richiede di interrogare il servizio utenti |
+| `ruolo` | `admin` o `user`, da cui Spring costruisce l'authority che `@PreAuthorize` cerca |
+
+Il prezzo di questa scelta è che **un token non si può revocare**: dura un'ora e resta valido
+fino alla scadenza. Cancellare un utente non lo disconnette. È il rovescio della validazione
+offline, ed è consapevole — «ho cancellato l'utente» e «l'utente non può più fare niente»
+oggi sono due affermazioni diverse.
+
+`JWT_SECRET` deve essere **identico** in tutti i servizi, altrimenti chi non ce l'ha uguale
+rifiuta ogni token con un 401. Cambiarlo invalida tutti quelli già emessi.
+
+## Gestione degli errori
+
+**Un solo involucro, per ogni risposta.** Successo o errore, la forma non cambia: chi legge
+non deve indovinare quale schema ha ricevuto.
+
+```json
+{
+  "success": false,
+  "error": "BOOKING_CONFLICT",
+  "message": "Aula 3 occupata dal 2026-09-10T09:00 al 2026-09-10T11:00",
+  "userMessage": "L'aula non e' disponibile nel periodo richiesto.",
+  "data": null,
+  "timestamp": "2026-09-10 08:14:22",
+  "sessionId": "REQ_A42118C7"
+}
+```
+
+`message` è per chi sviluppa, `userMessage` è per chi usa: separarli evita di dover scegliere
+fra un messaggio inutile a chi indaga e uno incomprensibile a chi legge lo schermo.
+`sessionId` è l'identificativo di richiesta, quindi una segnalazione può citarlo e i log di
+tutti e tre i servizi si trovano cercando quella stringa.
+
+**I controller non traducono gli errori.** Lanciano un'eccezione di dominio e
+`GlobalExceptionHandler` — uno solo, in `shared`, condiviso da tutti i servizi — decide lo
+status una volta sola:
+
+| Eccezione | Status | Quando |
+|---|---|---|
+| `InvalidRequestException` | 400 | la richiesta chiede qualcosa che non ha senso |
+| `MethodArgumentNotValidException` | 400 | Bean Validation ha respinto il corpo |
+| `AccessDeniedException` | 403 | autenticato, ma non suo e non admin |
+| `ResourceNotFoundException` | 404 | l'oggetto indicato non esiste |
+| `DomainConflictException` | 409 | esiste, ma il suo stato non ammette l'operazione |
+| `BookingConflictException` | 409 | sovrapposizione di prenotazioni |
+| `DataIntegrityViolationException` | 409 | un vincolo del database ha detto no |
+| `ServizioNonDisponibileException` | 503 | un servizio a valle non risponde: **ripetere ha senso** |
+| qualunque altra | 500 | imprevisto, con lo stack trace nei log |
+
+La distinzione fra 500 e 503 non è formale: suggeriscono due azioni diverse. Un 500 dice «è
+rotto qualcosa», un 503 dice «riprova» — e in un sistema dove ripetere è ciò che porta a
+termine una cancellazione a cascata, dirlo cambia l'esito.
+
+`IllegalArgumentException` **non** è mappata a 400 di proposito: segnala un errore di
+programmazione, non una richiesta sbagliata, e trasformarla in 400 nasconderebbe difetti
+dietro una risposta che sembra normale.
+
+**Il gateway ha il proprio gestore**, perché è WebFlux e non condivide quello dei servizi.
+Produce lo stesso involucro — è un test a tenere allineate le due forme — e distingue un
+servizio irraggiungibile (503) da un percorso senza rotta (404).
+
 ## Comunicazione fra servizi
 
 Due modi, scelti caso per caso e non per gusto:
 
 **Sincrono (REST)** quando il chiamante *deve* sapere l'esito. La cancellazione di un utente
 è l'unico caso: `auth-service` rimuove prima i dati negli altri servizi e cancella l'utente
-solo se ci è riuscito. Se fallisce, l'utente resta e l'operazione è ripetibile. Con una coda
-questa garanzia si perderebbe, e resterebbero righe orfane che la chiave esterna impediva.
+**solo se ci è riuscito**. Con una coda questa garanzia si perderebbe, e resterebbero righe
+orfane che la chiave esterna impediva.
+
+L'invariante è che l'utente se ne va per ultimo: finché c'è lui, le righe rimaste altrove
+hanno ancora un proprietario e l'operazione si può ripetere. È tenuta ferma da un test, che
+verifica anche l'*ordine* delle due operazioni — invertirle la perderebbe senza far fallire
+nient'altro.
+
+Ripetere però non deve dipendere da una persona che se ne accorge: le chiamate a valle si
+ritentano tre volte con attesa crescente, perché la gran parte di questi guasti dura meno di
+un secondo. Non si ritenta su un 4xx — è un rifiuto, non un guasto. Se dopo i tentativi
+qualcosa resta indietro, la risposta è un **503 che nomina i dati non cancellati**, non un
+500 generico.
 
 **Asincrono (coda RabbitMQ)** quando il fallimento del destinatario non deve fermare nulla.
 La notifica di una prenotazione cancellata da un admin: prima era una chiamata REST e andava
