@@ -42,7 +42,7 @@ public final class TestJson {
     }
 
     /** Il corpo di una risposta, gia' come mappa. */
-    public static Map<String, Object> corpoDi(ResponseEntity<String> risposta) {
-        return comeMappa(risposta.getBody());
+    public static Map<String, Object> corpoDi(ResponseEntity<String> response) {
+        return comeMappa(response.getBody());
     }
 }

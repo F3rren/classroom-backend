@@ -49,11 +49,11 @@ class InternalNotificationTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private NotificationRepository notificaRepository;
+    private NotificationRepository notificationRepository;
 
     @BeforeEach
     void setUp() {
-        notificaRepository.deleteAll();
+        notificationRepository.deleteAll();
     }
 
     private HttpHeaders headers(String token) {
@@ -64,30 +64,30 @@ class InternalNotificationTest {
 
     private Map<String, Object> corpoCancellazione() {
         // HashMap e non Map.of: adminNome e motivo possono essere null, come nel client
-        Map<String, Object> corpo = new HashMap<>();
-        corpo.put("utenteId", DESTINATARIO);
-        corpo.put("prenotazioneId", 99L);
-        corpo.put("nomeStanza", "Aula Magna");
-        corpo.put("adminNome", "Mario Rossi");
-        corpo.put("dataPrenotazione", "2026-12-25");
-        corpo.put("oraInizio", "14:30");
-        corpo.put("oraFine", "16:30");
-        corpo.put("motivo", "Sessione d'esame");
-        return corpo;
+        Map<String, Object> body = new HashMap<>();
+        body.put("utenteId", DESTINATARIO);
+        body.put("prenotazioneId", 99L);
+        body.put("nomeStanza", "Aula Magna");
+        body.put("adminNome", "Mario Rossi");
+        body.put("dataPrenotazione", "2026-12-25");
+        body.put("oraInizio", "14:30");
+        body.put("oraFine", "16:30");
+        body.put("motivo", "Sessione d'esame");
+        return body;
     }
 
     @Test
     void deletingAUsersNotificationsLeavesTheOthersAlone() {
-        notificaRepository.save(new Notification(DESTINATARIO, "Sua", "Messaggio", "INFO"));
-        notificaRepository.save(new Notification(DESTINATARIO, "Sua anche questa", "Messaggio", "INFO"));
-        notificaRepository.save(new Notification(7L, "Di un altro", "Non toccare", "INFO"));
+        notificationRepository.save(new Notification(DESTINATARIO, "Sua", "Messaggio", "INFO"));
+        notificationRepository.save(new Notification(DESTINATARIO, "Sua anche questa", "Messaggio", "INFO"));
+        notificationRepository.save(new Notification(7L, "Di un altro", "Non toccare", "INFO"));
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/notifiche/interne/utente/" + DESTINATARIO, HttpMethod.DELETE,
                 new HttpEntity<>(headers(TestJwt.perAdmin(1L, "admin@test.it"))), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(notificaRepository.findAll())
+        assertThat(notificationRepository.findAll())
                 .extracting(Notification::getUtenteId)
                 .containsExactly(7L);
     }

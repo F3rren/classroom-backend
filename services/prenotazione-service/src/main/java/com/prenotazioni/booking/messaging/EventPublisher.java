@@ -41,29 +41,29 @@ public class EventPublisher {
      *         far dipendere da questo l'esito della cancellazione: serve solo a decidere
      *         cosa scrivere nei log.
      */
-    public boolean pubblicaCancellazione(BookingCancelledEvent evento) {
+    public boolean publishCancellation(BookingCancelledEvent event) {
         try {
             // L'identificativo viaggia come intestazione del messaggio e non come campo
             // del record: il payload e' un contratto fra due servizi, e non va allargato
             // per un dato che serve solo a leggere i log. Cosi' la notifica creata piu'
             // tardi dal consumatore si ricollega alla cancellazione che l'ha causata.
-            String idRichiesta = RequestCorrelationFilter.corrente();
+            String requestId = RequestCorrelationFilter.current();
             rabbitTemplate.convertAndSend(
                     EventTopology.EXCHANGE,
                     EventTopology.ROUTING_KEY_CANCELLAZIONE,
-                    evento,
-                    messaggio -> {
-                        messaggio.getMessageProperties()
-                                .setHeader(RequestCorrelationFilter.INTESTAZIONE, idRichiesta);
-                        return messaggio;
+                    event,
+                    message -> {
+                        message.getMessageProperties()
+                                .setHeader(RequestCorrelationFilter.INTESTAZIONE, requestId);
+                        return message;
                     });
             logger.debug("Evento di cancellazione pubblicato per utenteId={}, prenotazioneId={}",
-                    evento.utenteId(), evento.prenotazioneId());
+                    event.utenteId(), event.prenotazioneId());
             return true;
         } catch (Exception e) {
             logger.error("Evento di cancellazione NON pubblicato per utenteId={}, prenotazioneId={}: "
                             + "la notifica andra' persa. Causa: {}",
-                    evento.utenteId(), evento.prenotazioneId(), e.getMessage());
+                    event.utenteId(), event.prenotazioneId(), e.getMessage());
             return false;
         }
     }

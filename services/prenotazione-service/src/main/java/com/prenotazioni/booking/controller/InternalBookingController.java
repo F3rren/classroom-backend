@@ -35,18 +35,18 @@ public class InternalBookingController {
 
     private static final Logger logger = LoggerFactory.getLogger(InternalBookingController.class);
 
-    private final BookingRepository prenotazioneRepository;
+    private final BookingRepository bookingRepository;
 
-    InternalBookingController(BookingRepository prenotazioneRepository) {
-        this.prenotazioneRepository = prenotazioneRepository;
+    InternalBookingController(BookingRepository bookingRepository) {
+        this.bookingRepository = bookingRepository;
     }
 
     @DeleteMapping("/utente/{utenteId}")
     @Operation(summary = "Elimina le prenotazioni di un utente che sta per essere rimosso")
     @Transactional
-    public ResponseEntity<MessageResponse> eliminaPrenotazioniUtente(@PathVariable Long utenteId) {
-        logger.info("Eliminazione prenotazioni dell'utenteId={} su richiesta del servizio utenti", utenteId);
-        prenotazioneRepository.deleteByUtenteId(utenteId);
+    public ResponseEntity<MessageResponse> deleteUserBookings(@PathVariable("utenteId") Long userId) {
+        logger.info("Eliminazione prenotazioni dell'utenteId={} su richiesta del servizio utenti", userId);
+        bookingRepository.deleteByUtenteId(userId);
         return ResponseEntity.ok(new MessageResponse("Prenotazioni dell'utente eliminate"));
     }
 }

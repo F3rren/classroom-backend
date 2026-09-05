@@ -43,10 +43,10 @@ public class BookingController {
 
     private static final Logger logger = LoggerFactory.getLogger(BookingController.class);
 
-    private final BookingService prenotazioneService;
+    private final BookingService bookingService;
 
-    BookingController(BookingService prenotazioneService) {
-        this.prenotazioneService = prenotazioneService;
+    BookingController(BookingService bookingService) {
+        this.bookingService = bookingService;
     }
 
     /**
@@ -62,7 +62,7 @@ public class BookingController {
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return RequestCorrelationFilter.corrente();
+        return RequestCorrelationFilter.current();
     }
 
     private String formatTimestamp(LocalDateTime dateTime) {
@@ -89,7 +89,7 @@ public class BookingController {
     // Prenota un'aula
     @PostMapping("/prenota")
     @Operation(summary = "Prenota un'aula")
-    public ResponseEntity<ApiEnvelope<BookingAckPayload>> prenotaAula(@Valid @RequestBody BookingRequest request,
+    public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @RequestBody BookingRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO prenotaAula - AulaId: {}, CorsoId: {}, Periodo: {} - {}", request.getAulaId(), request.getCorsoId(), request.getInizio(), request.getFine());
@@ -136,9 +136,9 @@ public class BookingController {
 
         logger.debug("Validazioni superate, tentativo prenotazione per periodo: {} - {}", formatTimestamp(inizio), formatTimestamp(fine));
 
-        Booking prenotazione;
+        Booking booking;
         try {
-            prenotazione = prenotazioneService.prenotaAula(
+            booking = bookingService.bookRoom(
                 request.getAulaId(), request.getCorsoId(), istantaneaDi(principal), inizio, fine, request.getDescrizione());
         } catch (DataIntegrityViolationException e) {
             logger.warn("FINE prenotaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getAulaId());
@@ -146,10 +146,10 @@ public class BookingController {
                     "L'aula è appena stata prenotata da un'altra richiesta per lo stesso periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}", prenotazione.getId(), request.getAulaId(), principal.id());
+        logger.debug("FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getAulaId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione effettuata con successo",
-                                new BookingAckPayload(prenotazione, request.getAulaId(), formatTimestamp(inizio) + " - " + formatTimestamp(fine)),
+                                new BookingAckPayload(booking, request.getAulaId(), formatTimestamp(inizio) + " - " + formatTimestamp(fine)),
                                 sessionId),
             HttpStatus.CREATED
         );
@@ -158,11 +158,11 @@ public class BookingController {
     // Modifica una prenotazione esistente
     @PutMapping("/{prenotazioneId}")
     @Operation(summary = "Modifica una prenotazione esistente (solo proprietario o admin)")
-    public ResponseEntity<ApiEnvelope<BookingAckPayload>> modificaPrenotazione(@PathVariable Long prenotazioneId,
+    public ResponseEntity<ApiEnvelope<BookingAckPayload>> editBooking(@PathVariable("prenotazioneId") Long bookingId,
                                                  @Valid @RequestBody BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO modificaPrenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, Periodo: {} - {}", prenotazioneId, request.getAulaId(), request.getCorsoId(), request.getInizio(), request.getFine());
+        logger.debug("INIZIO modificaPrenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, Periodo: {} - {}", bookingId, request.getAulaId(), request.getCorsoId(), request.getInizio(), request.getFine());
 
         LocalDateTime inizio;
         LocalDateTime fine;
@@ -204,22 +204,22 @@ public class BookingController {
             );
         }
 
-        logger.debug("Validazioni superate, tentativo modifica prenotazione ID {} per periodo: {} - {}", prenotazioneId, formatTimestamp(inizio), formatTimestamp(fine));
+        logger.debug("Validazioni superate, tentativo modifica prenotazione ID {} per periodo: {} - {}", bookingId, formatTimestamp(inizio), formatTimestamp(fine));
 
-        Booking prenotazione;
+        Booking booking;
         try {
-            prenotazione = prenotazioneService.updatePrenotazione(
-                prenotazioneId, request.getAulaId(), request.getCorsoId(), principal.id(), principal.isAdmin(), inizio, fine, request.getDescrizione());
+            booking = bookingService.updateBooking(
+                bookingId, request.getAulaId(), request.getCorsoId(), principal.id(), principal.isAdmin(), inizio, fine, request.getDescrizione());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("FINE modificaPrenotazione - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - PrenotazioneId: {}, AulaId: {}", prenotazioneId, request.getAulaId());
+            logger.warn("FINE modificaPrenotazione - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - PrenotazioneId: {}, AulaId: {}", bookingId, request.getAulaId());
             throw new BookingConflictException("UPDATE_CONFLICT", "Impossibile modificare la prenotazione",
                     "L'aula è appena stata prenotata da un'altra richiesta per il nuovo periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}", prenotazione.getId(), request.getAulaId(), principal.id());
+        logger.debug("FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getAulaId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione modificata con successo",
-                                new BookingAckPayload(prenotazione, request.getAulaId(), formatTimestamp(inizio) + " - " + formatTimestamp(fine)),
+                                new BookingAckPayload(booking, request.getAulaId(), formatTimestamp(inizio) + " - " + formatTimestamp(fine)),
                                 sessionId),
             HttpStatus.OK
         );
@@ -229,7 +229,7 @@ public class BookingController {
     @PostMapping("/blocca")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Blocca un'aula per un periodo (solo admin)")
-    public ResponseEntity<ApiEnvelope<BlockAckPayload>> bloccaAula(@Valid @RequestBody BookingRequest request,
+    public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @RequestBody BookingRequest request,
                                        @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO bloccaAula - AulaId: {}, Periodo: {} - {}", request.getAulaId(), request.getInizio(), request.getFine());
@@ -270,7 +270,7 @@ public class BookingController {
 
         Booking blocco;
         try {
-            blocco = prenotazioneService.bloccaAula(request.getAulaId(), istantaneaDi(principal), inizio, fine, request.getDescrizione());
+            blocco = bookingService.blockRoom(request.getAulaId(), istantaneaDi(principal), inizio, fine, request.getDescrizione());
         } catch (DataIntegrityViolationException e) {
             logger.warn("FINE bloccaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getAulaId());
             throw new BookingConflictException("BLOCK_CONFLICT", "Impossibile bloccare l'aula",
@@ -289,11 +289,11 @@ public class BookingController {
     // Verifica disponibilità aula
     @GetMapping("/disponibilita")
     @Operation(summary = "Verifica la disponibilità di un'aula in un periodo")
-    public ResponseEntity<ApiEnvelope<AvailabilityPayload>> verificaDisponibilita(@RequestParam Long aulaId,
-                                                   @RequestParam String inizio,
-                                                   @RequestParam String fine) {
+    public ResponseEntity<ApiEnvelope<AvailabilityPayload>> checkAvailability(@RequestParam("aulaId") Long roomId,
+                                                   @RequestParam("inizio") String inizio,
+                                                   @RequestParam("fine") String fine) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", aulaId, inizio, fine);
+        logger.debug("INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", roomId, inizio, fine);
 
         LocalDateTime inizioDateTime;
         LocalDateTime fineDateTime;
@@ -327,13 +327,13 @@ public class BookingController {
             );
         }
 
-        logger.debug("Verifica disponibilità per AulaId: {} nel periodo: {} - {}", aulaId, formatTimestamp(inizioDateTime), formatTimestamp(fineDateTime));
-        boolean disponibile = prenotazioneService.isAulaDisponibile(aulaId, inizioDateTime, fineDateTime);
-        logger.debug("FINE verificaDisponibilita - AulaId: {}, Disponibile: {}", aulaId, disponibile);
+        logger.debug("Verifica disponibilità per AulaId: {} nel periodo: {} - {}", roomId, formatTimestamp(inizioDateTime), formatTimestamp(fineDateTime));
+        boolean disponibile = bookingService.isRoomAvailable(roomId, inizioDateTime, fineDateTime);
+        logger.debug("FINE verificaDisponibilita - AulaId: {}, Disponibile: {}", roomId, disponibile);
 
         return new ResponseEntity<>(
             createSuccessResponse("Verifica disponibilità completata",
-                                new AvailabilityPayload(aulaId, disponibile, formatTimestamp(inizioDateTime) + " - " + formatTimestamp(fineDateTime)),
+                                new AvailabilityPayload(roomId, disponibile, formatTimestamp(inizioDateTime) + " - " + formatTimestamp(fineDateTime)),
                                 sessionId),
             HttpStatus.OK
         );
@@ -347,19 +347,19 @@ public class BookingController {
     // funzionante poteva dipendere dal vecchio path, per questo il rename e' sicuro.
     @GetMapping("/stato-aula/{aulaId}")
     @Operation(summary = "Stato attuale di un'aula")
-    public ResponseEntity<RoomStatusPayload> getStatoAula(@PathVariable Long aulaId) {
-        logger.debug("INIZIO getStatoAula - AulaId: {}", aulaId);
-        String stato = prenotazioneService.getStatoAula(aulaId, LocalDateTime.now());
-        logger.debug("FINE getStatoAula - AulaId: {}, Stato: {}", aulaId, stato);
-        return ResponseEntity.ok(new RoomStatusPayload(aulaId, stato, LocalDateTime.now()));
+    public ResponseEntity<RoomStatusPayload> getRoomStatus(@PathVariable("aulaId") Long roomId) {
+        logger.debug("INIZIO getStatoAula - AulaId: {}", roomId);
+        String status = bookingService.getRoomStatus(roomId, LocalDateTime.now());
+        logger.debug("FINE getStatoAula - AulaId: {}, Stato: {}", roomId, status);
+        return ResponseEntity.ok(new RoomStatusPayload(roomId, status, LocalDateTime.now()));
     }
 
     // Lista prenotazioni utente - ESCLUDE automaticamente le prenotazioni annullate
     @GetMapping("/mie")
     @Operation(summary = "Le prenotazioni dell'utente autenticato")
-    public ResponseEntity<SingleBookingPayload> getMiePrenotazioni(@AuthenticationPrincipal AppPrincipal principal) {
+    public ResponseEntity<SingleBookingPayload> getMyBookings(@AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("INIZIO getMiePrenotazioni");
-        List<Booking> tuttePrenotazioni = prenotazioneService.getPrenotazioniUtente(principal.id());
+        List<Booking> tuttePrenotazioni = bookingService.getUserBookings(principal.id());
 
         List<Booking> prenotazioni = tuttePrenotazioni.stream()
             .filter(p -> p.getStato() != BookingStatus.ANNULLATA)
@@ -373,10 +373,10 @@ public class BookingController {
     // Annulla prenotazione
     @DeleteMapping("/{prenotazioneId}")
     @Operation(summary = "Annulla una prenotazione (solo proprietario o admin)")
-    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> annullaPrenotazione(@PathVariable Long prenotazioneId,
+    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("prenotazioneId") Long bookingId,
                                                 @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO annullaPrenotazione - PrenotazioneId: {}", prenotazioneId);
+        logger.debug("INIZIO annullaPrenotazione - PrenotazioneId: {}", bookingId);
 
 
         // Nessun controllo sull'esito, e soprattutto nessuna ricostruzione del perche':
@@ -385,13 +385,13 @@ public class BookingController {
         // se non esiste. Prima questo blocco RIFACEVA quei controlli per interpretare un
         // booleano, e un commento avvertiva di tenerne l'ordine allineato a quello del
         // service: due copie della stessa regola da sincronizzare a mano.
-        prenotazioneService.annullaPrenotazione(prenotazioneId, principal.id(), principal.isAdmin());
+        bookingService.cancelBooking(bookingId, principal.id(), principal.isAdmin());
 
 
-        logger.debug("FINE annullaPrenotazione - Prenotazione annullata con successo | PrenotazioneId: {} | UtenteId: {}", prenotazioneId, principal.id());
+        logger.debug("FINE annullaPrenotazione - Prenotazione annullata con successo | PrenotazioneId: {} | UtenteId: {}", bookingId, principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione annullata con successo",
-                                new CancellationAckPayload(prenotazioneId, principal.id(), formatTimestamp(LocalDateTime.now())),
+                                new CancellationAckPayload(bookingId, principal.id(), formatTimestamp(LocalDateTime.now())),
                                 sessionId),
             HttpStatus.OK
         );
@@ -403,10 +403,10 @@ public class BookingController {
     @Operation(summary = "Elenca tutte le prenotazioni attive (PII del proprietario rimossa)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = SingleBookingPayload.class)))
-    public ResponseEntity<?> getAllPrenotazioni() {
+    public ResponseEntity<?> getAllBookings() {
         logger.debug("INIZIO getAllPrenotazioni");
 
-        List<Booking> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
+        List<Booking> tuttePrenotazioni = bookingService.getAllBookings();
         List<Booking> prenotazioni = tuttePrenotazioni.stream()
             .filter(p -> p.getStato() != BookingStatus.ANNULLATA)
             .map(this::sanitizeOwnerForListing)
@@ -428,20 +428,20 @@ public class BookingController {
     @Operation(summary = "Recupera una singola prenotazione (solo proprietario o admin)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWrapper.class)))
-    public ResponseEntity<?> getPrenotazioneById(@PathVariable Long id) {
+    public ResponseEntity<?> getBookingById(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getPrenotazioneById - ID Prenotazione: {}", id);
 
-        Booking prenotazione = prenotazioneService.getPrenotazioneById(id);
-        if (prenotazione == null) {
+        Booking booking = bookingService.getBookingById(id);
+        if (booking == null) {
             // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
             // "userMessage", e "error" conteneva una frase invece di un codice. Un client
             // che legge userMessage otteneva undefined proprio su questi due endpoint.
             throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", id);
         }
 
-        logger.debug("FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", prenotazione.getId());
-        return ResponseEntity.ok(new BookingWrapper(prenotazione));
+        logger.debug("FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", booking.getId());
+        return ResponseEntity.ok(new BookingWrapper(booking));
     }
 
     // Dettagli completi di una prenotazione specifica - SOLO IL PROPRIETARIO O UN ADMIN
@@ -450,30 +450,30 @@ public class BookingController {
     @Operation(summary = "Dettagli completi di una prenotazione (solo proprietario o admin)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWithDetailsPayload.class)))
-    public ResponseEntity<?> getPrenotazioneDetailsById(@PathVariable Long id) {
+    public ResponseEntity<?> getBookingDetailsById(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getPrenotazioneDetailsById - ID Prenotazione: {}", id);
 
-        Booking prenotazione = prenotazioneService.getPrenotazioneById(id);
-        if (prenotazione == null) {
+        Booking booking = bookingService.getBookingById(id);
+        if (booking == null) {
             // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
             // "userMessage", e "error" conteneva una frase invece di un codice. Un client
             // che legge userMessage otteneva undefined proprio su questi due endpoint.
             throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", id);
         }
 
-        logger.debug("Prenotazione trovata: ID: {}", prenotazione.getId());
-        List<BookingDetailDto> dettagliCompleti = prenotazioneService.getPrenotazioneCompleteDetails(id);
+        logger.debug("Prenotazione trovata: ID: {}", booking.getId());
+        List<BookingDetailDto> dettagliCompleti = bookingService.getBookingCompleteDetails(id);
         logger.debug("FINE getPrenotazioneDetailsById - Dettagli completi recuperati con successo, totale dettagli: {}", dettagliCompleti.size());
-        return ResponseEntity.ok(new BookingWithDetailsPayload(prenotazione, dettagliCompleti));
+        return ResponseEntity.ok(new BookingWithDetailsPayload(booking, dettagliCompleti));
     }
 
     // Vista completa di tutte le prenotazioni con dettagli - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
     @GetMapping("/all-details")
     @Operation(summary = "Dettagli completi di tutte le prenotazioni")
-    public ResponseEntity<BookingDetailListPayload> getAllPrenotazioniWithDetails() {
+    public ResponseEntity<BookingDetailListPayload> getAllBookingsWithDetails() {
         logger.debug("INIZIO getAllPrenotazioniWithDetails");
-        List<BookingDetailDto> dettagliCompleti = prenotazioneService.getAllCompleteDetails();
+        List<BookingDetailDto> dettagliCompleti = bookingService.getAllCompleteDetails();
         logger.debug("FINE getAllPrenotazioniWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", dettagliCompleti.size());
         return ResponseEntity.ok(new BookingDetailListPayload(dettagliCompleti));
     }
@@ -483,22 +483,22 @@ public class BookingController {
     @Operation(summary = "Elenca le prenotazioni per stato")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingsByStatusPayload.class)))
-    public ResponseEntity<?> getPrenotazioniByStato(@PathVariable String stato) {
-        logger.debug("INIZIO getPrenotazioniByStato - Stato: {}", stato);
+    public ResponseEntity<?> getBookingsByStatus(@PathVariable("stato") String status) {
+        logger.debug("INIZIO getPrenotazioniByStato - Stato: {}", status);
         try {
-            List<Booking> prenotazioni = prenotazioneService.getPrenotazioniByStato(stato.toLowerCase())
+            List<Booking> prenotazioni = bookingService.getBookingsByStatus(status.toLowerCase())
                 .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
 
-            logger.debug("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", stato, prenotazioni.size());
-            return ResponseEntity.ok(new BookingsByStatusPayload(stato, prenotazioni));
+            logger.debug("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", status, prenotazioni.size());
+            return ResponseEntity.ok(new BookingsByStatusPayload(status, prenotazioni));
         } catch (IllegalArgumentException e) {
-            logger.debug("FINE getPrenotazioniByStato - Stato non valido: {}", stato);
+            logger.debug("FINE getPrenotazioniByStato - Stato non valido: {}", status);
             // Uno stato inesistente e' un dato non valido, quindi 400 con l'envelope
             // comune. L'elenco degli stati ammessi si ricava dall'enum invece di essere
             // scritto a mano: la versione scritta a mano si sarebbe scollata al primo
             // valore aggiunto, e nessuno se ne sarebbe accorto.
             throw new InvalidRequestException("INVALID_STATE",
-                    "Invalid state: " + stato
+                    "Invalid state: " + status
                             + ". Allowed: " + java.util.Arrays.stream(BookingStatus.values())
                             .map(BookingStatus::getValore).collect(Collectors.joining(", ")),
                     "Stato non riconosciuto. Ammessi: " + java.util.Arrays.stream(BookingStatus.values())
@@ -509,9 +509,9 @@ public class BookingController {
     // Prenotazioni future - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
     @GetMapping("/future")
     @Operation(summary = "Elenca le prenotazioni future")
-    public ResponseEntity<BookingsListWithTotalPayload> getPrenotazioniFuture() {
+    public ResponseEntity<BookingsListWithTotalPayload> getFutureBookings() {
         logger.debug("INIZIO getPrenotazioniFuture");
-        List<Booking> prenotazioni = prenotazioneService.getPrenotazioniFuture()
+        List<Booking> prenotazioni = bookingService.getFutureBookings()
             .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
         logger.debug("FINE getPrenotazioniFuture - Prenotazioni future recuperate con successo, totale: {}", prenotazioni.size());
         return ResponseEntity.ok(new BookingsListWithTotalPayload(prenotazioni));

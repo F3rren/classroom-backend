@@ -35,7 +35,7 @@ class EventPublisherUnitTest {
     private final RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
     private final EventPublisher eventPublisher = new EventPublisher(rabbitTemplate);
 
-    private final BookingCancelledEvent evento = new BookingCancelledEvent(
+    private final BookingCancelledEvent event = new BookingCancelledEvent(
             7L, 42L, "Aula 1", "Admin", "2026-09-03", "09:00", "11:00", "manutenzione");
 
     @AfterEach
@@ -49,20 +49,20 @@ class EventPublisherUnitTest {
         verify(rabbitTemplate).convertAndSend(
                 eq(EventTopology.EXCHANGE),
                 eq(EventTopology.ROUTING_KEY_CANCELLAZIONE),
-                eq(evento),
+                eq(event),
                 processore.capture());
 
-        Message messaggio = new Message(new byte[0], new MessageProperties());
-        return processore.getValue().postProcessMessage(messaggio).getMessageProperties();
+        Message message = new Message(new byte[0], new MessageProperties());
+        return processore.getValue().postProcessMessage(message).getMessageProperties();
     }
 
     @Test
     void portaLIdentificativoDellaRichiestaCheHaCausatoLEvento() {
-        MockHttpServletRequest richiesta = new MockHttpServletRequest();
-        richiesta.setAttribute(RequestCorrelationFilter.ATTRIBUTO, "REQ_DALGATEWAY");
-        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(richiesta));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RequestCorrelationFilter.ATTRIBUTO, "REQ_DALGATEWAY");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        eventPublisher.pubblicaCancellazione(evento);
+        eventPublisher.publishCancellation(event);
 
         assertThat((String) intestazioniProdotte().getHeader(RequestCorrelationFilter.INTESTAZIONE))
                 .isEqualTo("REQ_DALGATEWAY");
@@ -73,7 +73,7 @@ class EventPublisherUnitTest {
         // Un evento puo' nascere anche fuori da una richiesta HTTP. Meglio un
         // identificativo scollegato che nessuno: senza, la riga di log del consumatore
         // resterebbe senza chiave e non si potrebbe nemmeno raggrupparla con se stessa.
-        eventPublisher.pubblicaCancellazione(evento);
+        eventPublisher.publishCancellation(event);
 
         assertThat((String) intestazioniProdotte().getHeader(RequestCorrelationFilter.INTESTAZIONE))
                 .isNotBlank();
@@ -87,6 +87,6 @@ class EventPublisherUnitTest {
                 .when(rabbitTemplate).convertAndSend(any(String.class), any(String.class),
                         any(Object.class), any(MessagePostProcessor.class));
 
-        assertThat(eventPublisher.pubblicaCancellazione(evento)).isFalse();
+        assertThat(eventPublisher.publishCancellation(event)).isFalse();
     }
 }

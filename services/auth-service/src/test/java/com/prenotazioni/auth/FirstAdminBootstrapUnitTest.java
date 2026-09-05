@@ -29,13 +29,13 @@ import static org.mockito.Mockito.when;
 class FirstAdminBootstrapUnitTest {
 
     @Mock
-    private UserRepository utenteRepository;
+    private UserRepository userRepository;
 
     @Mock
     private AuthService authService;
 
     private FirstAdminBootstrap runner(String email, String password) {
-        return new FirstAdminBootstrap(utenteRepository, authService, email, password, "Amministratore");
+        return new FirstAdminBootstrap(userRepository, authService, email, password, "Amministratore");
     }
 
     @Test
@@ -44,7 +44,7 @@ class FirstAdminBootstrapUnitTest {
         // all'avvio e diventerebbe una scorciatoia per ottenere privilegi da amministratore
         // su un sistema in uso. Le credenziali passate qui sono deliberatamente valide:
         // il punto e' che non vengano usate comunque.
-        when(utenteRepository.count()).thenReturn(7L);
+        when(userRepository.count()).thenReturn(7L);
 
         runner("nuovo@admin.it", "unaPasswordValida1!").run(null);
 
@@ -53,26 +53,26 @@ class FirstAdminBootstrapUnitTest {
 
     @Test
     void creaLAmministratoreSuUnDatabaseVuoto() {
-        when(utenteRepository.count()).thenReturn(0L);
-        User creato = new User();
-        creato.setId(1L);
-        when(authService.register(any())).thenReturn(creato);
+        when(userRepository.count()).thenReturn(0L);
+        User created = new User();
+        created.setId(1L);
+        when(authService.register(any())).thenReturn(created);
 
         runner("primo@admin.it", "unaPasswordValida1!").run(null);
 
-        ArgumentCaptor<CreateUserRequest> richiesta = ArgumentCaptor.forClass(CreateUserRequest.class);
-        verify(authService).register(richiesta.capture());
-        assertThat(richiesta.getValue().getEmail()).isEqualTo("primo@admin.it");
+        ArgumentCaptor<CreateUserRequest> request = ArgumentCaptor.forClass(CreateUserRequest.class);
+        verify(authService).register(request.capture());
+        assertThat(request.getValue().getEmail()).isEqualTo("primo@admin.it");
         // Il ruolo e' minuscolo: e' il valore dell'enum Ruolo, non il nome della costante.
         // Sbagliarlo creerebbe un utente normale e il nodo resterebbe stretto, senza errori.
-        assertThat(richiesta.getValue().getRuolo()).isEqualTo("admin");
+        assertThat(request.getValue().getRuolo()).isEqualTo("admin");
     }
 
     @Test
     void nonFaNienteSenzaCredenziali() {
         // Il caso normale per chi non usa il meccanismo: database vuoto, variabili non
         // valorizzate. Deve essere un non-evento, non un avvio fallito.
-        when(utenteRepository.count()).thenReturn(0L);
+        when(userRepository.count()).thenReturn(0L);
 
         runner("", "").run(null);
 
@@ -84,7 +84,7 @@ class FirstAdminBootstrapUnitTest {
         // Mezza configurazione e' piu' probabile di nessuna configurazione - si valorizza
         // l'email e ci si dimentica la password - e non deve produrre un amministratore
         // con una password vuota.
-        when(utenteRepository.count()).thenReturn(0L);
+        when(userRepository.count()).thenReturn(0L);
 
         runner("primo@admin.it", "").run(null);
         runner("", "unaPasswordValida1!").run(null);

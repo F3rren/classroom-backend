@@ -19,13 +19,13 @@ import static org.mockito.Mockito.when;
  */
 class BookingAuthorizationServiceUnitTest {
 
-    private BookingService prenotazioneService;
+    private BookingService bookingService;
     private BookingAuthorizationService auth;
 
     @BeforeEach
     void setUp() {
-        prenotazioneService = mock(BookingService.class);
-        auth = new BookingAuthorizationService(prenotazioneService);
+        bookingService = mock(BookingService.class);
+        auth = new BookingAuthorizationService(bookingService);
     }
 
     private Booking prenotazioneDi(Long proprietarioId) {
@@ -47,28 +47,28 @@ class BookingAuthorizationServiceUnitTest {
     @Test
     void allowsWhenBookingDoesNotExistSoTheControllerCanReturn404() {
         // scelta deliberata: non si maschera un 404 con un 403
-        when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(null);
+        when(bookingService.getBookingById(5L)).thenReturn(null);
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();
     }
 
     @Test
     void consenteAlProprietario() {
-        when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
+        when(bookingService.getBookingById(5L)).thenReturn(prenotazioneDi(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();
     }
 
     @Test
     void deniesAnUnrelatedUser() {
-        when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
+        when(bookingService.getBookingById(5L)).thenReturn(prenotazioneDi(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(99L, "altro@test.it", "m.rossi", "Mario Rossi", "user"))).isFalse();
     }
 
     @Test
     void allowsAnAdminOnSomeoneElsesBooking() {
-        when(prenotazioneService.getPrenotazioneById(5L)).thenReturn(prenotazioneDi(1L));
+        when(bookingService.getBookingById(5L)).thenReturn(prenotazioneDi(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin"))).isTrue();
     }

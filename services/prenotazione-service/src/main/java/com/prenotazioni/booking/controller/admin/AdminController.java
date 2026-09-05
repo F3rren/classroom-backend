@@ -46,20 +46,20 @@ public class AdminController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
-    private final RoomService aulaService;
-    private final BookingService prenotazioneService;
+    private final RoomService roomService;
+    private final BookingService bookingService;
     private final EventPublisher eventPublisher;
 
-    AdminController(RoomService aulaService, BookingService prenotazioneService,
+    AdminController(RoomService roomService, BookingService bookingService,
                      EventPublisher eventPublisher) {
-        this.aulaService = aulaService;
-        this.prenotazioneService = prenotazioneService;
+        this.roomService = roomService;
+        this.bookingService = bookingService;
         this.eventPublisher = eventPublisher;
     }
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return RequestCorrelationFilter.corrente();
+        return RequestCorrelationFilter.current();
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {
@@ -79,7 +79,7 @@ public class AdminController {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getAllRooms (admin) - Richiesta lista completa aule");
 
-        List<Room> aule = aulaService.getAllAule();
+        List<Room> aule = roomService.getAllAule();
         logger.debug("FINE getAllRooms - Aule recuperate con successo, totale: {}", aule.size());
         return new ResponseEntity<>(
             createSuccessResponse(aule.isEmpty() ? "Nessuna aula presente nel sistema" : "Lista aule recuperata con successo",
@@ -90,7 +90,7 @@ public class AdminController {
 
     @GetMapping("/rooms/{id}")
     @Operation(summary = "Recupera una singola aula per ID (solo admin)")
-    public ResponseEntity<ApiEnvelope<RoomWrapper<Room>>> getRoomById(@PathVariable Long id) {
+    public ResponseEntity<ApiEnvelope<RoomWrapper<Room>>> getRoomById(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getRoomById (admin) - ID Aula: {}", id);
 
@@ -103,8 +103,8 @@ public class AdminController {
             );
         }
 
-        Optional<Room> aula = aulaService.getAulaById(id);
-        if (aula.isEmpty()) {
+        Optional<Room> room = roomService.getRoomById(id);
+        if (room.isEmpty()) {
             logger.warn("FINE getRoomById - Aula non trovata con ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("ROOM_NOT_FOUND", "Aula not found",
@@ -113,9 +113,9 @@ public class AdminController {
             );
         }
 
-        logger.debug("FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}", aula.get().getId(), aula.get().getNome());
+        logger.debug("FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}", room.get().getId(), room.get().getNome());
         return new ResponseEntity<>(
-            createSuccessResponse("Aula recuperata con successo", new RoomWrapper<>(aula.get()), sessionId),
+            createSuccessResponse("Aula recuperata con successo", new RoomWrapper<>(room.get()), sessionId),
             HttpStatus.OK
         );
     }
@@ -126,7 +126,7 @@ public class AdminController {
         String sessionId = generateSessionId();
         logger.debug("INIZIO createRoom | Nome: {} | Piano: {} | Capienza: {}", roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
 
-        Room nuovaAula = aulaService.createAula(roomRequest);
+        Room nuovaAula = roomService.createRoom(roomRequest);
         logger.debug("FINE createRoom - Aula creata con successo | ID: {} | Nome: {}", nuovaAula.getId(), nuovaAula.getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula creata con successo", new RoomAckPayload(nuovaAula), sessionId),
@@ -136,7 +136,7 @@ public class AdminController {
 
     @PutMapping("/rooms/{id}")
     @Operation(summary = "Modifica un'aula esistente (solo admin)")
-    public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(@PathVariable Long id, @Valid @RequestBody RoomRequest roomRequest) {
+    public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(@PathVariable("id") Long id, @Valid @RequestBody RoomRequest roomRequest) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO updateRoom | ID Aula: {} | Nuovo Nome: {} | Piano: {} | Capienza: {}", id, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
 
@@ -149,7 +149,7 @@ public class AdminController {
             );
         }
 
-        Room aulaAggiornata = aulaService.updateAula(id, roomRequest);
+        Room aulaAggiornata = roomService.updateRoom(id, roomRequest);
         logger.debug("FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}", aulaAggiornata.getId(), aulaAggiornata.getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula aggiornata con successo", new RoomAckPayload(aulaAggiornata), sessionId),
@@ -159,7 +159,7 @@ public class AdminController {
 
     @DeleteMapping("/rooms/{id}")
     @Operation(summary = "Elimina un'aula (solo admin)")
-    public ResponseEntity<ApiEnvelope<DeletedRoomResponse>> deleteRoom(@PathVariable Long id) {
+    public ResponseEntity<ApiEnvelope<DeletedRoomResponse>> deleteRoom(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO deleteRoom - ID Aula: {}", id);
 
@@ -176,7 +176,7 @@ public class AdminController {
         // l'aula non c'e', e il gestore globale la traduce in 404. Prima il booleano
         // confondeva "non esiste" con "non si e' potuta eliminare", e il messaggio lo
         // ammetteva: "non esiste O non puo' essere eliminata".
-        aulaService.deleteAula(id);
+        roomService.deleteRoom(id);
 
         logger.debug("FINE deleteRoom - Aula eliminata con successo - ID: {}", id);
         return new ResponseEntity<>(
@@ -189,11 +189,11 @@ public class AdminController {
 
     @GetMapping("/prenotazioni")
     @Operation(summary = "Elenca tutte le prenotazioni, incluse annullate (solo admin)")
-    public ResponseEntity<ApiEnvelope<AdminPrenotazioniPayload>> getAllPrenotazioniAdmin() {
+    public ResponseEntity<ApiEnvelope<AdminPrenotazioniPayload>> getAllBookingsForAdmin() {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getAllPrenotazioniAdmin");
 
-        List<Booking> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
+        List<Booking> tuttePrenotazioni = bookingService.getAllBookings();
         long attive = tuttePrenotazioni.stream()
             .filter(p -> p.getStato() != BookingStatus.ANNULLATA)
             .count();
@@ -212,7 +212,7 @@ public class AdminController {
 
     @DeleteMapping("/prenotazioni/{id}")
     @Operation(summary = "Elimina forzatamente qualsiasi prenotazione (solo admin)")
-    public ResponseEntity<ApiEnvelope<BookingDeletionResponse>> deletePrenotazioneAsAdmin(@PathVariable Long id,
+    public ResponseEntity<ApiEnvelope<BookingDeletionResponse>> deleteBookingAsAdmin(@PathVariable("id") Long id,
                                                       @AuthenticationPrincipal AppPrincipal principal,
                                                       @Valid @RequestBody(required = false) DeleteReasonRequest requestBody) {
         String sessionId = generateSessionId();
@@ -230,8 +230,8 @@ public class AdminController {
         Long adminId = principal.id();
         logger.info("Admin ID: {} tenta di eliminare prenotazione: {}", adminId, id);
 
-        Booking prenotazione = prenotazioneService.getPrenotazioneById(id);
-        if (prenotazione == null) {
+        Booking booking = bookingService.getBookingById(id);
+        if (booking == null) {
             logger.warn("FINE deletePrenotazioneAsAdmin - Prenotazione non trovata ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("BOOKING_NOT_FOUND", "Prenotazione not found",
@@ -240,15 +240,15 @@ public class AdminController {
             );
         }
 
-        BookingOwner utentePrenotazione = prenotazione.getUtente();
-        Room aulaPrenotazione = prenotazione.getAula();
+        BookingOwner utentePrenotazione = booking.getUtente();
+        Room aulaPrenotazione = booking.getAula();
 
         String motivo = (requestBody != null && requestBody.getReason() != null)
             ? requestBody.getReason()
             : "Eliminazione da parte dell'amministratore";
         logger.debug("Motivo eliminazione: {}", motivo);
 
-        boolean eliminata = prenotazioneService.annullaPrenotazioneAsAdmin(id, adminId, motivo);
+        boolean eliminata = bookingService.cancelBookingAsAdmin(id, adminId, motivo);
         if (!eliminata) {
             logger.warn("FINE deletePrenotazioneAsAdmin - Impossibile eliminare prenotazione ID: {}", id);
             return new ResponseEntity<>(
@@ -262,16 +262,16 @@ public class AdminController {
             // Il nome dell'admin arriva dal token: chiederlo ad auth-service significherebbe
             // una chiamata di rete per compilare il testo di una notifica.
             String adminNome = principal.nome() != null ? principal.nome() : "Amministratore";
-            String dataPrenotazione = prenotazione.getInizio().toLocalDate().toString();
-            String oraInizio = prenotazione.getInizio().toLocalTime().toString();
-            String oraFine = prenotazione.getFine().toLocalTime().toString();
+            String dataPrenotazione = booking.getInizio().toLocalDate().toString();
+            String oraInizio = booking.getInizio().toLocalTime().toString();
+            String oraFine = booking.getFine().toLocalTime().toString();
             String nomeStanza = aulaPrenotazione != null ? aulaPrenotazione.getNome() : "Stanza non specificata";
 
             // Pubblicato su coda e non chiamato via REST: cosi' la notifica non si perde
             // se notifica-service e' spento. Il record tipizzato ha anche sostituito la
             // mappa di stringhe che c'era prima, dove un nome di campo sbagliato sarebbe
             // arrivato a destinazione come semplice valore mancante.
-            eventPublisher.pubblicaCancellazione(new BookingCancelledEvent(
+            eventPublisher.publishCancellation(new BookingCancelledEvent(
                     utentePrenotazione.getId(), id, nomeStanza, adminNome,
                     dataPrenotazione, oraInizio, oraFine, motivo));
 

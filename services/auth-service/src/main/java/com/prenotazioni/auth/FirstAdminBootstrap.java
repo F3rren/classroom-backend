@@ -37,18 +37,18 @@ public class FirstAdminBootstrap implements ApplicationRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(FirstAdminBootstrap.class);
 
-    private final UserRepository utenteRepository;
+    private final UserRepository userRepository;
     private final AuthService authService;
     private final String email;
     private final String password;
     private final String nome;
 
-    FirstAdminBootstrap(UserRepository utenteRepository,
+    FirstAdminBootstrap(UserRepository userRepository,
                     AuthService authService,
                     @Value("${BOOTSTRAP_ADMIN_EMAIL:}") String email,
                     @Value("${BOOTSTRAP_ADMIN_PASSWORD:}") String password,
                     @Value("${BOOTSTRAP_ADMIN_NOME:Amministratore}") String nome) {
-        this.utenteRepository = utenteRepository;
+        this.userRepository = userRepository;
         this.authService = authService;
         this.email = email;
         this.password = password;
@@ -57,7 +57,7 @@ public class FirstAdminBootstrap implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (utenteRepository.count() > 0) {
+        if (userRepository.count() > 0) {
             return;
         }
 
@@ -72,16 +72,16 @@ public class FirstAdminBootstrap implements ApplicationRunner {
             return;
         }
 
-        CreateUserRequest richiesta = new CreateUserRequest();
-        richiesta.setEmail(email);
-        richiesta.setUsername(email);
-        richiesta.setPassword(password);
-        richiesta.setNome(nome);
-        richiesta.setRuolo("admin");
+        CreateUserRequest request = new CreateUserRequest();
+        request.setEmail(email);
+        request.setUsername(email);
+        request.setPassword(password);
+        request.setNome(nome);
+        request.setRuolo("admin");
 
-        User creato = authService.register(richiesta);
+        User created = authService.register(request);
         logger.info("Primo amministratore creato su database vuoto - utenteId={} email={}. "
                 + "Cambiare la password al primo accesso e svuotare BOOTSTRAP_ADMIN_PASSWORD in .env.",
-                creato.getId(), LogSanitizer.maskEmail(email));
+                created.getId(), LogSanitizer.maskEmail(email));
     }
 }

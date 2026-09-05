@@ -34,22 +34,22 @@ import static org.mockito.Mockito.when;
 class UserServiceUnitTest {
 
     @Mock
-    private UserRepository utenteRepository;
+    private UserRepository userRepository;
 
     @Mock
     private UserDataClient userDataClient;
 
     private UserService service() {
-        return new UserService(utenteRepository, userDataClient);
+        return new UserService(userRepository, userDataClient);
     }
 
     @Test
     void cancellaLUtenteQuandoLaCascataERiuscita() {
-        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of());
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of());
 
         service().deleteById(7L);
 
-        verify(utenteRepository).deleteById(7L);
+        verify(userRepository).deleteById(7L);
     }
 
     @Test
@@ -57,12 +57,12 @@ class UserServiceUnitTest {
         // L'invariante. Se cadesse, un fallimento a valle lascerebbe prenotazioni e notifiche
         // senza un utente a cui ricondurle, e ripetere l'operazione non servirebbe piu' a
         // niente: non ci sarebbe nessuno da cui ripartire.
-        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of("prenotazioni"));
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("prenotazioni"));
 
         assertThatThrownBy(() -> service().deleteById(7L))
                 .isInstanceOf(ServiceUnavailableException.class);
 
-        verify(utenteRepository, never()).deleteById(anyLong());
+        verify(userRepository, never()).deleteById(anyLong());
     }
 
     @Test
@@ -70,7 +70,7 @@ class UserServiceUnitTest {
         // "Qualcosa e' fallito" non basta a chi deve decidere se ripetere: il messaggio deve
         // nominare i dati rimasti, altrimenti l'unico modo di saperlo e' leggere i log di
         // tre servizi diversi.
-        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of("notifiche", "prenotazioni"));
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifiche", "prenotazioni"));
 
         assertThatThrownBy(() -> service().deleteById(7L))
                 .isInstanceOf(ServiceUnavailableException.class)
@@ -83,13 +83,13 @@ class UserServiceUnitTest {
         // Il messaggio per l'utente e il codice sono cio' che distingue "e' rotto" da
         // "riprova". Sono due azioni diverse, e con un 500 generico la seconda non veniva
         // in mente: l'operazione restava a meta' perche' nessuno la ripeteva.
-        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of("notifiche"));
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifiche"));
 
-        ServiceUnavailableException errore = (ServiceUnavailableException)
+        ServiceUnavailableException error = (ServiceUnavailableException)
                 org.assertj.core.api.Assertions.catchThrowable(() -> service().deleteById(7L));
 
-        assertThat(errore.getErrorCode()).isEqualTo("USER_DELETE_INCOMPLETE");
-        assertThat(errore.getUserMessage()).containsIgnoringCase("riprova");
+        assertThat(error.getErrorCode()).isEqualTo("USER_DELETE_INCOMPLETE");
+        assertThat(error.getUserMessage()).containsIgnoringCase("riprova");
     }
 
     @Test
@@ -97,12 +97,12 @@ class UserServiceUnitTest {
         // L'ordine, non solo l'esito: i dati a valle si tentano SEMPRE, anche quando poi
         // andra' tutto bene. Se un giorno qualcuno invertisse le due righe, gli altri test
         // continuerebbero a passare mentre l'invariante sarebbe gia' persa.
-        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of());
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of());
 
         service().deleteById(7L);
 
-        var ordine = org.mockito.Mockito.inOrder(userDataClient, utenteRepository);
-        ordine.verify(userDataClient).eliminaDatiDi(7L);
-        ordine.verify(utenteRepository).deleteById(7L);
+        var order = org.mockito.Mockito.inOrder(userDataClient, userRepository);
+        order.verify(userDataClient).deleteDataOf(7L);
+        order.verify(userRepository).deleteById(7L);
     }
 }

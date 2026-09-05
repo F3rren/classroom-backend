@@ -60,8 +60,8 @@ class RoutingTest {
 
     @Test
     void leRottePrincipaliDellApplicazioneVengonoInstradate() {
-        for (String percorso : new String[]{"/api/rooms", "/api/prenotazioni", "/api/me", "/api/admin/utenti"}) {
-            client.get().uri(percorso)
+        for (String path : new String[]{"/api/rooms", "/api/prenotazioni", "/api/me", "/api/admin/utenti"}) {
+            client.get().uri(path)
                     .exchange()
                     .expectStatus().is5xxServerError();
         }

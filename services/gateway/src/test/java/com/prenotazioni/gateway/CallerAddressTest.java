@@ -37,7 +37,7 @@ class CallerAddressTest {
     private static final String INTESTAZIONE = "X-Forwarded-For";
 
     @Autowired
-    private XForwardedHeadersFilter filtro;
+    private XForwardedHeadersFilter filter;
 
     /** Le intestazioni che il gateway manderebbe al servizio a valle. */
     private HttpHeaders inoltrate(String dichiaratoDalClient, String indirizzoReale) {
@@ -47,8 +47,8 @@ class CallerAddressTest {
         if (dichiaratoDalClient != null) {
             costruttore.header(INTESTAZIONE, dichiaratoDalClient);
         }
-        MockServerHttpRequest richiesta = costruttore.build();
-        return filtro.filter(richiesta.getHeaders(), MockServerWebExchange.from(richiesta));
+        MockServerHttpRequest request = costruttore.build();
+        return filter.filter(request.getHeaders(), MockServerWebExchange.from(request));
     }
 
     @Test
@@ -95,7 +95,7 @@ class CallerAddressTest {
         // Ridondante rispetto ai test sopra, e tenuto apposta: se un aggiornamento cambiasse
         // il default di for-append, questo dice in una riga QUALE riga di configurazione
         // rimettere, invece di lasciare quattro asserzioni rosse da interpretare.
-        assertThat(filtro.isForAppend())
+        assertThat(filter.isForAppend())
                 .as("spring.cloud.gateway.x-forwarded.for-append deve restare false")
                 .isFalse();
     }

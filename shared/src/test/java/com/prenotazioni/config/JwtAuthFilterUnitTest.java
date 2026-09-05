@@ -26,14 +26,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class JwtAuthFilterUnitTest {
 
-    private JwtAuthFilter filtro;
+    private JwtAuthFilter filter;
 
     @BeforeEach
     void setUp() {
         JwtVerifier verifier = new JwtVerifier();
         ReflectionTestUtils.setField(verifier, "secret", TestJwt.SEGRETO_DI_TEST);
         verifier.init();
-        filtro = new JwtAuthFilter(verifier);
+        filter = new JwtAuthFilter(verifier);
         SecurityContextHolder.clearContext();
     }
 
@@ -47,7 +47,7 @@ class JwtAuthFilterUnitTest {
         if (authorization != null) {
             request.addHeader("Authorization", authorization);
         }
-        filtro.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
         return SecurityContextHolder.getContext().getAuthentication();
     }
 
@@ -91,11 +91,11 @@ class JwtAuthFilterUnitTest {
     @Test
     void laRottaDiLoginSaltaDelTuttoIlFiltro() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
-        MockFilterChain catena = new MockFilterChain();
+        MockFilterChain chain = new MockFilterChain();
 
-        filtro.doFilter(request, new MockHttpServletResponse(), catena);
+        filter.doFilter(request, new MockHttpServletResponse(), chain);
 
-        assertThat(catena.getRequest()).isNotNull();
+        assertThat(chain.getRequest()).isNotNull();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 }

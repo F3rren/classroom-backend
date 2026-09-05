@@ -21,10 +21,10 @@ class LoginAttemptLimiterUnitTest {
     void lasciaPassareFinoAlLimite() {
         LoginAttemptLimiter l = attemptLimiter(3, 60_000, 1000);
 
-        assertThat(l.troppiTentativi("a")).isFalse();
-        assertThat(l.troppiTentativi("a")).isFalse();
-        assertThat(l.troppiTentativi("a")).isFalse();
-        assertThat(l.troppiTentativi("a")).isTrue();
+        assertThat(l.tooManyAttempts("a")).isFalse();
+        assertThat(l.tooManyAttempts("a")).isFalse();
+        assertThat(l.tooManyAttempts("a")).isFalse();
+        assertThat(l.tooManyAttempts("a")).isTrue();
     }
 
     @Test
@@ -33,9 +33,9 @@ class LoginAttemptLimiterUnitTest {
         // il login di tutti gli altri.
         LoginAttemptLimiter l = attemptLimiter(1, 60_000, 1000);
 
-        l.troppiTentativi("primo");
-        assertThat(l.troppiTentativi("primo")).isTrue();
-        assertThat(l.troppiTentativi("secondo")).isFalse();
+        l.tooManyAttempts("primo");
+        assertThat(l.tooManyAttempts("primo")).isTrue();
+        assertThat(l.tooManyAttempts("secondo")).isFalse();
     }
 
     @Test
@@ -45,8 +45,8 @@ class LoginAttemptLimiterUnitTest {
         // dall'orologio. Con -1 la condizione e' vera per costruzione.
         LoginAttemptLimiter l = attemptLimiter(1, -1, 1000);
 
-        l.troppiTentativi("a");
-        assertThat(l.troppiTentativi("a")).isFalse();
+        l.tooManyAttempts("a");
+        assertThat(l.tooManyAttempts("a")).isFalse();
     }
 
     @Test
@@ -56,13 +56,13 @@ class LoginAttemptLimiterUnitTest {
         LoginAttemptLimiter l = attemptLimiter(5, 1000, 1000);
 
         for (int i = 0; i < 200; i++) {
-            l.troppiTentativi("indirizzo-inventato-" + i + "@esempio.it");
+            l.tooManyAttempts("indirizzo-inventato-" + i + "@esempio.it");
         }
-        assertThat(l.chiaviInMemoria()).isEqualTo(200);
+        assertThat(l.trackedKeys()).isEqualTo(200);
 
-        l.ripulisci(System.currentTimeMillis() + 5000);
+        l.purgeExpired(System.currentTimeMillis() + 5000);
 
-        assertThat(l.chiaviInMemoria()).isZero();
+        assertThat(l.trackedKeys()).isZero();
     }
 
     @Test
@@ -71,10 +71,10 @@ class LoginAttemptLimiterUnitTest {
         // attaccando adesso, cioe' proprio quelli che servono.
         LoginAttemptLimiter l = attemptLimiter(5, 600_000, 1000);
 
-        l.troppiTentativi("ancora-viva@esempio.it");
-        l.ripulisci(System.currentTimeMillis());
+        l.tooManyAttempts("ancora-viva@esempio.it");
+        l.purgeExpired(System.currentTimeMillis());
 
-        assertThat(l.chiaviInMemoria()).isEqualTo(1);
+        assertThat(l.trackedKeys()).isEqualTo(1);
     }
 
     @Test
@@ -86,13 +86,13 @@ class LoginAttemptLimiterUnitTest {
         LoginAttemptLimiter l = attemptLimiter(5, -1, 50);
 
         for (int i = 0; i < 50; i++) {
-            l.troppiTentativi("vecchia-" + i);
+            l.tooManyAttempts("vecchia-" + i);
         }
-        assertThat(l.chiaviInMemoria()).isEqualTo(50);
+        assertThat(l.trackedKeys()).isEqualTo(50);
 
-        l.troppiTentativi("nuova");
+        l.tooManyAttempts("nuova");
 
-        assertThat(l.chiaviInMemoria()).isLessThan(50);
+        assertThat(l.trackedKeys()).isLessThan(50);
     }
 
     @Test
@@ -102,15 +102,15 @@ class LoginAttemptLimiterUnitTest {
         // disattivare il limitatore.
         LoginAttemptLimiter l = attemptLimiter(1, 600_000, 2);
 
-        l.troppiTentativi("nota");
-        assertThat(l.troppiTentativi("nota")).isTrue();
+        l.tooManyAttempts("nota");
+        assertThat(l.tooManyAttempts("nota")).isTrue();
 
-        l.troppiTentativi("seconda");
+        l.tooManyAttempts("seconda");
         // il tetto e' pieno e niente e' scaduto: la terza chiave non viene registrata
-        assertThat(l.troppiTentativi("terza")).isFalse();
-        assertThat(l.chiaviInMemoria()).isEqualTo(2);
+        assertThat(l.tooManyAttempts("terza")).isFalse();
+        assertThat(l.trackedKeys()).isEqualTo(2);
 
         // ma quella nota continua a essere limitata
-        assertThat(l.troppiTentativi("nota")).isTrue();
+        assertThat(l.tooManyAttempts("nota")).isTrue();
     }
 }

@@ -33,15 +33,15 @@ public class JwtService {
         this.key = JwtKey.da(secret);
     }
 
-    public String generateToken(User utente) {
+    public String generateToken(User user) {
         return Jwts.builder()
-                .subject(utente.getEmail())
-                .claim("id", utente.getId())
+                .subject(user.getEmail())
+                .claim("id", user.getId())
                 // Serve a prenotazione-service per salvare il nome di chi prenota senza
                 // interrogare il servizio utenti: vedi JwtVerifier.getNomeFromToken.
-                .claim("nome", utente.getNome())
-                .claim("username", utente.getUsername())
-                .claim("ruolo", utente.getRuolo() != null ? utente.getRuolo().getValore() : null)
+                .claim("nome", user.getNome())
+                .claim("username", user.getUsername())
+                .claim("ruolo", user.getRuolo() != null ? user.getRuolo().getValore() : null)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(key)

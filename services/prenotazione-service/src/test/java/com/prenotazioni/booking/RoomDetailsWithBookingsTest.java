@@ -50,10 +50,10 @@ class RoomDetailsWithBookingsTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private RoomRepository aulaRepository;
+    private RoomRepository roomRepository;
 
     @Autowired
-    private BookingRepository prenotazioneRepository;
+    private BookingRepository bookingRepository;
 
     private String token;
     private Long aulaOccupataId;
@@ -64,8 +64,8 @@ class RoomDetailsWithBookingsTest {
 
     @BeforeEach
     void setUp() {
-        prenotazioneRepository.deleteAll();
-        aulaRepository.deleteAll();
+        bookingRepository.deleteAll();
+        roomRepository.deleteAll();
 
         // Il nome finisce dentro currentBooking, quindi conta che sia valorizzato.
         BookingOwner user = new BookingOwner(1L, "dettagli", "Mario Rossi");
@@ -98,20 +98,20 @@ class RoomDetailsWithBookingsTest {
         a.setCapienza(capienza);
         a.setVirtual(virtuale);
         a.setStato(RoomStatus.LIBERA);
-        return aulaRepository.save(a).getId();
+        return roomRepository.save(a).getId();
     }
 
-    private void prenota(Long aulaId, BookingOwner utente, BookingStatus stato,
+    private void prenota(Long roomId, BookingOwner user, BookingStatus status,
                          LocalDateTime inizio, LocalDateTime fine, String descrizione) {
         Booking p = new Booking();
-        p.setAula(aulaRepository.findById(aulaId).orElseThrow());
-        p.setUtente(utente);
+        p.setAula(roomRepository.findById(roomId).orElseThrow());
+        p.setUtente(user);
         p.setInizio(inizio);
         p.setFine(fine);
-        p.setStato(stato);
+        p.setStato(status);
         p.setDescrizione(descrizione);
         p.setDataCreazione(LocalDateTime.now()); // letto da blockInfo.blockedAt
-        prenotazioneRepository.save(p);
+        bookingRepository.save(p);
     }
 
     @SuppressWarnings("unchecked")
@@ -287,8 +287,8 @@ class RoomDetailsWithBookingsTest {
         assertThat(statoDi(aulaImminenteId)).isEqualTo("LIBERA");
     }
 
-    private String statoDi(Long aulaId) throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + aulaId);
+    private String statoDi(Long roomId) throws Exception {
+        ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + roomId);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         return (String) TestJson.comeMappa(resp.getBody()).get("stato");
     }

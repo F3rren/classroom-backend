@@ -39,18 +39,18 @@ class RoomQueryTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private RoomRepository aulaRepository;
+    private RoomRepository roomRepository;
 
     @Autowired
-    private BookingRepository prenotazioneRepository;
+    private BookingRepository bookingRepository;
 
     private String token;
     private Long aulaFisicaGrandeId;
 
     @BeforeEach
     void setUp() {
-        prenotazioneRepository.deleteAll();
-        aulaRepository.deleteAll();
+        bookingRepository.deleteAll();
+        roomRepository.deleteAll();
 
 
         aulaFisicaGrandeId = salvaAula("Aula Grande", 1, 100, false);
@@ -67,7 +67,7 @@ class RoomQueryTest {
         a.setCapienza(capienza);
         a.setVirtual(virtuale);
         a.setStato(RoomStatus.LIBERA);
-        return aulaRepository.save(a).getId();
+        return roomRepository.save(a).getId();
     }
 
     @SuppressWarnings("unchecked")

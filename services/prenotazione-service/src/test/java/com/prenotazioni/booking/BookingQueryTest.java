@@ -46,30 +46,30 @@ class BookingQueryTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private RoomRepository aulaRepository;
+    private RoomRepository roomRepository;
 
     @Autowired
-    private BookingRepository prenotazioneRepository;
+    private BookingRepository bookingRepository;
 
     private String token;
-    private Long aulaId;
-    private Long prenotazioneId;
+    private Long roomId;
+    private Long bookingId;
     private LocalDateTime inizio;
     private LocalDateTime fine;
 
     @BeforeEach
     void setUp() {
-        prenotazioneRepository.deleteAll();
-        aulaRepository.deleteAll();
+        bookingRepository.deleteAll();
+        roomRepository.deleteAll();
 
 
-        Room aula = new Room();
-        aula.setNome("Aula Query");
-        aula.setPiano(2);
-        aula.setCapienza(30);
-        aula.setVirtual(false);
-        aula.setStato(RoomStatus.LIBERA);
-        aulaId = aulaRepository.save(aula).getId();
+        Room room = new Room();
+        room.setNome("Aula Query");
+        room.setPiano(2);
+        room.setCapienza(30);
+        room.setVirtual(false);
+        room.setStato(RoomStatus.LIBERA);
+        roomId = roomRepository.save(room).getId();
 
         inizio = LocalDateTime.now().plusDays(2).withNano(0);
         fine = inizio.plusHours(2);
@@ -77,14 +77,14 @@ class BookingQueryTest {
         BookingOwner user = new BookingOwner(1L, "query-user", "Query User");
 
         Booking p = new Booking();
-        p.setAula(aula);
+        p.setAula(room);
         p.setUtente(user);
         p.setInizio(inizio);
         p.setFine(fine);
         p.setStato(BookingStatus.PRENOTATA);
         p.setDescrizione("Prenotazione per test di query");
         p.setDataCreazione(LocalDateTime.now());
-        prenotazioneId = prenotazioneRepository.save(p).getId();
+        bookingId = bookingRepository.save(p).getId();
 
         token = TestJwt.perUtente(1L, "prenotazionequerytest@test.it", "Utente Test");
     }
@@ -114,9 +114,9 @@ class BookingQueryTest {
 
     @Test
     void miePrenotazioniEscludeLeAnnullate() throws Exception {
-        Booking p = prenotazioneRepository.findById(prenotazioneId).orElseThrow();
+        Booking p = bookingRepository.findById(bookingId).orElseThrow();
         p.setStato(BookingStatus.ANNULLATA);
-        prenotazioneRepository.save(p);
+        bookingRepository.save(p);
 
         Map<String, Object> body = TestJson.comeMappa(get("/api/prenotazioni/mie").getBody());
         assertThat((java.util.List<?>) body.get("prenotazioni")).isEmpty();
@@ -154,7 +154,7 @@ class BookingQueryTest {
 
     @Test
     void prenotazioneDetailsByIdReturnsDettagli() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/" + prenotazioneId + "/details");
+        ResponseEntity<String> resp = get("/api/prenotazioni/" + bookingId + "/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -168,7 +168,7 @@ class BookingQueryTest {
         String liberoFine = inizio.plusDays(5).plusHours(1).format(ISO);
 
         ResponseEntity<String> resp = get(
-                "/api/prenotazioni/disponibilita?aulaId=" + aulaId + "&inizio=" + libero + "&fine=" + liberoFine);
+                "/api/prenotazioni/disponibilita?aulaId=" + roomId + "&inizio=" + libero + "&fine=" + liberoFine);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
@@ -180,7 +180,7 @@ class BookingQueryTest {
     @Test
     void laDisponibilitaSegnalaOccupataUnaFasciaPrenotata() throws Exception {
         ResponseEntity<String> resp = get(
-                "/api/prenotazioni/disponibilita?aulaId=" + aulaId
+                "/api/prenotazioni/disponibilita?aulaId=" + roomId
                         + "&inizio=" + inizio.format(ISO) + "&fine=" + fine.format(ISO));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -192,7 +192,7 @@ class BookingQueryTest {
     @Test
     void laDisponibilitaConUnaDataMalformataRisponde400() throws Exception {
         ResponseEntity<String> resp = get(
-                "/api/prenotazioni/disponibilita?aulaId=" + aulaId + "&inizio=non-una-data&fine=nemmeno");
+                "/api/prenotazioni/disponibilita?aulaId=" + roomId + "&inizio=non-una-data&fine=nemmeno");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_START_DATE");
@@ -206,12 +206,12 @@ class BookingQueryTest {
      */
     @Test
     void statoAulaReturnsRoomStatusPayload() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + aulaId);
+        ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + roomId);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder("aulaId", "stato", "timestamp");
-        assertThat(body.get("aulaId")).isEqualTo(aulaId.intValue());
+        assertThat(body.get("aulaId")).isEqualTo(roomId.intValue());
     }
 
     @Test

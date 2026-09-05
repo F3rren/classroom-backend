@@ -208,10 +208,10 @@ class GlobalExceptionHandlerUnitTest {
         // risorse statiche. Quella coperta qui e' il caso SENZA - prenotazione-service,
         // da quando la SPA e' stata rimossa - e mancava: quel servizio rispondeva 500
         // "errore interno" a qualunque indirizzo sbagliato.
-        var risposta = handler.handleNoHandler(
+        var response = handler.handleNoHandler(
                 new NoHandlerFoundException("GET", "/percorso/inventato", new HttpHeaders()));
 
-        assertThat(risposta.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(risposta.getBody().getError()).isEqualTo("NOT_FOUND");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getError()).isEqualTo("NOT_FOUND");
     }
 }

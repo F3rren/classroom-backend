@@ -42,21 +42,21 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
     private static final String CHIAVE_MDC = "requestId";
 
     @Override
-    protected void doFilterInternal(HttpServletRequest richiesta, HttpServletResponse risposta,
-                                    FilterChain catena) throws ServletException, IOException {
-        String id = richiesta.getHeader(INTESTAZIONE);
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain chain) throws ServletException, IOException {
+        String id = request.getHeader(INTESTAZIONE);
         if (id == null || id.isBlank()) {
-            id = genera();
+            id = generate();
         }
 
-        richiesta.setAttribute(ATTRIBUTO, id);
+        request.setAttribute(ATTRIBUTO, id);
         MDC.put(CHIAVE_MDC, id);
         // Rimandato indietro: chi ha fatto la chiamata puo' citarlo in una segnalazione
         // anche quando la risposta non ha un corpo in cui infilarlo.
-        risposta.setHeader(INTESTAZIONE, id);
+        response.setHeader(INTESTAZIONE, id);
 
         try {
-            catena.doFilter(richiesta, risposta);
+            chain.doFilter(request, response);
         } finally {
             // Obbligatorio: i thread sono riusati, e un MDC non ripulito farebbe comparire
             // l'identificativo di una richiesta nei log di quella successiva.
@@ -71,14 +71,14 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
      * messaggi, un'attivita' pianificata, un test unitario. Meglio un identificativo
      * scollegato che un null che poi compare come "null" dentro una risposta.
      */
-    public static String corrente() {
+    public static String current() {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributi) {
             Object id = attributi.getRequest().getAttribute(ATTRIBUTO);
             if (id instanceof String stringa && !stringa.isBlank()) {
                 return stringa;
             }
         }
-        return genera();
+        return generate();
     }
 
     /**
@@ -92,19 +92,19 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
      * l'intestazione esistesse deve continuare a essere consumato, semplicemente con un
      * identificativo proprio.
      */
-    public static void applicaAMdc(String id) {
-        MDC.put(CHIAVE_MDC, (id == null || id.isBlank()) ? genera() : id);
+    public static void applyToMdc(String id) {
+        MDC.put(CHIAVE_MDC, (id == null || id.isBlank()) ? generate() : id);
     }
 
     /**
      * Da chiamare in un finally: i thread vengono riusati, e un MDC non ripulito farebbe
      * comparire l'identificativo di questo messaggio nei log del successivo.
      */
-    public static void svuotaMdc() {
+    public static void clearMdc() {
         MDC.remove(CHIAVE_MDC);
     }
 
-    private static String genera() {
+    private static String generate() {
         return "REQ_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

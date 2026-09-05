@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
      * alla stessa chiamata.
      */
     private String newSessionId() {
-        return RequestCorrelationFilter.corrente();
+        return RequestCorrelationFilter.current();
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -164,7 +164,7 @@ public class GlobalExceptionHandler {
      * solo non distingue una connessione rifiutata da un timeout, e sono due diagnosi diverse.
      */
     @ExceptionHandler(ServiceUnavailableException.class)
-    public ResponseEntity<ApiEnvelope<Void>> handleServizioNonDisponibile(ServiceUnavailableException ex) {
+    public ResponseEntity<ApiEnvelope<Void>> handleServiceUnavailable(ServiceUnavailableException ex) {
         String sessionId = newSessionId();
         logger.warn("Servizio a valle non disponibile: {}", ex.getMessage(), ex);
         return new ResponseEntity<>(

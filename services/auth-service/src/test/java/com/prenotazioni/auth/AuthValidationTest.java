@@ -44,7 +44,7 @@ class AuthValidationTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private UserRepository utenteRepository;
+    private UserRepository userRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -54,7 +54,7 @@ class AuthValidationTest {
 
     @BeforeEach
     void setUp() {
-        utenteRepository.deleteAll();
+        userRepository.deleteAll();
         salvaUtente("admin@validation.test", "admin-validation", "admin-password", Role.ADMIN);
         salvaUtente("user@validation.test", "user-validation", "user-password", Role.USER);
 
@@ -62,15 +62,15 @@ class AuthValidationTest {
         tokenUser = login("user@validation.test", "user-password");
     }
 
-    private void salvaUtente(String email, String username, String rawPassword, Role ruolo) {
+    private void salvaUtente(String email, String username, String rawPassword, Role role) {
         User u = new User();
         u.setEmail(email);
         u.setUsername(username);
         u.setPassword(passwordEncoder.encode(rawPassword));
         u.setNome(username);
-        u.setRuolo(ruolo);
+        u.setRuolo(role);
         u.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(u);
+        userRepository.save(u);
     }
 
     @SuppressWarnings("unchecked")
@@ -234,9 +234,9 @@ class AuthValidationTest {
         // Una stringa vuota significa "non toccare la password", non "impostala a vuoto".
         // Se questa distinzione si rompesse, un admin che rinomina un utente lo lascerebbe
         // senza credenziali funzionanti, e il sintomo comparirebbe solo al login successivo.
-        Long id = utenteRepository.findByEmail("user@validation.test").getId();
+        Long id = userRepository.findByEmail("user@validation.test").getId();
 
-        Map<String, Object> corpo = Map.of(
+        Map<String, Object> body = Map.of(
                 "username", "user-validation",
                 "email", "user@validation.test",
                 "password", "",
@@ -245,7 +245,7 @@ class AuthValidationTest {
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/utenti/" + id, HttpMethod.PUT,
-                new HttpEntity<>(corpo, bearerJson(tokenAdmin)), String.class);
+                new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
 

@@ -44,7 +44,7 @@ class AdminUtentiTest {
     @Autowired
     private TestRestTemplate rest;
     @Autowired
-    private UserRepository utenteRepository;
+    private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -53,21 +53,21 @@ class AdminUtentiTest {
 
     @BeforeEach
     void setUp() {
-        utenteRepository.deleteAll();
+        userRepository.deleteAll();
         salva("admin-utenti@test.it", "admin-utenti", Role.ADMIN);
         idUtenteNormale = salva("normale@test.it", "normale", Role.USER);
         tokenAdmin = login("admin-utenti@test.it");
     }
 
-    private Long salva(String email, String username, Role ruolo) {
+    private Long salva(String email, String username, Role role) {
         User u = new User();
         u.setEmail(email);
         u.setUsername(username);
         u.setPassword(passwordEncoder.encode("password-di-prova"));
         u.setNome(username);
-        u.setRuolo(ruolo);
+        u.setRuolo(role);
         u.setDataRegistrazione(LocalDateTime.now());
-        return utenteRepository.save(u).getId();
+        return userRepository.save(u).getId();
     }
 
     @SuppressWarnings("unchecked")
@@ -85,8 +85,8 @@ class AdminUtentiTest {
         return h;
     }
 
-    private ResponseEntity<String> chiama(String url, HttpMethod metodo, Object corpo) {
-        return rest.exchange(url, metodo, new HttpEntity<>(corpo, headers()), String.class);
+    private ResponseEntity<String> chiama(String url, HttpMethod metodo, Object body) {
+        return rest.exchange(url, metodo, new HttpEntity<>(body, headers()), String.class);
     }
 
 
@@ -104,10 +104,10 @@ class AdminUtentiTest {
 
     @Test
     void registrazioneConEmailGiaUsataVieneRifiutata() throws Exception {
-        Map<String, String> corpo = Map.of("username", "nuovo", "nome", "Nuovo",
+        Map<String, String> body = Map.of("username", "nuovo", "nome", "Nuovo",
                 "email", "normale@test.it", "password", "password-lunga", "ruolo", "user");
 
-        ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.POST, corpo);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.POST, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(TestJson.corpoDi(resp).get("success")).isEqualTo(false);
@@ -115,19 +115,19 @@ class AdminUtentiTest {
 
     @Test
     void registrazioneConUsernameGiaUsatoVieneRifiutata() throws Exception {
-        Map<String, String> corpo = Map.of("username", "normale", "nome", "Nuovo",
+        Map<String, String> body = Map.of("username", "normale", "nome", "Nuovo",
                 "email", "un-altra@test.it", "password", "password-lunga", "ruolo", "user");
 
-        ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.POST, corpo);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti", HttpMethod.POST, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test
     void aggiornamentoDiUnUtenteInesistenteRisponde404() {
-        Map<String, String> corpo = Map.of("username", "x", "nome", "X", "email", "x@test.it");
+        Map<String, String> body = Map.of("username", "x", "nome", "X", "email", "x@test.it");
 
-        ResponseEntity<String> resp = chiama("/api/admin/utenti/999999", HttpMethod.PUT, corpo);
+        ResponseEntity<String> resp = chiama("/api/admin/utenti/999999", HttpMethod.PUT, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -147,7 +147,7 @@ class AdminUtentiTest {
         ResponseEntity<String> resp = chiama("/api/admin/utenti/" + idUtenteNormale, HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isNotEqualTo(HttpStatus.OK);
-        assertThat(utenteRepository.findById(idUtenteNormale))
+        assertThat(userRepository.findById(idUtenteNormale))
                 .as("l'utente non deve sparire se le sue prenotazioni non sono state cancellate")
                 .isPresent();
     }

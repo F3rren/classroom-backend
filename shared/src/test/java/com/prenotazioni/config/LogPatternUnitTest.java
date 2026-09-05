@@ -45,7 +45,7 @@ class LogPatternUnitTest {
     private PatternLayoutEncoder encoderConfigurato() {
         // Il contesto va avviato: e' Spring Boot a dire a Logback di leggere
         // logback-spring.xml, e senza di lui varrebbe la configurazione predefinita.
-        try (var contesto = new SpringApplicationBuilder(SoloContesto.class)
+        try (var context = new SpringApplicationBuilder(SoloContesto.class)
                 .web(WebApplicationType.NONE)
                 .run()) {
             LoggerContext logback = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -61,16 +61,16 @@ class LogPatternUnitTest {
     }
 
     /** Rende un evento con l'encoder configurato, come farebbe una riga vera. */
-    private String riga(String messaggio) {
+    private String line(String message) {
         PatternLayoutEncoder encoder = encoderConfigurato();
-        LoggingEvent evento = new LoggingEvent();
-        evento.setLoggerName("com.prenotazioni.prova.Servizio");
-        evento.setLevel(Level.INFO);
-        evento.setMessage(messaggio);
-        evento.setMDCPropertyMap(MDC.getCopyOfContextMap() == null
+        LoggingEvent event = new LoggingEvent();
+        event.setLoggerName("com.prenotazioni.prova.Servizio");
+        event.setLevel(Level.INFO);
+        event.setMessage(message);
+        event.setMDCPropertyMap(MDC.getCopyOfContextMap() == null
                 ? java.util.Map.of() : MDC.getCopyOfContextMap());
-        evento.setTimeStamp(System.currentTimeMillis());
-        return new String(encoder.encode(evento), StandardCharsets.UTF_8);
+        event.setTimeStamp(System.currentTimeMillis());
+        return new String(encoder.encode(event), StandardCharsets.UTF_8);
     }
 
     @Test
@@ -80,7 +80,7 @@ class LogPatternUnitTest {
         // solo il giorno in cui serve leggere i log, cioe' troppo tardi.
         MDC.put("requestId", "REQ_A1B2C3D4");
 
-        assertThat(riga("prenotazione creata")).contains("REQ_A1B2C3D4");
+        assertThat(line("prenotazione creata")).contains("REQ_A1B2C3D4");
     }
 
     @Test
@@ -95,25 +95,25 @@ class LogPatternUnitTest {
         // sbagliata.
         MDC.put("requestId", "REQ_MOLTO_PIU_LUNGO_DEL_SOLITO");
 
-        assertThat(riga("qualcosa")).contains("REQ_MOLTO_PIU_LUNGO_DEL_SOLITO");
+        assertThat(line("qualcosa")).contains("REQ_MOLTO_PIU_LUNGO_DEL_SOLITO");
     }
 
     @Test
     void unaRigaFuoriDaUnaRichiestaNonDiceNull() {
         // Avvio, attivita' pianificate, consumo di messaggi: nessuna richiesta, nessun
         // identificativo. Stampare "null" sarebbe peggio di un segnaposto.
-        String riga = riga("avvio completato");
+        String line = line("avvio completato");
 
-        assertThat(riga).doesNotContain("null").contains("avvio completato");
+        assertThat(line).doesNotContain("null").contains("avvio completato");
     }
 
     @Test
     void ilMessaggioEIlLivelloRestanoLeggibili() {
         // Il tracciato aggiunge una colonna: non deve mangiarsi cio' che c'era prima.
         MDC.put("requestId", "REQ_LEGGIBILE");
-        String riga = riga("qualcosa e' successo");
+        String line = line("qualcosa e' successo");
 
-        assertThat(riga)
+        assertThat(line)
                 .contains("INFO")
                 .contains("qualcosa e' successo")
                 .contains("Servizio");

@@ -41,7 +41,7 @@ class NotificationOwnershipTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private NotificationRepository notificaRepository;
+    private NotificationRepository notificationRepository;
 
     private String tokenOwner;
     private String tokenOther;
@@ -49,11 +49,11 @@ class NotificationOwnershipTest {
 
     @BeforeEach
     void setUp() {
-        notificaRepository.deleteAll();
+        notificationRepository.deleteAll();
 
-        Notification notifica = new Notification(OWNER_ID, "Titolo", "Messaggio di test", "INFO");
-        notificaRepository.save(notifica);
-        notificaIdDiOwner = notifica.getId();
+        Notification notification = new Notification(OWNER_ID, "Titolo", "Messaggio di test", "INFO");
+        notificationRepository.save(notification);
+        notificaIdDiOwner = notification.getId();
 
         tokenOwner = TestJwt.perUtente(OWNER_ID, "me-owner@test.it");
         tokenOther = TestJwt.perUtente(OTHER_ID, "me-other@test.it");
@@ -92,7 +92,7 @@ class NotificationOwnershipTest {
                 new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(notificaRepository.existsById(notificaIdDiOwner)).isTrue();
+        assertThat(notificationRepository.existsById(notificaIdDiOwner)).isTrue();
     }
 
     @Test

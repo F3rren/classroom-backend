@@ -36,12 +36,12 @@ class RouteTableTest {
     private RouteLocator rotte;
 
     /** L'id della prima rotta che accetta il percorso, come farebbe il gateway. */
-    private String primaRottaChePrende(String percorso) {
-        ServerWebExchange scambio = MockServerWebExchange.from(MockServerHttpRequest.get(percorso).build());
+    private String primaRottaChePrende(String path) {
+        ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path).build());
         List<Route> ordinate = rotte.getRoutes().collectList().block();
         assertThat(ordinate).as("nessuna rotta caricata: application.yml non e' stato letto").isNotEmpty();
         for (Route r : ordinate) {
-            if (Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(scambio)).block())) {
+            if (Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(exchange)).block())) {
                 return r.getId();
             }
         }
@@ -76,10 +76,10 @@ class RouteTableTest {
         // /api/admin/utenti corrispondesse a una rotta sola, l'ordine non conterebbe e non
         // ci sarebbe niente da tenere fermo. Qui si pretende che ENTRAMBE lo accettino,
         // cosi' l'unica cosa che manda la richiesta al servizio giusto e' la posizione.
-        ServerWebExchange scambio = MockServerWebExchange.from(
+        ServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/admin/utenti").build());
         List<String> chiLoAccetta = rotte.getRoutes()
-                .filter(r -> Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(scambio)).block()))
+                .filter(r -> Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(exchange)).block()))
                 .map(Route::getId)
                 .collectList().block();
 
@@ -106,11 +106,11 @@ class RouteTableTest {
         // Un percorso senza rotta non da' un errore di configurazione: da' un 404 a chi
         // chiama, ed e' il modo in cui un endpoint nuovo resta invisibile dopo essere stato
         // scritto e messo in produzione.
-        for (String percorso : new String[]{
+        for (String path : new String[]{
                 "/api/auth/login", "/api/me", "/api/rooms", "/api/prenotazioni",
                 "/api/notifiche", "/api/admin/utenti", "/api/admin/rooms"}) {
-            assertThat(primaRottaChePrende(percorso))
-                    .as("nessuna rotta per %s", percorso)
+            assertThat(primaRottaChePrende(path))
+                    .as("nessuna rotta per %s", path)
                     .isNotNull();
         }
     }

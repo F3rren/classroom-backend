@@ -16,36 +16,36 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /**
      * Trova tutte le notifiche di un utente ordinate per data creazione (più recenti prima)
      */
-    List<Notification> findByUtenteIdOrderByDataCreazioneDesc(Long utenteId);
+    List<Notification> findByUtenteIdOrderByDataCreazioneDesc(Long userId);
     
     /**
      * Trova solo le notifiche non lette di un utente
      */
-    List<Notification> findByUtenteIdAndLettaFalseOrderByDataCreazioneDesc(Long utenteId);
+    List<Notification> findByUtenteIdAndLettaFalseOrderByDataCreazioneDesc(Long userId);
     
     /**
      * Conta le notifiche non lette di un utente
      */
-    Long countByUtenteIdAndLettaFalse(Long utenteId);
+    Long countByUtenteIdAndLettaFalse(Long userId);
     
     /**
      * Elimina tutte le notifiche lette di un utente
      */
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.utenteId = :utenteId AND n.letta = true")
-    void deleteByUtenteIdAndLettaTrue(@Param("utenteId") Long utenteId);
+    void deleteByUtenteIdAndLettaTrue(@Param("utenteId") Long userId);
     
     /**
      * Elimina tutte le notifiche di un utente (per eliminazione utente)
      */
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.utenteId = :utenteId")
-    void deleteByUtenteId(@Param("utenteId") Long utenteId);
+    void deleteByUtenteId(@Param("utenteId") Long userId);
     
     /**
      * Segna tutte le notifiche di un utente come lette
      */
     @Modifying
     @Query("UPDATE Notification n SET n.letta = true WHERE n.utenteId = :utenteId AND n.letta = false")
-    void segnaTutteComeLette(@Param("utenteId") Long utenteId);
+    void segnaTutteComeLette(@Param("utenteId") Long userId);
 }

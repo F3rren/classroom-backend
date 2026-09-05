@@ -35,7 +35,7 @@ class NotificationEndpointsTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private NotificationRepository notificaRepository;
+    private NotificationRepository notificationRepository;
 
     // Identificativi arbitrari: questo servizio non possiede la tabella utenti e non
     // verifica che esistano. E' proprio il punto della separazione.
@@ -48,17 +48,17 @@ class NotificationEndpointsTest {
 
     @BeforeEach
     void setUp() {
-        notificaRepository.deleteAll();
+        notificationRepository.deleteAll();
 
         // owner: 2 non lette + 1 gia' letta
-        notificaRepository.save(new Notification(OWNER_ID, "Prima", "Messaggio 1", "INFO"));
-        notificaRepository.save(new Notification(OWNER_ID, "Seconda", "Messaggio 2", "INFO"));
+        notificationRepository.save(new Notification(OWNER_ID, "Prima", "Messaggio 1", "INFO"));
+        notificationRepository.save(new Notification(OWNER_ID, "Seconda", "Messaggio 2", "INFO"));
         Notification letta = new Notification(OWNER_ID, "Terza", "Gia' letta", "INFO");
         letta.setLetta(true);
-        notificaLettaId = notificaRepository.save(letta).getId();
+        notificaLettaId = notificationRepository.save(letta).getId();
 
         // other: 1 non letta, che non deve mai essere toccata dalle operazioni di owner
-        notificaRepository.save(new Notification(OTHER_ID, "Altrui", "Non toccare", "INFO"));
+        notificationRepository.save(new Notification(OTHER_ID, "Altrui", "Non toccare", "INFO"));
 
         // Token firmati direttamente: niente utente da creare, niente login da chiamare.
         tokenOwner = TestJwt.perUtente(OWNER_ID, "notif-owner@test.it");
@@ -72,9 +72,9 @@ class NotificationEndpointsTest {
     }
 
 
-    private long contaNonLette(Long utenteId) {
-        return notificaRepository.findAll().stream()
-                .filter(n -> n.getUtenteId().equals(utenteId))
+    private long contaNonLette(Long userId) {
+        return notificationRepository.findAll().stream()
+                .filter(n -> n.getUtenteId().equals(userId))
                 .filter(n -> !Boolean.TRUE.equals(n.getLetta()))
                 .count();
     }
@@ -119,7 +119,7 @@ class NotificationEndpointsTest {
         assertThat(TestJson.comeMappa(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
 
         // sparisce solo quella gia' letta; le 2 non lette restano
-        assertThat(notificaRepository.existsById(notificaLettaId)).isFalse();
+        assertThat(notificationRepository.existsById(notificaLettaId)).isFalse();
         assertThat(contaNonLette(OWNER_ID)).isEqualTo(2);
     }
 
@@ -128,13 +128,13 @@ class NotificationEndpointsTest {
         exchange("/api/notifiche/mark-all-read", HttpMethod.PUT, tokenOwner);
         exchange("/api/notifiche/read", HttpMethod.DELETE, tokenOwner);
 
-        long rimasteDiOwner = notificaRepository.findAll().stream()
+        long rimasteDiOwner = notificationRepository.findAll().stream()
                 .filter(n -> n.getUtenteId().equals(OWNER_ID))
                 .count();
         assertThat(rimasteDiOwner).isZero();
 
         // l'inbox dell'altro utente e' intatta
-        long rimasteDiOther = notificaRepository.findAll().stream()
+        long rimasteDiOther = notificationRepository.findAll().stream()
                 .filter(n -> n.getUtenteId().equals(OTHER_ID))
                 .count();
         assertThat(rimasteDiOther).isEqualTo(1);
@@ -142,7 +142,7 @@ class NotificationEndpointsTest {
 
     @Test
     void otherUserCannotMarkOwnersNotificationAsRead() {
-        Long idDiOwner = notificaRepository.findAll().stream()
+        Long idDiOwner = notificationRepository.findAll().stream()
                 .filter(n -> n.getUtenteId().equals(OWNER_ID))
                 .findFirst().orElseThrow().getId();
 

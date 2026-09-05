@@ -37,7 +37,7 @@ class MeControllerTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private UserRepository utenteRepository;
+    private UserRepository userRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -49,7 +49,7 @@ class MeControllerTest {
 
     @BeforeEach
     void setUp() {
-        utenteRepository.deleteAll();
+        userRepository.deleteAll();
 
         owner = new User();
         owner.setEmail("me-owner@test.it");
@@ -58,7 +58,7 @@ class MeControllerTest {
         owner.setNome("Me Owner");
         owner.setRuolo(Role.USER);
         owner.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(owner);
+        userRepository.save(owner);
 
         other = new User();
         other.setEmail("me-other@test.it");
@@ -67,7 +67,7 @@ class MeControllerTest {
         other.setNome("Me Other");
         other.setRuolo(Role.USER);
         other.setDataRegistrazione(LocalDateTime.now());
-        utenteRepository.save(other);
+        userRepository.save(other);
 
         tokenOwner = login("me-owner@test.it", "owner-password");
         tokenOther = login("me-other@test.it", "other-password");

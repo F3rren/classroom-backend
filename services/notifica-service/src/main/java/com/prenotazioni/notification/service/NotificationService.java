@@ -19,138 +19,138 @@ public class NotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
 
-    private final NotificationRepository notificaRepository;
+    private final NotificationRepository notificationRepository;
 
-    NotificationService(NotificationRepository notificaRepository) {
-        this.notificaRepository = notificaRepository;
+    NotificationService(NotificationRepository notificationRepository) {
+        this.notificationRepository = notificationRepository;
     }
 
-    public List<Notification> getNotificheByUtente(Long utenteId) {
-        logger.debug("INIZIO - Recupero notifiche per utente ID: {}", utenteId);
-        List<Notification> notifiche = notificaRepository.findByUtenteIdOrderByDataCreazioneDesc(utenteId);
-        logger.debug("FINE - Recuperate {} notifiche per utente ID: {}", notifiche.size(), utenteId);
+    public List<Notification> getNotificationsByUser(Long userId) {
+        logger.debug("INIZIO - Recupero notifiche per utente ID: {}", userId);
+        List<Notification> notifiche = notificationRepository.findByUtenteIdOrderByDataCreazioneDesc(userId);
+        logger.debug("FINE - Recuperate {} notifiche per utente ID: {}", notifiche.size(), userId);
         return notifiche;
     }
 
-    public List<Notification> getNotificheNonLetteByUtente(Long utenteId) {
-        logger.debug("INIZIO - Recupero notifiche non lette per utente ID: {}", utenteId);
-        List<Notification> notifiche = notificaRepository.findByUtenteIdAndLettaFalseOrderByDataCreazioneDesc(utenteId);
-        logger.debug("FINE - Recuperate {} notifiche non lette per utente ID: {}", notifiche.size(), utenteId);
+    public List<Notification> getUnreadNotificationsByUser(Long userId) {
+        logger.debug("INIZIO - Recupero notifiche non lette per utente ID: {}", userId);
+        List<Notification> notifiche = notificationRepository.findByUtenteIdAndLettaFalseOrderByDataCreazioneDesc(userId);
+        logger.debug("FINE - Recuperate {} notifiche non lette per utente ID: {}", notifiche.size(), userId);
         return notifiche;
     }
 
-    public Long getCountNotificheNonLette(Long utenteId) {
-        logger.debug("INIZIO - Conteggio notifiche non lette per utente ID: {}", utenteId);
-        Long count = notificaRepository.countByUtenteIdAndLettaFalse(utenteId);
-        logger.debug("FINE - Trovate {} notifiche non lette per utente ID: {}", count, utenteId);
+    public Long getUnreadNotificationCount(Long userId) {
+        logger.debug("INIZIO - Conteggio notifiche non lette per utente ID: {}", userId);
+        Long count = notificationRepository.countByUtenteIdAndLettaFalse(userId);
+        logger.debug("FINE - Trovate {} notifiche non lette per utente ID: {}", count, userId);
         return count;
     }
 
-    public Notification createNotifica(Long utenteId, String tipo, String titolo, String messaggio) {
-        logger.debug("INIZIO - Creazione notifica per utente ID: {}, Tipo: {}, Titolo: {}", utenteId, tipo, titolo);
-        Notification notifica = new Notification();
-        notifica.setUtenteId(utenteId);
-        notifica.setTipo(tipo);
-        notifica.setTitolo(titolo);
-        notifica.setMessaggio(messaggio);
-        notifica.setDataCreazione(LocalDateTime.now());
-        notifica.setLetta(false);
+    public Notification createNotification(Long userId, String tipo, String titolo, String message) {
+        logger.debug("INIZIO - Creazione notifica per utente ID: {}, Tipo: {}, Titolo: {}", userId, tipo, titolo);
+        Notification notification = new Notification();
+        notification.setUtenteId(userId);
+        notification.setTipo(tipo);
+        notification.setTitolo(titolo);
+        notification.setMessaggio(message);
+        notification.setDataCreazione(LocalDateTime.now());
+        notification.setLetta(false);
         
-        Notification savedNotifica = notificaRepository.save(notifica);
+        Notification savedNotifica = notificationRepository.save(notification);
         logger.debug("FINE - Notifica creata con successo con ID: {}", savedNotifica.getId());
         return savedNotifica;
     }
 
-    public Notification createNotificaCancellazionePrenotazione(Long utenteId, Long prenotazioneId, 
+    public Notification createBookingCancelledNotification(Long userId, Long bookingId, 
             String nomeStanza, String adminNome, String dataPrenotazione, String oraInizio, String oraFine, String motivo) {
         
-        logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", utenteId, prenotazioneId);
+        logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", userId, bookingId);
 
         String titolo = "Cancellazione Prenotazione: " + nomeStanza;
-        String messaggio;
+        String message;
 
         if (adminNome != null) {
-            messaggio = String.format(
+            message = String.format(
                 "La tua prenotazione per la stanza '%s' il %s dalle %s alle %s è stata cancellata dall'amministratore %s.",
                 nomeStanza, dataPrenotazione, oraInizio, oraFine, adminNome
             );
             if (motivo != null && !motivo.trim().isEmpty()) {
-                messaggio += " Motivo: " + motivo;
+                message += " Motivo: " + motivo;
             }
         } else {
-            messaggio = String.format(
+            message = String.format(
                 "Hai annullato la tua prenotazione per la stanza '%s' il %s dalle %s alle %s.",
                 nomeStanza, dataPrenotazione, oraInizio, oraFine
             );
         }
         
-        Notification notifica = createNotifica(utenteId, "cancellazione", titolo, messaggio);
+        Notification notification = createNotification(userId, "cancellazione", titolo, message);
 
         // Queste quattro colonne esistevano gia' sull'entita' ma NESSUNO le valorizzava:
         // erano permanentemente null da prima della separazione in servizi. Sono le uniche
         // che permettono al frontend di collegare la notifica alla prenotazione senza
         // interpretare il testo del messaggio, quindi vanno riempite.
-        notifica.setPrenotazioneId(prenotazioneId);
-        notifica.setNomeStanza(nomeStanza);
-        notifica.setAdminNome(adminNome);
-        notifica.setDataPrenotazione(componiIstante(dataPrenotazione, oraInizio));
-        notifica = notificaRepository.save(notifica);
-        logger.debug("FINE - Notifica di cancellazione creata con ID: {}", notifica.getId());
-        return notifica;
+        notification.setPrenotazioneId(bookingId);
+        notification.setNomeStanza(nomeStanza);
+        notification.setAdminNome(adminNome);
+        notification.setDataPrenotazione(componiIstante(dataPrenotazione, oraInizio));
+        notification = notificationRepository.save(notification);
+        logger.debug("FINE - Notifica di cancellazione creata con ID: {}", notification.getId());
+        return notification;
     }
 
-    public Optional<Notification> getNotificaById(Long notificaId) {
-        logger.debug("INIZIO - Recupero notifica per ID: {}", notificaId);
-        Optional<Notification> notifica = notificaRepository.findById(notificaId);
-        if (notifica.isPresent()) {
-            logger.debug("FINE - Notifica trovata con ID: {}", notificaId);
+    public Optional<Notification> getNotificationById(Long notificationId) {
+        logger.debug("INIZIO - Recupero notifica per ID: {}", notificationId);
+        Optional<Notification> notification = notificationRepository.findById(notificationId);
+        if (notification.isPresent()) {
+            logger.debug("FINE - Notifica trovata con ID: {}", notificationId);
         } else {
-            logger.warn("FINE - Notifica non trovata con ID: {}", notificaId);
+            logger.warn("FINE - Notifica non trovata con ID: {}", notificationId);
         }
-        return notifica;
+        return notification;
     }
 
-    public Optional<Notification> markAsRead(Long notificaId, Long utenteId) {
-        logger.debug("INIZIO - Tentativo di segnare notifica ID: {} come letta per utente ID: {}", notificaId, utenteId);
-        Optional<Notification> notificaOpt = notificaRepository.findById(notificaId);
+    public Optional<Notification> markAsRead(Long notificationId, Long userId) {
+        logger.debug("INIZIO - Tentativo di segnare notifica ID: {} come letta per utente ID: {}", notificationId, userId);
+        Optional<Notification> notificationOpt = notificationRepository.findById(notificationId);
         
-        if (notificaOpt.isPresent()) {
-            Notification notifica = notificaOpt.get();
+        if (notificationOpt.isPresent()) {
+            Notification notification = notificationOpt.get();
             // Verifica che la notifica appartenga all'utente corretto
-            if (notifica.getUtenteId().equals(utenteId)) {
-                notifica.setLetta(true);
-                Notification updatedNotifica = notificaRepository.save(notifica);
-                logger.debug("FINE - Notifica ID: {} segnata come letta.", notificaId);
+            if (notification.getUtenteId().equals(userId)) {
+                notification.setLetta(true);
+                Notification updatedNotifica = notificationRepository.save(notification);
+                logger.debug("FINE - Notifica ID: {} segnata come letta.", notificationId);
                 return Optional.of(updatedNotifica);
             } else {
-                logger.warn("FINE - Tentativo fallito. L'utente ID: {} non è autorizzato a modificare la notifica ID: {}", utenteId, notificaId);
+                logger.warn("FINE - Tentativo fallito. L'utente ID: {} non è autorizzato a modificare la notifica ID: {}", userId, notificationId);
                 return Optional.empty(); // Utente non autorizzato
             }
         }
         
-        logger.warn("FINE - Tentativo fallito. Notifica ID: {} non trovata.", notificaId);
+        logger.warn("FINE - Tentativo fallito. Notifica ID: {} non trovata.", notificationId);
         return Optional.empty(); // Notifica non trovata
     }
 
     @Transactional
-    public void markAllAsRead(Long utenteId) {
-        logger.debug("INIZIO - Segna tutte le notifiche come lette per utente ID: {}", utenteId);
-        notificaRepository.segnaTutteComeLette(utenteId);
-        logger.debug("FINE - Tutte le notifiche per utente ID: {} sono state segnate come lette.", utenteId);
+    public void markAllAsRead(Long userId) {
+        logger.debug("INIZIO - Segna tutte le notifiche come lette per utente ID: {}", userId);
+        notificationRepository.segnaTutteComeLette(userId);
+        logger.debug("FINE - Tutte le notifiche per utente ID: {} sono state segnate come lette.", userId);
     }
 
     @Transactional
-    public void deleteNotifica(Long notificaId) {
-        logger.debug("INIZIO - Eliminazione notifica ID: {}", notificaId);
-        notificaRepository.deleteById(notificaId);
-        logger.debug("FINE - Eliminazione completata per notifica ID: {}", notificaId);
+    public void deleteNotification(Long notificationId) {
+        logger.debug("INIZIO - Eliminazione notifica ID: {}", notificationId);
+        notificationRepository.deleteById(notificationId);
+        logger.debug("FINE - Eliminazione completata per notifica ID: {}", notificationId);
     }
 
     @Transactional
-    public void deleteReadNotifications(Long utenteId) {
-        logger.debug("INIZIO - Eliminazione notifiche lette per utente ID: {}", utenteId);
-        notificaRepository.deleteByUtenteIdAndLettaTrue(utenteId);
-        logger.debug("FINE - Eliminazione notifiche lette completata per utente ID: {}", utenteId);
+    public void deleteReadNotifications(Long userId) {
+        logger.debug("INIZIO - Eliminazione notifiche lette per utente ID: {}", userId);
+        notificationRepository.deleteByUtenteIdAndLettaTrue(userId);
+        logger.debug("FINE - Eliminazione notifiche lette completata per utente ID: {}", userId);
     }
 
     /**
@@ -161,9 +161,9 @@ public class NotificationService {
      * risultare eliminato mentre le sue notifiche restano.
      */
     @Transactional
-    public void deleteAllByUtente(Long utenteId) {
-        logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", utenteId);
-        notificaRepository.deleteByUtenteId(utenteId);
+    public void deleteAllByUser(Long userId) {
+        logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", userId);
+        notificationRepository.deleteByUtenteId(userId);
     }
 
     /**

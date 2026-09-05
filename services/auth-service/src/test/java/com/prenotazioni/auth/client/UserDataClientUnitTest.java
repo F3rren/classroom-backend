@@ -54,7 +54,7 @@ class UserDataClientUnitTest {
         servizioFinto.expect(requestTo(URI_NOTIFICHE)).andRespond(withSuccess());
         servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
 
-        assertThat(client.eliminaDatiDi(7L)).isEmpty();
+        assertThat(client.deleteDataOf(7L)).isEmpty();
         servizioFinto.verify();
     }
 
@@ -67,7 +67,7 @@ class UserDataClientUnitTest {
         servizioFinto.expect(requestTo(URI_NOTIFICHE)).andRespond(withSuccess());
         servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
 
-        assertThat(client.eliminaDatiDi(7L)).isEmpty();
+        assertThat(client.deleteDataOf(7L)).isEmpty();
         servizioFinto.verify();
     }
 
@@ -78,7 +78,7 @@ class UserDataClientUnitTest {
         servizioFinto.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICHE)).andRespond(withServerError());
         servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
 
-        assertThat(client.eliminaDatiDi(7L)).containsExactly("notifiche");
+        assertThat(client.deleteDataOf(7L)).containsExactly("notifiche");
         servizioFinto.verify();
     }
 
@@ -91,7 +91,7 @@ class UserDataClientUnitTest {
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
         servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
 
-        assertThat(client.eliminaDatiDi(7L)).containsExactly("notifiche");
+        assertThat(client.deleteDataOf(7L)).containsExactly("notifiche");
         servizioFinto.verify();
     }
 
@@ -104,9 +104,9 @@ class UserDataClientUnitTest {
         servizioFinto.expect(ExpectedCount.once(), requestTo(URI_PRENOTAZIONI))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
-        List<String> falliti = client.eliminaDatiDi(7L);
+        List<String> failed = client.deleteDataOf(7L);
 
-        assertThat(falliti).containsExactly("notifiche", "prenotazioni");
+        assertThat(failed).containsExactly("notifiche", "prenotazioni");
         servizioFinto.verify();
     }
 
@@ -121,7 +121,7 @@ class UserDataClientUnitTest {
                 .andRespond(withSuccess());
         servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
 
-        assertThat(client.eliminaDatiDi(7L)).isEmpty();
+        assertThat(client.deleteDataOf(7L)).isEmpty();
         servizioFinto.verify();
     }
 }

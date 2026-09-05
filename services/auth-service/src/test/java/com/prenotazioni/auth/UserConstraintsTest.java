@@ -59,10 +59,10 @@ class UserConstraintsTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    private void inserisci(String username, String ruolo) {
+    private void inserisci(String username, String role) {
         jdbc.update("INSERT INTO utenti (username, password, nome, email, ruolo, data_registrazione) "
                         + "VALUES (?, 'hash', 'Nome', ?, ?, now())",
-                username, username + "@test.it", ruolo);
+                username, username + "@test.it", role);
     }
 
     @Test

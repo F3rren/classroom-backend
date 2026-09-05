@@ -37,18 +37,18 @@ class ValidationAndAdminTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private RoomRepository aulaRepository;
+    private RoomRepository roomRepository;
 
     @Autowired
-    private BookingRepository prenotazioneRepository;
+    private BookingRepository bookingRepository;
 
     private String tokenAdmin;
     private String tokenUser;
 
     @BeforeEach
     void setUp() {
-        prenotazioneRepository.deleteAll();
-        aulaRepository.deleteAll();
+        bookingRepository.deleteAll();
+        roomRepository.deleteAll();
 
 
 

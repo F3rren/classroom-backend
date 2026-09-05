@@ -62,7 +62,7 @@ public class AuthController {
      * sotto due id diversi, uno per il controller e uno per il gestore.
      */
     private String generateSessionId() {
-        return RequestCorrelationFilter.corrente();
+        return RequestCorrelationFilter.current();
     }
     
     /**
@@ -131,7 +131,7 @@ public class AuthController {
             // e tenerlo fuori dal proprio account. server.forward-headers-strategy=framework,
             // in application.properties, e' cio' che rende questa riga di nuovo vera.
             String rateLimitKey = httpRequest.getRemoteAddr() + "|" + email;
-            if (attemptLimiter.troppiTentativi(rateLimitKey)) {
+            if (attemptLimiter.tooManyAttempts(rateLimitKey)) {
                 logger.warn("FINE login - Troppi tentativi di login per: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("TOO_MANY_ATTEMPTS",
@@ -179,9 +179,9 @@ public class AuthController {
             }
             
             // Tentativo di login
-            User utente;
+            User user;
             try {
-                utente = authService.login(email, request.getPassword());
+                user = authService.login(email, request.getPassword());
             } catch (Exception e) {
                 logger.error("FINE login - Errore critico durante autenticazione per email: {} | Errore: {}", maskedEmail, e.getMessage(), e);
                 return new ResponseEntity<>(
@@ -194,7 +194,7 @@ public class AuthController {
             }
             
             // Controllo credenziali
-            if (utente == null) {
+            if (user == null) {
                 logger.warn("FINE login - Credenziali non valide per email: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("INVALID_CREDENTIALS", 
@@ -206,7 +206,7 @@ public class AuthController {
             }
             
             // Controllo integrità dati utente
-            if (utente.getId() == null) {
+            if (user.getId() == null) {
                 logger.error("FINE login - Utente trovato ma con dati corrotti: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("USER_DATA_CORRUPTION", 
@@ -220,9 +220,9 @@ public class AuthController {
             // Generazione token JWT
             String token;
             try {
-                token = jwtService.generateToken(utente);
+                token = jwtService.generateToken(user);
                 if (token == null || token.trim().isEmpty()) {
-                    logger.error("FINE login - Token generato è null o vuoto per utente ID: {}", utente.getId());
+                    logger.error("FINE login - Token generato è null o vuoto per utente ID: {}", user.getId());
                     return new ResponseEntity<>(
                         createErrorResponse("TOKEN_GENERATION_FAILED", 
                                           "Token generation failed", 
@@ -232,7 +232,7 @@ public class AuthController {
                     );
                 }
             } catch (Exception e) {
-                logger.error("FINE login - Errore critico durante generazione token per utente ID: {} | Errore: {}", utente.getId(), e.getMessage(), e);
+                logger.error("FINE login - Errore critico durante generazione token per utente ID: {} | Errore: {}", user.getId(), e.getMessage(), e);
                 return new ResponseEntity<>(
                     createErrorResponse("TOKEN_GENERATION_ERROR", 
                                       "Token generation failed", 
@@ -242,12 +242,12 @@ public class AuthController {
                 );
             }
             
-            logger.debug("FINE login - Login effettuato con successo | Utente ID: {} | Username: {} | Ruolo: {}", utente.getId(), 
-                       utente.getUsername() != null ? utente.getUsername() : "N/A",
-                       utente.getRuolo() != null ? utente.getRuolo().getValore() : "USER");
+            logger.debug("FINE login - Login effettuato con successo | Utente ID: {} | Username: {} | Ruolo: {}", user.getId(), 
+                       user.getUsername() != null ? user.getUsername() : "N/A",
+                       user.getRuolo() != null ? user.getRuolo().getValore() : "USER");
             
             // Preparazione dati di risposta (senza informazioni sensibili)
-            LoginPayload authData = new LoginPayload(token, UserSummaryDto.basic(utente), formatTimestamp(LocalDateTime.now()));
+            LoginPayload authData = new LoginPayload(token, UserSummaryDto.basic(user), formatTimestamp(LocalDateTime.now()));
 
             // Response compatibile con il frontend esistente (token duplicato a livello radice)
             LoginResponse response = new LoginResponse("Login effettuato con successo", token, authData, sessionId);

@@ -37,10 +37,10 @@ public class InternalNotificationController {
 
     private static final Logger logger = LoggerFactory.getLogger(InternalNotificationController.class);
 
-    private final NotificationService notificaService;
+    private final NotificationService notificationService;
 
-    InternalNotificationController(NotificationService notificaService) {
-        this.notificaService = notificaService;
+    InternalNotificationController(NotificationService notificationService) {
+        this.notificationService = notificationService;
     }
 
     // L'endpoint POST /cancellazione-prenotazione non esiste piu': quella notifica arriva
@@ -62,9 +62,9 @@ public class InternalNotificationController {
     @DeleteMapping("/utente/{utenteId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Elimina tutte le notifiche di un utente")
-    public ResponseEntity<MessageResponse> eliminaNotificheUtente(@PathVariable Long utenteId) {
-        logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", utenteId);
-        notificaService.deleteAllByUtente(utenteId);
+    public ResponseEntity<MessageResponse> deleteUserNotifications(@PathVariable("utenteId") Long userId) {
+        logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", userId);
+        notificationService.deleteAllByUser(userId);
         return ResponseEntity.ok(new MessageResponse("Notifiche dell'utente eliminate"));
     }
 }

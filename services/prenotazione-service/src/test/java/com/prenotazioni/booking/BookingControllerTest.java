@@ -47,44 +47,44 @@ class BookingControllerTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private RoomRepository aulaRepository;
+    private RoomRepository roomRepository;
 
     @Autowired
-    private BookingRepository prenotazioneRepository;
+    private BookingRepository bookingRepository;
 
     private Long prenotazioneIdDiOwner;
-    private Long aulaId;
+    private Long roomId;
     private String tokenOwner;
     private String tokenOther;
 
     @BeforeEach
     void setUp() {
-        prenotazioneRepository.deleteAll();
-        aulaRepository.deleteAll();
+        bookingRepository.deleteAll();
+        roomRepository.deleteAll();
 
         BookingOwner owner = nuovoUtente(1L, "owner", "Owner Test");
 
         BookingOwner other = nuovoUtente(2L, "other", "Other Test");
 
-        Room aula = new Room();
-        aula.setNome("Aula IT Test");
-        aula.setPiano(1);
-        aula.setCapienza(20);
-        aula.setVirtual(false);
-        aula.setStato(RoomStatus.LIBERA);
-        aulaRepository.save(aula);
-        aulaId = aula.getId();
+        Room room = new Room();
+        room.setNome("Aula IT Test");
+        room.setPiano(1);
+        room.setCapienza(20);
+        room.setVirtual(false);
+        room.setStato(RoomStatus.LIBERA);
+        roomRepository.save(room);
+        roomId = room.getId();
 
-        Booking prenotazione = new Booking();
-        prenotazione.setAula(aula);
-        prenotazione.setUtente(owner);
-        prenotazione.setInizio(LocalDateTime.now().plusDays(1));
-        prenotazione.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
-        prenotazione.setStato(BookingStatus.PRENOTATA);
-        prenotazione.setDescrizione("Riunione privata di owner");
-        prenotazione.setDataCreazione(LocalDateTime.now());
-        prenotazioneRepository.save(prenotazione);
-        prenotazioneIdDiOwner = prenotazione.getId();
+        Booking booking = new Booking();
+        booking.setAula(room);
+        booking.setUtente(owner);
+        booking.setInizio(LocalDateTime.now().plusDays(1));
+        booking.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
+        booking.setStato(BookingStatus.PRENOTATA);
+        booking.setDescrizione("Riunione privata di owner");
+        booking.setDataCreazione(LocalDateTime.now());
+        bookingRepository.save(booking);
+        prenotazioneIdDiOwner = booking.getId();
 
         tokenOwner = TestJwt.perUtente(1L, "owner@test.it", "Owner Test");
         tokenOther = TestJwt.perUtente(2L, "other@test.it", "Other Test");
@@ -179,7 +179,7 @@ class BookingControllerTest {
         HttpHeaders headers = bearer(tokenOwner);
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         Map<String, Object> body = Map.of(
-                "aulaId", aulaId,
+                "aulaId", roomId,
                 "inizio", LocalDateTime.now().plusDays(2).toString(),
                 "fine", LocalDateTime.now().plusDays(2).plusHours(1).toString());
 
@@ -229,7 +229,7 @@ class BookingControllerTest {
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(prenotazioneRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
+        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
                 .isEqualTo(BookingStatus.ANNULLATA);
     }
 
@@ -255,7 +255,7 @@ class BookingControllerTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
         // la prenotazione resta intatta
-        assertThat(prenotazioneRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
+        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
                 .isEqualTo(BookingStatus.PRENOTATA);
     }
 

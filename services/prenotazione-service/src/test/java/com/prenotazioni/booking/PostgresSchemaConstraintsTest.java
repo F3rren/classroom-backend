@@ -89,9 +89,9 @@ class PostgresSchemaConstraintsTest {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
-    @Autowired private RoomRepository aulaRepository;
-    @Autowired private BookingRepository prenotazioneRepository;
-    @Autowired private CourseRepository corsoRepository;
+    @Autowired private RoomRepository roomRepository;
+    @Autowired private BookingRepository bookingRepository;
+    @Autowired private CourseRepository courseRepository;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private Environment env;
 
@@ -102,23 +102,23 @@ class PostgresSchemaConstraintsTest {
      */
     private static final LocalDateTime BASE = LocalDate.now().plusDays(7).atTime(10, 0);
 
-    private BookingOwner utente;
-    private Room aula;
+    private BookingOwner user;
+    private Room room;
 
     @BeforeEach
     void setUp() {
         // Qui lo schema e' creato una volta da Flyway e non viene mai ricreato,
         // quindi l'ordine di cancellazione deve rispettare le foreign key.
-        prenotazioneRepository.deleteAll();
-        corsoRepository.deleteAll();
-        aulaRepository.deleteAll();
+        bookingRepository.deleteAll();
+        courseRepository.deleteAll();
+        roomRepository.deleteAll();
 
         // L'utente non esiste piu' in questo database: la prenotazione conserva solo
         // la sua istantanea. L'id e' un valore qualunque, perche' nessuna chiave esterna
         // lo vincola piu' - ed e' esattamente cio' che la V4 ha reso possibile.
-        utente = new BookingOwner(42L, "pg-user", "Utente Postgres");
+        user = new BookingOwner(42L, "pg-user", "Utente Postgres");
 
-        aula = nuovaAula("Aula Postgres");
+        room = nuovaAula("Aula Postgres");
     }
 
     private Room nuovaAula(String nome) {
@@ -128,19 +128,19 @@ class PostgresSchemaConstraintsTest {
         a.setPiano(1);
         a.setVirtual(false);
         a.setStato(RoomStatus.LIBERA);
-        return aulaRepository.save(a);
+        return roomRepository.save(a);
     }
 
     /** saveAndFlush e non save: altrimenti l'INSERT puo' essere rinviato oltre l'assert. */
-    private Booking salva(Room suAula, LocalDateTime inizio, LocalDateTime fine, BookingStatus stato) {
+    private Booking salva(Room suAula, LocalDateTime inizio, LocalDateTime fine, BookingStatus status) {
         Booking p = new Booking();
         p.setAula(suAula);
-        p.setUtente(utente);
+        p.setUtente(user);
         p.setInizio(inizio);
         p.setFine(fine);
-        p.setStato(stato);
+        p.setStato(status);
         p.setDataCreazione(BASE.minusDays(1));
-        return prenotazioneRepository.saveAndFlush(p);
+        return bookingRepository.saveAndFlush(p);
     }
 
     // ==================== 1. le migrazioni sono state applicate davvero ====================
@@ -198,41 +198,41 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void duePrenotazioniSovrappostePerLaStessaAulaSonoRifiutateDalDatabase() {
-        salva(aula, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
+        salva(room, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
 
-        assertThatThrownBy(() -> salva(aula, BASE.plusHours(1), BASE.plusHours(3), BookingStatus.PRENOTATA))
+        assertThatThrownBy(() -> salva(room, BASE.plusHours(1), BASE.plusHours(3), BookingStatus.PRENOTATA))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("prenotazioni_no_overlap");
     }
 
     @Test
     void prenotazioniConsecutiveSonoAmmesse() {
-        salva(aula, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
+        salva(room, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
 
         // tsrange e' semiaperto: [10,12) e [12,14) non si sovrappongono.
-        assertThatCode(() -> salva(aula, BASE.plusHours(2), BASE.plusHours(4), BookingStatus.PRENOTATA))
+        assertThatCode(() -> salva(room, BASE.plusHours(2), BASE.plusHours(4), BookingStatus.PRENOTATA))
                 .doesNotThrowAnyException();
 
         // e il predicato applicativo concorda
-        assertThat(prenotazioneRepository.findConflittingReservations(
-                aula.getId(), BASE.plusHours(2), BASE.plusHours(4))).hasSize(1);
+        assertThat(bookingRepository.findConflittingReservations(
+                room.getId(), BASE.plusHours(2), BASE.plusHours(4))).hasSize(1);
     }
 
     @Test
     void unaPrenotazioneAnnullataNonBloccaLoStessoIntervallo() {
-        salva(aula, BASE, BASE.plusHours(2), BookingStatus.ANNULLATA);
+        salva(room, BASE, BASE.plusHours(2), BookingStatus.ANNULLATA);
 
         // Prova indirettamente anche che il converter scrive "annullata" minuscolo:
         // il vincolo filtra con WHERE stato <> 'annullata', quindi se il converter
         // scrivesse il nome della costante questo inserimento verrebbe rifiutato.
-        assertThatCode(() -> salva(aula, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA))
+        assertThatCode(() -> salva(room, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void loStessoIntervalloSuAuleDiverseEAmmesso() {
         Room altra = nuovaAula("Aula Postgres 2");
-        salva(aula, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
+        salva(room, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
 
         assertThatCode(() -> salva(altra, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA))
                 .doesNotThrowAnyException();
@@ -255,23 +255,23 @@ class PostgresSchemaConstraintsTest {
             "240, 360, false"   // staccato dopo
     })
     void predicatoApplicativoEVincoloDbConcordano(long daMin, long aMin, boolean conflittoAtteso) {
-        salva(aula, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
+        salva(room, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
 
         LocalDateTime inizio = BASE.plusMinutes(daMin);
         LocalDateTime fine = BASE.plusMinutes(aMin);
 
         boolean conflittoApplicativo =
-                !prenotazioneRepository.findConflittingReservations(aula.getId(), inizio, fine).isEmpty();
+                !bookingRepository.findConflittingReservations(room.getId(), inizio, fine).isEmpty();
         assertThat(conflittoApplicativo)
                 .as("predicato applicativo per [%d,%d)", daMin, aMin)
                 .isEqualTo(conflittoAtteso);
 
         if (conflittoAtteso) {
-            assertThatThrownBy(() -> salva(aula, inizio, fine, BookingStatus.PRENOTATA))
+            assertThatThrownBy(() -> salva(room, inizio, fine, BookingStatus.PRENOTATA))
                     .as("il database deve rifiutare [%d,%d)", daMin, aMin)
                     .isInstanceOf(DataIntegrityViolationException.class);
         } else {
-            assertThatCode(() -> salva(aula, inizio, fine, BookingStatus.PRENOTATA))
+            assertThatCode(() -> salva(room, inizio, fine, BookingStatus.PRENOTATA))
                     .as("il database deve accettare [%d,%d)", daMin, aMin)
                     .doesNotThrowAnyException();
         }
@@ -279,16 +279,16 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void intervalloDiDurataZero_ilDatabaseLoAmmetteMaLApplicazioneNo() {
-        salva(aula, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
+        salva(room, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
 
         // Divergenza reale e documentata: tsrange(t,t) e' vuoto e non si sovrappone
         // mai, quindi il vincolo DB accetta. Il predicato applicativo invece segnala
         // conflitto. E' raggiungibile via HTTP: il controller rifiuta solo fine < inizio,
         // non fine == inizio. A fermarlo e' quindi solo il livello applicativo.
-        assertThat(prenotazioneRepository.findConflittingReservations(
-                aula.getId(), BASE.plusHours(1), BASE.plusHours(1))).isNotEmpty();
+        assertThat(bookingRepository.findConflittingReservations(
+                room.getId(), BASE.plusHours(1), BASE.plusHours(1))).isNotEmpty();
 
-        assertThatCode(() -> salva(aula, BASE.plusHours(1), BASE.plusHours(1), BookingStatus.PRENOTATA))
+        assertThatCode(() -> salva(room, BASE.plusHours(1), BASE.plusHours(1), BookingStatus.PRENOTATA))
                 .doesNotThrowAnyException();
     }
 
@@ -313,7 +313,7 @@ class PostgresSchemaConstraintsTest {
         assertThatThrownBy(() -> jdbc.update(
                 "INSERT INTO prenotazioni (aula_id, utente_id, inizio, fine, stato, data_creazione) "
                         + "VALUES (?, ?, ?, ?, 'pippo', ?)",
-                aula.getId(), utente.getId(),
+                room.getId(), user.getId(),
                 BASE.plusDays(30), BASE.plusDays(30).plusHours(1), BASE))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("prenotazione_stato_check");
@@ -338,7 +338,7 @@ class PostgresSchemaConstraintsTest {
             assertThatCode(() -> jdbc.update(
                     "INSERT INTO prenotazioni (aula_id, utente_id, inizio, fine, stato, data_creazione) "
                             + "VALUES (?, ?, ?, ?, ?, ?)",
-                    aula.getId(), utente.getId(), inizio, inizio.plusHours(1), s.getValore(), BASE))
+                    room.getId(), user.getId(), inizio, inizio.plusHours(1), s.getValore(), BASE))
                     .as("stato prenotazione %s deve essere ammesso", s.getValore())
                     .doesNotThrowAnyException();
         }

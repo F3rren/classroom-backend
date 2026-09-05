@@ -51,20 +51,20 @@ class BookingControllerUnitTest {
 
     private BookingService service;
     private BookingController controller;
-    private AppPrincipal utente;
+    private AppPrincipal user;
     private AppPrincipal admin;
 
     @BeforeEach
     void setUp() {
         service = mock(BookingService.class);
         controller = new BookingController(service);
-        utente = new AppPrincipal(1L, "user@test.it", "m.rossi", "Mario Rossi", "user");
+        user = new AppPrincipal(1L, "user@test.it", "m.rossi", "Mario Rossi", "user");
         admin = new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin");
     }
 
     // ---------- helper ----------
 
-    private BookingRequest richiesta(String inizio, String fine) {
+    private BookingRequest request(String inizio, String fine) {
         BookingRequest r = new BookingRequest();
         r.setAulaId(10L);
         r.setCorsoId(null);
@@ -76,17 +76,17 @@ class BookingControllerUnitTest {
 
     private BookingRequest richiestaValida() {
         LocalDateTime inizio = LocalDateTime.now().plusDays(1).withNano(0);
-        return richiesta(inizio.format(ISO), inizio.plusHours(2).format(ISO));
+        return request(inizio.format(ISO), inizio.plusHours(2).format(ISO));
     }
 
     private Booking prenotazioneFinta() {
-        Room aula = new Room();
-        aula.setId(10L);
-        aula.setNome("Aula Finta");
+        Room room = new Room();
+        room.setId(10L);
+        room.setNome("Aula Finta");
         BookingOwner u = new BookingOwner(1L, "utente", "Utente Test");
         Booking p = new Booking();
         p.setId(99L);
-        p.setAula(aula);
+        p.setAula(room);
         p.setUtente(istantaneaDi(u.getId(), u.getUsername(), u.getNome()));
         p.setInizio(LocalDateTime.now().plusDays(1));
         p.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
@@ -103,7 +103,7 @@ class BookingControllerUnitTest {
 
     @Test
     void prenotaAulaRejectsUnparsableStartDate() {
-        ResponseEntity<?> resp = controller.prenotaAula(richiesta("non-una-data", "2030-01-01T12:00:00"), utente);
+        ResponseEntity<?> resp = controller.bookRoom(request("non-una-data", "2030-01-01T12:00:00"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_START_DATE");
@@ -111,7 +111,7 @@ class BookingControllerUnitTest {
 
     @Test
     void prenotaAulaRejectsUnparsableEndDate() {
-        ResponseEntity<?> resp = controller.prenotaAula(richiesta("2030-01-01T10:00:00", "non-una-data"), utente);
+        ResponseEntity<?> resp = controller.bookRoom(request("2030-01-01T10:00:00", "non-una-data"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_END_DATE");
@@ -119,8 +119,8 @@ class BookingControllerUnitTest {
 
     @Test
     void prenotaAulaRejectsEndBeforeStart() {
-        ResponseEntity<?> resp = controller.prenotaAula(
-                richiesta("2030-01-01T12:00:00", "2030-01-01T10:00:00"), utente);
+        ResponseEntity<?> resp = controller.bookRoom(
+                request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_DATE_RANGE");
@@ -129,8 +129,8 @@ class BookingControllerUnitTest {
     @Test
     void prenotaAulaRejectsDateInThePast() {
         LocalDateTime passato = LocalDateTime.now().minusDays(2).withNano(0);
-        ResponseEntity<?> resp = controller.prenotaAula(
-                richiesta(passato.format(ISO), passato.plusHours(1).format(ISO)), utente);
+        ResponseEntity<?> resp = controller.bookRoom(
+                request(passato.format(ISO), passato.plusHours(1).format(ISO)), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("PAST_DATE");
@@ -141,29 +141,29 @@ class BookingControllerUnitTest {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
-        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BOOKING_CONFLICT", "occupata", "L'aula non e' disponibile."));
+        when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BOOKING_CONFLICT", "occupata", "L'aula non e' disponibile."));
 
-        assertThatThrownBy(() -> controller.prenotaAula(richiestaValida(), utente))
+        assertThatThrownBy(() -> controller.bookRoom(richiestaValida(), user))
                 .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
     void prenotaAulaTranslatesDbConstraintIntoBookingConflict() {
-        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString()))
+        when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
 
         BookingRequest req = richiestaValida();
-        assertThatThrownBy(() -> controller.prenotaAula(req, utente))
+        assertThatThrownBy(() -> controller.bookRoom(req, user))
                 .isInstanceOf(BookingConflictException.class)
                 .satisfies(e -> assertThat(((BookingConflictException) e).getErrorCode()).isEqualTo("BOOKING_CONFLICT"));
     }
 
     @Test
     void prenotaAulaReturns201OnSuccess() {
-        when(service.prenotaAula(anyLong(), any(), any(), any(), any(), anyString()))
+        when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString()))
                 .thenReturn(prenotazioneFinta());
 
-        ResponseEntity<?> resp = controller.prenotaAula(richiestaValida(), utente);
+        ResponseEntity<?> resp = controller.bookRoom(richiestaValida(), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
@@ -172,8 +172,8 @@ class BookingControllerUnitTest {
 
     @Test
     void modificaRejectsUnparsableStartDate() {
-        ResponseEntity<?> resp = controller.modificaPrenotazione(
-                5L, richiesta("boom", "2030-01-01T12:00:00"), utente);
+        ResponseEntity<?> resp = controller.editBooking(
+                5L, request("boom", "2030-01-01T12:00:00"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_START_DATE");
@@ -181,8 +181,8 @@ class BookingControllerUnitTest {
 
     @Test
     void modificaRejectsUnparsableEndDate() {
-        ResponseEntity<?> resp = controller.modificaPrenotazione(
-                5L, richiesta("2030-01-01T10:00:00", "boom"), utente);
+        ResponseEntity<?> resp = controller.editBooking(
+                5L, request("2030-01-01T10:00:00", "boom"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_END_DATE");
@@ -190,8 +190,8 @@ class BookingControllerUnitTest {
 
     @Test
     void modificaRejectsEndBeforeStart() {
-        ResponseEntity<?> resp = controller.modificaPrenotazione(
-                5L, richiesta("2030-01-01T12:00:00", "2030-01-01T10:00:00"), utente);
+        ResponseEntity<?> resp = controller.editBooking(
+                5L, request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_DATE_RANGE");
@@ -200,8 +200,8 @@ class BookingControllerUnitTest {
     @Test
     void modificaRejectsDateInThePast() {
         LocalDateTime passato = LocalDateTime.now().minusDays(2).withNano(0);
-        ResponseEntity<?> resp = controller.modificaPrenotazione(
-                5L, richiesta(passato.format(ISO), passato.plusHours(1).format(ISO)), utente);
+        ResponseEntity<?> resp = controller.editBooking(
+                5L, request(passato.format(ISO), passato.plusHours(1).format(ISO)), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("PAST_DATE");
@@ -212,29 +212,29 @@ class BookingControllerUnitTest {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
-        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "occupata", "L'aula non e' disponibile."));
+        when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "occupata", "L'aula non e' disponibile."));
 
-        assertThatThrownBy(() -> controller.modificaPrenotazione(5L, richiestaValida(), utente))
+        assertThatThrownBy(() -> controller.editBooking(5L, richiestaValida(), user))
                 .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
     void modificaTranslatesDbConstraintIntoUpdateConflict() {
-        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
+        when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
 
         BookingRequest req = richiestaValida();
-        assertThatThrownBy(() -> controller.modificaPrenotazione(5L, req, utente))
+        assertThatThrownBy(() -> controller.editBooking(5L, req, user))
                 .isInstanceOf(BookingConflictException.class)
                 .satisfies(e -> assertThat(((BookingConflictException) e).getErrorCode()).isEqualTo("UPDATE_CONFLICT"));
     }
 
     @Test
     void modificaReturns200OnSuccess() {
-        when(service.updatePrenotazione(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
+        when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenReturn(prenotazioneFinta());
 
-        ResponseEntity<?> resp = controller.modificaPrenotazione(5L, richiestaValida(), utente);
+        ResponseEntity<?> resp = controller.editBooking(5L, richiestaValida(), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
@@ -243,7 +243,7 @@ class BookingControllerUnitTest {
 
     @Test
     void bloccaRejectsUnparsableStartDate() {
-        ResponseEntity<?> resp = controller.bloccaAula(richiesta("boom", "2030-01-01T12:00:00"), admin);
+        ResponseEntity<?> resp = controller.blockRoom(request("boom", "2030-01-01T12:00:00"), admin);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_START_DATE");
@@ -251,7 +251,7 @@ class BookingControllerUnitTest {
 
     @Test
     void bloccaRejectsUnparsableEndDate() {
-        ResponseEntity<?> resp = controller.bloccaAula(richiesta("2030-01-01T10:00:00", "boom"), admin);
+        ResponseEntity<?> resp = controller.blockRoom(request("2030-01-01T10:00:00", "boom"), admin);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_END_DATE");
@@ -259,8 +259,8 @@ class BookingControllerUnitTest {
 
     @Test
     void bloccaRejectsEndBeforeStart() {
-        ResponseEntity<?> resp = controller.bloccaAula(
-                richiesta("2030-01-01T12:00:00", "2030-01-01T10:00:00"), admin);
+        ResponseEntity<?> resp = controller.blockRoom(
+                request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), admin);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_DATE_RANGE");
@@ -271,29 +271,29 @@ class BookingControllerUnitTest {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
-        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BLOCK_CONFLICT", "occupata", "L'aula non e' disponibile."));
+        when(service.blockRoom(anyLong(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BLOCK_CONFLICT", "occupata", "L'aula non e' disponibile."));
 
-        assertThatThrownBy(() -> controller.bloccaAula(richiestaValida(), admin))
+        assertThatThrownBy(() -> controller.blockRoom(richiestaValida(), admin))
                 .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
     void bloccaTranslatesDbConstraintIntoBlockConflict() {
-        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString()))
+        when(service.blockRoom(anyLong(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
 
         BookingRequest req = richiestaValida();
-        assertThatThrownBy(() -> controller.bloccaAula(req, admin))
+        assertThatThrownBy(() -> controller.blockRoom(req, admin))
                 .isInstanceOf(BookingConflictException.class)
                 .satisfies(e -> assertThat(((BookingConflictException) e).getErrorCode()).isEqualTo("BLOCK_CONFLICT"));
     }
 
     @Test
     void bloccaReturns201OnSuccess() {
-        when(service.bloccaAula(anyLong(), any(), any(), any(), anyString()))
+        when(service.blockRoom(anyLong(), any(), any(), any(), anyString()))
                 .thenReturn(prenotazioneFinta());
 
-        ResponseEntity<?> resp = controller.bloccaAula(richiestaValida(), admin);
+        ResponseEntity<?> resp = controller.blockRoom(richiestaValida(), admin);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
@@ -308,20 +308,20 @@ class BookingControllerUnitTest {
         // solo le tue". Ora quella duplicazione non esiste: e' il service a decidere, e
         // lancia il conflitto sullo stato. Qui resta a fissare che il controller non
         // reintroduca una propria interpretazione.
-        when(service.annullaPrenotazione(7L, 2L, true))
+        when(service.cancelBooking(7L, 2L, true))
                 .thenThrow(new DomainConflictException("INVALID_STATE", "gia' annullata",
                         "Questa prenotazione non puo' essere annullata nello stato attuale."));
 
-        assertThatThrownBy(() -> controller.annullaPrenotazione(7L, admin))
+        assertThatThrownBy(() -> controller.cancelBooking(7L, admin))
                 .isInstanceOf(DomainConflictException.class);
     }
 
     @Test
     void annullaReturns200ForOwner() {
-        when(service.getPrenotazioneById(7L)).thenReturn(prenotazioneFinta());
-        when(service.annullaPrenotazione(7L, 1L, false)).thenReturn(true);
+        when(service.getBookingById(7L)).thenReturn(prenotazioneFinta());
+        when(service.cancelBooking(7L, 1L, false)).thenReturn(true);
 
-        ResponseEntity<?> resp = controller.annullaPrenotazione(7L, utente);
+        ResponseEntity<?> resp = controller.cancelBooking(7L, user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }

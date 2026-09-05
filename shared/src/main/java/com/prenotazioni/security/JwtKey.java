@@ -33,14 +33,14 @@ public final class JwtKey {
     private JwtKey() {
     }
 
-    public static SecretKey da(String segreto) {
-        if (segreto == null || segreto.isBlank()) {
+    public static SecretKey da(String secret) {
+        if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
                     "jwt.secret non configurato: impostare JWT_SECRET nell'ambiente o in .env");
         }
         // Si porta tutto su base64url, l'alfabeto che il decoder si aspetta. Un segreto
         // gia' in base64url attraversa questa riga immutato.
-        String normalizzato = segreto.trim().replace('+', '-').replace('/', '_');
+        String normalizzato = secret.trim().replace('+', '-').replace('/', '_');
         return Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(normalizzato));
     }
 }

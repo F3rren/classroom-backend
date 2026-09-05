@@ -34,14 +34,14 @@ class JwtVerifierUnitTest {
         assertThat(verifier.validateToken(token)).isTrue();
         assertThat(verifier.getUserIdFromToken(token)).isEqualTo(7L);
         assertThat(verifier.getEmailFromToken(token)).isEqualTo("mario.rossi@example.it");
-        assertThat(verifier.getRuoloFromToken(token)).isEqualTo("user");
+        assertThat(verifier.getRoleFromToken(token)).isEqualTo("user");
     }
 
     @Test
     void leggeIlRuoloAdminDalClaim() {
         String token = TestJwt.perAdmin(1L, "admin@example.it");
 
-        assertThat(verifier.getRuoloFromToken(token)).isEqualTo("admin");
+        assertThat(verifier.getRoleFromToken(token)).isEqualTo("admin");
     }
 
     @Test

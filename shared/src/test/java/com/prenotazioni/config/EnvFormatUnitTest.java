@@ -49,9 +49,9 @@ class EnvFormatUnitTest {
     @Test
     void springLeggeIlFormatoDiCompose() throws IOException {
         // La riga di chiusura: senza questa, l'intera scelta di tenere un solo file cade.
-        try (var contesto = avviaCon("JWT_SECRET=abc123\nSPRING_DATASOURCE_PASSWORD=segreta\n")) {
-            assertThat(contesto.getEnvironment().getProperty("JWT_SECRET")).isEqualTo("abc123");
-            assertThat(contesto.getEnvironment().getProperty("SPRING_DATASOURCE_PASSWORD")).isEqualTo("segreta");
+        try (var context = avviaCon("JWT_SECRET=abc123\nSPRING_DATASOURCE_PASSWORD=segreta\n")) {
+            assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo("abc123");
+            assertThat(context.getEnvironment().getProperty("SPRING_DATASOURCE_PASSWORD")).isEqualTo("segreta");
         }
     }
 
@@ -64,12 +64,12 @@ class EnvFormatUnitTest {
         // questo che il test fissa.
         Path env = cartella.resolve("prova.env");
         Files.writeString(env, "JWT_SECRET=chiave-di-prova\n");
-        try (var contesto = new SpringApplicationBuilder(SoloAmbiente.class)
+        try (var context = new SpringApplicationBuilder(SoloAmbiente.class)
                 .web(WebApplicationType.NONE)
                 .properties("spring.config.import=file:" + env.toAbsolutePath() + "[.properties]",
                             "jwt.secret=${JWT_SECRET}")
                 .run()) {
-            assertThat(contesto.getEnvironment().getProperty("jwt.secret")).isEqualTo("chiave-di-prova");
+            assertThat(context.getEnvironment().getProperty("jwt.secret")).isEqualTo("chiave-di-prova");
         }
     }
 
@@ -78,9 +78,9 @@ class EnvFormatUnitTest {
         // I segreti veri sono base64: contengono + / = e possono finire con del padding.
         // Nessuno di questi ha significato speciale in un file properties, ma "nessuno di
         // questi" e' un'affermazione che va verificata, non ricordata.
-        String segreto = "aB3+xY/9zQ==";
-        try (var contesto = avviaCon("JWT_SECRET=" + segreto + "\n")) {
-            assertThat(contesto.getEnvironment().getProperty("JWT_SECRET")).isEqualTo(segreto);
+        String secret = "aB3+xY/9zQ==";
+        try (var context = avviaCon("JWT_SECRET=" + secret + "\n")) {
+            assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo(secret);
         }
     }
 
@@ -90,8 +90,8 @@ class EnvFormatUnitTest {
         // dice di non usare virgolette: Compose le toglie, Java le tiene. Il test non la
         // corregge - la DOCUMENTA, perche' un giorno qualcuno virgoletta un segreto e il
         // sintomo sara' un token che non valida, senza niente che spieghi perche'.
-        try (var contesto = avviaCon("JWT_SECRET=\"virgolettato\"\n")) {
-            assertThat(contesto.getEnvironment().getProperty("JWT_SECRET"))
+        try (var context = avviaCon("JWT_SECRET=\"virgolettato\"\n")) {
+            assertThat(context.getEnvironment().getProperty("JWT_SECRET"))
                     .isEqualTo("\"virgolettato\"")
                     .isNotEqualTo("virgolettato");
         }
@@ -102,12 +102,12 @@ class EnvFormatUnitTest {
         // In container il .env non c'e': i valori arrivano gia' come variabili d'ambiente,
         // iniettate da Compose. L'import e' "optional:" proprio per questo, e se cosi' non
         // fosse i quattro servizi non partirebbero affatto.
-        try (var contesto = new SpringApplicationBuilder(SoloAmbiente.class)
+        try (var context = new SpringApplicationBuilder(SoloAmbiente.class)
                 .web(WebApplicationType.NONE)
                 .properties("spring.config.import=optional:file:"
                         + cartella.resolve("inesistente.env").toAbsolutePath() + "[.properties]")
                 .run()) {
-            assertThat(contesto.isActive()).isTrue();
+            assertThat(context.isActive()).isTrue();
         }
     }
 }

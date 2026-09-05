@@ -20,20 +20,20 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
 
-    private final UserRepository utenteRepository;
+    private final UserRepository userRepository;
 
     private final PasswordEncoder passwordEncoder;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
-    AuthService(UserRepository utenteRepository, PasswordEncoder passwordEncoder) {
-        this.utenteRepository = utenteRepository;
+    AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     public User login(String email, String password) {
-        User utente = utenteRepository.findByEmail(email);
-        if (utente == null || !passwordEncoder.matches(password, utente.getPassword())) {
+        User user = userRepository.findByEmail(email);
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
             // WARN e non INFO: un login fallito e' un segnale di sicurezza (brute-force,
             // credenziali compromesse) e deve restare visibile anche alzando il livello.
             logger.warn("Login fallito - credenziali non valide per {}", LogSanitizer.maskEmail(email));
@@ -42,15 +42,15 @@ public class AuthService {
             // dedurre nulla. E' il null AMBIGUO il problema, non il null in se'.
             return null;
         }
-        utente.setUltimoAccesso(LocalDateTime.now());
-        utenteRepository.save(utente);
-        logger.info("Login riuscito - utenteId={} ({})", utente.getId(), LogSanitizer.maskEmail(email));
-        return utente;
+        user.setUltimoAccesso(LocalDateTime.now());
+        userRepository.save(user);
+        logger.info("Login riuscito - utenteId={} ({})", user.getId(), LogSanitizer.maskEmail(email));
+        return user;
     }
 
     public User register(CreateUserRequest request) {
         // Controlla se email o username sono già registrati
-        if (utenteRepository.findByEmail(request.getEmail()) != null) {
+        if (userRepository.findByEmail(request.getEmail()) != null) {
             // Il codice resta USER_ALREADY_EXISTS, gia' esposto e veritiero. A cambiare e'
             // il messaggio: prima non diceva QUALE dei due campi fosse in conflitto, e chi
             // lo leggeva non sapeva cosa correggere.
@@ -58,40 +58,40 @@ public class AuthService {
                     "Email already registered",
                     "Questa email e' gia' associata a un altro utente.");
         }
-        if (utenteRepository.findByUsername(request.getUsername()) != null) {
+        if (userRepository.findByUsername(request.getUsername()) != null) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
                     "Username already registered: " + request.getUsername(),
                     "Questo username e' gia' in uso.");
         }
-        User utente = new User();
-        utente.setEmail(request.getEmail());
-        utente.setNome(request.getNome());
-        utente.setPassword(passwordEncoder.encode(request.getPassword()));
-        utente.setRuolo(Role.da(request.getRuolo()));
-        utente.setUsername(request.getUsername());
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setNome(request.getNome());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRuolo(Role.da(request.getRuolo()));
+        user.setUsername(request.getUsername());
         
         // Imposta la data di registrazione (non modificabile)
-        utente.setDataRegistrazione(LocalDateTime.now());
+        user.setDataRegistrazione(LocalDateTime.now());
         // ultimoAccesso viene aggiornato solo al login
-        User salvato = utenteRepository.save(utente);
-        logger.info("Utente creato - utenteId={} ({})", salvato.getId(), LogSanitizer.maskEmail(salvato.getEmail()));
-        return salvato;
+        User saved = userRepository.save(user);
+        logger.info("Utente creato - utenteId={} ({})", saved.getId(), LogSanitizer.maskEmail(saved.getEmail()));
+        return saved;
     }
 
     public List<User> getAllUsers() {
-        List<User> utenti = utenteRepository.findAll();
+        List<User> utenti = userRepository.findAll();
         logger.debug("Elenco utenti recuperato - totale={}", utenti.size());
         return utenti;
     }
 
-    public User updateUtente(Long id, UpdateUserRequest request) {
-        User utente = utenteRepository.findById(id).orElse(null);
-        if (utente == null) {
+    public User updateUser(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) {
             throw ResourceNotFoundException.perId("Utente", "USER_NOT_FOUND", id);
         }
 
         // Controlla se la nuova email o username sono già in uso da un altro utente
-        User utenteConEmail = utenteRepository.findByEmail(request.getEmail());
+        User utenteConEmail = userRepository.findByEmail(request.getEmail());
         if (utenteConEmail != null && !utenteConEmail.getId().equals(id)) {
             // 409 e non piu' 404: prima questo caso tornava lo stesso null di "utente
             // inesistente", e la risposta diceva "utente non trovato" di un utente che
@@ -100,32 +100,32 @@ public class AuthService {
                     "Email already used by another utente",
                     "Questa email e' gia' associata a un altro utente.");
         }
-        User utenteConUsername = utenteRepository.findByUsername(request.getUsername());
+        User utenteConUsername = userRepository.findByUsername(request.getUsername());
         if (utenteConUsername != null && !utenteConUsername.getId().equals(id)) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
                     "Username already used by another utente",
                     "Questo username e' gia' in uso.");
         }
         // Aggiorna i campi modificabili
-        utente.setEmail(request.getEmail());
-        utente.setNome(request.getNome());
+        user.setEmail(request.getEmail());
+        user.setNome(request.getNome());
         
         // Aggiorna la password solo se ne viene fornita una nuova
         boolean passwordCambiata = request.getPassword() != null && !request.getPassword().trim().isEmpty();
         if (passwordCambiata) {
-            utente.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
         
         // Il formato del ruolo (admin|user, case-insensitive) e' gia' garantito da @Pattern
         // sul DTO; qui resta solo la normalizzazione e il fallback per un ruolo non fornito.
-        Role ruolo = request.getRuolo() != null ? Role.da(request.getRuolo()) : utente.getRuolo();
-        utente.setRuolo(ruolo);
-        utente.setUsername(request.getUsername());
+        Role role = request.getRuolo() != null ? Role.da(request.getRuolo()) : user.getRuolo();
+        user.setRuolo(role);
+        user.setUsername(request.getUsername());
         
         // NON modifichiamo dataRegistrazione - rimane quella originale
         // ultimoAccesso viene aggiornato solo al login
-        User salvato = utenteRepository.save(utente);
+        User saved = userRepository.save(user);
         logger.info("Utente aggiornato - utenteId={} passwordCambiata={}", id, passwordCambiata);
-        return salvato;
+        return saved;
     }
 }

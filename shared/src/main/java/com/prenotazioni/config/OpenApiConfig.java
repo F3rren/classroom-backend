@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     @Bean
-    public OpenAPI prenotazioniOpenAPI() {
+    public OpenAPI bookingsOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
                         .title("Prenotazioni Aule API")

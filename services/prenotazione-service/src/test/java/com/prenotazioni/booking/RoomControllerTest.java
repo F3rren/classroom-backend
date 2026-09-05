@@ -37,13 +37,13 @@ class RoomControllerTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private RoomRepository aulaRepository;
+    private RoomRepository roomRepository;
 
     @Autowired
-    private BookingRepository prenotazioneRepository;
+    private BookingRepository bookingRepository;
 
     private String token;
-    private Long aulaId;
+    private Long roomId;
 
     @BeforeEach
     void setUp() {
@@ -54,18 +54,18 @@ class RoomControllerTest {
         // perche' @DirtiesContext ricostruiva il contesto - e con esso l'H2 in memoria -
         // dopo ogni classe: le righe della classe precedente non esistevano mai. Tolto
         // quello, il difetto e' venuto fuori subito, ed era li' da sempre.
-        prenotazioneRepository.deleteAll();
-        aulaRepository.deleteAll();
+        bookingRepository.deleteAll();
+        roomRepository.deleteAll();
 
         BookingOwner user = new BookingOwner(1L, "room-user", "Room User");
 
-        Room aula = new Room();
-        aula.setNome("Aula Room Test");
-        aula.setPiano(3);
-        aula.setCapienza(15);
-        aula.setVirtual(false);
-        aula.setStato(RoomStatus.LIBERA);
-        aulaId = aulaRepository.save(aula).getId();
+        Room room = new Room();
+        room.setNome("Aula Room Test");
+        room.setPiano(3);
+        room.setCapienza(15);
+        room.setVirtual(false);
+        room.setStato(RoomStatus.LIBERA);
+        roomId = roomRepository.save(room).getId();
 
         token = TestJwt.perUtente(1L, "room-user@test.it", "Room User");
     }
@@ -93,7 +93,7 @@ class RoomControllerTest {
     @Test
     void lAulaPerIdPortaICampiDenormalizzati() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/rooms/" + aulaId, HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
+                "/api/rooms/" + roomId, HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
@@ -113,7 +113,7 @@ class RoomControllerTest {
     @Test
     void ilDettaglioDiUnAulaNonEAvvoltoNellaBusta() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/rooms/" + aulaId + "/details", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
+                "/api/rooms/" + roomId + "/details", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());

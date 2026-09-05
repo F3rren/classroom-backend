@@ -55,19 +55,19 @@ public class LoginAttemptLimiter {
     }
 
     /** Registra un tentativo e dice se la chiave ha superato il limite. */
-    public boolean troppiTentativi(String chiave) {
+    public boolean tooManyAttempts(String key) {
         long adesso = System.currentTimeMillis();
 
-        Finestra finestra = finestre.get(chiave);
+        Finestra finestra = finestre.get(key);
         if (finestra == null) {
             if (finestre.size() >= tettoChiavi) {
-                ripulisci(adesso);
+                purgeExpired(adesso);
             }
             if (finestre.size() >= tettoChiavi) {
                 avvisaSaltuariamente(adesso);
                 return false;
             }
-            finestra = finestre.computeIfAbsent(chiave, k -> new Finestra(adesso));
+            finestra = finestre.computeIfAbsent(key, k -> new Finestra(adesso));
         }
 
         synchronized (finestra) {
@@ -87,7 +87,7 @@ public class LoginAttemptLimiter {
      * Visibile ai test di proposito: la pulizia e' la ragione d'essere della classe, e va
      * potuta verificare senza aspettare che accada da sola.
      */
-    void ripulisci(long adesso) {
+    void purgeExpired(long adesso) {
         int prima = finestre.size();
         finestre.entrySet().removeIf(voce -> {
             Finestra f = voce.getValue();
@@ -102,7 +102,7 @@ public class LoginAttemptLimiter {
     }
 
     /** Quante chiavi sono in memoria adesso. Serve ai test e a un'eventuale metrica. */
-    int chiaviInMemoria() {
+    int trackedKeys() {
         return finestre.size();
     }
 

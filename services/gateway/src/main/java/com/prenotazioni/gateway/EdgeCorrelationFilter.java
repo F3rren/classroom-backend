@@ -28,12 +28,12 @@ public class EdgeCorrelationFilter implements GlobalFilter, Ordered {
     static final String INTESTAZIONE = "X-Request-Id";
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain catena) {
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String ricevuto = exchange.getRequest().getHeaders().getFirst(INTESTAZIONE);
         // Si rispetta quella in arrivo: se un giorno davanti al gateway ci fosse un
         // proxy o un frontend che gia' traccia le chiamate, sovrascriverla romperebbe
         // proprio la catena che questo filtro esiste per tenere insieme.
-        String id = (ricevuto == null || ricevuto.isBlank()) ? genera() : ricevuto;
+        String id = (ricevuto == null || ricevuto.isBlank()) ? generate() : ricevuto;
 
         ServerWebExchange conId = exchange.mutate()
                 .request(r -> r.headers(h -> h.set(INTESTAZIONE, id)))
@@ -50,7 +50,7 @@ public class EdgeCorrelationFilter implements GlobalFilter, Ordered {
             return Mono.empty();
         });
 
-        return catena.filter(conId);
+        return chain.filter(conId);
     }
 
     /**
@@ -61,17 +61,17 @@ public class EdgeCorrelationFilter implements GlobalFilter, Ordered {
      * mappatura, prima della catena. Rileggere l'intestazione originale copre proprio
      * quel buco, e conserva l'id del chiamante anche su un percorso inesistente.
      */
-    static String dellaRichiesta(ServerWebExchange exchange) {
+    static String ofRequest(ServerWebExchange exchange) {
         Object attributo = exchange.getAttribute(INTESTAZIONE);
-        if (attributo instanceof String salvato && !salvato.isBlank()) {
-            return salvato;
+        if (attributo instanceof String saved && !saved.isBlank()) {
+            return saved;
         }
         String ricevuto = exchange.getRequest().getHeaders().getFirst(INTESTAZIONE);
-        return (ricevuto == null || ricevuto.isBlank()) ? genera() : ricevuto;
+        return (ricevuto == null || ricevuto.isBlank()) ? generate() : ricevuto;
     }
 
     /** Lo stesso formato dei servizi a valle: un id che cambia forma a meta' strada confonde. */
-    static String genera() {
+    static String generate() {
         return "REQ_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 

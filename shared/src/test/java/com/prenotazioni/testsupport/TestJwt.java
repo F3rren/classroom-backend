@@ -62,21 +62,21 @@ public final class TestJwt {
         return email == null ? null : email.split("@")[0];
     }
 
-    private static String firma(Long id, String email, String nome, String ruolo) {
-        return costruisci(id, email, nome, ruolo, new Date(System.currentTimeMillis() + DURATA_MS));
+    private static String firma(Long id, String email, String nome, String role) {
+        return costruisci(id, email, nome, role, new Date(System.currentTimeMillis() + DURATA_MS));
     }
 
-    private static String costruisci(Long id, String email, String nome, String ruolo, Date scadenza) {
-        SecretKey chiave = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(SEGRETO_DI_TEST));
+    private static String costruisci(Long id, String email, String nome, String role, Date scadenza) {
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(SEGRETO_DI_TEST));
         return Jwts.builder()
                 .subject(email)
                 .claim("id", id)
                 .claim("nome", nome)
                 .claim("username", nome == null ? null : nome.toLowerCase().replace(" ", "."))
-                .claim("ruolo", ruolo)
+                .claim("ruolo", role)
                 .issuedAt(new Date())
                 .expiration(scadenza)
-                .signWith(chiave)
+                .signWith(key)
                 .compact();
     }
 }

@@ -51,16 +51,16 @@ public class AdminUserController {
     private static final Logger logger = LoggerFactory.getLogger(AdminUserController.class);
 
     private final AuthService authService;
-    private final UserService utenteService;
+    private final UserService userService;
 
-    AdminUserController(AuthService authService, UserService utenteService) {
+    AdminUserController(AuthService authService, UserService userService) {
         this.authService = authService;
-        this.utenteService = utenteService;
+        this.userService = userService;
     }
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return RequestCorrelationFilter.corrente();
+        return RequestCorrelationFilter.current();
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {
@@ -77,12 +77,12 @@ public class AdminUserController {
         String sessionId = generateSessionId();
         logger.debug("register - creazione utente da admin | {} | ruolo={}", LogSanitizer.maskEmail(request.getEmail()), request.getRuolo());
 
-        User utente = authService.register(request);
+        User user = authService.register(request);
 
-        logger.info("Utente creato da admin - utenteId={} ruolo={}", utente.getId(), utente.getRuolo());
+        logger.info("Utente creato da admin - utenteId={} ruolo={}", user.getId(), user.getRuolo());
 
         return new ResponseEntity<>(
-            createSuccessResponse("Utente registrato con successo dall'amministratore", new UserRegisterAck(utente), sessionId),
+            createSuccessResponse("Utente registrato con successo dall'amministratore", new UserRegisterAck(user), sessionId),
             HttpStatus.CREATED
         );
     }
@@ -107,7 +107,7 @@ public class AdminUserController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Modifica un utente esistente (solo admin)")
-    public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUtente(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(@PathVariable("id") Long id, @Valid @RequestBody UpdateUserRequest request) {
         String sessionId = generateSessionId();
         logger.debug("updateUtente - utenteId={} ruolo={}", id, request.getRuolo());
 
@@ -120,7 +120,7 @@ public class AdminUserController {
             );
         }
 
-        User updated = authService.updateUtente(id, request);
+        User updated = authService.updateUser(id, request);
         logger.info("Utente modificato da admin - utenteId={}", updated.getId());
 
         return new ResponseEntity<>(
@@ -131,7 +131,7 @@ public class AdminUserController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Elimina un utente e i suoi dati (solo admin)")
-    public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUtente(@PathVariable Long id) {
+    public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUser(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO deleteUtente - ID Utente: {}", id);
 
@@ -144,7 +144,7 @@ public class AdminUserController {
             );
         }
 
-        if (utenteService.findById(id) == null) {
+        if (userService.findById(id) == null) {
             logger.warn("FINE deleteUtente - Utente non trovato - ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("USER_NOT_FOUND", "Utente not found or not deletable",
@@ -155,7 +155,7 @@ public class AdminUserController {
 
         // Elimina in cascata notifiche e prenotazioni dell'utente prima dell'utente stesso
         // (in un'unica transazione, cosi' non si rischia di lasciare righe orfane o un FK violation non gestito)
-        utenteService.deleteById(id);
+        userService.deleteById(id);
 
         logger.debug("FINE deleteUtente - Utente eliminato con successo - ID: {}", id);
         return new ResponseEntity<>(

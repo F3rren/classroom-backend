@@ -44,15 +44,15 @@ public class UserDataClient {
 
     private final RestClient notifiche;
     private final RestClient prenotazioni;
-    private final HttpServletRequest richiestaCorrente;
+    private final HttpServletRequest currentRequest;
 
     UserDataClient(RestClient.Builder builder,
                      @Value("${prenotazioni.notifica-service.url:http://localhost:17104}") String urlNotifiche,
                      @Value("${prenotazioni.prenotazione-service.url:http://localhost:17103}") String urlPrenotazioni,
-                     HttpServletRequest richiestaCorrente) {
+                     HttpServletRequest currentRequest) {
         this.notifiche = builder.clone().baseUrl(urlNotifiche).build();
         this.prenotazioni = builder.clone().baseUrl(urlPrenotazioni).build();
-        this.richiestaCorrente = richiestaCorrente;
+        this.currentRequest = currentRequest;
     }
 
     /**
@@ -63,17 +63,17 @@ public class UserDataClient {
      *         cosa e' rimasto indietro, altrimenti l'unica informazione e' "qualcosa e'
      *         fallito" e chi ripete non sa cosa aspettarsi.
      */
-    public List<String> eliminaDatiDi(Long utenteId) {
-        List<String> falliti = new ArrayList<>();
+    public List<String> deleteDataOf(Long userId) {
+        List<String> failed = new ArrayList<>();
         // Entrambe le chiamate vengono tentate anche se la prima fallisce: fermarsi
         // lascerebbe piu' roba indietro senza dire di piu' a chi legge l'errore.
-        if (!elimina(notifiche, "/api/notifiche/interne/utente/{id}", utenteId, "notifiche")) {
-            falliti.add("notifiche");
+        if (!delete(notifiche, "/api/notifiche/interne/utente/{id}", userId, "notifiche")) {
+            failed.add("notifiche");
         }
-        if (!elimina(prenotazioni, "/api/prenotazioni/interne/utente/{id}", utenteId, "prenotazioni")) {
-            falliti.add("prenotazioni");
+        if (!delete(prenotazioni, "/api/prenotazioni/interne/utente/{id}", userId, "prenotazioni")) {
+            failed.add("prenotazioni");
         }
-        return falliti;
+        return failed;
     }
 
     /**
@@ -91,41 +91,41 @@ public class UserDataClient {
      * I DELETE sono idempotenti, quindi un tentativo che era in realta' riuscito ma la cui
      * risposta si e' persa non fa danni al giro successivo.
      */
-    private boolean elimina(RestClient client, String uri, Long utenteId, String cosa) {
+    private boolean delete(RestClient client, String uri, Long userId, String what) {
         Exception ultima = null;
-        for (int tentativo = 1; tentativo <= TENTATIVI; tentativo++) {
+        for (int attempt = 1; attempt <= TENTATIVI; attempt++) {
             try {
                 client.delete()
-                        .uri(uri, utenteId)
-                        .header(HttpHeaders.AUTHORIZATION, authorizationCorrente())
+                        .uri(uri, userId)
+                        .header(HttpHeaders.AUTHORIZATION, currentAuthorization())
                         // Senza questa riga la catena di correlazione si spezza proprio qui:
                         // i servizi a valle non ricevono l'identificativo, se ne generano uno
                         // nuovo, e un'operazione che attraversa tre servizi finisce nei log
                         // sotto tre chiavi diverse. Cioe' la correlazione funzionerebbe
                         // ovunque tranne dove serve.
-                        .header(RequestCorrelationFilter.INTESTAZIONE, RequestCorrelationFilter.corrente())
+                        .header(RequestCorrelationFilter.INTESTAZIONE, RequestCorrelationFilter.current())
                         .retrieve()
                         .toBodilessEntity();
-                if (tentativo > 1) {
-                    logger.info("{} dell'utenteId={} eliminate al tentativo {}", cosa, utenteId, tentativo);
+                if (attempt > 1) {
+                    logger.info("{} dell'utenteId={} eliminate al tentativo {}", what, userId, attempt);
                 }
                 return true;
             } catch (HttpClientErrorException e) {
                 logger.error("{} dell'utenteId={}: il servizio a valle ha rifiutato la richiesta "
                         + "({}). Non si ritenta: ripetere darebbe lo stesso esito.",
-                        cosa, utenteId, e.getStatusCode());
+                        what, userId, e.getStatusCode());
                 return false;
             } catch (Exception e) {
                 ultima = e;
-                if (tentativo < TENTATIVI) {
-                    attendi(ATTESA_INIZIALE_MS * tentativo);
+                if (attempt < TENTATIVI) {
+                    attendi(ATTESA_INIZIALE_MS * attempt);
                 }
             }
         }
         logger.error("{} dell'utenteId={} non eliminate dopo {} tentativi: l'utente NON viene "
                 + "rimosso, cosi' quelle righe hanno ancora un proprietario e l'operazione "
                 + "resta ripetibile. Causa: {}",
-                cosa, utenteId, TENTATIVI, ultima != null ? ultima.getMessage() : "sconosciuta");
+                what, userId, TENTATIVI, ultima != null ? ultima.getMessage() : "sconosciuta");
         return false;
     }
 
@@ -139,8 +139,8 @@ public class UserDataClient {
         }
     }
 
-    private String authorizationCorrente() {
-        String header = richiestaCorrente.getHeader(HttpHeaders.AUTHORIZATION);
+    private String currentAuthorization() {
+        String header = currentRequest.getHeader(HttpHeaders.AUTHORIZATION);
         return header != null ? header : "";
     }
 }

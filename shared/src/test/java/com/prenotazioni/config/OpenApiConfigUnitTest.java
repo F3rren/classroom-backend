@@ -15,7 +15,7 @@ class OpenApiConfigUnitTest {
 
     @Test
     void theApiDeclaresItsIdentityAndTheBearerScheme() {
-        OpenAPI openAPI = new OpenApiConfig().prenotazioniOpenAPI();
+        OpenAPI openAPI = new OpenApiConfig().bookingsOpenAPI();
 
         assertThat(openAPI.getInfo().getTitle()).isEqualTo("Prenotazioni Aule API");
         assertThat(openAPI.getInfo().getVersion()).isEqualTo("v1");

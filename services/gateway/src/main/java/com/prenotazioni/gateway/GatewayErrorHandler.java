@@ -59,42 +59,42 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
     }
 
     @Override
-    public Mono<Void> handle(ServerWebExchange exchange, Throwable errore) {
+    public Mono<Void> handle(ServerWebExchange exchange, Throwable error) {
         if (exchange.getResponse().isCommitted()) {
             // La risposta e' gia' partita: qui non si puo' piu' fare nulla di utile
             // se non evitare di sovrascriverla a meta'.
-            return Mono.error(errore);
+            return Mono.error(error);
         }
 
-        Esito esito = classifica(errore);
+        Outcome outcome = classifica(error);
         // L'id lo conia EdgeCorrelationFilter all'ingresso, e i servizi a valle lo riusano:
         // un 503 mostrato qui porta cosi' la stessa chiave che l'utente vedrebbe se la
         // richiesta fosse arrivata a destinazione. Il ripiego copre i casi in cui si
         // fallisce prima ancora di entrare in quel filtro.
-        String sessionId = EdgeCorrelationFilter.dellaRichiesta(exchange);
+        String sessionId = EdgeCorrelationFilter.ofRequest(exchange);
         // Su un percorso che non corrisponde a nessuna rotta il 404 nasce prima dei
         // GlobalFilter, quindi qui l'intestazione non l'ha ancora scritta nessuno.
         exchange.getResponse().getHeaders().set(EdgeCorrelationFilter.INTESTAZIONE, sessionId);
 
         // Il percorso e' nel log, non nella risposta: al client non serve e a chi indaga si'.
-        logger.error("{} su {} -> {}: {}", esito.codice,
-                exchange.getRequest().getPath(), esito.stato.value(), errore.toString());
+        logger.error("{} su {} -> {}: {}", outcome.code,
+                exchange.getRequest().getPath(), outcome.status.value(), error.toString());
 
-        exchange.getResponse().setStatusCode(esito.stato);
+        exchange.getResponse().setStatusCode(outcome.status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        DataBuffer corpo = scrivi(exchange, esito, sessionId);
-        return exchange.getResponse().writeWith(Mono.just(corpo));
+        DataBuffer body = scrivi(exchange, outcome, sessionId);
+        return exchange.getResponse().writeWith(Mono.just(body));
     }
 
-    private DataBuffer scrivi(ServerWebExchange exchange, Esito esito, String sessionId) {
+    private DataBuffer scrivi(ServerWebExchange exchange, Outcome outcome, String sessionId) {
         // LinkedHashMap: l'ordine delle chiavi resta quello dell'envelope dei servizi,
         // che rende i due formati confrontabili a occhio nei log e negli strumenti.
         Map<String, Object> envelope = new LinkedHashMap<>();
         envelope.put("success", false);
-        envelope.put("error", esito.codice);
-        envelope.put("message", esito.messaggio);
-        envelope.put("userMessage", esito.messaggioUtente);
+        envelope.put("error", outcome.code);
+        envelope.put("message", outcome.message);
+        envelope.put("userMessage", outcome.userMessage);
         envelope.put("timestamp", LocalDateTime.now().format(FORMATO_API));
         envelope.put("sessionId", sessionId);
 
@@ -117,26 +117,26 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
      * e' 500 e riprovare non serve. Prima erano entrambi 500, e il client non poteva
      * distinguerli.
      */
-    private Esito classifica(Throwable errore) {
-        if (errore instanceof ResponseStatusException rse) {
-            HttpStatus stato = HttpStatus.resolve(rse.getStatusCode().value());
-            if (stato == HttpStatus.NOT_FOUND) {
-                return new Esito(HttpStatus.NOT_FOUND, "NOT_FOUND",
+    private Outcome classifica(Throwable error) {
+        if (error instanceof ResponseStatusException rse) {
+            HttpStatus status = HttpStatus.resolve(rse.getStatusCode().value());
+            if (status == HttpStatus.NOT_FOUND) {
+                return new Outcome(HttpStatus.NOT_FOUND, "NOT_FOUND",
                         "Percorso non instradato",
                         "La risorsa richiesta non esiste.");
             }
-            return new Esito(stato != null ? stato : HttpStatus.INTERNAL_SERVER_ERROR, "GATEWAY_ERROR",
+            return new Outcome(status != null ? status : HttpStatus.INTERNAL_SERVER_ERROR, "GATEWAY_ERROR",
                     "Richiesta rifiutata dal gateway",
                     "La richiesta non e' stata accettata.");
         }
 
-        if (nonRaggiungibile(errore)) {
-            return new Esito(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE",
+        if (nonRaggiungibile(error)) {
+            return new Outcome(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE",
                     "Servizio a valle non raggiungibile",
                     "Il servizio non e' momentaneamente disponibile. Riprova fra qualche istante.");
         }
 
-        return new Esito(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+        return new Outcome(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
                 "Errore interno del gateway",
                 "Si e' verificato un errore imprevisto. Riprova piu' tardi.");
     }
@@ -154,8 +154,8 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
      * Confronto per nome e non per classe: cosi' non serve dipendere dai tipi interni di
      * Netty solo per nominarli.
      */
-    private boolean nonRaggiungibile(Throwable errore) {
-        for (Throwable t = errore; t != null && t.getCause() != t; t = t.getCause()) {
+    private boolean nonRaggiungibile(Throwable error) {
+        for (Throwable t = error; t != null && t.getCause() != t; t = t.getCause()) {
             if (t instanceof ConnectException || t instanceof UnknownHostException) {
                 return true;
             }
@@ -166,6 +166,6 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
         return false;
     }
 
-    private record Esito(HttpStatus stato, String codice, String messaggio, String messaggioUtente) {
+    private record Outcome(HttpStatus status, String code, String message, String userMessage) {
     }
 }

@@ -57,11 +57,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (token != null && jwtVerifier.validateToken(token)) {
             String email = jwtVerifier.getEmailFromToken(token);
             Long id = jwtVerifier.getUserIdFromToken(token);
-            String ruolo = jwtVerifier.getRuoloFromToken(token);
+            String role = jwtVerifier.getRoleFromToken(token);
             String nome = jwtVerifier.getNomeFromToken(token);
             String username = jwtVerifier.getUsernameFromToken(token);
 
-            AppPrincipal principal = new AppPrincipal(id, email, username, nome, ruolo);
+            AppPrincipal principal = new AppPrincipal(id, email, username, nome, role);
 
             // Il prefisso "ROLE_" atteso da hasRole(...) viene da Ruolo.toAuthority(), cosi'
             // non e' piu' ricostruito a mano qui. Un ruolo non riconosciuto non fa fallire la
@@ -69,7 +69,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // sara' la policy di sicurezza a negare l'accesso.
             List<GrantedAuthority> authorities;
             try {
-                Role ruoloTipizzato = Role.da(ruolo);
+                Role ruoloTipizzato = Role.da(role);
                 authorities = ruoloTipizzato != null
                         ? List.of(new SimpleGrantedAuthority(ruoloTipizzato.toAuthority()))
                         : List.of();
@@ -81,7 +81,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
-            logger.debug("JWT Filter - autenticato utenteId={} ruolo={}", id, ruolo);
+            logger.debug("JWT Filter - autenticato utenteId={} ruolo={}", id, role);
         } else if (token != null) {
             // Token presente ma non valido (scaduto, firma errata, manomesso): finora passava
             // in silenzio e la richiesta arrivava non autenticata senza lasciare traccia.

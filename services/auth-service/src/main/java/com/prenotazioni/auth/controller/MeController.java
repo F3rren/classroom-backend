@@ -27,15 +27,15 @@ public class MeController {
 
     private static final Logger logger = LoggerFactory.getLogger(MeController.class);
 
-    private final UserRepository utenteRepository;
+    private final UserRepository userRepository;
 
-    MeController(UserRepository utenteRepository) {
-        this.utenteRepository = utenteRepository;
+    MeController(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return RequestCorrelationFilter.corrente();
+        return RequestCorrelationFilter.current();
     }
 
     @GetMapping
@@ -48,8 +48,8 @@ public class MeController {
         // (rifiuti a livello di filtro sono gestiti da ApiAuthenticationEntryPoint, prima del dispatch).
         String email = authentication.getName().trim().toLowerCase();
 
-        User utente = utenteRepository.findByEmail(email);
-        if (utente == null) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
             logger.warn("getMe - nessun utente in database per {}", LogSanitizer.maskEmail(email));
             return new ResponseEntity<>(
                     ApiEnvelope.error("USER_NOT_FOUND", "Utente not found",
@@ -58,10 +58,10 @@ public class MeController {
             );
         }
 
-        logger.debug("FINE getMe - Profilo utente recuperato con successo | ID: {} | Email: {}", utente.getId(), email);
+        logger.debug("FINE getMe - Profilo utente recuperato con successo | ID: {} | Email: {}", user.getId(), email);
 
         return new ResponseEntity<>(
-                ApiEnvelope.success("Profilo utente recuperato con successo", UserSummaryDto.forProfile(utente), sessionId),
+                ApiEnvelope.success("Profilo utente recuperato con successo", UserSummaryDto.forProfile(user), sessionId),
                 HttpStatus.OK
         );
     }

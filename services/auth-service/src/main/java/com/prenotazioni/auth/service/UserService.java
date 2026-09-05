@@ -15,24 +15,24 @@ public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
-    private final UserRepository utenteRepository;
+    private final UserRepository userRepository;
     
     private final UserDataClient userDataClient;
 
-    UserService(UserRepository utenteRepository, UserDataClient userDataClient) {
-        this.utenteRepository = utenteRepository;
+    UserService(UserRepository userRepository, UserDataClient userDataClient) {
+        this.userRepository = userRepository;
         this.userDataClient = userDataClient;
     }
 
     public User findById(Long id) {
         logger.debug("INIZIO - Ricerca utente per ID: {}", id);
-        User utente = utenteRepository.findById(id).orElse(null);
-        if (utente != null) {
+        User user = userRepository.findById(id).orElse(null);
+        if (user != null) {
             logger.debug("FINE - Utente trovato per ID: {}", id);
         } else {
             logger.warn("FINE - Utente non trovato per ID: {}", id);
         }
-        return utente;
+        return user;
     }
 
     /**
@@ -55,22 +55,22 @@ public class UserService {
     public void deleteById(Long id) {
         logger.debug("INIZIO - Eliminazione utente e dati associati per ID: {}", id);
 
-        List<String> nonEliminati = userDataClient.eliminaDatiDi(id);
-        if (!nonEliminati.isEmpty()) {
-            String cosa = String.join(" e ", nonEliminati);
+        List<String> notDeleted = userDataClient.deleteDataOf(id);
+        if (!notDeleted.isEmpty()) {
+            String what = String.join(" e ", notDeleted);
             logger.error("Utente ID {} NON eliminato: {} non si sono potute cancellare. "
-                    + "L'operazione e' ripetibile e va ripetuta.", id, cosa);
+                    + "L'operazione e' ripetibile e va ripetuta.", id, what);
             // 503 e non 500: dice a chi legge che ripetere ha senso, ed e' l'unica cosa che
             // porta a termine la cancellazione. Con "errore interno del server" ripetere non
             // era la conclusione ovvia, e la meta' fatta restava li'.
             throw new ServiceUnavailableException("USER_DELETE_INCOMPLETE",
-                    "Could not delete " + cosa + " of utente " + id,
-                    "L'utente non e' stato eliminato perche' " + cosa + " non si sono potute "
+                    "Could not delete " + what + " of utente " + id,
+                    "L'utente non e' stato eliminato perche' " + what + " non si sono potute "
                             + "rimuovere. Riprova fra qualche istante.");
         }
 
         logger.info("Eliminazione utente ID: {}", id);
-        utenteRepository.deleteById(id);
+        userRepository.deleteById(id);
         logger.debug("FINE - Eliminazione completata per utente ID: {}", id);
     }
 }

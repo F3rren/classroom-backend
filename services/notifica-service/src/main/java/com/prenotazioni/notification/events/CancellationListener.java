@@ -35,7 +35,7 @@ public class CancellationListener {
     }
 
     @RabbitListener(queues = EventTopology.CODA_NOTIFICHE_CANCELLAZIONE)
-    public void suCancellazione(
+    public void onCancellation(
             BookingCancelledEvent evento,
             @Header(name = RequestCorrelationFilter.INTESTAZIONE, required = false) String idRichiesta) {
         // Rimesso in MDC per la durata del trattamento: e' cio' che permette di leggere in
@@ -43,7 +43,7 @@ public class CancellationListener {
         // che avviene su un altro servizio, un altro thread e qualche istante dopo.
         // required = false perche' un messaggio pubblicato prima di questa modifica, o da
         // un'altra versione, deve continuare a essere consumato.
-        RequestCorrelationFilter.applicaAMdc(idRichiesta);
+        RequestCorrelationFilter.applyToMdc(idRichiesta);
         try {
             if (evento == null || evento.utenteId() == null) {
                 // Scartato di proposito: senza destinatario la notifica non ha a chi andare, e
@@ -55,7 +55,7 @@ public class CancellationListener {
             logger.debug("Evento di cancellazione ricevuto per utenteId={}, prenotazioneId={}",
                     evento.utenteId(), evento.prenotazioneId());
 
-            notificaService.createNotificaCancellazionePrenotazione(
+            notificaService.createBookingCancelledNotification(
                     evento.utenteId(),
                     evento.prenotazioneId(),
                     evento.nomeStanza(),
@@ -67,7 +67,7 @@ public class CancellationListener {
 
             logger.info("Notifica di cancellazione creata da evento per utenteId={}", evento.utenteId());
         } finally {
-            RequestCorrelationFilter.svuotaMdc();
+            RequestCorrelationFilter.clearMdc();
         }
     }
 }

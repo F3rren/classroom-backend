@@ -25,36 +25,36 @@ public class NotificationController {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationController.class);
 
-    private final NotificationService notificaService;
+    private final NotificationService notificationService;
 
-    NotificationController(NotificationService notificaService) {
-        this.notificaService = notificaService;
+    NotificationController(NotificationService notificationService) {
+        this.notificationService = notificationService;
     }
 
     @GetMapping
     @Operation(summary = "Notifiche dell'utente autenticato")
-    public ResponseEntity<List<Notification>> getNotifiche(@AuthenticationPrincipal AppPrincipal principal) {
-        return ResponseEntity.ok(notificaService.getNotificheByUtente(principal.id()));
+    public ResponseEntity<List<Notification>> getNotifications(@AuthenticationPrincipal AppPrincipal principal) {
+        return ResponseEntity.ok(notificationService.getNotificationsByUser(principal.id()));
     }
 
     @GetMapping("/non-lette")
     @Operation(summary = "Notifiche non lette dell'utente autenticato")
-    public ResponseEntity<List<Notification>> getNotificheNonLette(@AuthenticationPrincipal AppPrincipal principal) {
-        return ResponseEntity.ok(notificaService.getNotificheNonLetteByUtente(principal.id()));
+    public ResponseEntity<List<Notification>> getUnreadNotifications(@AuthenticationPrincipal AppPrincipal principal) {
+        return ResponseEntity.ok(notificationService.getUnreadNotificationsByUser(principal.id()));
     }
 
     @GetMapping("/count-non-lette")
     @Operation(summary = "Conteggio notifiche non lette")
-    public ResponseEntity<CountResponse> getCountNotificheNonLette(@AuthenticationPrincipal AppPrincipal principal) {
-        Long count = notificaService.getCountNotificheNonLette(principal.id());
+    public ResponseEntity<CountResponse> getUnreadNotificationCount(@AuthenticationPrincipal AppPrincipal principal) {
+        Long count = notificationService.getUnreadNotificationCount(principal.id());
         return ResponseEntity.ok(new CountResponse(count));
     }
 
     @PutMapping("/{id}/mark-read")
     @Operation(summary = "Segna una notifica come letta")
-    public ResponseEntity<Notification> markAsRead(@PathVariable Long id, @AuthenticationPrincipal AppPrincipal principal) {
+    public ResponseEntity<Notification> markAsRead(@PathVariable("id") Long id, @AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("INIZIO - Richiesta di segnare notifica come letta, ID: {}", id);
-        Optional<Notification> updatedNotificaOpt = notificaService.markAsRead(id, principal.id());
+        Optional<Notification> updatedNotificaOpt = notificationService.markAsRead(id, principal.id());
 
         if (updatedNotificaOpt.isPresent()) {
             logger.debug("FINE - Notifica ID: {} segnata come letta con successo.", id);
@@ -68,28 +68,28 @@ public class NotificationController {
     @PutMapping("/mark-all-read")
     @Operation(summary = "Segna tutte le notifiche come lette")
     public ResponseEntity<MessageResponse> markAllAsRead(@AuthenticationPrincipal AppPrincipal principal) {
-        notificaService.markAllAsRead(principal.id());
+        notificationService.markAllAsRead(principal.id());
         logger.debug("Notifiche segnate come lette per utenteId={}", principal.id());
         return ResponseEntity.ok(new MessageResponse("Tutte le notifiche sono state segnate come lette"));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Elimina una notifica propria")
-    public ResponseEntity<MessageResponse> deleteNotifica(@PathVariable Long id, @AuthenticationPrincipal AppPrincipal principal) {
+    public ResponseEntity<MessageResponse> deleteNotification(@PathVariable("id") Long id, @AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("INIZIO - Richiesta di eliminazione notifica ID: {}", id);
-        Optional<Notification> notificaOpt = notificaService.getNotificaById(id);
-        if (notificaOpt.isEmpty()) {
+        Optional<Notification> notificationOpt = notificationService.getNotificationById(id);
+        if (notificationOpt.isEmpty()) {
             logger.warn("Notifica da eliminare non trovata, ID: {}", id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        Notification notifica = notificaOpt.get();
-        if (!notifica.getUtenteId().equals(principal.id())) {
+        Notification notification = notificationOpt.get();
+        if (!notification.getUtenteId().equals(principal.id())) {
             logger.warn("UtenteId={} non autorizzato a eliminare la notifica {}", principal.id(), id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        notificaService.deleteNotifica(id);
+        notificationService.deleteNotification(id);
         logger.debug("FINE - Notifica ID: {} eliminata con successo.", id);
         return ResponseEntity.ok(new MessageResponse("Notifica eliminata con successo"));
     }
@@ -97,7 +97,7 @@ public class NotificationController {
     @DeleteMapping("/read")
     @Operation(summary = "Elimina tutte le notifiche gia' lette")
     public ResponseEntity<MessageResponse> deleteReadNotifications(@AuthenticationPrincipal AppPrincipal principal) {
-        notificaService.deleteReadNotifications(principal.id());
+        notificationService.deleteReadNotifications(principal.id());
         return ResponseEntity.ok(new MessageResponse("Notifiche lette eliminate con successo"));
     }
 }

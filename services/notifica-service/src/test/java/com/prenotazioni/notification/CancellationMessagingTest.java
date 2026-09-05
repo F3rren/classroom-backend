@@ -79,7 +79,7 @@ class CancellationMessagingTest {
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
-    private NotificationRepository notificaRepository;
+    private NotificationRepository notificationRepository;
 
     /** Permette di fermare e riavviare il consumatore, per provare che la coda trattenga. */
     @Autowired
@@ -87,12 +87,12 @@ class CancellationMessagingTest {
 
     @BeforeEach
     void setUp() {
-        notificaRepository.deleteAll();
+        notificationRepository.deleteAll();
     }
 
-    private void pubblica(BookingCancelledEvent evento) {
+    private void pubblica(BookingCancelledEvent event) {
         rabbitTemplate.convertAndSend(
-                EventTopology.EXCHANGE, EventTopology.ROUTING_KEY_CANCELLAZIONE, evento);
+                EventTopology.EXCHANGE, EventTopology.ROUTING_KEY_CANCELLAZIONE, event);
     }
 
     @Test
@@ -103,7 +103,7 @@ class CancellationMessagingTest {
         // Il consumo e' asincrono: si attende l'effetto invece di dormire un tempo fisso,
         // che sarebbe lento quando va bene e instabile quando va male.
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
-            List<Notification> notifiche = notificaRepository.findAll();
+            List<Notification> notifiche = notificationRepository.findAll();
             assertThat(notifiche).hasSize(1);
 
             Notification n = notifiche.get(0);
@@ -132,14 +132,14 @@ class CancellationMessagingTest {
         // finestra, invece di dormire e guardare una volta sola alla fine. E' piu' severo -
         // intercetta anche una notifica che comparisse e sparisse - e costa meno della meta'.
         await().during(Duration.ofMillis(400)).atMost(Duration.ofSeconds(2)).untilAsserted(() ->
-                assertThat(notificaRepository.findAll())
+                assertThat(notificationRepository.findAll())
                         .as("con il consumatore fermo la notifica non puo' esistere ancora")
                         .isEmpty());
 
         registro.start();
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                assertThat(notificaRepository.findAll())
+                assertThat(notificationRepository.findAll())
                         .as("alla ripartenza il messaggio deve essere ancora li'")
                         .hasSize(1));
     }
@@ -156,7 +156,7 @@ class CancellationMessagingTest {
                 11L, 2L, "Aula Y", "Admin", "2026-01-02", "10:00", "12:00", "Motivo"));
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
-            List<Notification> notifiche = notificaRepository.findAll();
+            List<Notification> notifiche = notificationRepository.findAll();
             assertThat(notifiche)
                     .as("solo l'evento valido deve produrre una notifica")
                     .hasSize(1);
