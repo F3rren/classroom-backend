@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copia della configurazione dei log di shared, con una differenza dichiarata sotto.
+
+  E' una copia e non un riferimento perche' il gateway NON dipende da shared: shared porta
+  spring-boot-starter-web, cioe' Tomcat, che in un'applicazione WebFlux non ci puo' stare
+  (il pom lo dice esplicitamente). La duplicazione e' voluta, ed e' il prezzo di quella
+  separazione.
+
+  LA DIFFERENZA: qui %X{requestId} resta quasi sempre vuoto.
+
+  Non e' una dimenticanza. MDC e' legato al thread, e WebFlux non tratta una richiesta su un
+  thread solo: il valore messo all'ingresso non si ritrova piu' due operatori dopo. Fingere
+  il contrario - stampare un campo che resta vuoto - sarebbe peggio che non averlo, quindi
+  la colonna c'e' per tenere le righe allineate a quelle dei servizi, ma non promette nulla.
+
+  Il gateway l'identificativo lo tratta dove serve davvero: lo conia in CorrelazioneAlBordo,
+  lo mette nell'intestazione X-Request-Id e lo passa ai servizi a
+  valle, che essendo servlet lo mettono in MDC e lo stampano su ogni riga. GestoreErroriGateway
+  lo scrive a mano nelle proprie righe, che sono le uniche del gateway a citarlo.
+
+  Per la scala dei livelli - DEBUG narrazione, INFO cambiamenti, WARN rifiuti previsti,
+  ERROR nessuno sa cosa e' successo - vale quanto scritto in
+  shared/src/main/resources/logback-spring.xml, che e' l'unico posto dove quella regola e'
+  spiegata per esteso.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="TRACCIATO"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %-12X{requestId:--} %-34.34logger{0} : %msg%n%wEx"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${TRACCIATO}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

@@ -77,7 +77,7 @@ public class GestoreErroriGateway implements ErrorWebExceptionHandler {
         exchange.getResponse().getHeaders().set(CorrelazioneAlBordo.INTESTAZIONE, sessionId);
 
         // Il percorso e' nel log, non nella risposta: al client non serve e a chi indaga si'.
-        logger.error("[{}] {} su {} -> {}: {}", sessionId, esito.codice,
+        logger.error("{} su {} -> {}: {}", esito.codice,
                 exchange.getRequest().getPath(), esito.stato.value(), errore.toString());
 
         exchange.getResponse().setStatusCode(esito.stato);
@@ -103,7 +103,7 @@ public class GestoreErroriGateway implements ErrorWebExceptionHandler {
         } catch (IOException e) {
             // Se persino la serializzazione fallisce, meglio un corpo minimo scritto a mano
             // che una risposta vuota: il client deve comunque trovare la forma che si aspetta.
-            logger.error("[{}] Envelope non serializzabile: {}", sessionId, e.getMessage());
+            logger.error("Envelope non serializzabile: {}", e.getMessage());
             String minimo = "{\"success\":false,\"error\":\"INTERNAL_ERROR\"}";
             return exchange.getResponse().bufferFactory().wrap(minimo.getBytes());
         }

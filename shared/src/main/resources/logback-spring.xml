@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Configurazione dei log condivisa dai tre servizi che dipendono da shared.
+
+  Sta qui e non in ciascun modulo per la stessa ragione di SecurityConfig e
+  GlobalExceptionHandler: il formato dei log e' un contratto fra servizi, e tre copie
+  divergono. Il gateway ha la propria copia perche' NON dipende da shared - shared porta
+  Tomcat, che in un'applicazione WebFlux non ci puo' stare.
+
+  ============================================================================
+  PERCHE' ESISTE: l'identificativo di richiesta era invisibile
+  ============================================================================
+
+  CorrelazioneRichiesta mette l'identificativo in MDC da sempre, ma senza un tracciato che
+  lo stampi quel valore non compariva da nessuna parte. Nel frattempo 127 chiamate su 322
+  se lo passavano a mano dentro il messaggio - e le altre 195 non avevano alcun modo di
+  essere ricondotte a una richiesta.
+
+  %X{requestId} lo mette su OGNI riga, comprese quelle di Spring, Hibernate e Flyway, senza
+  che nessuno debba ricordarsene.
+
+  ============================================================================
+  QUALE LIVELLO PER QUALE CASO
+  ============================================================================
+
+  La regola e' una sola: IL LIVELLO DICE CHI DEVE FARE QUALCOSA, non quanto e' grave.
+
+  DEBUG  La narrazione di cosa sta facendo una richiesta, passo per passo.
+         Nessuno deve fare niente: serve a chi sta guardando adesso.
+         SPENTO in produzione (logging.level.com.prenotazioni=INFO).
+         Esempio: "INIZIO login", "aula 3 disponibile nel periodo richiesto".
+
+  INFO   Qualcosa e' CAMBIATO e conta anche domani: un utente creato, un login
+         riuscito, una prenotazione annullata, il primo amministratore generato.
+         Nessuno deve fare niente ora, ma qualcuno potrebbe doverlo ricostruire poi.
+         ACCESO in produzione. E' il registro di cosa e' successo.
+
+  WARN   La richiesta e' stata RIFIUTATA, e il rifiuto dice qualcosa: un accesso
+         negato, un conflitto, troppi tentativi, un servizio a valle irraggiungibile,
+         un corpo che non rispetta il contratto.
+         Il sistema ha fatto la cosa giusta: nessuno deve intervenire su una riga
+         sola, ma molte righe uguali sono un segnale.
+         Corrisponde ai 400, 401, 403, 409, 429, 503.
+
+  ERROR  NESSUNO SA COSA SIA SUCCESSO, e qualcuno deve guardare.
+         E' l'unico livello che chiede un intervento umano, ed e' per questo che nel
+         codice e' raro: 14 chiamate su 322. Va sempre con lo stack trace.
+         Corrisponde al 500, cioe' a handleGeneric in GlobalExceptionHandler.
+
+  La conseguenza pratica di questa scala: un ERROR nei log di produzione e' un fatto,
+  non rumore. Se ERROR venisse usato anche per i rifiuti previsti, cercare i guasti veri
+  vorrebbe dire filtrarli via - e a quel punto tanto varrebbe non averlo.
+
+  TRACE non e' usato: quando serve tanto dettaglio, serve un debugger.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!--
+      requestId allineato a 12 caratteri (REQ_XXXXXXXX ne occupa esattamente 12), cosi' le
+      righe restano incolonnate e si leggono a colpo d'occhio.
+
+      Larghezza MINIMA e non massima: %-12X riempie, %-12.12X TAGLIEREBBE - e Logback taglia
+      da sinistra. Un identificativo piu' lungo, come quello che un client puo' mandare
+      nell'intestazione X-Request-Id, arriverebbe mutilato e due valori diversi potrebbero
+      comparire uguali. Una colonna storta e' meglio di un identificativo di cui non ci si
+      puo' fidare. Il trattino segna le
+      righe nate fuori da una richiesta: avvio, attivita' pianificate, consumo di messaggi
+      prima che l'identificativo venga applicato.
+
+      %wEx e non %ex: e' il convertitore di Spring Boot, che accorcia gli stack trace
+      togliendo i frame dei framework e lasciando quelli del progetto.
+    -->
+    <property name="TRACCIATO"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %-12X{requestId:--} %-34.34logger{0} : %msg%n%wEx"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${TRACCIATO}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+      Il file esiste SOLO in sviluppo. In un container ci si scriverebbe dentro l'immagine,
+      dove nessuno lo legge e nessuno lo ruota: li' i log vanno su stdout ed e' Docker a
+      raccoglierli. La rotazione sta qui, accanto al file a cui si applica - prima era
+      dichiarata nel profilo prod, che un file non ce l'ha.
+    -->
+    <springProfile name="dev">
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/application.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>10MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>500MB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>${TRACCIATO}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

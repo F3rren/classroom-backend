@@ -77,10 +77,10 @@ public class AdminController {
     @Operation(summary = "Elenca tutte le aule (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getAllRooms() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getAllRooms (admin) - Richiesta lista completa aule", sessionId);
+        logger.debug("INIZIO getAllRooms (admin) - Richiesta lista completa aule");
 
         List<Aula> aule = aulaService.getAllAule();
-        logger.debug("[{}] FINE getAllRooms - Aule recuperate con successo, totale: {}", sessionId, aule.size());
+        logger.debug("FINE getAllRooms - Aule recuperate con successo, totale: {}", aule.size());
         return new ResponseEntity<>(
             createSuccessResponse(aule.isEmpty() ? "Nessuna aula presente nel sistema" : "Lista aule recuperata con successo",
                                 RoomListPayload.of(aule), sessionId),
@@ -92,10 +92,10 @@ public class AdminController {
     @Operation(summary = "Recupera una singola aula per ID (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomWrapper<Aula>>> getRoomById(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getRoomById (admin) - ID Aula: {}", sessionId, id);
+        logger.debug("INIZIO getRoomById (admin) - ID Aula: {}", id);
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE getRoomById - ID aula non valido: {}", sessionId, id);
+            logger.warn("FINE getRoomById - ID aula non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
                                   "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
@@ -105,7 +105,7 @@ public class AdminController {
 
         Optional<Aula> aula = aulaService.getAulaById(id);
         if (aula.isEmpty()) {
-            logger.warn("[{}] FINE getRoomById - Aula non trovata con ID: {}", sessionId, id);
+            logger.warn("FINE getRoomById - Aula non trovata con ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("ROOM_NOT_FOUND", "Aula non trovata",
                                   String.format("L'aula con ID %d non esiste.", id), sessionId),
@@ -113,8 +113,7 @@ public class AdminController {
             );
         }
 
-        logger.debug("[{}] FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}",
-                   sessionId, aula.get().getId(), aula.get().getNome());
+        logger.debug("FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}", aula.get().getId(), aula.get().getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula recuperata con successo", new RoomWrapper<>(aula.get()), sessionId),
             HttpStatus.OK
@@ -125,12 +124,10 @@ public class AdminController {
     @Operation(summary = "Crea una nuova aula (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> createRoom(@Valid @RequestBody AulaRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO createRoom | Nome: {} | Piano: {} | Capienza: {}",
-                   sessionId, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
+        logger.debug("INIZIO createRoom | Nome: {} | Piano: {} | Capienza: {}", roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
 
         Aula nuovaAula = aulaService.createAula(roomRequest);
-        logger.debug("[{}] FINE createRoom - Aula creata con successo | ID: {} | Nome: {}",
-                   sessionId, nuovaAula.getId(), nuovaAula.getNome());
+        logger.debug("FINE createRoom - Aula creata con successo | ID: {} | Nome: {}", nuovaAula.getId(), nuovaAula.getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula creata con successo", new RoomAckPayload(nuovaAula), sessionId),
             HttpStatus.CREATED
@@ -141,11 +138,10 @@ public class AdminController {
     @Operation(summary = "Modifica un'aula esistente (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(@PathVariable Long id, @Valid @RequestBody AulaRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO updateRoom | ID Aula: {} | Nuovo Nome: {} | Piano: {} | Capienza: {}",
-                   sessionId, id, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
+        logger.debug("INIZIO updateRoom | ID Aula: {} | Nuovo Nome: {} | Piano: {} | Capienza: {}", id, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE updateRoom - ID aula non valido: {}", sessionId, id);
+            logger.warn("FINE updateRoom - ID aula non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
                                   "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
@@ -154,8 +150,7 @@ public class AdminController {
         }
 
         Aula aulaAggiornata = aulaService.updateAula(id, roomRequest);
-        logger.debug("[{}] FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}",
-                   sessionId, aulaAggiornata.getId(), aulaAggiornata.getNome());
+        logger.debug("FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}", aulaAggiornata.getId(), aulaAggiornata.getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula aggiornata con successo", new RoomAckPayload(aulaAggiornata), sessionId),
             HttpStatus.OK
@@ -166,10 +161,10 @@ public class AdminController {
     @Operation(summary = "Elimina un'aula (solo admin)")
     public ResponseEntity<ApiEnvelope<DeletedRoomResponse>> deleteRoom(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO deleteRoom - ID Aula: {}", sessionId, id);
+        logger.debug("INIZIO deleteRoom - ID Aula: {}", id);
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE deleteRoom - ID aula non valido: {}", sessionId, id);
+            logger.warn("FINE deleteRoom - ID aula non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
                                   "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
@@ -183,7 +178,7 @@ public class AdminController {
         // ammetteva: "non esiste O non puo' essere eliminata".
         aulaService.deleteAula(id);
 
-        logger.debug("[{}] FINE deleteRoom - Aula eliminata con successo - ID: {}", sessionId, id);
+        logger.debug("FINE deleteRoom - Aula eliminata con successo - ID: {}", id);
         return new ResponseEntity<>(
             createSuccessResponse("Aula eliminata con successo", new DeletedRoomResponse(id), sessionId),
             HttpStatus.OK
@@ -196,7 +191,7 @@ public class AdminController {
     @Operation(summary = "Elenca tutte le prenotazioni, incluse annullate (solo admin)")
     public ResponseEntity<ApiEnvelope<AdminPrenotazioniPayload>> getAllPrenotazioniAdmin() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getAllPrenotazioniAdmin", sessionId);
+        logger.debug("INIZIO getAllPrenotazioniAdmin");
 
         List<Prenotazione> tuttePrenotazioni = prenotazioneService.getAllPrenotazioni();
         long attive = tuttePrenotazioni.stream()
@@ -204,8 +199,7 @@ public class AdminController {
             .count();
         long annullate = tuttePrenotazioni.size() - attive;
 
-        logger.debug("[{}] FINE getAllPrenotazioniAdmin - Totale: {} (Attive: {}, Annullate: {})",
-                   sessionId, tuttePrenotazioni.size(), attive, annullate);
+        logger.debug("FINE getAllPrenotazioniAdmin - Totale: {} (Attive: {}, Annullate: {})", tuttePrenotazioni.size(), attive, annullate);
 
         AdminPrenotazioniPayload payload = new AdminPrenotazioniPayload(
             tuttePrenotazioni, new PrenotazioniStats(tuttePrenotazioni.size(), attive, annullate));
@@ -222,10 +216,10 @@ public class AdminController {
                                                       @AuthenticationPrincipal AppPrincipal principal,
                                                       @Valid @RequestBody(required = false) DeleteReasonRequest requestBody) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO deletePrenotazioneAsAdmin - ID Prenotazione: {}", sessionId, id);
+        logger.debug("INIZIO deletePrenotazioneAsAdmin - ID Prenotazione: {}", id);
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE deletePrenotazioneAsAdmin - ID prenotazione non valido: {}", sessionId, id);
+            logger.warn("FINE deletePrenotazioneAsAdmin - ID prenotazione non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_BOOKING_ID", "ID prenotazione non valido",
                                   "L'ID della prenotazione deve essere un numero positivo valido.", sessionId),
@@ -234,11 +228,11 @@ public class AdminController {
         }
 
         Long adminId = principal.id();
-        logger.info("[{}] Admin ID: {} tenta di eliminare prenotazione: {}", sessionId, adminId, id);
+        logger.info("Admin ID: {} tenta di eliminare prenotazione: {}", adminId, id);
 
         Prenotazione prenotazione = prenotazioneService.getPrenotazioneById(id);
         if (prenotazione == null) {
-            logger.warn("[{}] FINE deletePrenotazioneAsAdmin - Prenotazione non trovata ID: {}", sessionId, id);
+            logger.warn("FINE deletePrenotazioneAsAdmin - Prenotazione non trovata ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("BOOKING_NOT_FOUND", "Prenotazione non trovata",
                                   String.format("La prenotazione con ID %d non esiste.", id), sessionId),
@@ -252,11 +246,11 @@ public class AdminController {
         String motivo = (requestBody != null && requestBody.getReason() != null)
             ? requestBody.getReason()
             : "Eliminazione da parte dell'amministratore";
-        logger.debug("[{}] Motivo eliminazione: {}", sessionId, motivo);
+        logger.debug("Motivo eliminazione: {}", motivo);
 
         boolean eliminata = prenotazioneService.annullaPrenotazioneAsAdmin(id, adminId, motivo);
         if (!eliminata) {
-            logger.warn("[{}] FINE deletePrenotazioneAsAdmin - Impossibile eliminare prenotazione ID: {}", sessionId, id);
+            logger.warn("FINE deletePrenotazioneAsAdmin - Impossibile eliminare prenotazione ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("BOOKING_DELETION_FAILED", "Impossibile eliminare prenotazione",
                                   String.format("La prenotazione con ID %d non può essere eliminata.", id), sessionId),
@@ -281,15 +275,13 @@ public class AdminController {
                     utentePrenotazione.getId(), id, nomeStanza, adminNome,
                     dataPrenotazione, oraInizio, oraFine, motivo));
 
-            logger.debug("[{}] Notifica di cancellazione creata per utente: {}", sessionId, utentePrenotazione.getId());
+            logger.debug("Notifica di cancellazione creata per utente: {}", utentePrenotazione.getId());
         } catch (Exception e) {
-            logger.error("[{}] Errore durante creazione notifica per utente: {} | Errore: {}",
-                       sessionId, utentePrenotazione.getId(), e.getMessage(), e);
+            logger.error("Errore durante creazione notifica per utente: {} | Errore: {}", utentePrenotazione.getId(), e.getMessage(), e);
             // Non blocchiamo l'operazione se la notifica fallisce
         }
 
-        logger.debug("[{}] FINE deletePrenotazioneAsAdmin - Prenotazione eliminata con successo | ID: {} | Admin: {} | Motivo: {}",
-                   sessionId, id, adminId, motivo);
+        logger.debug("FINE deletePrenotazioneAsAdmin - Prenotazione eliminata con successo | ID: {} | Admin: {} | Motivo: {}", id, adminId, motivo);
 
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione eliminata con successo dall'amministratore",

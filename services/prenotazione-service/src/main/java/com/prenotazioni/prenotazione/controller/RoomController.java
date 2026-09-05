@@ -65,10 +65,10 @@ public class RoomController {
     @Operation(summary = "Elenca tutte le aule")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getAllRooms() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getAllRooms - Richiesta lista completa aule", sessionId);
+        logger.debug("INIZIO getAllRooms - Richiesta lista completa aule");
 
         List<Aula> aule = aulaService.getAllAule();
-        logger.debug("[{}] FINE getAllRooms - Aule recuperate con successo, totale: {}", sessionId, aule.size());
+        logger.debug("FINE getAllRooms - Aule recuperate con successo, totale: {}", aule.size());
         return new ResponseEntity<>(
             createSuccessResponse(aule.isEmpty() ? "Nessuna aula disponibile" : "Aule recuperate con successo",
                                 RoomListPayload.of(aule), sessionId),
@@ -89,10 +89,10 @@ public class RoomController {
     @Operation(summary = "Recupera una singola aula per ID")
     public ResponseEntity<ApiEnvelope<RoomDetailAckPayload>> getRoomById(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getRoomById - ID Aula richiesta: {}", sessionId, id);
+        logger.debug("INIZIO getRoomById - ID Aula richiesta: {}", id);
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE getRoomById - ID aula non valido: {}", sessionId, id);
+            logger.warn("FINE getRoomById - ID aula non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
                                   "L'ID dell'aula deve essere un numero positivo.", sessionId),
@@ -102,7 +102,7 @@ public class RoomController {
 
         Optional<Aula> aula = aulaService.getAulaById(id);
         if (aula.isEmpty()) {
-            logger.warn("[{}] FINE getRoomById - Aula non trovata con ID: {}", sessionId, id);
+            logger.warn("FINE getRoomById - Aula non trovata con ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("ROOM_NOT_FOUND", "Aula non trovata",
                                   String.format("L'aula con ID %d non esiste nel sistema.", id), sessionId),
@@ -110,8 +110,7 @@ public class RoomController {
             );
         }
 
-        logger.debug("[{}] FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}",
-                   sessionId, aula.get().getId(), aula.get().getNome());
+        logger.debug("FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}", aula.get().getId(), aula.get().getNome());
         return new ResponseEntity<>(
             createSuccessResponse("Aula recuperata con successo", new RoomDetailAckPayload(aula.get()), sessionId),
             HttpStatus.OK
@@ -144,10 +143,10 @@ public class RoomController {
     @Operation(summary = "Filtra aule per piano")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByFloor(@PathVariable int piano) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getRoomsByFloor - Piano richiesto: {}", sessionId, piano);
+        logger.debug("INIZIO getRoomsByFloor - Piano richiesto: {}", piano);
 
         if (piano < 0) {
-            logger.warn("[{}] FINE getRoomsByFloor - Piano non valido: {}", sessionId, piano);
+            logger.warn("FINE getRoomsByFloor - Piano non valido: {}", piano);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_FLOOR", "Piano non valido",
                                   "Il numero del piano deve essere maggiore o uguale a 0.", sessionId),
@@ -156,8 +155,7 @@ public class RoomController {
         }
 
         List<Aula> aule = aulaService.getAuleByPiano(piano);
-        logger.debug("[{}] FINE getRoomsByFloor - Aule recuperate con successo per piano: {}, totale: {}",
-                   sessionId, piano, aule.size());
+        logger.debug("FINE getRoomsByFloor - Aule recuperate con successo per piano: {}, totale: {}", piano, aule.size());
         return new ResponseEntity<>(
             createSuccessResponse(aule.isEmpty() ? "Nessuna aula trovata per questo piano" : "Aule recuperate con successo",
                                 RoomListPayload.of(aule).withPiano(piano), sessionId),
@@ -169,10 +167,10 @@ public class RoomController {
     @Operation(summary = "Filtra aule per capienza minima")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByCapacity(@RequestParam int minCapienza) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getRoomsByCapacity - Capienza minima richiesta: {}", sessionId, minCapienza);
+        logger.debug("INIZIO getRoomsByCapacity - Capienza minima richiesta: {}", minCapienza);
 
         if (minCapienza < 0) {
-            logger.warn("[{}] FINE getRoomsByCapacity - Capienza minima non valida: {}", sessionId, minCapienza);
+            logger.warn("FINE getRoomsByCapacity - Capienza minima non valida: {}", minCapienza);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_CAPACITY", "Capienza non valida",
                                   "La capienza minima deve essere un numero maggiore o uguale a 0.", sessionId),
@@ -180,7 +178,7 @@ public class RoomController {
             );
         }
         if (minCapienza > CAPIENZA_MASSIMA_RICHIEDIBILE) {
-            logger.warn("[{}] FINE getRoomsByCapacity - Capienza minima troppo alta: {}", sessionId, minCapienza);
+            logger.warn("FINE getRoomsByCapacity - Capienza minima troppo alta: {}", minCapienza);
             return new ResponseEntity<>(
                 createErrorResponse("CAPACITY_TOO_HIGH", "Capienza troppo elevata",
                                   "La capienza minima richiesta è troppo alta. Inserisci un valore realistico (massimo "
@@ -190,8 +188,7 @@ public class RoomController {
         }
 
         List<Aula> aule = aulaService.getAuleByCapienzaMinima(minCapienza);
-        logger.debug("[{}] FINE getRoomsByCapacity - Aule recuperate con successo per capienza >= {}, totale: {}",
-                   sessionId, minCapienza, aule.size());
+        logger.debug("FINE getRoomsByCapacity - Aule recuperate con successo per capienza >= {}, totale: {}", minCapienza, aule.size());
 
         RoomListPayload payload = RoomListPayload.of(aule).withCapienzaMinima(minCapienza);
         if (aule.isEmpty()) {
@@ -212,10 +209,10 @@ public class RoomController {
     @Operation(summary = "Elenca tutte le aule con dettagli completi")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getAllRoomsDetailed() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getAllRoomsDetailed - Richiesta aule con dettagli completi", sessionId);
+        logger.debug("INIZIO getAllRoomsDetailed - Richiesta aule con dettagli completi");
 
         List<RoomDetailsResponse> roomDetails = aulaService.getAllRoomsWithDetails();
-        logger.debug("[{}] FINE getAllRoomsDetailed - Aule con dettagli recuperate con successo, totale: {}", sessionId, roomDetails.size());
+        logger.debug("FINE getAllRoomsDetailed - Aule con dettagli recuperate con successo, totale: {}", roomDetails.size());
         return new ResponseEntity<>(
             createSuccessResponse(roomDetails.isEmpty() ? "Nessuna aula con dettagli disponibile" : "Aule con dettagli recuperate con successo",
                                 RoomListPayload.of(roomDetails), sessionId),
@@ -227,10 +224,10 @@ public class RoomController {
     @Operation(summary = "Recupera una singola aula con dettagli completi")
     public ResponseEntity<ApiEnvelope<RoomWrapper<RoomDetailsResponse>>> getRoomDetailed(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getRoomDetailed - ID Aula: {}", sessionId, id);
+        logger.debug("INIZIO getRoomDetailed - ID Aula: {}", id);
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE getRoomDetailed - ID aula non valido: {}", sessionId, id);
+            logger.warn("FINE getRoomDetailed - ID aula non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
                                   "L'ID dell'aula deve essere un numero positivo maggiore di 0", sessionId),
@@ -239,8 +236,7 @@ public class RoomController {
         }
 
         RoomDetailsResponse roomDetails = aulaService.getRoomWithDetails(id);
-        logger.debug("[{}] FINE getRoomDetailed - Dettagli aula recuperati con successo: ID: {}, Nome: {}",
-                   sessionId, roomDetails.getId(), roomDetails.getName());
+        logger.debug("FINE getRoomDetailed - Dettagli aula recuperati con successo: ID: {}, Nome: {}", roomDetails.getId(), roomDetails.getName());
         return new ResponseEntity<>(
             createSuccessResponse("Dettagli aula recuperati con successo", new RoomWrapper<>(roomDetails), sessionId),
             HttpStatus.OK
@@ -251,10 +247,10 @@ public class RoomController {
     @Operation(summary = "Elenca solo le aule fisiche")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getPhysicalRooms() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getPhysicalRooms - Richiesta aule fisiche", sessionId);
+        logger.debug("INIZIO getPhysicalRooms - Richiesta aule fisiche");
 
         List<Aula> aule = aulaService.getPhysicalRoomsOrdered();
-        logger.debug("[{}] FINE getPhysicalRooms - Aule fisiche recuperate con successo, totale: {}", sessionId, aule.size());
+        logger.debug("FINE getPhysicalRooms - Aule fisiche recuperate con successo, totale: {}", aule.size());
         return new ResponseEntity<>(
             createSuccessResponse(aule.isEmpty() ? "Nessuna aula fisica disponibile" : "Aule fisiche recuperate con successo",
                                 RoomListPayload.of(aule).withType("physical"), sessionId),
@@ -266,10 +262,10 @@ public class RoomController {
     @Operation(summary = "Elenca solo le aule virtuali")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getVirtualRooms() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getVirtualRooms - Richiesta aule virtuali", sessionId);
+        logger.debug("INIZIO getVirtualRooms - Richiesta aule virtuali");
 
         List<Aula> aule = aulaService.getVirtualRoomsOrdered();
-        logger.debug("[{}] FINE getVirtualRooms - Aule virtuali recuperate con successo, totale: {}", sessionId, aule.size());
+        logger.debug("FINE getVirtualRooms - Aule virtuali recuperate con successo, totale: {}", aule.size());
         return new ResponseEntity<>(
             createSuccessResponse(aule.isEmpty() ? "Nessuna aula virtuale disponibile" : "Aule virtuali recuperate con successo",
                                 RoomListPayload.of(aule).withType("virtual"), sessionId),
@@ -281,10 +277,10 @@ public class RoomController {
     @Operation(summary = "Aule fisiche con dettagli completi")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getPhysicalRoomsDetailed() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getPhysicalRoomsDetailed - Richiesta aule fisiche con dettagli", sessionId);
+        logger.debug("INIZIO getPhysicalRoomsDetailed - Richiesta aule fisiche con dettagli");
 
         List<RoomDetailsResponse> roomDetails = aulaService.getPhysicalRoomsWithDetails();
-        logger.debug("[{}] FINE getPhysicalRoomsDetailed - Aule fisiche con dettagli recuperate con successo, totale: {}", sessionId, roomDetails.size());
+        logger.debug("FINE getPhysicalRoomsDetailed - Aule fisiche con dettagli recuperate con successo, totale: {}", roomDetails.size());
         return new ResponseEntity<>(
             createSuccessResponse(roomDetails.isEmpty() ? "Nessuna aula fisica con dettagli disponibile" : "Aule fisiche con dettagli recuperate con successo",
                                 RoomListPayload.of(roomDetails).withType("physical"), sessionId),
@@ -296,10 +292,10 @@ public class RoomController {
     @Operation(summary = "Aule virtuali con dettagli completi")
     public ResponseEntity<ApiEnvelope<RoomListPayload>> getVirtualRoomsDetailed() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getVirtualRoomsDetailed - Richiesta aule virtuali con dettagli", sessionId);
+        logger.debug("INIZIO getVirtualRoomsDetailed - Richiesta aule virtuali con dettagli");
 
         List<RoomDetailsResponse> roomDetails = aulaService.getVirtualRoomsWithDetails();
-        logger.debug("[{}] FINE getVirtualRoomsDetailed - Aule virtuali con dettagli recuperate con successo, totale: {}", sessionId, roomDetails.size());
+        logger.debug("FINE getVirtualRoomsDetailed - Aule virtuali con dettagli recuperate con successo, totale: {}", roomDetails.size());
         return new ResponseEntity<>(
             createSuccessResponse(roomDetails.isEmpty() ? "Nessuna aula virtuale con dettagli disponibile" : "Aule virtuali con dettagli recuperate con successo",
                                 RoomListPayload.of(roomDetails).withType("virtual"), sessionId),
@@ -311,14 +307,13 @@ public class RoomController {
     @Operation(summary = "Statistiche aule fisiche vs virtuali")
     public ResponseEntity<ApiEnvelope<RoomStatsPayload>> getRoomsStats() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getRoomsStats - Richiesta statistiche aule", sessionId);
+        logger.debug("INIZIO getRoomsStats - Richiesta statistiche aule");
 
         long physicalCount = aulaService.countPhysicalRooms();
         long virtualCount = aulaService.countVirtualRooms();
         RoomStats stats = new RoomStats(physicalCount, virtualCount);
 
-        logger.debug("[{}] FINE getRoomsStats - Statistiche calcolate: Totale: {}, Fisiche: {}, Virtuali: {}",
-                   sessionId, stats.getTotalRooms(), physicalCount, virtualCount);
+        logger.debug("FINE getRoomsStats - Statistiche calcolate: Totale: {}, Fisiche: {}, Virtuali: {}", stats.getTotalRooms(), physicalCount, virtualCount);
 
         return new ResponseEntity<>(
             createSuccessResponse("Statistiche aule recuperate con successo", new RoomStatsPayload(stats), sessionId),

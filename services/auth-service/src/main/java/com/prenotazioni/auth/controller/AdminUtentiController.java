@@ -75,13 +75,11 @@ public class AdminUtentiController {
     @Operation(summary = "Crea un nuovo utente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] register - creazione utente da admin | {} | ruolo={}",
-                   sessionId, LogSanitizer.maskEmail(request.getEmail()), request.getRuolo());
+        logger.debug("register - creazione utente da admin | {} | ruolo={}", LogSanitizer.maskEmail(request.getEmail()), request.getRuolo());
 
         Utente utente = authService.register(request);
 
-        logger.info("[{}] Utente creato da admin - utenteId={} ruolo={}",
-                   sessionId, utente.getId(), utente.getRuolo());
+        logger.info("Utente creato da admin - utenteId={} ruolo={}", utente.getId(), utente.getRuolo());
 
         return new ResponseEntity<>(
             createSuccessResponse("Utente registrato con successo dall'amministratore", new UserRegisterAck(utente), sessionId),
@@ -93,14 +91,14 @@ public class AdminUtentiController {
     @Operation(summary = "Elenca tutti gli utenti (solo admin)")
     public ResponseEntity<ApiEnvelope<UserListPayload>> getAllUsers() {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO getAllUsers - Richiesta lista completa utenti", sessionId);
+        logger.debug("INIZIO getAllUsers - Richiesta lista completa utenti");
 
         List<Utente> users = authService.getAllUsers();
         List<UserSummaryDto> safeUsers = users.stream()
             .map(UserSummaryDto::forAdminListing)
             .collect(Collectors.toList());
 
-        logger.debug("[{}] FINE getAllUsers - Utenti recuperati con successo, totale: {}", sessionId, users.size());
+        logger.debug("FINE getAllUsers - Utenti recuperati con successo, totale: {}", users.size());
         return new ResponseEntity<>(
             createSuccessResponse("Lista utenti recuperata con successo", new UserListPayload(safeUsers), sessionId),
             HttpStatus.OK
@@ -111,10 +109,10 @@ public class AdminUtentiController {
     @Operation(summary = "Modifica un utente esistente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUtente(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] updateUtente - utenteId={} ruolo={}", sessionId, id, request.getRuolo());
+        logger.debug("updateUtente - utenteId={} ruolo={}", id, request.getRuolo());
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE updateUtente - ID utente non valido: {}", sessionId, id);
+            logger.warn("FINE updateUtente - ID utente non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_USER_ID", "ID utente non valido",
                                   "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
@@ -123,7 +121,7 @@ public class AdminUtentiController {
         }
 
         Utente updated = authService.updateUtente(id, request);
-        logger.info("[{}] Utente modificato da admin - utenteId={}", sessionId, updated.getId());
+        logger.info("Utente modificato da admin - utenteId={}", updated.getId());
 
         return new ResponseEntity<>(
             createSuccessResponse("Utente aggiornato con successo dall'amministratore", new UserUpdateAck(updated), sessionId),
@@ -135,10 +133,10 @@ public class AdminUtentiController {
     @Operation(summary = "Elimina un utente e i suoi dati (solo admin)")
     public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUtente(@PathVariable Long id) {
         String sessionId = generateSessionId();
-        logger.debug("[{}] INIZIO deleteUtente - ID Utente: {}", sessionId, id);
+        logger.debug("INIZIO deleteUtente - ID Utente: {}", id);
 
         if (id == null || id <= 0) {
-            logger.warn("[{}] FINE deleteUtente - ID utente non valido: {}", sessionId, id);
+            logger.warn("FINE deleteUtente - ID utente non valido: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_USER_ID", "ID utente non valido",
                                   "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
@@ -147,7 +145,7 @@ public class AdminUtentiController {
         }
 
         if (utenteService.findById(id) == null) {
-            logger.warn("[{}] FINE deleteUtente - Utente non trovato - ID: {}", sessionId, id);
+            logger.warn("FINE deleteUtente - Utente non trovato - ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("USER_NOT_FOUND", "Utente non trovato o non eliminabile",
                                   String.format("L'utente con ID %d non esiste o non può essere eliminato.", id), sessionId),
@@ -159,7 +157,7 @@ public class AdminUtentiController {
         // (in un'unica transazione, cosi' non si rischia di lasciare righe orfane o un FK violation non gestito)
         utenteService.deleteById(id);
 
-        logger.debug("[{}] FINE deleteUtente - Utente eliminato con successo - ID: {}", sessionId, id);
+        logger.debug("FINE deleteUtente - Utente eliminato con successo - ID: {}", id);
         return new ResponseEntity<>(
             createSuccessResponse("Utente eliminato con successo", new DeletedUserResponse(id), sessionId),
             HttpStatus.OK

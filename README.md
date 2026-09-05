@@ -465,6 +465,53 @@ dietro una risposta che sembra normale.
 Produce lo stesso involucro — è un test a tenere allineate le due forme — e distingue un
 servizio irraggiungibile (503) da un percorso senza rotta (404).
 
+## Log
+
+Configurati in `shared/src/main/resources/logback-spring.xml`, ereditato dai tre servizi che
+dipendono da `shared`. Il gateway ha la propria copia, perche' non puo' dipendere da `shared`
+(porta Tomcat, che in WebFlux non ci sta).
+
+```
+2026-09-05 17:45:30.369  WARN  REQ_A1B2C3D4 PrenotazioneService   : aula 3 occupata dal ...
+2026-09-05 17:45:30.372  INFO  -            AvvioPrimoAdmin       : primo amministratore creato
+```
+
+La colonna dell'identificativo viene da `%X{requestId}`, che Logback legge da MDC: **ogni
+riga la porta**, comprese quelle di Spring, Hibernate e Flyway, senza che nessuno debba
+passarla. Il trattino segna le righe nate fuori da una richiesta — avvio, consumo di
+messaggi, attivita' pianificate.
+
+Prima non era cosi': `CorrelazioneRichiesta` metteva l'identificativo in MDC da sempre, ma
+senza un tracciato che lo stampasse non compariva da nessuna parte. 127 chiamate su 322 se lo
+passavano a mano dentro il messaggio; le altre 195 non avevano modo di essere ricondotte a
+una richiesta. Ora il tracciato lo mette su tutte, e i 127 prefissi manuali sono spariti.
+
+### Quale livello per quale caso
+
+La regola e' una sola: **il livello dice chi deve fare qualcosa**, non quanto e' grave.
+
+| Livello | Il caso | Chi deve intervenire | In produzione |
+|---|---|---|---|
+| `DEBUG` | la narrazione di una richiesta, passo per passo | nessuno: serve a chi guarda adesso | **spento** |
+| `INFO` | qualcosa e' cambiato e conta anche domani: utente creato, login riuscito, prenotazione annullata | nessuno ora, forse qualcuno poi | acceso |
+| `WARN` | la richiesta e' stata **rifiutata** e il rifiuto dice qualcosa: 400, 401, 403, 409, 429, 503 | nessuno su una riga sola; molte righe uguali sono un segnale | acceso |
+| `ERROR` | **nessuno sa cosa sia successo**: il 500 di `handleGeneric` | qualcuno, e subito. Sempre con lo stack trace | acceso |
+
+La conseguenza pratica: **un `ERROR` nei log di produzione e' un fatto, non rumore.** Nel
+codice sono 14 chiamate su 322. Se `ERROR` coprisse anche i rifiuti previsti, cercare i
+guasti veri vorrebbe dire filtrarli via — e tanto varrebbe non averlo.
+
+`TRACE` non e' usato: quando serve quel dettaglio, serve un debugger.
+
+### Dove finiscono
+
+Su **stdout**, sempre. In container li raccoglie Docker (`docker compose logs`); scriverli in
+un file dentro l'immagine vorrebbe dire produrli dove nessuno li legge e nessuno li ruota.
+
+L'unica eccezione e' il profilo `dev`, che aggiunge un appender su `logs/application.log` con
+rotazione a 10 MB, 30 giorni, 500 MB complessivi. Sta dentro `<springProfile name="dev">`,
+accanto al file a cui si applica.
+
 ## Comunicazione fra servizi
 
 Due modi, scelti caso per caso e non per gusto:

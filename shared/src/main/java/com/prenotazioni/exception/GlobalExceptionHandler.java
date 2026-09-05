@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
         String userMessage = firstError != null
                 ? firstError.getDefaultMessage()
                 : "I dati inviati non sono validi.";
-        logger.warn("[{}] Validazione fallita: {}", sessionId, ex.getMessage());
+        logger.warn("Validazione fallita: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiEnvelope.error("VALIDATION_ERROR", "Dati della richiesta non validi", userMessage, sessionId),
                 HttpStatus.BAD_REQUEST
@@ -68,7 +68,7 @@ public class GlobalExceptionHandler {
         String userMessage = ex.getMessage() != null
                 ? ex.getMessage()
                 : "Accesso negato: privilegi insufficienti per questa operazione.";
-        logger.warn("[{}] Accesso negato: {}", sessionId, userMessage);
+        logger.warn("Accesso negato: {}", userMessage);
         return new ResponseEntity<>(
                 ApiEnvelope.error("ACCESS_DENIED", "Accesso negato", userMessage, sessionId),
                 HttpStatus.FORBIDDEN
@@ -89,7 +89,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleInvalidRequest(InvalidRequestException ex) {
         String sessionId = newSessionId();
-        logger.debug("[{}] Richiesta non valida: {}", sessionId, ex.getMessage());
+        // WARN e non DEBUG: e' un 400, come la validazione qui sopra, e per la stessa
+        // ragione - un corpo che non rispetta il contratto dice qualcosa su chi chiama.
+        // Erano su due livelli diversi senza motivo.
+        logger.warn("Richiesta non valida: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
                 HttpStatus.BAD_REQUEST
@@ -101,7 +104,7 @@ public class GlobalExceptionHandler {
         String sessionId = newSessionId();
         // debug e non warn: una risorsa cercata e non trovata e' un esito normale
         // dell'uso dell'applicazione, non un sintomo di qualcosa che non va.
-        logger.debug("[{}] Risorsa non trovata: {}", sessionId, ex.getMessage());
+        logger.debug("Risorsa non trovata: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
                 HttpStatus.NOT_FOUND
@@ -116,7 +119,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DomainConflictException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleDomainConflict(DomainConflictException ex) {
         String sessionId = newSessionId();
-        logger.warn("[{}] Conflitto di dominio: {}", sessionId, ex.getMessage());
+        logger.warn("Conflitto di dominio: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
                 HttpStatus.CONFLICT
@@ -126,7 +129,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BookingConflictException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleBookingConflict(BookingConflictException ex) {
         String sessionId = newSessionId();
-        logger.warn("[{}] Conflitto prenotazione: {}", sessionId, ex.getMessage());
+        logger.warn("Conflitto prenotazione: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
                 HttpStatus.CONFLICT
@@ -136,7 +139,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         String sessionId = newSessionId();
-        logger.warn("[{}] Vincolo del database violato: {}", sessionId, ex.getMessage());
+        logger.warn("Vincolo del database violato: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiEnvelope.error("CONFLICT", "Conflitto con lo stato attuale dei dati",
                         "L'operazione non e' andata a buon fine per un conflitto con dati esistenti.", sessionId),
@@ -163,7 +166,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ServizioNonDisponibileException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleServizioNonDisponibile(ServizioNonDisponibileException ex) {
         String sessionId = newSessionId();
-        logger.warn("[{}] Servizio a valle non disponibile: {}", sessionId, ex.getMessage(), ex);
+        logger.warn("Servizio a valle non disponibile: {}", ex.getMessage(), ex);
         return new ResponseEntity<>(
                 ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
                 HttpStatus.SERVICE_UNAVAILABLE
@@ -173,7 +176,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleResourceNotFound(NoResourceFoundException ex) {
         String sessionId = newSessionId();
-        logger.debug("[{}] Risorsa non trovata: {}", sessionId, ex.getResourcePath());
+        logger.debug("Risorsa non trovata: {}", ex.getResourcePath());
         return new ResponseEntity<>(
                 ApiEnvelope.error("NOT_FOUND", "Risorsa non trovata",
                         "L'indirizzo richiesto non esiste.", sessionId),
@@ -197,7 +200,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ApiEnvelope<Void>> handleNoHandler(NoHandlerFoundException ex) {
         String sessionId = newSessionId();
-        logger.debug("[{}] Nessun gestore per {} {}", sessionId, ex.getHttpMethod(), ex.getRequestURL());
+        logger.debug("Nessun gestore per {} {}", ex.getHttpMethod(), ex.getRequestURL());
         return new ResponseEntity<>(
                 ApiEnvelope.error("NOT_FOUND", "Risorsa non trovata",
                         "L'indirizzo richiesto non esiste.", sessionId),
@@ -208,7 +211,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiEnvelope<Void>> handleGeneric(Exception ex) {
         String sessionId = newSessionId();
-        logger.error("[{}] Errore interno non gestito", sessionId, ex);
+        logger.error("Errore interno non gestito", ex);
         return new ResponseEntity<>(
                 ApiEnvelope.error("INTERNAL_ERROR", "Errore interno del server",
                         "Si e' verificato un errore imprevisto. Se il problema persiste, contatta il supporto tecnico.", sessionId),
