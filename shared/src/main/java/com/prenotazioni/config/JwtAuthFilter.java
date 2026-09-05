@@ -1,6 +1,6 @@
 package com.prenotazioni.config;
 
-import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.Role;
 import com.prenotazioni.security.AppPrincipal;
 import com.prenotazioni.security.JwtVerifier;
 import jakarta.servlet.FilterChain;
@@ -69,7 +69,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // sara' la policy di sicurezza a negare l'accesso.
             List<GrantedAuthority> authorities;
             try {
-                Ruolo ruoloTipizzato = Ruolo.da(ruolo);
+                Role ruoloTipizzato = Role.da(ruolo);
                 authorities = ruoloTipizzato != null
                         ? List.of(new SimpleGrantedAuthority(ruoloTipizzato.toAuthority()))
                         : List.of();

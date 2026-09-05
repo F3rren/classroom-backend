@@ -1,10 +1,10 @@
 package com.prenotazioni.auth.service;
 
-import com.prenotazioni.auth.model.Utente;
+import com.prenotazioni.auth.model.User;
 import com.prenotazioni.exception.DomainConflictException;
 import com.prenotazioni.exception.ResourceNotFoundException;
-import com.prenotazioni.model.Ruolo;
-import com.prenotazioni.auth.repository.IUtenteRepository;
+import com.prenotazioni.model.Role;
+import com.prenotazioni.auth.repository.UserRepository;
 import com.prenotazioni.auth.dto.CreateUserRequest;
 import com.prenotazioni.auth.dto.UpdateUserRequest;
 import com.prenotazioni.util.LogSanitizer;
@@ -20,19 +20,19 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
 
-    private final IUtenteRepository utenteRepository;
+    private final UserRepository utenteRepository;
 
     private final PasswordEncoder passwordEncoder;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
-    AuthService(IUtenteRepository utenteRepository, PasswordEncoder passwordEncoder) {
+    AuthService(UserRepository utenteRepository, PasswordEncoder passwordEncoder) {
         this.utenteRepository = utenteRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
-    public Utente login(String email, String password) {
-        Utente utente = utenteRepository.findByEmail(email);
+    public User login(String email, String password) {
+        User utente = utenteRepository.findByEmail(email);
         if (utente == null || !passwordEncoder.matches(password, utente.getPassword())) {
             // WARN e non INFO: un login fallito e' un segnale di sicurezza (brute-force,
             // credenziali compromesse) e deve restare visibile anche alzando il livello.
@@ -48,7 +48,7 @@ public class AuthService {
         return utente;
     }
 
-    public Utente register(CreateUserRequest request) {
+    public User register(CreateUserRequest request) {
         // Controlla se email o username sono già registrati
         if (utenteRepository.findByEmail(request.getEmail()) != null) {
             // Il codice resta USER_ALREADY_EXISTS, gia' esposto e veritiero. A cambiare e'
@@ -63,35 +63,35 @@ public class AuthService {
                     "Username already registered: " + request.getUsername(),
                     "Questo username e' gia' in uso.");
         }
-        Utente utente = new Utente();
+        User utente = new User();
         utente.setEmail(request.getEmail());
         utente.setNome(request.getNome());
         utente.setPassword(passwordEncoder.encode(request.getPassword()));
-        utente.setRuolo(Ruolo.da(request.getRuolo()));
+        utente.setRuolo(Role.da(request.getRuolo()));
         utente.setUsername(request.getUsername());
         
         // Imposta la data di registrazione (non modificabile)
         utente.setDataRegistrazione(LocalDateTime.now());
         // ultimoAccesso viene aggiornato solo al login
-        Utente salvato = utenteRepository.save(utente);
+        User salvato = utenteRepository.save(utente);
         logger.info("Utente creato - utenteId={} ({})", salvato.getId(), LogSanitizer.maskEmail(salvato.getEmail()));
         return salvato;
     }
 
-    public List<Utente> getAllUsers() {
-        List<Utente> utenti = utenteRepository.findAll();
+    public List<User> getAllUsers() {
+        List<User> utenti = utenteRepository.findAll();
         logger.debug("Elenco utenti recuperato - totale={}", utenti.size());
         return utenti;
     }
 
-    public Utente updateUtente(Long id, UpdateUserRequest request) {
-        Utente utente = utenteRepository.findById(id).orElse(null);
+    public User updateUtente(Long id, UpdateUserRequest request) {
+        User utente = utenteRepository.findById(id).orElse(null);
         if (utente == null) {
             throw ResourceNotFoundException.perId("Utente", "USER_NOT_FOUND", id);
         }
 
         // Controlla se la nuova email o username sono già in uso da un altro utente
-        Utente utenteConEmail = utenteRepository.findByEmail(request.getEmail());
+        User utenteConEmail = utenteRepository.findByEmail(request.getEmail());
         if (utenteConEmail != null && !utenteConEmail.getId().equals(id)) {
             // 409 e non piu' 404: prima questo caso tornava lo stesso null di "utente
             // inesistente", e la risposta diceva "utente non trovato" di un utente che
@@ -100,7 +100,7 @@ public class AuthService {
                     "Email already used by another utente",
                     "Questa email e' gia' associata a un altro utente.");
         }
-        Utente utenteConUsername = utenteRepository.findByUsername(request.getUsername());
+        User utenteConUsername = utenteRepository.findByUsername(request.getUsername());
         if (utenteConUsername != null && !utenteConUsername.getId().equals(id)) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
                     "Username already used by another utente",
@@ -118,13 +118,13 @@ public class AuthService {
         
         // Il formato del ruolo (admin|user, case-insensitive) e' gia' garantito da @Pattern
         // sul DTO; qui resta solo la normalizzazione e il fallback per un ruolo non fornito.
-        Ruolo ruolo = request.getRuolo() != null ? Ruolo.da(request.getRuolo()) : utente.getRuolo();
+        Role ruolo = request.getRuolo() != null ? Role.da(request.getRuolo()) : utente.getRuolo();
         utente.setRuolo(ruolo);
         utente.setUsername(request.getUsername());
         
         // NON modifichiamo dataRegistrazione - rimane quella originale
         // ultimoAccesso viene aggiornato solo al login
-        Utente salvato = utenteRepository.save(utente);
+        User salvato = utenteRepository.save(utente);
         logger.info("Utente aggiornato - utenteId={} passwordCambiata={}", id, passwordCambiata);
         return salvato;
     }

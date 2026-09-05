@@ -1,9 +1,9 @@
 package com.prenotazioni.auth;
 
 import com.prenotazioni.testsupport.TestJson;
-import com.prenotazioni.auth.model.Utente;
-import com.prenotazioni.model.Ruolo;
-import com.prenotazioni.auth.repository.IUtenteRepository;
+import com.prenotazioni.auth.model.User;
+import com.prenotazioni.model.Role;
+import com.prenotazioni.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,13 +37,13 @@ class MeControllerTest {
     private TestRestTemplate rest;
 
     @Autowired
-    private IUtenteRepository utenteRepository;
+    private UserRepository utenteRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private Utente owner;
-    private Utente other;
+    private User owner;
+    private User other;
     private String tokenOwner;
     private String tokenOther;
 
@@ -51,21 +51,21 @@ class MeControllerTest {
     void setUp() {
         utenteRepository.deleteAll();
 
-        owner = new Utente();
+        owner = new User();
         owner.setEmail("me-owner@test.it");
         owner.setUsername("me-owner");
         owner.setPassword(passwordEncoder.encode("owner-password"));
         owner.setNome("Me Owner");
-        owner.setRuolo(Ruolo.USER);
+        owner.setRuolo(Role.USER);
         owner.setDataRegistrazione(LocalDateTime.now());
         utenteRepository.save(owner);
 
-        other = new Utente();
+        other = new User();
         other.setEmail("me-other@test.it");
         other.setUsername("me-other");
         other.setPassword(passwordEncoder.encode("other-password"));
         other.setNome("Me Other");
-        other.setRuolo(Ruolo.USER);
+        other.setRuolo(Role.USER);
         other.setDataRegistrazione(LocalDateTime.now());
         utenteRepository.save(other);
 

@@ -1,8 +1,8 @@
 package com.prenotazioni.auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.prenotazioni.model.Ruolo;
-import com.prenotazioni.auth.model.Utente;
+import com.prenotazioni.model.Role;
+import com.prenotazioni.auth.model.User;
 import com.prenotazioni.util.Timestamps;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -27,13 +27,13 @@ public class UserSummaryDto {
     @Schema(description = "Email dell'utente", example = "mario.rossi@example.it")
     private String email;
     @Schema(description = "Ruolo applicativo", example = "user")
-    private Ruolo ruolo;
+    private Role ruolo;
     @Schema(description = "Data di registrazione. Omessa quando non disponibile", example = "2026-01-15 09:30:00")
     private String dataRegistrazione;
     @Schema(description = "Ultimo accesso. Omesso quando non disponibile", example = "2026-08-31 14:05:00")
     private String ultimoAccesso;
 
-    public static UserSummaryDto basic(Utente utente) {
+    public static UserSummaryDto basic(User utente) {
         UserSummaryDto dto = new UserSummaryDto();
         dto.id = utente.getId();
         dto.username = utente.getUsername() != null ? utente.getUsername() : "";
@@ -44,7 +44,7 @@ public class UserSummaryDto {
     }
 
     /** Usato da GET /api/me: ultimoAccesso non impostato "e' adesso", dataRegistrazione mancante e' omessa. */
-    public static UserSummaryDto forProfile(Utente utente) {
+    public static UserSummaryDto forProfile(User utente) {
         UserSummaryDto dto = basic(utente);
         // Timestamps.format restituisce null su input null: il ternario qui sarebbe ridondante
         dto.dataRegistrazione = Timestamps.format(utente.getDataRegistrazione());
@@ -55,7 +55,7 @@ public class UserSummaryDto {
     }
 
     /** Usato da GET /api/admin/utenti: sia dataRegistrazione che ultimoAccesso mancanti diventano "" (mai omessi). */
-    public static UserSummaryDto forAdminListing(Utente utente) {
+    public static UserSummaryDto forAdminListing(User utente) {
         UserSummaryDto dto = basic(utente);
         dto.dataRegistrazione = utente.getDataRegistrazione() != null
                 ? Timestamps.format(utente.getDataRegistrazione()) : "";

@@ -1,6 +1,6 @@
 package com.prenotazioni.security;
 
-import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.Role;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,14 +23,14 @@ class AppPrincipalUnitTest {
 
     @Test
     void isAdminRecognisesTheRoleWhateverTheCasing() {
-        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Ruolo.ADMIN.getValore()).isAdmin()).isTrue();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Role.ADMIN.getValore()).isAdmin()).isTrue();
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "ADMIN").isAdmin()).isTrue();
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "Admin").isAdmin()).isTrue();
     }
 
     @Test
     void isAdminIsFalseForEveryoneElse() {
-        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Ruolo.USER.getValore()).isAdmin()).isFalse();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Role.USER.getValore()).isAdmin()).isFalse();
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "superuser").isAdmin()).isFalse();
         // un token senza claim di ruolo non deve promuovere nessuno ad admin
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", null).isAdmin()).isFalse();

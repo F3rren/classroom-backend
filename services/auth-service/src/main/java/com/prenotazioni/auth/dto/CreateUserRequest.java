@@ -1,6 +1,6 @@
 package com.prenotazioni.auth.dto;
 
-import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

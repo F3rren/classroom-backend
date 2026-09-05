@@ -1,8 +1,8 @@
 package com.prenotazioni.auth;
 
 import com.prenotazioni.auth.dto.CreateUserRequest;
-import com.prenotazioni.auth.model.Utente;
-import com.prenotazioni.auth.repository.IUtenteRepository;
+import com.prenotazioni.auth.model.User;
+import com.prenotazioni.auth.repository.UserRepository;
 import com.prenotazioni.auth.service.AuthService;
 import com.prenotazioni.util.LogSanitizer;
 import org.slf4j.Logger;
@@ -37,13 +37,13 @@ public class FirstAdminBootstrap implements ApplicationRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(FirstAdminBootstrap.class);
 
-    private final IUtenteRepository utenteRepository;
+    private final UserRepository utenteRepository;
     private final AuthService authService;
     private final String email;
     private final String password;
     private final String nome;
 
-    FirstAdminBootstrap(IUtenteRepository utenteRepository,
+    FirstAdminBootstrap(UserRepository utenteRepository,
                     AuthService authService,
                     @Value("${BOOTSTRAP_ADMIN_EMAIL:}") String email,
                     @Value("${BOOTSTRAP_ADMIN_PASSWORD:}") String password,
@@ -79,7 +79,7 @@ public class FirstAdminBootstrap implements ApplicationRunner {
         richiesta.setNome(nome);
         richiesta.setRuolo("admin");
 
-        Utente creato = authService.register(richiesta);
+        User creato = authService.register(richiesta);
         logger.info("Primo amministratore creato su database vuoto - utenteId={} email={}. "
                 + "Cambiare la password al primo accesso e svuotare BOOTSTRAP_ADMIN_PASSWORD in .env.",
                 creato.getId(), LogSanitizer.maskEmail(email));

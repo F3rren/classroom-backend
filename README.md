@@ -378,9 +378,9 @@ Ogni servizio ha un namespace proprio, e `shared` tiene la radice:
 | Modulo | Package |
 |---|---|
 | `shared` | `com.prenotazioni.{dto,model,security,config,util,exception,eventi}` |
-| `prenotazione-service` | `com.prenotazioni.prenotazione.*` |
+| `prenotazione-service` | `com.prenotazioni.booking.*` |
 | `auth-service` | `com.prenotazioni.auth.*` |
-| `notifica-service` | `com.prenotazioni.notifica.*` |
+| `notifica-service` | `com.prenotazioni.notification.*` |
 | `gateway` | `com.prenotazioni.gateway.*` |
 
 Non è una convenzione estetica. Finché `prenotazione-service` stava sotto `com.prenotazioni.*` come `shared`,

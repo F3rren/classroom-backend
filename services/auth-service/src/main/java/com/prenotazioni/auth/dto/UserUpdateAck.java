@@ -1,7 +1,7 @@
 package com.prenotazioni.auth.dto;
 
-import com.prenotazioni.model.Ruolo;
-import com.prenotazioni.auth.model.Utente;
+import com.prenotazioni.model.Role;
+import com.prenotazioni.auth.model.User;
 import lombok.Getter;
 
 /** Riepilogo di un utente appena modificato da un admin (PUT /api/admin/utenti/{id}). */
@@ -11,9 +11,9 @@ public class UserUpdateAck {
     private final String email;
     private final String username;
     private final String nome;
-    private final Ruolo ruolo;
+    private final Role ruolo;
 
-    public UserUpdateAck(Utente utente) {
+    public UserUpdateAck(User utente) {
         this.userId = utente.getId();
         this.email = utente.getEmail();
         this.username = utente.getUsername();

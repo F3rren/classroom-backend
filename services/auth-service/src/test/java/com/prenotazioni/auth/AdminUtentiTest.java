@@ -1,9 +1,9 @@
 package com.prenotazioni.auth;
 
 import com.prenotazioni.testsupport.TestJson;
-import com.prenotazioni.auth.model.Utente;
-import com.prenotazioni.auth.repository.IUtenteRepository;
-import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.auth.model.User;
+import com.prenotazioni.auth.repository.UserRepository;
+import com.prenotazioni.model.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +44,7 @@ class AdminUtentiTest {
     @Autowired
     private TestRestTemplate rest;
     @Autowired
-    private IUtenteRepository utenteRepository;
+    private UserRepository utenteRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -54,13 +54,13 @@ class AdminUtentiTest {
     @BeforeEach
     void setUp() {
         utenteRepository.deleteAll();
-        salva("admin-utenti@test.it", "admin-utenti", Ruolo.ADMIN);
-        idUtenteNormale = salva("normale@test.it", "normale", Ruolo.USER);
+        salva("admin-utenti@test.it", "admin-utenti", Role.ADMIN);
+        idUtenteNormale = salva("normale@test.it", "normale", Role.USER);
         tokenAdmin = login("admin-utenti@test.it");
     }
 
-    private Long salva(String email, String username, Ruolo ruolo) {
-        Utente u = new Utente();
+    private Long salva(String email, String username, Role ruolo) {
+        User u = new User();
         u.setEmail(email);
         u.setUsername(username);
         u.setPassword(passwordEncoder.encode("password-di-prova"));

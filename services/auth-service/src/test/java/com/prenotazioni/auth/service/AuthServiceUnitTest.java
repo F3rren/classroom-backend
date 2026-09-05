@@ -4,9 +4,9 @@ import com.prenotazioni.exception.DomainConflictException;
 import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.auth.dto.CreateUserRequest;
 import com.prenotazioni.auth.dto.UpdateUserRequest;
-import com.prenotazioni.auth.model.Utente;
-import com.prenotazioni.model.Ruolo;
-import com.prenotazioni.auth.repository.IUtenteRepository;
+import com.prenotazioni.auth.model.User;
+import com.prenotazioni.model.Role;
+import com.prenotazioni.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,24 +30,24 @@ import static org.mockito.Mockito.when;
  */
 class AuthServiceUnitTest {
 
-    private IUtenteRepository utenteRepository;
+    private UserRepository utenteRepository;
     private PasswordEncoder passwordEncoder;
     private AuthService service;
 
     @BeforeEach
     void setUp() {
-        utenteRepository = mock(IUtenteRepository.class);
+        utenteRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         service = new AuthService(utenteRepository, passwordEncoder);
     }
 
-    private Utente utente(Long id, String email) {
-        Utente u = new Utente();
+    private User utente(Long id, String email) {
+        User u = new User();
         u.setId(id);
         u.setEmail(email);
         u.setUsername("utente" + id);
         u.setNome("Nome " + id);
-        u.setRuolo(Ruolo.USER);
+        u.setRuolo(Role.USER);
         u.setPassword("hash");
         u.setDataRegistrazione(LocalDateTime.now());
         return u;
@@ -94,12 +94,12 @@ class AuthServiceUnitTest {
 
     @Test
     void loginRiuscitoRegistraLUltimoAccesso() {
-        Utente u = utente(1L, "u@test.it");
+        User u = utente(1L, "u@test.it");
         u.setUltimoAccesso(null);
         when(utenteRepository.findByEmail("u@test.it")).thenReturn(u);
         when(passwordEncoder.matches("giusta", "hash")).thenReturn(true);
 
-        Utente loggato = service.login("u@test.it", "giusta");
+        User loggato = service.login("u@test.it", "giusta");
 
         assertThat(loggato).isSameAs(u);
         assertThat(u.getUltimoAccesso()).isNotNull();
@@ -132,13 +132,13 @@ class AuthServiceUnitTest {
         when(utenteRepository.findByEmail(anyString())).thenReturn(null);
         when(utenteRepository.findByUsername(anyString())).thenReturn(null);
         when(passwordEncoder.encode("password123")).thenReturn("hash-calcolato");
-        when(utenteRepository.save(any(Utente.class))).thenAnswer(inv -> {
-            Utente u = inv.getArgument(0);
+        when(utenteRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
             u.setId(5L);
             return u;
         });
 
-        Utente creato = service.register(creazione("nuova@test.it", "nuovo"));
+        User creato = service.register(creazione("nuova@test.it", "nuovo"));
 
         assertThat(creato).isNotNull();
         // la password non deve mai essere salvata in chiaro
@@ -187,11 +187,11 @@ class AuthServiceUnitTest {
 
     @Test
     void updateKeepsExistingPasswordWhenBlank() {
-        Utente esistente = utente(1L, "mia@test.it");
+        User esistente = utente(1L, "mia@test.it");
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(esistente));
         when(utenteRepository.findByEmail("mia@test.it")).thenReturn(esistente);
         when(utenteRepository.findByUsername("mio")).thenReturn(esistente);
-        when(utenteRepository.save(any(Utente.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(utenteRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updateUtente(1L, modifica("mia@test.it", "mio", "   "));
 
@@ -201,12 +201,12 @@ class AuthServiceUnitTest {
 
     @Test
     void laModificaRicifraLaPasswordSeIndicata() {
-        Utente esistente = utente(1L, "mia@test.it");
+        User esistente = utente(1L, "mia@test.it");
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(esistente));
         when(utenteRepository.findByEmail("mia@test.it")).thenReturn(esistente);
         when(utenteRepository.findByUsername("mio")).thenReturn(esistente);
         when(passwordEncoder.encode("nuova-password")).thenReturn("nuovo-hash");
-        when(utenteRepository.save(any(Utente.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(utenteRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updateUtente(1L, modifica("mia@test.it", "mio", "nuova-password"));
 
@@ -215,18 +215,18 @@ class AuthServiceUnitTest {
 
     @Test
     void updateFallsBackToExistingRoleWhenNoneGiven() {
-        Utente esistente = utente(1L, "mia@test.it");
-        esistente.setRuolo(Ruolo.ADMIN);
+        User esistente = utente(1L, "mia@test.it");
+        esistente.setRuolo(Role.ADMIN);
         UpdateUserRequest richiesta = modifica("mia@test.it", "mio", "");
         richiesta.setRuolo(null);
 
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(esistente));
         when(utenteRepository.findByEmail("mia@test.it")).thenReturn(esistente);
         when(utenteRepository.findByUsername("mio")).thenReturn(esistente);
-        when(utenteRepository.save(any(Utente.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(utenteRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updateUtente(1L, richiesta);
 
-        assertThat(esistente.getRuolo()).isEqualTo(Ruolo.ADMIN);
+        assertThat(esistente.getRuolo()).isEqualTo(Role.ADMIN);
     }
 }

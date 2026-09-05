@@ -1,6 +1,6 @@
 package com.prenotazioni.security;
 
-import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.Role;
 import org.springframework.security.core.AuthenticatedPrincipal;
 
 /**
@@ -18,6 +18,6 @@ public record AppPrincipal(Long id, String email, String username, String nome, 
     }
 
     public boolean isAdmin() {
-        return Ruolo.ADMIN.getValore().equalsIgnoreCase(ruolo);
+        return Role.ADMIN.getValore().equalsIgnoreCase(ruolo);
     }
 }

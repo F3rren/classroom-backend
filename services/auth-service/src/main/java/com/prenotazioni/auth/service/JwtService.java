@@ -6,7 +6,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import com.prenotazioni.auth.model.Utente;
+import com.prenotazioni.auth.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +33,7 @@ public class JwtService {
         this.key = JwtKey.da(secret);
     }
 
-    public String generateToken(Utente utente) {
+    public String generateToken(User utente) {
         return Jwts.builder()
                 .subject(utente.getEmail())
                 .claim("id", utente.getId())

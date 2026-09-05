@@ -1,7 +1,7 @@
 package com.prenotazioni.auth.dto;
 
-import com.prenotazioni.model.Ruolo;
-import com.prenotazioni.auth.model.Utente;
+import com.prenotazioni.model.Role;
+import com.prenotazioni.auth.model.User;
 import lombok.Getter;
 
 /** Riepilogo di un utente appena creato da un admin (POST /api/admin/utenti). */
@@ -10,9 +10,9 @@ public class UserRegisterAck {
     private final Long userId;
     private final String email;
     private final String username;
-    private final Ruolo ruolo;
+    private final Role ruolo;
 
-    public UserRegisterAck(Utente utente) {
+    public UserRegisterAck(User utente) {
         this.userId = utente.getId();
         this.email = utente.getEmail();
         this.username = utente.getUsername();

@@ -4,8 +4,8 @@ import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.UserSummaryDto;
-import com.prenotazioni.auth.model.Utente;
-import com.prenotazioni.auth.repository.IUtenteRepository;
+import com.prenotazioni.auth.model.User;
+import com.prenotazioni.auth.repository.UserRepository;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,9 +27,9 @@ public class MeController {
 
     private static final Logger logger = LoggerFactory.getLogger(MeController.class);
 
-    private final IUtenteRepository utenteRepository;
+    private final UserRepository utenteRepository;
 
-    MeController(IUtenteRepository utenteRepository) {
+    MeController(UserRepository utenteRepository) {
         this.utenteRepository = utenteRepository;
     }
 
@@ -48,7 +48,7 @@ public class MeController {
         // (rifiuti a livello di filtro sono gestiti da ApiAuthenticationEntryPoint, prima del dispatch).
         String email = authentication.getName().trim().toLowerCase();
 
-        Utente utente = utenteRepository.findByEmail(email);
+        User utente = utenteRepository.findByEmail(email);
         if (utente == null) {
             logger.warn("getMe - nessun utente in database per {}", LogSanitizer.maskEmail(email));
             return new ResponseEntity<>(

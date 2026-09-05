@@ -1,8 +1,8 @@
 package com.prenotazioni.auth;
 
 import com.prenotazioni.auth.dto.CreateUserRequest;
-import com.prenotazioni.auth.model.Utente;
-import com.prenotazioni.auth.repository.IUtenteRepository;
+import com.prenotazioni.auth.model.User;
+import com.prenotazioni.auth.repository.UserRepository;
 import com.prenotazioni.auth.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
 class FirstAdminBootstrapUnitTest {
 
     @Mock
-    private IUtenteRepository utenteRepository;
+    private UserRepository utenteRepository;
 
     @Mock
     private AuthService authService;
@@ -54,7 +54,7 @@ class FirstAdminBootstrapUnitTest {
     @Test
     void creaLAmministratoreSuUnDatabaseVuoto() {
         when(utenteRepository.count()).thenReturn(0L);
-        Utente creato = new Utente();
+        User creato = new User();
         creato.setId(1L);
         when(authService.register(any())).thenReturn(creato);
 

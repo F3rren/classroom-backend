@@ -1,13 +1,13 @@
 package com.prenotazioni.auth.controller;
 
 import com.prenotazioni.config.RequestCorrelationFilter;
-import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.model.Role;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.LoginPayload;
 import com.prenotazioni.auth.dto.LoginRequest;
 import com.prenotazioni.auth.dto.LoginResponse;
 import com.prenotazioni.auth.dto.UserSummaryDto;
-import com.prenotazioni.auth.model.Utente;
+import com.prenotazioni.auth.model.User;
 import com.prenotazioni.auth.service.AuthService;
 import com.prenotazioni.auth.service.LoginAttemptLimiter;
 import com.prenotazioni.auth.service.JwtService;
@@ -179,7 +179,7 @@ public class AuthController {
             }
             
             // Tentativo di login
-            Utente utente;
+            User utente;
             try {
                 utente = authService.login(email, request.getPassword());
             } catch (Exception e) {

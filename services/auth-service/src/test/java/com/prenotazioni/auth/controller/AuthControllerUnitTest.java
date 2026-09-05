@@ -3,8 +3,8 @@ package com.prenotazioni.auth.controller;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.LoginRequest;
 import com.prenotazioni.auth.dto.LoginResponse;
-import com.prenotazioni.auth.model.Utente;
-import com.prenotazioni.model.Ruolo;
+import com.prenotazioni.auth.model.User;
+import com.prenotazioni.model.Role;
 import com.prenotazioni.auth.service.AuthService;
 import com.prenotazioni.auth.service.LoginAttemptLimiter;
 import com.prenotazioni.auth.service.JwtService;
@@ -64,13 +64,13 @@ class AuthControllerUnitTest {
         return r;
     }
 
-    private Utente utenteValido() {
-        Utente u = new Utente();
+    private User utenteValido() {
+        User u = new User();
         u.setId(1L);
         u.setEmail("u@test.it");
         u.setUsername("utente");
         u.setNome("Utente Test");
-        u.setRuolo(Ruolo.USER);
+        u.setRuolo(Role.USER);
         u.setDataRegistrazione(LocalDateTime.now());
         return u;
     }
@@ -184,7 +184,7 @@ class AuthControllerUnitTest {
 
     @Test
     void returns500WhenTheUserHasNoId() {
-        Utente corrotto = utenteValido();
+        User corrotto = utenteValido();
         corrotto.setId(null);
         when(authService.login(anyString(), anyString())).thenReturn(corrotto);
 
