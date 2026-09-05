@@ -1,0 +1,66 @@
+# ============================================================================
+# SOVRASCRITTURA PER LA PRODUZIONE
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# FA UNA COSA SOLA: toglie i valori di ripiego ai segreti.
+#
+# docker-compose.yml li ha di proposito - ${DB_PASSWORD:-postgres},
+# ${RABBITMQ_PASSWORD:-guest} - perche' in sviluppo "docker compose up" deve
+# funzionare senza preparare niente. Il problema e' come quella comodita' arriva
+# altrove: in silenzio. Nessun avviso, nessun errore, solo un database raggiungibile
+# con la password "postgres" e un broker con "guest".
+#
+# Qui le stesse variabili diventano ${...:?}, cioe' obbligatorie: se mancano, compose
+# si rifiuta di partire e dice quale manca. Un errore prima di partire, invece di un
+# sistema in piedi e aperto.
+#
+# JWT_SECRET non compare: e' gia' obbligatoria nel file principale, perche' un
+# segreto di firma con un valore di comodo non ha mai senso, nemmeno in sviluppo.
+#
+# COSA NON FA, di proposito: politiche di riavvio, limiti di memoria, repliche,
+# raccolta dei log. Sono decisioni che dipendono da DOVE si distribuisce, e
+# inventarle qui vorrebbe dire scriverle prima di sapere se servono.
+# ============================================================================
+
+services:
+
+  db-utenti:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+
+  db-prenotazioni:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+
+  db-notifiche:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+
+  broker:
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?in produzione la password del broker va dichiarata, non lasciata a guest}
+
+  auth-service:
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+
+  prenotazione-service:
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in produzione la password del broker va dichiarata, non lasciata a guest}
+      # Senza ripiego anche qui: le origini di localhost in produzione non sono un
+      # default utile, sono una porta lasciata aperta su un'origine che non esiste.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in produzione le origini ammesse vanno dichiarate}
+
+  notifica-service:
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in produzione la password del broker va dichiarata, non lasciata a guest}
+
+  gateway:
+    environment:
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in produzione le origini ammesse vanno dichiarate}

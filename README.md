@@ -283,6 +283,30 @@ errore di configurazione non fa fallire la build, si vede all'avvio o non si ved
 
 ### Produzione
 
+I segreti che in sviluppo hanno un valore di ripiego — `DB_PASSWORD`, `RABBITMQ_USER`,
+`RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — in produzione diventano **obbligatori**:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Quel file fa una cosa sola: sostituisce `${DB_PASSWORD:-postgres}` con
+`${DB_PASSWORD:?...}`. Il ripiego in `docker-compose.yml` c'e' di proposito, perche' in
+sviluppo `docker compose up` deve funzionare senza preparare niente; il problema e' **come
+quella comodita' arriva altrove**, cioe' in silenzio. Nessun avviso, nessun errore, solo un
+database raggiungibile con la password `postgres` e un broker con `guest`.
+
+Con l'override, una variabile mancante ferma compose prima che parta qualcosa e dice quale
+manca. Verificato sui tre stati: senza le variabili si rifiuta, senza l'override lo stesso
+`.env` incompleto parte lo stesso (ed e' giusto, e' sviluppo), con entrambi e' valido.
+
+`JWT_SECRET` non compare in quel file perche' e' **gia** obbligatoria ovunque: un segreto di
+firma con un valore di comodo non ha senso nemmeno in sviluppo.
+
+> Il file non contiene politiche di riavvio, limiti di memoria o repliche. Sono decisioni
+> che dipendono da dove si distribuisce, e scriverle qui vorrebbe dire inventarle prima di
+> sapere se servono.
+
 ```bash
 mvn clean package
 export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
