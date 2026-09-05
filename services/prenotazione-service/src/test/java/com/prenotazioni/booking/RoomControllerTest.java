@@ -62,7 +62,7 @@ class RoomControllerTest {
         room.setFloor(3);
         room.setCapacity(15);
         room.setVirtual(false);
-        room.setStatus(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.FREE);
         roomId = roomRepository.save(room).getId();
 
         token = TestJwt.perUtente(1L, "room-user@test.it", "Room User");

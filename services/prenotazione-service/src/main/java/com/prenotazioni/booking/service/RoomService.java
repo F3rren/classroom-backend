@@ -31,7 +31,7 @@ public class RoomService {
     private static final DateTimeFormatter FORMATO_DATA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FORMATO_ORA = DateTimeFormatter.ofPattern("HH:mm");
 
-    /** Con quanto anticipo una prenotazione futura fa gia' risultare l'aula "prenotata". */
+    /** Con quanto anticipo una prenotazione futura fa gia' risultare l'aula "booked". */
     private static final int ORE_DI_PREAVVISO = 2;
 
     private static final String SCOPO_PREDEFINITO = "Lezione";
@@ -283,18 +283,18 @@ public class RoomService {
         RoomDetailsResponse roomDetails = new RoomDetailsResponse(
                 room.getId(), room.getName(), room.getFloor(), room.getCapacity(), room.isVirtual());
 
-        RoomAvailability status = RoomAvailability.LIBERA;
+        RoomAvailability status = RoomAvailability.FREE;
         RoomDetailsResponse.CurrentBooking currentBooking = null;
         RoomDetailsResponse.BlockInfo blockInfo = null;
 
         // L'aula e' occupata o bloccata proprio adesso?
         for (Booking booking : bookings) {
             if (booking.getStartTime().isBefore(adesso) && booking.getEndTime().isAfter(adesso)) {
-                if (booking.getStatus() == BookingStatus.PRENOTATA) {
-                    status = RoomAvailability.PRENOTATA;
+                if (booking.getStatus() == BookingStatus.BOOKED) {
+                    status = RoomAvailability.BOOKED;
                     currentBooking = toCurrentBooking(booking);
-                } else if (booking.getStatus().isInterventoAdmin()) {
-                    status = RoomAvailability.BLOCCATA;
+                } else if (booking.getStatus().isAdminIntervention()) {
+                    status = RoomAvailability.BLOCKED;
                     blockInfo = new RoomDetailsResponse.BlockInfo(
                         descrizioneOppure(booking, MOTIVO_BLOCCO_PREDEFINITO),
                         BLOCCATA_DA,
@@ -306,12 +306,12 @@ public class RoomService {
         }
 
         // Se e' libera adesso, guarda se c'e' una prenotazione imminente.
-        if (status == RoomAvailability.LIBERA) {
+        if (status == RoomAvailability.FREE) {
             LocalDateTime finePreavviso = adesso.plusHours(ORE_DI_PREAVVISO);
             for (Booking booking : bookings) {
                 if (booking.getStartTime().isAfter(adesso) && booking.getStartTime().isBefore(finePreavviso) &&
-                    booking.getStatus() == BookingStatus.PRENOTATA) {
-                    status = RoomAvailability.PRENOTATA;
+                    booking.getStatus() == BookingStatus.BOOKED) {
+                    status = RoomAvailability.BOOKED;
                     currentBooking = toCurrentBooking(booking);
                     break;
                 }
@@ -320,7 +320,7 @@ public class RoomService {
 
         List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
         for (Booking booking : bookings) {
-            if (booking.getStatus() == BookingStatus.PRENOTATA) {
+            if (booking.getStatus() == BookingStatus.BOOKED) {
                 bookingInfos.add(new RoomDetailsResponse.BookingInfo(
                     booking.getStartTime().toLocalDate().format(FORMATO_DATA),
                     booking.getStartTime().format(FORMATO_ORA),

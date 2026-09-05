@@ -72,18 +72,18 @@ class RoomDetailsWithBookingsTest {
         LocalDateTime now = LocalDateTime.now();
 
         aulaOccupataId = salvaAula("Aula Occupata", 1, 30, false);
-        prenota(aulaOccupataId, user, BookingStatus.PRENOTATA, now.minusHours(1), now.plusHours(1), "Lezione di Analisi");
+        prenota(aulaOccupataId, user, BookingStatus.BOOKED, now.minusHours(1), now.plusHours(1), "Lezione di Analisi");
 
         aulaBloccataId = salvaAula("Aula Bloccata", 1, 30, false);
-        prenota(aulaBloccataId, user, BookingStatus.BLOCCATA, now.minusHours(1), now.plusHours(1), "Evento riservato");
+        prenota(aulaBloccataId, user, BookingStatus.BLOCKED, now.minusHours(1), now.plusHours(1), "Evento riservato");
 
         aulaManutenzioneId = salvaAula("Aula Manutenzione", 2, 20, false);
-        prenota(aulaManutenzioneId, user, BookingStatus.MANUTENZIONE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
+        prenota(aulaManutenzioneId, user, BookingStatus.MAINTENANCE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
 
         // Aula virtuale con prenotazione IMMINENTE (entro 2 ore, ma non ancora iniziata):
         // copre il secondo ramo e il lato virtuale del terzo clone.
         aulaImminenteId = salvaAula("Aula Virtuale Imminente", 0, 50, true);
-        prenota(aulaImminenteId, user, BookingStatus.PRENOTATA, now.plusMinutes(30), now.plusMinutes(90), null);
+        prenota(aulaImminenteId, user, BookingStatus.BOOKED, now.plusMinutes(30), now.plusMinutes(90), null);
 
         aulaLiberaId = salvaAula("Aula Libera", 3, 10, false);
 
@@ -96,7 +96,7 @@ class RoomDetailsWithBookingsTest {
         a.setFloor(floor);
         a.setCapacity(capacity);
         a.setVirtual(virtuale);
-        a.setStatus(RoomStatus.LIBERA);
+        a.setStatus(RoomStatus.FREE);
         return roomRepository.save(a).getId();
     }
 
@@ -141,7 +141,7 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> occupata = byName(rooms, "Aula Occupata");
 
-        assertThat(occupata.get("status")).isEqualTo("prenotata");
+        assertThat(occupata.get("status")).isEqualTo("booked");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> booking = (Map<String, Object>) occupata.get("booking");
@@ -156,7 +156,7 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> bloccata = byName(rooms, "Aula Bloccata");
 
-        assertThat(bloccata.get("status")).isEqualTo("bloccata");
+        assertThat(bloccata.get("status")).isEqualTo("blocked");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> blocked = (Map<String, Object>) bloccata.get("blocked");
@@ -170,7 +170,7 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> manutenzione = byName(rooms, "Aula Manutenzione");
 
-        assertThat(manutenzione.get("status")).isEqualTo("bloccata");
+        assertThat(manutenzione.get("status")).isEqualTo("blocked");
         assertThat(manutenzione.get("blocked")).isNotNull();
     }
 
@@ -179,8 +179,8 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> imminente = byName(rooms, "Aula Virtuale Imminente");
 
-        // non e' occupata adesso, ma inizia entro 2 ore -> comunque "prenotata"
-        assertThat(imminente.get("status")).isEqualTo("prenotata");
+        // non e' occupata adesso, ma inizia entro 2 ore -> comunque "booked"
+        assertThat(imminente.get("status")).isEqualTo("booked");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> booking = (Map<String, Object>) imminente.get("booking");
@@ -194,7 +194,7 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> libera = byName(rooms, "Aula Libera");
 
-        assertThat(libera.get("status")).isEqualTo("libera");
+        assertThat(libera.get("status")).isEqualTo("free");
         assertThat(libera.get("booking")).isNull();
         assertThat(libera.get("blocked")).isNull();
     }
@@ -225,7 +225,7 @@ class RoomDetailsWithBookingsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
-        assertThat(room.get("status")).isEqualTo("prenotata");
+        assertThat(room.get("status")).isEqualTo("booked");
         assertThat(room.get("booking")).isNotNull();
     }
 
@@ -238,7 +238,7 @@ class RoomDetailsWithBookingsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
-        assertThat(room.get("status")).isEqualTo("bloccata");
+        assertThat(room.get("status")).isEqualTo("blocked");
         assertThat(room.get("blocked")).isNotNull();
     }
 
@@ -251,7 +251,7 @@ class RoomDetailsWithBookingsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
-        assertThat(room.get("status")).isEqualTo("prenotata");
+        assertThat(room.get("status")).isEqualTo("booked");
     }
 
     // ==================== clone 3: physical/virtual detailed ====================
@@ -261,9 +261,9 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/physical/detailed"));
 
         assertThat(rooms).hasSize(4); // le 4 aule fisiche, l'aula virtuale e' esclusa
-        assertThat(byName(rooms, "Aula Occupata").get("status")).isEqualTo("prenotata");
-        assertThat(byName(rooms, "Aula Bloccata").get("status")).isEqualTo("bloccata");
-        assertThat(byName(rooms, "Aula Libera").get("status")).isEqualTo("libera");
+        assertThat(byName(rooms, "Aula Occupata").get("status")).isEqualTo("booked");
+        assertThat(byName(rooms, "Aula Bloccata").get("status")).isEqualTo("blocked");
+        assertThat(byName(rooms, "Aula Libera").get("status")).isEqualTo("free");
     }
 
     @Test
@@ -271,19 +271,19 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/virtual/detailed"));
 
         assertThat(rooms).hasSize(1);
-        assertThat(byName(rooms, "Aula Virtuale Imminente").get("status")).isEqualTo("prenotata");
+        assertThat(byName(rooms, "Aula Virtuale Imminente").get("status")).isEqualTo("booked");
     }
 
     // ==================== stato aula (PrenotazioneService.getStatoAula) ====================
 
     @Test
     void statoAulaReflectsTheActiveBookingKind() throws Exception {
-        assertThat(statoDi(aulaOccupataId)).isEqualTo("PRENOTATA");
-        assertThat(statoDi(aulaBloccataId)).isEqualTo("BLOCCATA");
-        assertThat(statoDi(aulaManutenzioneId)).isEqualTo("MANUTENZIONE");
-        assertThat(statoDi(aulaLiberaId)).isEqualTo("LIBERA");
+        assertThat(statoDi(aulaOccupataId)).isEqualTo("BOOKED");
+        assertThat(statoDi(aulaBloccataId)).isEqualTo("BLOCKED");
+        assertThat(statoDi(aulaManutenzioneId)).isEqualTo("MAINTENANCE");
+        assertThat(statoDi(aulaLiberaId)).isEqualTo("FREE");
         // la prenotazione imminente non e' ancora attiva: l'aula risulta libera adesso
-        assertThat(statoDi(aulaImminenteId)).isEqualTo("LIBERA");
+        assertThat(statoDi(aulaImminenteId)).isEqualTo("FREE");
     }
 
     private String statoDi(Long roomId) throws Exception {

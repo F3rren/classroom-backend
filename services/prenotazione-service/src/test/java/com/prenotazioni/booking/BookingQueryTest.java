@@ -67,7 +67,7 @@ class BookingQueryTest {
         room.setFloor(2);
         room.setCapacity(30);
         room.setVirtual(false);
-        room.setStatus(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.FREE);
         roomId = roomRepository.save(room).getId();
 
         startTime = LocalDateTime.now().plusDays(2).withNano(0);
@@ -80,7 +80,7 @@ class BookingQueryTest {
         p.setUser(user);
         p.setStartTime(startTime);
         p.setEndTime(endTime);
-        p.setStatus(BookingStatus.PRENOTATA);
+        p.setStatus(BookingStatus.BOOKED);
         p.setDescription("Prenotazione per test di query");
         p.setCreatedAt(LocalDateTime.now());
         bookingId = bookingRepository.save(p).getId();
@@ -114,7 +114,7 @@ class BookingQueryTest {
     @Test
     void miePrenotazioniEscludeLeAnnullate() throws Exception {
         Booking p = bookingRepository.findById(bookingId).orElseThrow();
-        p.setStatus(BookingStatus.ANNULLATA);
+        p.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(p);
 
         Map<String, Object> body = TestJson.comeMappa(get("/api/bookings/mine").getBody());
@@ -173,7 +173,7 @@ class BookingQueryTest {
         Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
         assertThat(data.keySet()).containsExactlyInAnyOrder("roomId", "disponibile", "periodo", "status");
         assertThat(data.get("disponibile")).isEqualTo(true);
-        assertThat(data.get("status")).isEqualTo("LIBERA");
+        assertThat(data.get("status")).isEqualTo("FREE");
     }
 
     @Test
@@ -185,7 +185,7 @@ class BookingQueryTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
         assertThat(data.get("disponibile")).isEqualTo(false);
-        assertThat(data.get("status")).isEqualTo("OCCUPATA");
+        assertThat(data.get("status")).isEqualTo("BUSY");
     }
 
     @Test
@@ -215,18 +215,18 @@ class BookingQueryTest {
 
     @Test
     void ilFiltroPerStatoTornaSoloLePrenotazioniCorrispondenti() throws Exception {
-        ResponseEntity<String> resp = get("/api/bookings/status/prenotata");
+        ResponseEntity<String> resp = get("/api/bookings/status/booked");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder("status", "bookings", "totalBookings");
-        assertThat(body.get("status")).isEqualTo("prenotata");
+        assertThat(body.get("status")).isEqualTo("booked");
         assertThat(body.get("totalBookings")).isEqualTo(1);
     }
 
     @Test
     void prenotazioniByStatoWithNoMatchReturnsEmptyList() throws Exception {
-        ResponseEntity<String> resp = get("/api/bookings/status/annullata");
+        ResponseEntity<String> resp = get("/api/bookings/status/cancelled");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(TestJson.comeMappa(resp.getBody()).get("totalBookings")).isEqualTo(0);
@@ -284,6 +284,6 @@ class BookingQueryTest {
         assertThat(body.get("success")).isEqualTo(false);
         // L'elenco degli stati ammessi si ricava dall'enum: se ne aggiungessero uno e il
         // messaggio restasse indietro, questo assert se ne accorgerebbe.
-        assertThat(String.valueOf(body.get("userMessage"))).contains("prenotata", "annullata");
+        assertThat(String.valueOf(body.get("userMessage"))).contains("booked", "cancelled");
     }
 }

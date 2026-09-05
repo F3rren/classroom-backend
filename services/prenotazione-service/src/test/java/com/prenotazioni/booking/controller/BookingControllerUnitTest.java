@@ -90,7 +90,7 @@ class BookingControllerUnitTest {
         p.setUser(istantaneaDi(u.getId(), u.getUsername(), u.getName()));
         p.setStartTime(LocalDateTime.now().plusDays(1));
         p.setEndTime(LocalDateTime.now().plusDays(1).plusHours(2));
-        p.setStatus(BookingStatus.PRENOTATA);
+        p.setStatus(BookingStatus.BOOKED);
         return p;
     }
 
@@ -141,7 +141,7 @@ class BookingControllerUnitTest {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
-        when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BOOKING_CONFLICT", "occupata", "L'aula non e' disponibile."));
+        when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BOOKING_CONFLICT", "busy", "L'aula non e' disponibile."));
 
         assertThatThrownBy(() -> controller.bookRoom(richiestaValida(), user))
                 .isInstanceOf(BookingConflictException.class);
@@ -212,7 +212,7 @@ class BookingControllerUnitTest {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
-        when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "occupata", "L'aula non e' disponibile."));
+        when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "busy", "L'aula non e' disponibile."));
 
         assertThatThrownBy(() -> controller.editBooking(5L, richiestaValida(), user))
                 .isInstanceOf(BookingConflictException.class);
@@ -271,7 +271,7 @@ class BookingControllerUnitTest {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
-        when(service.blockRoom(anyLong(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BLOCK_CONFLICT", "occupata", "L'aula non e' disponibile."));
+        when(service.blockRoom(anyLong(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BLOCK_CONFLICT", "busy", "L'aula non e' disponibile."));
 
         assertThatThrownBy(() -> controller.blockRoom(richiestaValida(), admin))
                 .isInstanceOf(BookingConflictException.class);

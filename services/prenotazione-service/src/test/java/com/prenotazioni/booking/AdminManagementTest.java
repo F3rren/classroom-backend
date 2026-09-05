@@ -86,7 +86,7 @@ class AdminManagementTest {
         room.setFloor(1);
         room.setCapacity(25);
         room.setVirtual(false);
-        room.setStatus(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.FREE);
         roomId = roomRepository.save(room).getId();
 
         Booking p = new Booking();
@@ -94,7 +94,7 @@ class AdminManagementTest {
         p.setUser(new BookingOwner(utenteNormaleId, "user-mgmt", "User Mgmt"));
         p.setStartTime(LocalDateTime.now().plusDays(3).withNano(0));
         p.setEndTime(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
-        p.setStatus(BookingStatus.PRENOTATA);
+        p.setStatus(BookingStatus.BOOKED);
         p.setDescription("Prenotazione gestita da admin");
         p.setCreatedAt(LocalDateTime.now());
         bookingId = bookingRepository.save(p).getId();
@@ -222,7 +222,7 @@ class AdminManagementTest {
 
         // la prenotazione risulta annullata e il proprietario riceve una notifica
         Booking dopo = bookingRepository.findById(bookingId).orElseThrow();
-        assertThat(dopo.getStatus()).isEqualTo(BookingStatus.ANNULLATA);
+        assertThat(dopo.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         verify(eventPublisher).publishCancellation(any(BookingCancelledEvent.class));
     }
 
@@ -241,7 +241,7 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         // e la prenotazione NON deve essere stata annullata da una richiesta rifiutata
         assertThat(bookingRepository.findById(bookingId).orElseThrow().getStatus())
-                .isEqualTo(BookingStatus.PRENOTATA);
+                .isEqualTo(BookingStatus.BOOKED);
     }
 
     @Test

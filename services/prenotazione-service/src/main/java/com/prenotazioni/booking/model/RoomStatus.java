@@ -8,29 +8,29 @@ import jakarta.persistence.Converter;
 import java.util.Locale;
 
 /**
- * Stato PERSISTITO di un'aula, cioe' il campo aula.status salvato a database.
+ * The STORED state of a room, meaning the room.status column on disk.
  *
- * Da non confondere con i due vocabolari MAIUSCOLI calcolati a runtime, che sono
- * contratti diversi e restano stringhe:
- *  - PrenotazioneService.getStatoAula() restituisce LIBERA/MANUTENZIONE/BLOCCATA/PRENOTATA
- *    (nota: PRENOTATA, che qui non esiste, e nessun OCCUPATA);
- *  - AvailabilityPayload.status restituisce LIBERA/OCCUPATA.
- * Il frontend legge anche quei valori maiuscoli, quindi unificarli sarebbe una
- * modifica di contratto, non un refactor.
+ * Not to be confused with the two UPPERCASE vocabularies computed at runtime, which are
+ * different contracts and stay plain strings:
+ *  - {@code BookingService.getRoomStatus()} returns FREE/MAINTENANCE/BLOCKED/BOOKED
+ *    (note BOOKED, which does not exist here, and no BUSY);
+ *  - {@code AvailabilityPayload.status} returns FREE/BUSY.
+ * Three overlapping vocabularies is one more than anybody needs, but merging them is a
+ * change of contract rather than a refactor, so it is left as its own decision.
  *
- * C'e' infine {@link DisponibilitaAula}, il campo "status" di RoomDetailsResponse:
- * minuscolo come questo enum ma con PRENOTATA e senza OCCUPATA, quindi nemmeno
- * quello e' sostituibile con StatoAula.
+ * There is also {@link RoomAvailability}, the "status" field of RoomDetailsResponse:
+ * lowercase like this enum but with BOOKED and without BUSY, so that one is not
+ * interchangeable with this either.
  *
- * Come per StatoPrenotazione, il valore su disco e nel JSON resta minuscolo:
- * lo impone il CHECK constraint aula_stato_check e il bundle compilato del frontend.
+ * As with {@link BookingStatus}, the value on disk and in JSON is lowercase and separate
+ * from the constant name: room_status_check admits exactly these four.
  */
 public enum RoomStatus {
 
-    LIBERA("libera"),
-    OCCUPATA("occupata"),
-    BLOCCATA("bloccata"),
-    MANUTENZIONE("manutenzione");
+    FREE("free"),
+    BUSY("busy"),
+    BLOCKED("blocked"),
+    MAINTENANCE("maintenance");
 
     private final String value;
 
@@ -38,25 +38,31 @@ public enum RoomStatus {
         this.value = value;
     }
 
+    /** The value used in JSON and in the database. */
     @JsonValue
     public String getValue() {
         return value;
     }
 
+    /** Accepts any mix of upper and lower case, for the same reason as BookingStatus. */
     @JsonCreator
-    public static RoomStatus da(String value) {
+    public static RoomStatus from(String value) {
         if (value == null) {
             return null;
         }
-        String normalizzato = value.trim().toLowerCase(Locale.ROOT);
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
         for (RoomStatus status : values()) {
-            if (status.value.equals(normalizzato)) {
+            if (status.value.equals(normalized)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Stato aula non valido: " + value);
+        throw new IllegalArgumentException("Invalid room status: " + value);
     }
 
+    /**
+     * JPA converter: writes and reads the lowercase value, not the constant name.
+     * autoApply so that no field needs annotating.
+     */
     @Converter(autoApply = true)
     public static class JpaConverter implements AttributeConverter<RoomStatus, String> {
 
@@ -67,7 +73,7 @@ public enum RoomStatus {
 
         @Override
         public RoomStatus convertToEntityAttribute(String value) {
-            return da(value);
+            return from(value);
         }
     }
 }

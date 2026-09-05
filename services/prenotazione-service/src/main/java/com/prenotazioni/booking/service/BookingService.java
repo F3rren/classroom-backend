@@ -84,7 +84,7 @@ public class BookingService {
         booking.setUser(proprietario);
         booking.setStartTime(startTime);
         booking.setEndTime(endTime);
-        booking.setStatus(BookingStatus.PRENOTATA);
+        booking.setStatus(BookingStatus.BOOKED);
         booking.setDescription(description);
         booking.setCreatedAt(LocalDateTime.now());
         
@@ -127,7 +127,7 @@ public class BookingService {
         blocco.setUser(admin);
         blocco.setStartTime(startTime);
         blocco.setEndTime(endTime);
-        blocco.setStatus(BookingStatus.BLOCCATA);
+        blocco.setStatus(BookingStatus.BLOCKED);
         blocco.setDescription(motivo);
         blocco.setCreatedAt(LocalDateTime.now());
         
@@ -153,28 +153,28 @@ public class BookingService {
         List<Booking> activeBookings = bookingRepository.findActiveBookings(roomId, moment);
             
         if (activeBookings.isEmpty()) {
-            logger.debug("Stato aula - AulaId: {}, Momento: {} - LIBERA", roomId, moment);
-            return "LIBERA";
+            logger.debug("Stato aula - AulaId: {}, Momento: {} - FREE", roomId, moment);
+            return "FREE";
         }
         
-        // Priorità: MANUTENZIONE > BLOCCATA > PRENOTATA
+        // Priorità: MAINTENANCE > BLOCKED > BOOKED
         for (Booking p : activeBookings) {
-            if (p.getStatus() == BookingStatus.MANUTENZIONE) {
-                logger.debug("Stato aula - AulaId: {}, Momento: {} - MANUTENZIONE", roomId, moment);
-                return "MANUTENZIONE";
+            if (p.getStatus() == BookingStatus.MAINTENANCE) {
+                logger.debug("Stato aula - AulaId: {}, Momento: {} - MAINTENANCE", roomId, moment);
+                return "MAINTENANCE";
             }
         }
         
         for (Booking p : activeBookings) {
-            if (p.getStatus() == BookingStatus.BLOCCATA) {
-                logger.debug("Stato aula - AulaId: {}, Momento: {} - BLOCCATA", roomId, moment);
-                return "BLOCCATA";
+            if (p.getStatus() == BookingStatus.BLOCKED) {
+                logger.debug("Stato aula - AulaId: {}, Momento: {} - BLOCKED", roomId, moment);
+                return "BLOCKED";
             }
         }
         
-        logger.debug("Stato aula - AulaId: {}, Momento: {} - PRENOTATA", roomId, moment);
+        logger.debug("Stato aula - AulaId: {}, Momento: {} - BOOKED", roomId, moment);
         logger.debug("FINE METODO getStatoAula");
-        return "PRENOTATA";
+        return "BOOKED";
     }
     
     // Aggiorna lo stato dell'aula in base alle prenotazioni attive
@@ -195,20 +195,20 @@ public class BookingService {
         
         RoomStatus nuovoStato;
         if (activeBookings.isEmpty()) {
-            nuovoStato = RoomStatus.LIBERA;
+            nuovoStato = RoomStatus.FREE;
         } else {
             // Controlla se c'è una prenotazione di manutenzione o bloccata
             boolean hasManutenzione = activeBookings.stream()
-                .anyMatch(p -> p.getStatus() == BookingStatus.MANUTENZIONE);
+                .anyMatch(p -> p.getStatus() == BookingStatus.MAINTENANCE);
             boolean hasBloccata = activeBookings.stream()
-                .anyMatch(p -> p.getStatus() == BookingStatus.BLOCCATA);
+                .anyMatch(p -> p.getStatus() == BookingStatus.BLOCKED);
             
             if (hasManutenzione) {
-                nuovoStato = RoomStatus.MANUTENZIONE;
+                nuovoStato = RoomStatus.MAINTENANCE;
             } else if (hasBloccata) {
-                nuovoStato = RoomStatus.BLOCCATA;
+                nuovoStato = RoomStatus.BLOCKED;
             } else {
-                nuovoStato = RoomStatus.OCCUPATA;
+                nuovoStato = RoomStatus.BUSY;
             }
         }
         
@@ -253,10 +253,10 @@ public class BookingService {
 
         // Solo una prenotazione attiva puo' essere annullata da questo endpoint. Senza questo
         // controllo un secondo annullamento riusciva e rispondeva "annullata con successo"
-        // pur non cambiando nulla; i blocchi e le manutenzioni, che non sono "prenotata",
+        // pur non cambiando nulla; i blocchi e le manutenzioni, che non sono "booked",
         // si annullano dall'endpoint admin (annullaPrenotazioneAsAdmin, volutamente permissivo
         // sullo stato). La regola e' sullo stato, non sul ruolo: vale anche per gli admin.
-        if (!p.getStatus().isAttiva()) {
+        if (!p.getStatus().isActive()) {
             // 409: la prenotazione esiste ed e' visibile, ma il suo stato non ammette
             // l'annullamento. Non e' "non trovata" e non e' "non autorizzato".
             throw new DomainConflictException("INVALID_STATE",
@@ -264,7 +264,7 @@ public class BookingService {
                     "Questa prenotazione non puo' essere annullata nello stato attuale.");
         }
 
-        p.setStatus(BookingStatus.ANNULLATA);
+        p.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(p);
         
         // Aggiorna lo stato dell'aula
@@ -333,7 +333,7 @@ public class BookingService {
         logger.debug("INIZIO METODO getPrenotazioniByStato");
         logger.debug("Recupero prenotazioni per stato - Stato: {}", status);
         logger.debug("FINE METODO getPrenotazioniByStato");
-        return bookingRepository.findByStatus(BookingStatus.da(status));
+        return bookingRepository.findByStatus(BookingStatus.from(status));
     }
     
     // Lista prenotazioni future
@@ -362,14 +362,14 @@ public class BookingService {
         
         logger.debug("Annullamento prenotazione da parte dell'admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", bookingId, adminId, motivo);
         // Gli admin possono eliminare qualsiasi prenotazione, indipendentemente dallo stato
-        booking.setStatus(BookingStatus.ANNULLATA);
+        booking.setStatus(BookingStatus.CANCELLED);
         
         logger.debug("Aggiornamento descrizione prenotazione per indicare azione admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", bookingId, adminId, motivo);
         // Aggiorna la descrizione per indicare l'azione admin
         String descrizioneOriginale = booking.getDescription() != null ? booking.getDescription() : "";
         String nuovaDescrizione = descrizioneOriginale + 
             (descrizioneOriginale.isEmpty() ? "" : " | ") +
-            "ANNULLATA DALL'AMMINISTRATORE: " + motivo;
+            "CANCELLED DALL'AMMINISTRATORE: " + motivo;
         booking.setDescription(nuovaDescrizione);
 
         logger.debug("Salvataggio prenotazione aggiornata - PrenotazioneId: {}", bookingId);

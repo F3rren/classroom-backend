@@ -14,13 +14,13 @@ public class AvailabilityPayload {
     @Schema(description = "Periodo verificato", example = "2026-12-25 14:30:00 - 2026-12-25 16:30:00")
     private final String periodo;
     @Schema(description = "Esito in forma testuale. Vocabolario MAIUSCOLO, distinto dallo stato persistito dell'aula",
-            allowableValues = {"LIBERA", "OCCUPATA"}, example = "LIBERA")
+            allowableValues = {"FREE", "BUSY"}, example = "FREE")
     private final String status;
 
     public AvailabilityPayload(Long roomId, boolean disponibile, String periodo) {
         this.roomId = roomId;
         this.disponibile = disponibile;
         this.periodo = periodo;
-        this.status = disponibile ? "LIBERA" : "OCCUPATA";
+        this.status = disponibile ? "FREE" : "BUSY";
     }
 }

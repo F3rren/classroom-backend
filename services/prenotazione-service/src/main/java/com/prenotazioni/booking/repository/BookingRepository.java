@@ -39,7 +39,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId " +
            "AND p.status != 'annullata' " +
            "AND p.startTime <= :moment AND p.endTime > :moment " +
-           "ORDER BY p.status DESC") // MANUTENZIONE, BLOCCATA, PRENOTATA
+           "ORDER BY p.status DESC") // MAINTENANCE, BLOCKED, BOOKED
     List<Booking> findActiveBookings(@Param("roomId") Long roomId,
                                              @Param("moment") LocalDateTime moment);
     

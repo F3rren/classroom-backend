@@ -48,7 +48,7 @@ public class Room {
     @PreUpdate
     protected void setDefaults() {
         if (status == null) {
-            status = RoomStatus.LIBERA;
+            status = RoomStatus.FREE;
         }
     }
 }

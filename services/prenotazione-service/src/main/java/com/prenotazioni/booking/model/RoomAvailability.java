@@ -3,24 +3,23 @@ package com.prenotazioni.booking.model;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Disponibilita' CALCOLATA di un'aula in un dato istante, cioe' il campo "status"
- * di RoomDetailsResponse. Non e' persistita: viene derivata ogni volta dalle
- * prenotazioni che attraversano quel momento.
+ * The COMPUTED availability of a room at a given instant, meaning the "status" field of
+ * RoomDetailsResponse. It is not persisted: it is derived every time from the bookings
+ * that cross that moment.
  *
- * E' un vocabolario a se' e non un riuso di {@link StatoAula}: quello non ha
- * PRENOTATA, che qui e' il caso piu' frequente. Prima di questo enum erano
- * stringhe crude ripetute in tre copie dello stesso blocco.
+ * It is a vocabulary of its own rather than a reuse of {@link RoomStatus}: that one has
+ * no BOOKED, which here is the most frequent case. Before this enum it was raw strings
+ * repeated in three copies of the same block.
  *
- * I valori restano minuscoli e @JsonValue li serializza tali: il frontend legge
- * "libera"/"prenotata"/"bloccata" e cambiarli sarebbe una modifica di contratto.
- * Non serve un AttributeConverter come per gli enum persistiti, perche' questo
- * valore non tocca mai il database.
+ * The values are lowercase and {@link JsonValue} serialises them as such. No
+ * AttributeConverter is needed, unlike the persisted enums, because this value never
+ * reaches the database.
  */
 public enum RoomAvailability {
 
-    LIBERA("libera"),
-    PRENOTATA("prenotata"),
-    BLOCCATA("bloccata");
+    FREE("free"),
+    BOOKED("booked"),
+    BLOCKED("blocked");
 
     private final String value;
 

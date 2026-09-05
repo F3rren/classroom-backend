@@ -18,14 +18,14 @@ class RoomStatusTest {
 
     @Test
     void statoAulaKeepsItsOwnLowercaseVocabulary() {
-        // aula_stato_check: 4 valori, diversi da quelli della prenotazione
+        // room_status_check: 4 valori, diversi da quelli della prenotazione
         assertThat(java.util.Arrays.stream(RoomStatus.values()).map(RoomStatus::getValue))
-                .containsExactlyInAnyOrder("libera", "occupata", "bloccata", "manutenzione");
+                .containsExactlyInAnyOrder("free", "busy", "blocked", "maintenance");
     }
 
     @Test
     void statoAulaSerializesLowercase() throws Exception {
-        assertThat(objectMapper.writeValueAsString(RoomStatus.OCCUPATA)).isEqualTo("\"occupata\"");
-        assertThat(objectMapper.writeValueAsString(RoomStatus.LIBERA)).isEqualTo("\"libera\"");
+        assertThat(objectMapper.writeValueAsString(RoomStatus.BUSY)).isEqualTo("\"busy\"");
+        assertThat(objectMapper.writeValueAsString(RoomStatus.FREE)).isEqualTo("\"free\"");
     }
 }

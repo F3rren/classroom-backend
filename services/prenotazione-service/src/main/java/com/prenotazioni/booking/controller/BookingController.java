@@ -361,7 +361,7 @@ public class BookingController {
         List<Booking> tuttePrenotazioni = bookingService.getUserBookings(principal.id());
 
         List<Booking> bookings = tuttePrenotazioni.stream()
-            .filter(p -> p.getStatus() != BookingStatus.ANNULLATA)
+            .filter(p -> p.getStatus() != BookingStatus.CANCELLED)
             .collect(Collectors.toList());
 
         logger.debug("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)",
@@ -407,7 +407,7 @@ public class BookingController {
 
         List<Booking> tuttePrenotazioni = bookingService.getAllBookings();
         List<Booking> bookings = tuttePrenotazioni.stream()
-            .filter(p -> p.getStatus() != BookingStatus.ANNULLATA)
+            .filter(p -> p.getStatus() != BookingStatus.CANCELLED)
             .map(this::sanitizeOwnerForListing)
             .collect(Collectors.toList());
 

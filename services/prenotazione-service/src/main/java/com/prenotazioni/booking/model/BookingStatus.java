@@ -8,30 +8,33 @@ import jakarta.persistence.Converter;
 import java.util.Locale;
 
 /**
- * Stato di una prenotazione, prima rappresentato da stringhe libere sparse in una
- * sessantina di punti fra service, controller e query.
+ * State of a booking, once represented by loose strings scattered across some sixty
+ * places in services, controllers and queries.
  *
- * IMPORTANTE - il formato esterno resta minuscolo, in entrambe le direzioni:
- *  - verso il frontend: il bundle compilato confronta le stringhe minuscole esatte
- *    ("annullata", "bloccata", "prenotata"), quindi @JsonValue serializza il valore
- *    minuscolo e NON il nome della costante;
- *  - verso il database: la colonna ha un CHECK constraint che ammette solo quei valori
- *    minuscoli (prenotazione_stato_check), quindi la persistenza passa dal converter
- *    qui sotto invece che da @Enumerated, che salverebbe il nome maiuscolo.
- * Cosi' il tipo diventa sicuro nel codice Java senza cambiare nulla sul filo ne' su disco.
+ * THE EXTERNAL FORM IS LOWERCASE, in both directions:
+ *  - towards the client: {@link JsonValue} serialises the value, NOT the constant name,
+ *    so the wire carries "booked" rather than "BOOKED";
+ *  - towards the database: the column has a CHECK constraint that admits exactly these
+ *    values (booking_status_check), so persistence goes through the converter below
+ *    instead of through {@code @Enumerated}, which would store the uppercase name.
+ *
+ * Keeping the name and the value as two separate things is what made the translation to
+ * English cheap: the constants could be renamed with the compiler checking every call
+ * site, and the values changed on their own schedule, in a migration that also had to
+ * rewrite the rows and the CHECK constraint.
  */
 public enum BookingStatus {
 
-    PRENOTATA("prenotata"),
+    BOOKED("booked"),
     /**
-     * Ammesso dal CHECK constraint e citato storicamente, ma nessun punto del codice lo
-     * assegna: e' tenuto solo perche' una riga legacy con questo valore deve poter essere
-     * letta senza far fallire la deserializzazione.
+     * Admitted by the CHECK constraint and referred to historically, but no point in the
+     * code assigns it: it is kept only so that a legacy row carrying this value can still
+     * be read without failing deserialisation.
      */
-    CONFERMATA("confermata"),
-    BLOCCATA("bloccata"),
-    MANUTENZIONE("manutenzione"),
-    ANNULLATA("annullata");
+    CONFIRMED("confirmed"),
+    BLOCKED("blocked"),
+    MAINTENANCE("maintenance"),
+    CANCELLED("cancelled");
 
     private final String value;
 
@@ -39,44 +42,43 @@ public enum BookingStatus {
         this.value = value;
     }
 
-    /** Valore usato nel JSON e nel database. */
+    /** The value used in JSON and in the database. */
     @JsonValue
     public String getValue() {
         return value;
     }
 
     /**
-     * Accetta qualunque combinazione di maiuscole/minuscole: prima della migrazione il
-     * codice confrontava con equalsIgnoreCase, quindi dati o richieste con case diverso
-     * devono continuare a essere accettati.
+     * Accepts any mix of upper and lower case: before this enum existed the code compared
+     * with equalsIgnoreCase, so data or requests in a different case have to keep working.
      */
     @JsonCreator
-    public static BookingStatus da(String value) {
+    public static BookingStatus from(String value) {
         if (value == null) {
             return null;
         }
-        String normalizzato = value.trim().toLowerCase(Locale.ROOT);
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
         for (BookingStatus status : values()) {
-            if (status.value.equals(normalizzato)) {
+            if (status.value.equals(normalized)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Stato prenotazione non valido: " + value);
+        throw new IllegalArgumentException("Invalid booking status: " + value);
     }
 
-    /** True se la prenotazione e' attiva, cioe' annullabile dall'utente. */
-    public boolean isAttiva() {
-        return this == PRENOTATA;
+    /** True when the booking is active, meaning the user can still cancel it. */
+    public boolean isActive() {
+        return this == BOOKED;
     }
 
-    /** True per gli stati che occupano l'aula per volonta' di un admin. */
-    public boolean isInterventoAdmin() {
-        return this == BLOCCATA || this == MANUTENZIONE;
+    /** True for the states that hold the room because an admin decided so. */
+    public boolean isAdminIntervention() {
+        return this == BLOCKED || this == MAINTENANCE;
     }
 
     /**
-     * Converter JPA: scrive/legge il valore minuscolo, non il nome della costante.
-     * autoApply cosi' non serve annotare ogni campo.
+     * JPA converter: writes and reads the lowercase value, not the constant name.
+     * autoApply so that no field needs annotating.
      */
     @Converter(autoApply = true)
     public static class JpaConverter implements AttributeConverter<BookingStatus, String> {
@@ -88,7 +90,7 @@ public enum BookingStatus {
 
         @Override
         public BookingStatus convertToEntityAttribute(String value) {
-            return da(value);
+            return from(value);
         }
     }
 }

@@ -36,7 +36,7 @@ class EventPublisherUnitTest {
     private final EventPublisher eventPublisher = new EventPublisher(rabbitTemplate);
 
     private final BookingCancelledEvent event = new BookingCancelledEvent(
-            7L, 42L, "Aula 1", "Admin", "2026-09-03", "09:00", "11:00", "manutenzione");
+            7L, 42L, "Aula 1", "Admin", "2026-09-03", "09:00", "11:00", "maintenance");
 
     @AfterEach
     void pulisci() {

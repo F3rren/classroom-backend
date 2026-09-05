@@ -189,7 +189,7 @@ public class AdminController {
 
         List<Booking> tuttePrenotazioni = bookingService.getAllBookings();
         long attive = tuttePrenotazioni.stream()
-            .filter(p -> p.getStatus() != BookingStatus.ANNULLATA)
+            .filter(p -> p.getStatus() != BookingStatus.CANCELLED)
             .count();
         long annullate = tuttePrenotazioni.size() - attive;
 

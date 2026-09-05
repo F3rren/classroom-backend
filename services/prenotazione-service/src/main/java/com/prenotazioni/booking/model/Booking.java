@@ -63,7 +63,7 @@ public class Booking {
             createdAt = LocalDateTime.now();
         }
         if (status == null) {
-            status = BookingStatus.PRENOTATA;
+            status = BookingStatus.BOOKED;
         }
     }
 }

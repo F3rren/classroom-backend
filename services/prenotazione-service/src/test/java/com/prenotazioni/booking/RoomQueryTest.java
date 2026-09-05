@@ -64,7 +64,7 @@ class RoomQueryTest {
         a.setFloor(floor);
         a.setCapacity(capacity);
         a.setVirtual(virtuale);
-        a.setStatus(RoomStatus.LIBERA);
+        a.setStatus(RoomStatus.FREE);
         return roomRepository.save(a).getId();
     }
 

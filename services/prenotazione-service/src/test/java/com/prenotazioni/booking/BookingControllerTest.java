@@ -70,7 +70,7 @@ class BookingControllerTest {
         room.setFloor(1);
         room.setCapacity(20);
         room.setVirtual(false);
-        room.setStatus(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.FREE);
         roomRepository.save(room);
         roomId = room.getId();
 
@@ -79,7 +79,7 @@ class BookingControllerTest {
         booking.setUser(owner);
         booking.setStartTime(LocalDateTime.now().plusDays(1));
         booking.setEndTime(LocalDateTime.now().plusDays(1).plusHours(2));
-        booking.setStatus(BookingStatus.PRENOTATA);
+        booking.setStatus(BookingStatus.BOOKED);
         booking.setDescription("Riunione privata di owner");
         booking.setCreatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
@@ -229,7 +229,7 @@ class BookingControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStatus())
-                .isEqualTo(BookingStatus.ANNULLATA);
+                .isEqualTo(BookingStatus.CANCELLED);
     }
 
     @Test
@@ -255,7 +255,7 @@ class BookingControllerTest {
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
         // la prenotazione resta intatta
         assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStatus())
-                .isEqualTo(BookingStatus.PRENOTATA);
+                .isEqualTo(BookingStatus.BOOKED);
     }
 
     @Test
