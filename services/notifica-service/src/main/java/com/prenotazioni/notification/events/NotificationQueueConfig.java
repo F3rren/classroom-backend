@@ -30,8 +30,8 @@ import org.springframework.context.annotation.Configuration;
 public class NotificationQueueConfig {
 
     @Bean
-    Queue codaCancellazioni() {
-        return new Queue(EventTopology.CODA_NOTIFICHE_CANCELLAZIONE, true);
+    Queue cancellationQueue() {
+        return new Queue(EventTopology.CANCELLATION_QUEUE, true);
     }
 
     @Bean
@@ -40,14 +40,14 @@ public class NotificationQueueConfig {
     }
 
     @Bean
-    Binding bindingCancellazioni(Queue codaCancellazioni, TopicExchange exchangeEventi) {
-        return BindingBuilder.bind(codaCancellazioni)
+    Binding bindingCancellazioni(Queue cancellationQueue, TopicExchange exchangeEventi) {
+        return BindingBuilder.bind(cancellationQueue)
                 .to(exchangeEventi)
-                .with(EventTopology.ROUTING_KEY_CANCELLAZIONE);
+                .with(EventTopology.ROUTING_KEY_CANCELLATION);
     }
 
     @Bean
-    MessageConverter convertitoreJson() {
+    MessageConverter jsonConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
@@ -55,7 +55,7 @@ public class NotificationQueueConfig {
 
     @Bean
     Queue codaErrori() {
-        return new Queue(EventTopology.CODA_ERRORI_CANCELLAZIONE, true);
+        return new Queue(EventTopology.CANCELLATION_ERROR_QUEUE, true);
     }
 
     @Bean

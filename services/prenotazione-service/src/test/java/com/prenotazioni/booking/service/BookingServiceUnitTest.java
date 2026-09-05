@@ -90,12 +90,12 @@ class BookingServiceUnitTest {
     }
 
     /** Nessun conflitto: l'aula risulta libera per il periodo richiesto. */
-    private void aulaLibera() {
+    private void freeRoom() {
         when(bookingRepository.findConflictingBookings(anyLong(), any(), any()))
                 .thenReturn(List.of());
     }
 
-    private void salvaComeArrivato() {
+    private void saveAsGiven() {
         when(bookingRepository.save(any(Booking.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
@@ -114,7 +114,7 @@ class BookingServiceUnitTest {
 
     @Test
     void prenotaAulaSegnalaAulaInesistente() {
-        aulaLibera();
+        freeRoom();
         when(roomRepository.findById(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.bookRoom(10L, null, user(1L), startTime, endTime, "x"))
@@ -127,7 +127,7 @@ class BookingServiceUnitTest {
 
     @Test
     void prenotaAulaSegnalaCorsoInesistente() {
-        aulaLibera();
+        freeRoom();
         when(roomRepository.findById(10L)).thenReturn(Optional.of(room(10L, RoomStatus.FREE)));
         when(courseRepository.findById(77L)).thenReturn(Optional.empty());
 
@@ -137,8 +137,8 @@ class BookingServiceUnitTest {
 
     @Test
     void prenotaAulaAttachesCourseWhenPresent() {
-        aulaLibera();
-        salvaComeArrivato();
+        freeRoom();
+        saveAsGiven();
         Course course = new Course();
         course.setId(77L);
         course.setName("Analisi 1");
@@ -155,8 +155,8 @@ class BookingServiceUnitTest {
 
     @Test
     void prenotaAulaLeavesRoomStateUnchangedWhenBookingIsInTheFuture() {
-        aulaLibera();
-        salvaComeArrivato();
+        freeRoom();
+        saveAsGiven();
         Room a = room(10L, RoomStatus.FREE);
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
         // nessuna prenotazione attiva ADESSO -> lo stato resta "free", nessun save sull'aula
@@ -168,8 +168,8 @@ class BookingServiceUnitTest {
 
     @Test
     void prenotaAulaMarksRoomOccupiedWhenBookingIsActiveNow() {
-        aulaLibera();
-        salvaComeArrivato();
+        freeRoom();
+        saveAsGiven();
         Room a = room(10L, RoomStatus.FREE);
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
         when(bookingRepository.findActiveBookings(anyLong(), any()))
@@ -183,8 +183,8 @@ class BookingServiceUnitTest {
 
     @Test
     void prenotaAulaMarksRoomInMaintenanceWhenAMaintenanceBookingIsActive() {
-        aulaLibera();
-        salvaComeArrivato();
+        freeRoom();
+        saveAsGiven();
         Room a = room(10L, RoomStatus.FREE);
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
         when(bookingRepository.findActiveBookings(anyLong(), any()))
@@ -197,8 +197,8 @@ class BookingServiceUnitTest {
 
     @Test
     void prenotaAulaMarksRoomBlockedWhenABlockingBookingIsActive() {
-        aulaLibera();
-        salvaComeArrivato();
+        freeRoom();
+        saveAsGiven();
         Room a = room(10L, RoomStatus.FREE);
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
         when(bookingRepository.findActiveBookings(anyLong(), any()))
@@ -216,16 +216,16 @@ class BookingServiceUnitTest {
         when(bookingRepository.findConflictingBookings(anyLong(), any(), any()))
                 .thenReturn(List.of(booking(1L, room(10L, RoomStatus.FREE), user(1L), BookingStatus.BOOKED)));
 
-        assertThatThrownBy(() -> service.blockRoom(10L, user(2L), startTime, endTime, "motivo"))
+        assertThatThrownBy(() -> service.blockRoom(10L, user(2L), startTime, endTime, "reason"))
                 .isInstanceOf(BookingConflictException.class);
     }
 
     @Test
     void bloccaAulaSegnalaAulaInesistente() {
-        aulaLibera();
+        freeRoom();
         when(roomRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.blockRoom(10L, user(2L), startTime, endTime, "motivo"))
+        assertThatThrownBy(() -> service.blockRoom(10L, user(2L), startTime, endTime, "reason"))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -235,8 +235,8 @@ class BookingServiceUnitTest {
 
     @Test
     void bloccaAulaCreatesBlockedBookingForAdmin() {
-        aulaLibera();
-        salvaComeArrivato();
+        freeRoom();
+        saveAsGiven();
         when(roomRepository.findById(10L)).thenReturn(Optional.of(room(10L, RoomStatus.FREE)));
 
         Booking blocco = service.blockRoom(10L, user(2L), startTime, endTime, "manutenzione straordinaria");
@@ -278,7 +278,7 @@ class BookingServiceUnitTest {
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
         when(bookingRepository.findActiveBookings(anyLong(), any())).thenReturn(List.of());
-        salvaComeArrivato();
+        saveAsGiven();
 
         assertThat(service.cancelBooking(5L, 1L, false)).isTrue();
         assertThat(p.getStatus()).isEqualTo(BookingStatus.CANCELLED);
@@ -294,7 +294,7 @@ class BookingServiceUnitTest {
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
         when(bookingRepository.findActiveBookings(anyLong(), any())).thenReturn(List.of());
-        salvaComeArrivato();
+        saveAsGiven();
 
         assertThat(service.cancelBooking(5L, 2L, true)).isTrue();
     }
@@ -306,7 +306,7 @@ class BookingServiceUnitTest {
         Booking p = booking(5L, a, user(1L), BookingStatus.BOOKED);
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
         when(roomRepository.findById(10L)).thenReturn(Optional.empty());
-        salvaComeArrivato();
+        saveAsGiven();
 
         assertThat(service.cancelBooking(5L, 1L, false)).isTrue();
         verify(roomRepository, never()).save(any());
@@ -422,15 +422,15 @@ class BookingServiceUnitTest {
         when(roomRepository.findById(20L)).thenReturn(Optional.of(nuova));
         when(bookingRepository.findConflictingBookingsExcluding(anyLong(), any(), any(), anyLong()))
                 .thenReturn(List.of());
-        salvaComeArrivato();
+        saveAsGiven();
 
-        LocalDateTime nuovoInizio = startTime.plusDays(3);
+        LocalDateTime newStart = startTime.plusDays(3);
         Booking aggiornata = service.updateBooking(
-                5L, 20L, null, 1L, false, nuovoInizio, nuovoInizio.plusHours(1), "nuova descrizione");
+                5L, 20L, null, 1L, false, newStart, newStart.plusHours(1), "nuova descrizione");
 
         assertThat(aggiornata).isNotNull();
         assertThat(aggiornata.getRoom()).isSameAs(nuova);
-        assertThat(aggiornata.getStartTime()).isEqualTo(nuovoInizio);
+        assertThat(aggiornata.getStartTime()).isEqualTo(newStart);
         assertThat(aggiornata.getDescription()).isEqualTo("nuova descrizione");
     }
 
@@ -442,7 +442,7 @@ class BookingServiceUnitTest {
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
         when(bookingRepository.findConflictingBookingsExcluding(anyLong(), any(), any(), anyLong()))
                 .thenReturn(List.of());
-        salvaComeArrivato();
+        saveAsGiven();
 
         assertThat(service.updateBooking(5L, 10L, null, 2L, true, startTime, endTime, "x")).isNotNull();
     }

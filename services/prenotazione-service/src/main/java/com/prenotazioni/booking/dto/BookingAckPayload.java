@@ -6,7 +6,7 @@ import lombok.Value;
 /** Risposta di successo per creazione/modifica prenotazione (POST /prenota, PUT /{id}). */
 @Value
 public class BookingAckPayload {
-    Booking prenotazione;
+    Booking booking;
     Long roomId;
-    String periodo;
+    String period;
 }

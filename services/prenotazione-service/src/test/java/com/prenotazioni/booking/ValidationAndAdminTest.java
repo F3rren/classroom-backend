@@ -51,8 +51,8 @@ class ValidationAndAdminTest {
 
 
 
-        tokenAdmin = TestJwt.perAdmin(1L, "admin@validation.test");
-        tokenUser = TestJwt.perUtente(2L, "user@validation.test", "User Validation");
+        tokenAdmin = TestJwt.forAdmin(1L, "admin@validation.test");
+        tokenUser = TestJwt.forUser(2L, "user@validation.test", "User Validation");
     }
 
     @SuppressWarnings("unchecked")
@@ -78,7 +78,7 @@ class ValidationAndAdminTest {
                 "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
     }
 
     @Test
@@ -89,7 +89,7 @@ class ValidationAndAdminTest {
                 "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
     }
 
     @Test
@@ -114,7 +114,7 @@ class ValidationAndAdminTest {
                 "/api/bookings/block", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
     }
 
     // ==================== AuthController.login: comportamento invariato (nessun @Valid) ====================
@@ -133,7 +133,7 @@ class ValidationAndAdminTest {
                 "/api/rooms", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.get("success")).isEqualTo(false);
         assertThat(body.get("userMessage")).isNotNull();
     }

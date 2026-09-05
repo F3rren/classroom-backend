@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-class AdminUtentiTest {
+class AdminUsersTest {
 
     @Autowired
     private TestRestTemplate rest;
@@ -49,17 +49,17 @@ class AdminUtentiTest {
     private PasswordEncoder passwordEncoder;
 
     private String tokenAdmin;
-    private Long idUtenteNormale;
+    private Long regularUserId;
 
     @BeforeEach
     void setUp() {
         userRepository.deleteAll();
-        salva("admin-utenti@test.it", "admin-utenti", Role.ADMIN);
-        idUtenteNormale = salva("normale@test.it", "normale", Role.USER);
+        save("admin-utenti@test.it", "admin-utenti", Role.ADMIN);
+        regularUserId = save("normale@test.it", "normale", Role.USER);
         tokenAdmin = login("admin-utenti@test.it");
     }
 
-    private Long salva(String email, String username, Role role) {
+    private Long save(String email, String username, Role role) {
         User u = new User();
         u.setEmail(email);
         u.setUsername(username);
@@ -98,7 +98,7 @@ class AdminUtentiTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).doesNotContain("password");
 
-        Map<String, Object> data = (Map<String, Object>) TestJson.corpoDi(resp).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.bodyOf(resp).get("data");
         assertThat((List<Object>) data.get("users")).hasSize(2);
     }
 
@@ -110,7 +110,7 @@ class AdminUtentiTest {
         ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.POST, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(TestJson.corpoDi(resp).get("success")).isEqualTo(false);
+        assertThat(TestJson.bodyOf(resp).get("success")).isEqualTo(false);
     }
 
     @Test
@@ -144,10 +144,10 @@ class AdminUtentiTest {
         // In questo test non esistono ne' prenotazione-service ne' notifica-service: le chiamate
         // falliscono, e l'utente deve restare. E' la garanzia che sostituisce la chiave
         // esterna persa con la separazione.
-        ResponseEntity<String> resp = chiama("/api/admin/users/" + idUtenteNormale, HttpMethod.DELETE, null);
+        ResponseEntity<String> resp = chiama("/api/admin/users/" + regularUserId, HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isNotEqualTo(HttpStatus.OK);
-        assertThat(userRepository.findById(idUtenteNormale))
+        assertThat(userRepository.findById(regularUserId))
                 .as("l'utente non deve sparire se le sue prenotazioni non sono state cancellate")
                 .isPresent();
     }

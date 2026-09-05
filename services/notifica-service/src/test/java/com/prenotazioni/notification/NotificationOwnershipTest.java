@@ -43,7 +43,7 @@ class NotificationOwnershipTest {
 
     private String tokenOwner;
     private String tokenOther;
-    private Long notificaIdDiOwner;
+    private Long ownerNotificationId;
 
     @BeforeEach
     void setUp() {
@@ -51,10 +51,10 @@ class NotificationOwnershipTest {
 
         Notification notification = new Notification(OWNER_ID, "Titolo", "Messaggio di test", "INFO");
         notificationRepository.save(notification);
-        notificaIdDiOwner = notification.getId();
+        ownerNotificationId = notification.getId();
 
-        tokenOwner = TestJwt.perUtente(OWNER_ID, "me-owner@test.it");
-        tokenOther = TestJwt.perUtente(OTHER_ID, "me-other@test.it");
+        tokenOwner = TestJwt.forUser(OWNER_ID, "me-owner@test.it");
+        tokenOther = TestJwt.forUser(OTHER_ID, "me-other@test.it");
     }
 
     private HttpHeaders bearer(String token) {
@@ -71,7 +71,7 @@ class NotificationOwnershipTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).hasSize(1);
-        assertThat(resp.getBody()[0].getId()).isEqualTo(notificaIdDiOwner);
+        assertThat(resp.getBody()[0].getId()).isEqualTo(ownerNotificationId);
     }
 
     @Test
@@ -86,17 +86,17 @@ class NotificationOwnershipTest {
     @Test
     void otherUserCannotDeleteOwnersNotification() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/notifications/" + notificaIdDiOwner, HttpMethod.DELETE,
+                "/api/notifications/" + ownerNotificationId, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(notificationRepository.existsById(notificaIdDiOwner)).isTrue();
+        assertThat(notificationRepository.existsById(ownerNotificationId)).isTrue();
     }
 
     @Test
     void ownerCanMarkTheirOwnNotificationAsRead() {
         ResponseEntity<Notification> resp = rest.exchange(
-                "/api/notifications/" + notificaIdDiOwner + "/mark-read", HttpMethod.PUT,
+                "/api/notifications/" + ownerNotificationId + "/mark-read", HttpMethod.PUT,
                 new HttpEntity<>(bearer(tokenOwner)), Notification.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -110,7 +110,7 @@ class NotificationOwnershipTest {
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("count")).isEqualTo(1);
+        assertThat(TestJson.asMap(resp.getBody()).get("count")).isEqualTo(1);
     }
 
     @Test

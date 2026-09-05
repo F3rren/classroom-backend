@@ -65,7 +65,7 @@ class RoomControllerTest {
         room.setStatus(RoomStatus.FREE);
         roomId = roomRepository.save(room).getId();
 
-        token = TestJwt.perUtente(1L, "room-user@test.it", "Room User");
+        token = TestJwt.forUser(1L, "room-user@test.it", "Room User");
     }
 
 
@@ -82,7 +82,7 @@ class RoomControllerTest {
                 "/api/rooms", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         Map<String, Object> data = (Map<String, Object>) body.get("data");
         assertThat(data.keySet()).containsExactlyInAnyOrder("rooms", "totalRooms");
         assertThat((Integer) data.get("totalRooms")).isEqualTo(1);
@@ -94,7 +94,7 @@ class RoomControllerTest {
                 "/api/rooms/" + roomId, HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         assertThat(data.keySet()).containsExactlyInAnyOrder("room", "roomId", "roomName", "floor", "capacity");
         assertThat(data.get("roomName")).isEqualTo("Aula Room Test");
         assertThat(data.get("floor")).isEqualTo(3);
@@ -114,7 +114,7 @@ class RoomControllerTest {
                 "/api/rooms/" + roomId + "/details", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         // Nessun envelope success/message/data qui: shape gia' esistente, preservata
         assertThat(body.keySet()).containsExactlyInAnyOrder("room", "bookings", "totalBookings");
     }
@@ -125,7 +125,7 @@ class RoomControllerTest {
                 "/api/rooms/floor/3", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         assertThat(data).containsEntry("floor", 3);
         assertThat(data).doesNotContainKey("type"); // campo opzionale omesso quando non usato
     }
@@ -136,7 +136,7 @@ class RoomControllerTest {
                 "/api/rooms/physical", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         assertThat(data).containsEntry("type", "physical");
         assertThat(data).doesNotContainKey("floor");
     }

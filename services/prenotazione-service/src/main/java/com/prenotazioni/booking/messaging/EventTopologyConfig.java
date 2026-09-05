@@ -30,7 +30,7 @@ public class EventTopologyConfig {
     }
 
     @Bean
-    MessageConverter convertitoreJson() {
+    MessageConverter jsonConverter() {
         return new Jackson2JsonMessageConverter();
     }
 }

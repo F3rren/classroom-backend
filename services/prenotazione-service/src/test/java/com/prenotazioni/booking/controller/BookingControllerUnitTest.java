@@ -74,12 +74,12 @@ class BookingControllerUnitTest {
         return r;
     }
 
-    private BookingRequest richiestaValida() {
+    private BookingRequest validRequest() {
         LocalDateTime startTime = LocalDateTime.now().plusDays(1).withNano(0);
         return request(startTime.format(ISO), startTime.plusHours(2).format(ISO));
     }
 
-    private Booking prenotazioneFinta() {
+    private Booking fakeBooking() {
         Room room = new Room();
         room.setId(10L);
         room.setName("Aula Finta");
@@ -143,7 +143,7 @@ class BookingControllerUnitTest {
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
         when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BOOKING_CONFLICT", "busy", "L'aula non e' disponibile."));
 
-        assertThatThrownBy(() -> controller.bookRoom(richiestaValida(), user))
+        assertThatThrownBy(() -> controller.bookRoom(validRequest(), user))
                 .isInstanceOf(BookingConflictException.class);
     }
 
@@ -152,7 +152,7 @@ class BookingControllerUnitTest {
         when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
-        BookingRequest req = richiestaValida();
+        BookingRequest req = validRequest();
         assertThatThrownBy(() -> controller.bookRoom(req, user))
                 .isInstanceOf(BookingConflictException.class)
                 .satisfies(e -> assertThat(((BookingConflictException) e).getErrorCode()).isEqualTo("BOOKING_CONFLICT"));
@@ -161,9 +161,9 @@ class BookingControllerUnitTest {
     @Test
     void prenotaAulaReturns201OnSuccess() {
         when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString()))
-                .thenReturn(prenotazioneFinta());
+                .thenReturn(fakeBooking());
 
-        ResponseEntity<?> resp = controller.bookRoom(richiestaValida(), user);
+        ResponseEntity<?> resp = controller.bookRoom(validRequest(), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
@@ -214,7 +214,7 @@ class BookingControllerUnitTest {
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "busy", "L'aula non e' disponibile."));
 
-        assertThatThrownBy(() -> controller.editBooking(5L, richiestaValida(), user))
+        assertThatThrownBy(() -> controller.editBooking(5L, validRequest(), user))
                 .isInstanceOf(BookingConflictException.class);
     }
 
@@ -223,7 +223,7 @@ class BookingControllerUnitTest {
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
-        BookingRequest req = richiestaValida();
+        BookingRequest req = validRequest();
         assertThatThrownBy(() -> controller.editBooking(5L, req, user))
                 .isInstanceOf(BookingConflictException.class)
                 .satisfies(e -> assertThat(((BookingConflictException) e).getErrorCode()).isEqualTo("UPDATE_CONFLICT"));
@@ -232,9 +232,9 @@ class BookingControllerUnitTest {
     @Test
     void modificaReturns200OnSuccess() {
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
-                .thenReturn(prenotazioneFinta());
+                .thenReturn(fakeBooking());
 
-        ResponseEntity<?> resp = controller.editBooking(5L, richiestaValida(), user);
+        ResponseEntity<?> resp = controller.editBooking(5L, validRequest(), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
@@ -273,7 +273,7 @@ class BookingControllerUnitTest {
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
         when(service.blockRoom(anyLong(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BLOCK_CONFLICT", "busy", "L'aula non e' disponibile."));
 
-        assertThatThrownBy(() -> controller.blockRoom(richiestaValida(), admin))
+        assertThatThrownBy(() -> controller.blockRoom(validRequest(), admin))
                 .isInstanceOf(BookingConflictException.class);
     }
 
@@ -282,7 +282,7 @@ class BookingControllerUnitTest {
         when(service.blockRoom(anyLong(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
-        BookingRequest req = richiestaValida();
+        BookingRequest req = validRequest();
         assertThatThrownBy(() -> controller.blockRoom(req, admin))
                 .isInstanceOf(BookingConflictException.class)
                 .satisfies(e -> assertThat(((BookingConflictException) e).getErrorCode()).isEqualTo("BLOCK_CONFLICT"));
@@ -291,9 +291,9 @@ class BookingControllerUnitTest {
     @Test
     void bloccaReturns201OnSuccess() {
         when(service.blockRoom(anyLong(), any(), any(), any(), anyString()))
-                .thenReturn(prenotazioneFinta());
+                .thenReturn(fakeBooking());
 
-        ResponseEntity<?> resp = controller.blockRoom(richiestaValida(), admin);
+        ResponseEntity<?> resp = controller.blockRoom(validRequest(), admin);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
@@ -318,7 +318,7 @@ class BookingControllerUnitTest {
 
     @Test
     void annullaReturns200ForOwner() {
-        when(service.getBookingById(7L)).thenReturn(prenotazioneFinta());
+        when(service.getBookingById(7L)).thenReturn(fakeBooking());
         when(service.cancelBooking(7L, 1L, false)).thenReturn(true);
 
         ResponseEntity<?> resp = controller.cancelBooking(7L, user);

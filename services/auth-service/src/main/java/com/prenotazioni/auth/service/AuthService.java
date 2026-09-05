@@ -3,6 +3,7 @@ package com.prenotazioni.auth.service;
 import com.prenotazioni.auth.model.User;
 import com.prenotazioni.exception.DomainConflictException;
 import com.prenotazioni.exception.ResourceNotFoundException;
+import com.prenotazioni.exception.ResourceType;
 import com.prenotazioni.model.Role;
 import com.prenotazioni.auth.repository.UserRepository;
 import com.prenotazioni.auth.dto.CreateUserRequest;
@@ -87,12 +88,12 @@ public class AuthService {
     public User updateUser(Long id, UpdateUserRequest request) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
-            throw ResourceNotFoundException.perId("Utente", "USER_NOT_FOUND", id);
+            throw ResourceNotFoundException.forId(ResourceType.USER, id);
         }
 
         // Controlla se la nuova email o username sono già in uso da un altro utente
-        User utenteConEmail = userRepository.findByEmail(request.getEmail());
-        if (utenteConEmail != null && !utenteConEmail.getId().equals(id)) {
+        User userWithEmail = userRepository.findByEmail(request.getEmail());
+        if (userWithEmail != null && !userWithEmail.getId().equals(id)) {
             // 409 e non piu' 404: prima questo caso tornava lo stesso null di "utente
             // inesistente", e la risposta diceva "utente non trovato" di un utente che
             // esiste eccome. Era una risposta falsa, non solo imprecisa.
@@ -100,8 +101,8 @@ public class AuthService {
                     "Email already used by another utente",
                     "Questa email e' gia' associata a un altro utente.");
         }
-        User utenteConUsername = userRepository.findByUsername(request.getUsername());
-        if (utenteConUsername != null && !utenteConUsername.getId().equals(id)) {
+        User userWithUsername = userRepository.findByUsername(request.getUsername());
+        if (userWithUsername != null && !userWithUsername.getId().equals(id)) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
                     "Username already used by another utente",
                     "Questo username e' gia' in uso.");

@@ -89,10 +89,10 @@ class RoomServiceErrorsUnitTest {
 
     @Test
     void unaViolazioneDiVincoloInAggiornamentoNonVieneNascosta() {
-        Room esistente = new Room();
-        esistente.setId(1L);
-        esistente.setName("Aula A");
-        when(roomRepository.findById(1L)).thenReturn(Optional.of(esistente));
+        Room existing = new Room();
+        existing.setId(1L);
+        existing.setName("Aula A");
+        when(roomRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(roomRepository.existsByNameIgnoreCaseAndIdNot(anyString(), anyLong())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new DataIntegrityViolationException("aule_nome_key"));
@@ -103,8 +103,8 @@ class RoomServiceErrorsUnitTest {
 
     @Test
     void unaCancellazioneImpeditaDaUnVincoloNonSiTravesteDaAulaInesistente() {
-        Room esistente = new Room();
-        esistente.setId(1L);
+        Room existing = new Room();
+        existing.setId(1L);
         when(roomRepository.existsById(1L)).thenReturn(true);
         doThrow(new DataIntegrityViolationException("prenotazioni_aula_id_fkey"))
                 .when(roomRepository).deleteById(1L);

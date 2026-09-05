@@ -33,12 +33,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RouteTableTest {
 
     @Autowired
-    private RouteLocator rotte;
+    private RouteLocator routes;
 
     /** L'id della prima rotta che accetta il percorso, come farebbe il gateway. */
-    private String primaRottaChePrende(String path) {
+    private String firstRouteMatching(String path) {
         ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path).build());
-        List<Route> ordinate = rotte.getRoutes().collectList().block();
+        List<Route> ordinate = routes.getRoutes().collectList().block();
         assertThat(ordinate).as("nessuna rotta caricata: application.yml non e' stato letto").isNotEmpty();
         for (Route r : ordinate) {
             if (Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(exchange)).block())) {
@@ -49,9 +49,9 @@ class RouteTableTest {
     }
 
     /** L'indirizzo a cui una rotta manda, per distinguere i servizi a valle. */
-    private String destinazioneDi(String idRotta) {
-        return rotte.getRoutes()
-                .filter(r -> r.getId().equals(idRotta))
+    private String destinazioneDi(String routeId) {
+        return routes.getRoutes()
+                .filter(r -> r.getId().equals(routeId))
                 .map(r -> r.getUri().toString())
                 .blockFirst();
     }
@@ -60,14 +60,14 @@ class RouteTableTest {
     void gliUtentiAmministrativiVannoAlServizioUtenti() {
         // LA regressione da tenere chiusa: questa rotta e' dichiarata PRIMA di quella
         // generica su /api/admin/**, ed e' l'ordine a farla vincere.
-        assertThat(primaRottaChePrende("/api/admin/users")).isEqualTo("autenticazione");
-        assertThat(primaRottaChePrende("/api/admin/users/42")).isEqualTo("autenticazione");
+        assertThat(firstRouteMatching("/api/admin/users")).isEqualTo("authentication");
+        assertThat(firstRouteMatching("/api/admin/users/42")).isEqualTo("authentication");
     }
 
     @Test
     void ilRestoDiAdminVaAlServizioPrenotazioni() {
-        assertThat(primaRottaChePrende("/api/admin/rooms")).isEqualTo("applicazione");
-        assertThat(primaRottaChePrende("/api/admin/bookings")).isEqualTo("applicazione");
+        assertThat(firstRouteMatching("/api/admin/rooms")).isEqualTo("application");
+        assertThat(firstRouteMatching("/api/admin/bookings")).isEqualTo("application");
     }
 
     @Test
@@ -78,27 +78,27 @@ class RouteTableTest {
         // cosi' l'unica cosa che manda la richiesta al servizio giusto e' la posizione.
         ServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/admin/users").build());
-        List<String> chiLoAccetta = rotte.getRoutes()
+        List<String> whoAcceptsIt = routes.getRoutes()
                 .filter(r -> Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(exchange)).block()))
                 .map(Route::getId)
                 .collectList().block();
 
-        assertThat(chiLoAccetta).containsExactly("autenticazione", "applicazione");
+        assertThat(whoAcceptsIt).containsExactly("authentication", "application");
     }
 
     @Test
     void leDueRotteAdminPuntanoAServiziDiversi() {
         // Se puntassero allo stesso, l'ordine non conterebbe e questi test non
         // proverebbero niente: e' cio' che rende significativi i due sopra.
-        assertThat(destinazioneDi("autenticazione")).isNotEqualTo(destinazioneDi("applicazione"));
+        assertThat(destinazioneDi("authentication")).isNotEqualTo(destinazioneDi("application"));
     }
 
     @Test
     void leRotteInterneRestanoFuoriDallaPortata() {
         // Sono chiamate da altri servizi, non dal browser: esporle darebbe a chiunque abbia
         // un token da admin la possibilita' di fabbricare notifiche arbitrarie.
-        assertThat(primaRottaChePrende("/api/notifications/internal/user/1")).isEqualTo("notifiche-interne-bloccate");
-        assertThat(primaRottaChePrende("/api/bookings/internal/user/1")).isEqualTo("prenotazioni-interne-bloccate");
+        assertThat(firstRouteMatching("/api/notifications/internal/user/1")).isEqualTo("notifications-internal-blocked");
+        assertThat(firstRouteMatching("/api/bookings/internal/user/1")).isEqualTo("bookings-internal-blocked");
     }
 
     @Test
@@ -109,7 +109,7 @@ class RouteTableTest {
         for (String path : new String[]{
                 "/api/auth/login", "/api/me", "/api/rooms", "/api/bookings",
                 "/api/notifications", "/api/admin/users", "/api/admin/rooms"}) {
-            assertThat(primaRottaChePrende(path))
+            assertThat(firstRouteMatching(path))
                     .as("nessuna rotta per %s", path)
                     .isNotNull();
         }
@@ -117,6 +117,6 @@ class RouteTableTest {
 
     @Test
     void unPercorsoInventatoNonTrovaRotte() {
-        assertThat(primaRottaChePrende("/percorso/che/non/esiste")).isNull();
+        assertThat(firstRouteMatching("/percorso/che/non/esiste")).isNull();
     }
 }

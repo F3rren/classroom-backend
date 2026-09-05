@@ -149,7 +149,7 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void laScorciatoiaPerIdComponeMessaggioTecnicoEMessaggioUtente() {
-        ResourceNotFoundException ex = ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", 42L);
+        ResourceNotFoundException ex = ResourceNotFoundException.forId(ResourceType.ROOM, 42L);
 
         // il tecnico porta l'id, utile nei log; quello per l'utente no, perche' non gli serve
         assertThat(ex.getMessage()).contains("42");

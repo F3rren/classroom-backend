@@ -28,8 +28,8 @@ class BookingAuthorizationServiceUnitTest {
         auth = new BookingAuthorizationService(bookingService);
     }
 
-    private Booking prenotazioneDi(Long proprietarioId) {
-        BookingOwner u = new BookingOwner(proprietarioId, "u" + proprietarioId, "Utente");
+    private Booking bookingOf(Long ownerId) {
+        BookingOwner u = new BookingOwner(ownerId, "u" + ownerId, "Utente");
         Room a = new Room();
         a.setId(1L);
         Booking p = new Booking();
@@ -54,21 +54,21 @@ class BookingAuthorizationServiceUnitTest {
 
     @Test
     void consenteAlProprietario() {
-        when(bookingService.getBookingById(5L)).thenReturn(prenotazioneDi(1L));
+        when(bookingService.getBookingById(5L)).thenReturn(bookingOf(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();
     }
 
     @Test
     void deniesAnUnrelatedUser() {
-        when(bookingService.getBookingById(5L)).thenReturn(prenotazioneDi(1L));
+        when(bookingService.getBookingById(5L)).thenReturn(bookingOf(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(99L, "altro@test.it", "m.rossi", "Mario Rossi", "user"))).isFalse();
     }
 
     @Test
     void allowsAnAdminOnSomeoneElsesBooking() {
-        when(bookingService.getBookingById(5L)).thenReturn(prenotazioneDi(1L));
+        when(bookingService.getBookingById(5L)).thenReturn(bookingOf(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin"))).isTrue();
     }

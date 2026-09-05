@@ -85,7 +85,7 @@ class BookingQueryTest {
         p.setCreatedAt(LocalDateTime.now());
         bookingId = bookingRepository.save(p).getId();
 
-        token = TestJwt.perUtente(1L, "prenotazionequerytest@test.it", "Utente Test");
+        token = TestJwt.forUser(1L, "prenotazionequerytest@test.it", "Utente Test");
     }
 
     @SuppressWarnings("unchecked")
@@ -105,7 +105,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/mine");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         // shape storica: solo "bookings", nessun envelope e nessun totale
         assertThat(body.keySet()).containsExactly("bookings");
         assertThat((java.util.List<?>) body.get("bookings")).hasSize(1);
@@ -117,7 +117,7 @@ class BookingQueryTest {
         p.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(p);
 
-        Map<String, Object> body = TestJson.comeMappa(get("/api/bookings/mine").getBody());
+        Map<String, Object> body = TestJson.asMap(get("/api/bookings/mine").getBody());
         assertThat((java.util.List<?>) body.get("bookings")).isEmpty();
     }
 
@@ -126,7 +126,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/future");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder("bookings", "totalBookings");
         assertThat(body.get("totalBookings")).isEqualTo(1);
     }
@@ -146,7 +146,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/all-details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder("bookings", "totalBookings");
         assertThat(body.get("totalBookings")).isEqualTo(1);
     }
@@ -156,23 +156,23 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/" + bookingId + "/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder(
-                "prenotazione", "dettagliCompleti", "totalDettagli");
+                "booking", "fullDetails", "totalDetails");
     }
 
     @Test
     void laDisponibilitaSegnalaLiberaUnaFasciaLibera() throws Exception {
         String libero = startTime.plusDays(5).format(ISO);
-        String liberoFine = startTime.plusDays(5).plusHours(1).format(ISO);
+        String freeEnd = startTime.plusDays(5).plusHours(1).format(ISO);
 
         ResponseEntity<String> resp = get(
-                "/api/bookings/availability?roomId=" + roomId + "&start=" + libero + "&end=" + liberoFine);
+                "/api/bookings/availability?roomId=" + roomId + "&start=" + libero + "&end=" + freeEnd);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
-        assertThat(data.keySet()).containsExactlyInAnyOrder("roomId", "disponibile", "periodo", "status");
-        assertThat(data.get("disponibile")).isEqualTo(true);
+        Map<String, Object> data = castMap(TestJson.asMap(resp.getBody()).get("data"));
+        assertThat(data.keySet()).containsExactlyInAnyOrder("roomId", "available", "period", "status");
+        assertThat(data.get("available")).isEqualTo(true);
         assertThat(data.get("status")).isEqualTo("FREE");
     }
 
@@ -183,8 +183,8 @@ class BookingQueryTest {
                         + "&start=" + startTime.format(ISO) + "&end=" + endTime.format(ISO));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
-        assertThat(data.get("disponibile")).isEqualTo(false);
+        Map<String, Object> data = castMap(TestJson.asMap(resp.getBody()).get("data"));
+        assertThat(data.get("available")).isEqualTo(false);
         assertThat(data.get("status")).isEqualTo("BUSY");
     }
 
@@ -194,7 +194,7 @@ class BookingQueryTest {
                 "/api/bookings/availability?roomId=" + roomId + "&start=non-una-data&end=nemmeno");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_START_DATE");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("INVALID_START_DATE");
     }
 
     /**
@@ -208,7 +208,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/room-status/" + roomId);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder("roomId", "status", "timestamp");
         assertThat(body.get("roomId")).isEqualTo(roomId.intValue());
     }
@@ -218,7 +218,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/status/booked");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.keySet()).containsExactlyInAnyOrder("status", "bookings", "totalBookings");
         assertThat(body.get("status")).isEqualTo("booked");
         assertThat(body.get("totalBookings")).isEqualTo(1);
@@ -229,7 +229,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/status/cancelled");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("totalBookings")).isEqualTo(0);
+        assertThat(TestJson.asMap(resp.getBody()).get("totalBookings")).isEqualTo(0);
     }
 
     @Test
@@ -260,9 +260,9 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/999999");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.get("success")).isEqualTo(false);
-        assertThat(body.get("error")).isEqualTo("PRENOTAZIONE_NOT_FOUND");
+        assertThat(body.get("error")).isEqualTo("BOOKING_NOT_FOUND");
         assertThat(body.get("userMessage")).isNotNull();
         assertThat(body.get("sessionId")).isNotNull();
     }
@@ -272,7 +272,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/999999/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("PRENOTAZIONE_NOT_FOUND");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("BOOKING_NOT_FOUND");
     }
 
     @Test
@@ -280,7 +280,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/status/inventato");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.get("success")).isEqualTo(false);
         // L'elenco degli stati ammessi si ricava dall'enum: se ne aggiungessero uno e il
         // messaggio restasse indietro, questo assert se ne accorgerebbe.

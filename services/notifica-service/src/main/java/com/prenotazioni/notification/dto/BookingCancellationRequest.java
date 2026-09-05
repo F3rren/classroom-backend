@@ -36,12 +36,12 @@ public class BookingCancellationRequest {
     private String bookingDate;
 
     @Schema(description = "Ora di inizio", example = "14:30")
-    private String oraInizio;
+    private String startTime;
 
     @Schema(description = "Ora di fine", example = "16:30")
-    private String oraFine;
+    private String endTime;
 
     @Size(max = 500)
     @Schema(description = "Motivo della cancellazione", example = "Aula richiesta per una sessione d'esame")
-    private String motivo;
+    private String reason;
 }

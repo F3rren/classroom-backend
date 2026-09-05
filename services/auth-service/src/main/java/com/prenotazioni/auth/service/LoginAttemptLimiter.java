@@ -36,10 +36,10 @@ public class LoginAttemptLimiter {
 
     private static final Logger logger = LoggerFactory.getLogger(LoginAttemptLimiter.class);
 
-    private final ConcurrentHashMap<String, Finestra> finestre = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
 
     private final int massimoTentativi;
-    private final long finestraMs;
+    private final long windowMs;
     private final int tettoChiavi;
 
     /** Per non ripetere lo stesso avviso a ogni richiesta quando la mappa e' piena. */
@@ -47,10 +47,10 @@ public class LoginAttemptLimiter {
 
     public LoginAttemptLimiter(
             @Value("${auth.rate-limit.max-attempts:5}") int massimoTentativi,
-            @Value("${auth.rate-limit.window-ms:60000}") long finestraMs,
+            @Value("${auth.rate-limit.window-ms:60000}") long windowMs,
             @Value("${auth.rate-limit.max-entries:50000}") int tettoChiavi) {
         this.massimoTentativi = massimoTentativi;
-        this.finestraMs = finestraMs;
+        this.windowMs = windowMs;
         this.tettoChiavi = tettoChiavi;
     }
 
@@ -58,25 +58,25 @@ public class LoginAttemptLimiter {
     public boolean tooManyAttempts(String key) {
         long adesso = System.currentTimeMillis();
 
-        Finestra finestra = finestre.get(key);
-        if (finestra == null) {
-            if (finestre.size() >= tettoChiavi) {
+        Window window = windows.get(key);
+        if (window == null) {
+            if (windows.size() >= tettoChiavi) {
                 purgeExpired(adesso);
             }
-            if (finestre.size() >= tettoChiavi) {
+            if (windows.size() >= tettoChiavi) {
                 avvisaSaltuariamente(adesso);
                 return false;
             }
-            finestra = finestre.computeIfAbsent(key, k -> new Finestra(adesso));
+            window = windows.computeIfAbsent(key, k -> new Window(adesso));
         }
 
-        synchronized (finestra) {
-            if (adesso - finestra.startTime > finestraMs) {
-                finestra.startTime = adesso;
-                finestra.tentativi = 0;
+        synchronized (window) {
+            if (adesso - window.startTime > windowMs) {
+                window.startTime = adesso;
+                window.tentativi = 0;
             }
-            finestra.tentativi++;
-            return finestra.tentativi > massimoTentativi;
+            window.tentativi++;
+            return window.tentativi > massimoTentativi;
         }
     }
 
@@ -88,22 +88,22 @@ public class LoginAttemptLimiter {
      * potuta verificare senza aspettare che accada da sola.
      */
     void purgeExpired(long adesso) {
-        int prima = finestre.size();
-        finestre.entrySet().removeIf(voce -> {
-            Finestra f = voce.getValue();
+        int prima = windows.size();
+        windows.entrySet().removeIf(voce -> {
+            Window f = voce.getValue();
             synchronized (f) {
-                return adesso - f.startTime > finestraMs;
+                return adesso - f.startTime > windowMs;
             }
         });
-        int rimosse = prima - finestre.size();
+        int rimosse = prima - windows.size();
         if (rimosse > 0) {
-            logger.debug("Limitatore login: rimosse {} chiavi scadute, ne restano {}", rimosse, finestre.size());
+            logger.debug("Limitatore login: rimosse {} chiavi scadute, ne restano {}", rimosse, windows.size());
         }
     }
 
     /** Quante chiavi sono in memoria adesso. Serve ai test e a un'eventuale metrica. */
     int trackedKeys() {
-        return finestre.size();
+        return windows.size();
     }
 
     private void avvisaSaltuariamente(long adesso) {
@@ -115,11 +115,11 @@ public class LoginAttemptLimiter {
         }
     }
 
-    private static final class Finestra {
+    private static final class Window {
         long startTime;
         int tentativi;
 
-        Finestra(long startTime) {
+        Window(long startTime) {
             this.startTime = startTime;
         }
     }

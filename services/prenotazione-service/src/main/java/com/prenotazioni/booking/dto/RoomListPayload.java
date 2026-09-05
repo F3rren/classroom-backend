@@ -29,7 +29,7 @@ public class RoomListPayload {
         return p;
     }
 
-    public RoomListPayload withPiano(int floor) { this.floor = floor; return this; }
+    public RoomListPayload withFloor(int floor) { this.floor = floor; return this; }
     public RoomListPayload withMinCapacity(int minCapacity) { this.minCapacity = minCapacity; return this; }
     public RoomListPayload withType(String type) { this.type = type; return this; }
     public RoomListPayload withSuggestion(String suggestion) { this.suggestion = suggestion; return this; }

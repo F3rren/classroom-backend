@@ -17,14 +17,14 @@ public final class EventTopology {
     public static final String EXCHANGE = "prenotazioni.eventi";
 
     /** Chiave di routing dell'evento di cancellazione. */
-    public static final String ROUTING_KEY_CANCELLAZIONE = "prenotazione.cancellata";
+    public static final String ROUTING_KEY_CANCELLATION = "prenotazione.cancellata";
 
     /**
      * Coda del servizio notifiche. E' durevole: senza, un riavvio del broker perderebbe i
      * messaggi non ancora consumati, che e' esattamente cio' che questa coda esiste per
      * evitare.
      */
-    public static final String CODA_NOTIFICHE_CANCELLAZIONE = "notifiche.prenotazione-cancellata";
+    public static final String CANCELLATION_QUEUE = "notifiche.prenotazione-cancellata";
 
     /**
      * Dove finisce un messaggio che non si e' riusciti a trattare.
@@ -45,7 +45,7 @@ public final class EventTopology {
 
     public static final String ROUTING_KEY_ERRORI = "prenotazione.cancellata.fallita";
 
-    public static final String CODA_ERRORI_CANCELLAZIONE = "notifiche.prenotazione-cancellata.errori";
+    public static final String CANCELLATION_ERROR_QUEUE = "notifiche.prenotazione-cancellata.errori";
 
     private EventTopology() {
     }

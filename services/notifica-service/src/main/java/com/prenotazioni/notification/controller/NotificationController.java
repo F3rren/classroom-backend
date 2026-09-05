@@ -54,11 +54,11 @@ public class NotificationController {
     @Operation(summary = "Segna una notifica come letta")
     public ResponseEntity<Notification> markAsRead(@PathVariable("id") Long id, @AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("INIZIO - Richiesta di segnare notifica come letta, ID: {}", id);
-        Optional<Notification> updatedNotificaOpt = notificationService.markAsRead(id, principal.id());
+        Optional<Notification> updatedNotificationOpt = notificationService.markAsRead(id, principal.id());
 
-        if (updatedNotificaOpt.isPresent()) {
+        if (updatedNotificationOpt.isPresent()) {
             logger.debug("FINE - Notifica ID: {} segnata come letta con successo.", id);
-            return ResponseEntity.ok(updatedNotificaOpt.get());
+            return ResponseEntity.ok(updatedNotificationOpt.get());
         }
         // Il service ha gia' loggato il motivo (notifica non trovata o non autorizzato)
         logger.warn("FINE - Impossibile segnare notifica ID: {} come letta. Potrebbe non esistere o l'utente non è autorizzato.", id);

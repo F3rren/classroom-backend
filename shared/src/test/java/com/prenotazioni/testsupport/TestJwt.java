@@ -34,17 +34,17 @@ public final class TestJwt {
     }
 
     /** Token per un utente qualunque. Il nome e' derivato dall'email. */
-    public static String perUtente(Long id, String email) {
+    public static String forUser(Long id, String email) {
         return firma(id, email, nomeDa(email), "user");
     }
 
     /** Token per un utente di cui conta il nome: finisce nei dettagli aula. */
-    public static String perUtente(Long id, String email, String name) {
+    public static String forUser(Long id, String email, String name) {
         return firma(id, email, name, "user");
     }
 
     /** Token per un amministratore. */
-    public static String perAdmin(Long id, String email) {
+    public static String forAdmin(Long id, String email) {
         return firma(id, email, nomeDa(email), "admin");
     }
 

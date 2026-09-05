@@ -28,7 +28,7 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     
     // Trova aule fisiche ordinate per piano e nome
     @Query("SELECT a FROM Room a WHERE a.isVirtual = false ORDER BY a.floor ASC, a.name ASC")
-    List<Room> findPhysicalRoomsOrderByPianoAndNome();
+    List<Room> findPhysicalRoomsOrderByFloorAndName();
     
     // Trova aule virtuali ordinate per nome
     @Query("SELECT a FROM Room a WHERE a.isVirtual = true ORDER BY a.name ASC")

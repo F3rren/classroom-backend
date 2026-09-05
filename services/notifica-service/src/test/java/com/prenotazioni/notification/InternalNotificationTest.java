@@ -69,9 +69,9 @@ class InternalNotificationTest {
         body.put("nomeStanza", "Aula Magna");
         body.put("adminNome", "Mario Rossi");
         body.put("dataPrenotazione", "2026-12-25");
-        body.put("oraInizio", "14:30");
-        body.put("oraFine", "16:30");
-        body.put("motivo", "Sessione d'esame");
+        body.put("startTime", "14:30");
+        body.put("endTime", "16:30");
+        body.put("reason", "Sessione d'esame");
         return body;
     }
 
@@ -83,7 +83,7 @@ class InternalNotificationTest {
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/notifications/internal/user/" + DESTINATARIO, HttpMethod.DELETE,
-                new HttpEntity<>(headers(TestJwt.perAdmin(1L, "admin@test.it"))), String.class);
+                new HttpEntity<>(headers(TestJwt.forAdmin(1L, "admin@test.it"))), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(notificationRepository.findAll())

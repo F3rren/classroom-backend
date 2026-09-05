@@ -21,7 +21,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
         "spring.cloud.gateway.routes[0].id=notifiche-interne-bloccate",
-        "spring.cloud.gateway.routes[0].uri=forward:/rotta-non-esposta",
+        "spring.cloud.gateway.routes[0].uri=forward:/route-not-exposed",
         "spring.cloud.gateway.routes[0].predicates[0]=Path=/api/notifications/internal/**",
         "spring.cloud.gateway.routes[1].id=notifiche",
         "spring.cloud.gateway.routes[1].uri=http://localhost:9",
@@ -40,7 +40,7 @@ class RoutingTest {
         // 404 e non 5xx: la richiesta non e' nemmeno partita verso notifica-service.
         // E' il controllo piu' importante del file: quelle rotte creano notifiche
         // arbitrarie e devono restare una conversazione fra servizi.
-        client.post().uri("/api/notifications/internal/cancellazione-prenotazione")
+        client.post().uri("/api/notifications/internal/booking-cancellation")
                 .exchange()
                 .expectStatus().isNotFound();
 

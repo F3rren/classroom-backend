@@ -29,7 +29,7 @@ class JwtVerifierUnitTest {
 
     @Test
     void acceptsATokenSignedWithTheSharedSecret() {
-        String token = TestJwt.perUtente(7L, "mario.rossi@example.it");
+        String token = TestJwt.forUser(7L, "mario.rossi@example.it");
 
         assertThat(verifier.validateToken(token)).isTrue();
         assertThat(verifier.getUserIdFromToken(token)).isEqualTo(7L);
@@ -39,7 +39,7 @@ class JwtVerifierUnitTest {
 
     @Test
     void leggeIlRuoloAdminDalClaim() {
-        String token = TestJwt.perAdmin(1L, "admin@example.it");
+        String token = TestJwt.forAdmin(1L, "admin@example.it");
 
         assertThat(verifier.getRoleFromToken(token)).isEqualTo("admin");
     }
@@ -52,13 +52,13 @@ class JwtVerifierUnitTest {
                 "dW4tc2VncmV0by1jb21wbGV0YW1lbnRlLWRpdmVyc28tZGEtcXVlbGxvLXZlcm8");
         altroServizio.init();
 
-        assertThat(verifier.validateToken(TestJwt.perAdmin(1L, "intruso@example.it"))).isTrue();
-        assertThat(altroServizio.validateToken(TestJwt.perAdmin(1L, "intruso@example.it"))).isFalse();
+        assertThat(verifier.validateToken(TestJwt.forAdmin(1L, "intruso@example.it"))).isTrue();
+        assertThat(altroServizio.validateToken(TestJwt.forAdmin(1L, "intruso@example.it"))).isFalse();
     }
 
     @Test
     void rejectsATamperedSignature() {
-        String token = TestJwt.perUtente(7L, "mario@example.it");
+        String token = TestJwt.forUser(7L, "mario@example.it");
         String manomesso = token.substring(0, token.lastIndexOf('.')) + ".firmaAlterata";
 
         assertThat(verifier.validateToken(manomesso)).isFalse();
@@ -81,7 +81,7 @@ class JwtVerifierUnitTest {
     void leggeIlNomeDalClaimDedicato() {
         // Il nome viaggia nel token proprio per evitare che prenotazione-service debba
         // chiedere ad auth-service chi sta prenotando.
-        String token = TestJwt.perUtente(7L, "mario.rossi@example.it", "Mario Rossi");
+        String token = TestJwt.forUser(7L, "mario.rossi@example.it", "Mario Rossi");
 
         assertThat(verifier.getNomeFromToken(token)).isEqualTo("Mario Rossi");
     }

@@ -63,7 +63,7 @@ class AuthControllerUnitTest {
         return r;
     }
 
-    private User utenteValido() {
+    private User validUser() {
         User u = new User();
         u.setId(1L);
         u.setEmail("u@test.it");
@@ -92,9 +92,9 @@ class AuthControllerUnitTest {
         assertThat(primo.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
         // secondo tentativo: oltre soglia
-        ResponseEntity<?> secondo = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
-        assertThat(secondo.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-        assertThat(errorCode(secondo)).isEqualTo("TOO_MANY_ATTEMPTS");
+        ResponseEntity<?> second = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(errorCode(second)).isEqualTo("TOO_MANY_ATTEMPTS");
     }
 
     @Test
@@ -106,10 +106,10 @@ class AuthControllerUnitTest {
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
-        ResponseEntity<?> secondo = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
+        ResponseEntity<?> second = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
 
         // niente 429: la finestra e' scaduta e il contatore e' stato azzerato
-        assertThat(secondo.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
@@ -183,7 +183,7 @@ class AuthControllerUnitTest {
 
     @Test
     void returns500WhenTheUserHasNoId() {
-        User corrotto = utenteValido();
+        User corrotto = validUser();
         corrotto.setId(null);
         when(authService.login(anyString(), anyString())).thenReturn(corrotto);
 
@@ -195,7 +195,7 @@ class AuthControllerUnitTest {
 
     @Test
     void risponde500SeIlTokenGeneratoEVuoto() {
-        when(authService.login(anyString(), anyString())).thenReturn(utenteValido());
+        when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("   ");
 
         ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);
@@ -206,7 +206,7 @@ class AuthControllerUnitTest {
 
     @Test
     void risponde500SeLaGenerazioneDelTokenFallisce() {
-        when(authService.login(anyString(), anyString())).thenReturn(utenteValido());
+        when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenThrow(new IllegalStateException("chiave assente"));
 
         ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);
@@ -217,7 +217,7 @@ class AuthControllerUnitTest {
 
     @Test
     void returns200WithATokenOnSuccess() {
-        when(authService.login(anyString(), anyString())).thenReturn(utenteValido());
+        when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("token-valido");
 
         ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);

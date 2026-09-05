@@ -40,10 +40,10 @@ class CallerAddressTest {
     private XForwardedHeadersFilter filter;
 
     /** Le intestazioni che il gateway manderebbe al servizio a valle. */
-    private HttpHeaders inoltrate(String dichiaratoDalClient, String indirizzoReale) {
+    private HttpHeaders inoltrate(String dichiaratoDalClient, String realAddress) {
         MockServerHttpRequest.BaseBuilder<?> costruttore = MockServerHttpRequest
                 .get("/api/auth/login")
-                .remoteAddress(new InetSocketAddress(indirizzoReale, 51234));
+                .remoteAddress(new InetSocketAddress(realAddress, 51234));
         if (dichiaratoDalClient != null) {
             costruttore.header(INTESTAZIONE, dichiaratoDalClient);
         }

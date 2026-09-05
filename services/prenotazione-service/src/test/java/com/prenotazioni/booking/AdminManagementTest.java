@@ -65,12 +65,12 @@ class AdminManagementTest {
     private String tokenAdmin;
     private String tokenUser;
     private Long roomId;
-    private Long utenteNormaleId;
+    private Long regularUserId;
     private Long bookingId;
 
     /** Gli id non arrivano piu' da un insert: li sceglie il test e li firma nel token. */
     private static final Long ID_ADMIN = 1L;
-    private static final Long ID_UTENTE_NORMALE = 2L;
+    private static final Long REGULAR_USER_ID = 2L;
 
     @BeforeEach
     void setUp() {
@@ -79,7 +79,7 @@ class AdminManagementTest {
 
         // Nessun utente da creare: la tabella utenti appartiene ad auth-service e i token
         // sono firmati in locale con lo stesso segreto (vedi TestJwt).
-        utenteNormaleId = ID_UTENTE_NORMALE;
+        regularUserId = REGULAR_USER_ID;
 
         Room room = new Room();
         room.setName("Aula Admin");
@@ -91,7 +91,7 @@ class AdminManagementTest {
 
         Booking p = new Booking();
         p.setRoom(room);
-        p.setUser(new BookingOwner(utenteNormaleId, "user-mgmt", "User Mgmt"));
+        p.setUser(new BookingOwner(regularUserId, "user-mgmt", "User Mgmt"));
         p.setStartTime(LocalDateTime.now().plusDays(3).withNano(0));
         p.setEndTime(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
         p.setStatus(BookingStatus.BOOKED);
@@ -99,8 +99,8 @@ class AdminManagementTest {
         p.setCreatedAt(LocalDateTime.now());
         bookingId = bookingRepository.save(p).getId();
 
-        tokenAdmin = TestJwt.perAdmin(ID_ADMIN, "admin-mgmt@test.it");
-        tokenUser = TestJwt.perUtente(ID_UTENTE_NORMALE, "user-mgmt@test.it", "User Mgmt");
+        tokenAdmin = TestJwt.forAdmin(ID_ADMIN, "admin-mgmt@test.it");
+        tokenUser = TestJwt.forUser(REGULAR_USER_ID, "user-mgmt@test.it", "User Mgmt");
     }
 
 
@@ -122,7 +122,7 @@ class AdminManagementTest {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> dataOf(ResponseEntity<String> resp) throws Exception {
-        return (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        return (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
     }
 
     // ==================== Gestione aule ====================
@@ -148,7 +148,7 @@ class AdminManagementTest {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 
     @Test
@@ -312,7 +312,7 @@ class AdminManagementTest {
         // chiamante non la risolve correggendo la sintassi. Il codice dice ora quale dei
         // tanti motivi di fallimento e' stato, invece del generico ROOM_CREATION_FAILED.
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NAME_TAKEN");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NAME_TAKEN");
     }
 
     @Test
@@ -322,7 +322,7 @@ class AdminManagementTest {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_ROOM_ID");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("INVALID_ROOM_ID");
     }
 
     @Test
@@ -334,7 +334,7 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         // ROOM_NOT_FOUND e non ROOM_UPDATE_FAILED: lo stato era gia' 404, ma il codice
         // diceva "aggiornamento fallito" senza dire perche'. Ora nomina la causa.
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 
     @Test

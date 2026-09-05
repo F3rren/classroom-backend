@@ -48,7 +48,7 @@ class EventPublisherUnitTest {
         ArgumentCaptor<MessagePostProcessor> processore = ArgumentCaptor.forClass(MessagePostProcessor.class);
         verify(rabbitTemplate).convertAndSend(
                 eq(EventTopology.EXCHANGE),
-                eq(EventTopology.ROUTING_KEY_CANCELLAZIONE),
+                eq(EventTopology.ROUTING_KEY_CANCELLATION),
                 eq(event),
                 processore.capture());
 

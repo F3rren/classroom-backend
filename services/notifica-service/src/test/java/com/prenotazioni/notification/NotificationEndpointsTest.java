@@ -42,7 +42,7 @@ class NotificationEndpointsTest {
 
     private String tokenOwner;
     private String tokenOther;
-    private Long notificaLettaId;
+    private Long readNotificationId;
 
     @BeforeEach
     void setUp() {
@@ -53,14 +53,14 @@ class NotificationEndpointsTest {
         notificationRepository.save(new Notification(OWNER_ID, "Seconda", "Messaggio 2", "INFO"));
         Notification read = new Notification(OWNER_ID, "Terza", "Gia' letta", "INFO");
         read.setRead(true);
-        notificaLettaId = notificationRepository.save(read).getId();
+        readNotificationId = notificationRepository.save(read).getId();
 
         // other: 1 non letta, che non deve mai essere toccata dalle operazioni di owner
         notificationRepository.save(new Notification(OTHER_ID, "Altrui", "Non toccare", "INFO"));
 
         // Token firmati direttamente: niente utente da creare, niente login da chiamare.
-        tokenOwner = TestJwt.perUtente(OWNER_ID, "notif-owner@test.it");
-        tokenOther = TestJwt.perUtente(OTHER_ID, "notif-other@test.it");
+        tokenOwner = TestJwt.forUser(OWNER_ID, "notif-owner@test.it");
+        tokenOther = TestJwt.forUser(OTHER_ID, "notif-other@test.it");
     }
 
     private ResponseEntity<String> exchange(String url, HttpMethod method, String token) {
@@ -70,7 +70,7 @@ class NotificationEndpointsTest {
     }
 
 
-    private long contaNonLette(Long userId) {
+    private long countUnread(Long userId) {
         return notificationRepository.findAll().stream()
                 .filter(n -> n.getUserId().equals(userId))
                 .filter(n -> !Boolean.TRUE.equals(n.getRead()))
@@ -93,12 +93,12 @@ class NotificationEndpointsTest {
         ResponseEntity<String> resp = exchange("/api/notifications/mark-all-read", HttpMethod.PUT, tokenOwner);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("message"))
+        assertThat(TestJson.asMap(resp.getBody()).get("message"))
                 .isEqualTo("Tutte le notifiche sono state segnate come lette");
 
-        assertThat(contaNonLette(OWNER_ID)).isZero();
+        assertThat(countUnread(OWNER_ID)).isZero();
         // la notifica dell'altro utente resta non letta
-        assertThat(contaNonLette(OTHER_ID)).isEqualTo(1);
+        assertThat(countUnread(OTHER_ID)).isEqualTo(1);
     }
 
     @Test
@@ -106,7 +106,7 @@ class NotificationEndpointsTest {
         exchange("/api/notifications/mark-all-read", HttpMethod.PUT, tokenOwner);
 
         ResponseEntity<String> resp = exchange("/api/notifications/unread-count", HttpMethod.GET, tokenOwner);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("count")).isEqualTo(0);
+        assertThat(TestJson.asMap(resp.getBody()).get("count")).isEqualTo(0);
     }
 
     @Test
@@ -114,11 +114,11 @@ class NotificationEndpointsTest {
         ResponseEntity<String> resp = exchange("/api/notifications/read", HttpMethod.DELETE, tokenOwner);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
+        assertThat(TestJson.asMap(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
 
         // sparisce solo quella gia' letta; le 2 non lette restano
-        assertThat(notificationRepository.existsById(notificaLettaId)).isFalse();
-        assertThat(contaNonLette(OWNER_ID)).isEqualTo(2);
+        assertThat(notificationRepository.existsById(readNotificationId)).isFalse();
+        assertThat(countUnread(OWNER_ID)).isEqualTo(2);
     }
 
     @Test

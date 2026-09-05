@@ -2,6 +2,7 @@ package com.prenotazioni.booking.controller;
 
 import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.exception.ResourceNotFoundException;
+import com.prenotazioni.exception.ResourceType;
 import com.prenotazioni.booking.service.RoomService;
 import com.prenotazioni.booking.service.BookingService;
 import com.prenotazioni.booking.model.Room;
@@ -39,7 +40,7 @@ public class RoomController {
     private static final Logger logger = LoggerFactory.getLogger(RoomController.class);
 
     /** Tetto al filtro per capienza: oltre non e' una richiesta plausibile, e' un errore di battitura. */
-    private static final int CAPIENZA_MASSIMA_RICHIEDIBILE = 1000;
+    private static final int MAX_REQUESTABLE_CAPACITY = 1000;
 
     RoomController(RoomService roomService, BookingService bookingService) {
         this.roomService = roomService;
@@ -65,7 +66,7 @@ public class RoomController {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getAllRooms - Richiesta lista completa aule");
 
-        List<Room> rooms = roomService.getAllAule();
+        List<Room> rooms = roomService.getAllRooms();
         logger.debug("FINE getAllRooms - Aule recuperate con successo, totale: {}", rooms.size());
         return new ResponseEntity<>(
             createSuccessResponse(rooms.isEmpty() ? "Nessuna aula disponibile" : "Aule recuperate con successo",
@@ -78,9 +79,9 @@ public class RoomController {
     @Operation(summary = "Dettagli completi di tutte le prenotazioni su tutte le aule")
     public ResponseEntity<BookingDetailListPayload> getAllRoomsWithDetails() {
         logger.debug("INIZIO getAllRoomsWithDetails");
-        List<BookingDetailDto> dettagliCompleti = bookingService.getAllCompleteDetails();
-        logger.debug("FINE getAllRoomsWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", dettagliCompleti.size());
-        return ResponseEntity.ok(new BookingDetailListPayload(dettagliCompleti));
+        List<BookingDetailDto> fullDetails = bookingService.getAllCompleteDetails();
+        logger.debug("FINE getAllRoomsWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", fullDetails.size());
+        return ResponseEntity.ok(new BookingDetailListPayload(fullDetails));
     }
 
     @GetMapping("/{id}")
@@ -127,14 +128,14 @@ public class RoomController {
             // Prima: {"error":"Aula non trovata"}, una forma diversa dall'envelope usato
             // ovunque: niente "success", niente "userMessage", e "error" con dentro una
             // frase invece di un codice.
-            throw ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", id);
+            throw ResourceNotFoundException.forId(ResourceType.ROOM, id);
         }
 
         logger.debug("Aula trovata: ID: {}, Nome: {}", room.get().getId(), room.get().getName());
-        List<BookingDetailDto> dettagliCompleti = bookingService.getRoomCompleteDetails(id);
+        List<BookingDetailDto> fullDetails = bookingService.getRoomCompleteDetails(id);
 
-        logger.debug("FINE getRoomDetailsById - Dettagli completi recuperati con successo, totale prenotazioni: {}", dettagliCompleti.size());
-        return ResponseEntity.ok(new RoomWithBookingsPayload(room.get(), dettagliCompleti));
+        logger.debug("FINE getRoomDetailsById - Dettagli completi recuperati con successo, totale prenotazioni: {}", fullDetails.size());
+        return ResponseEntity.ok(new RoomWithBookingsPayload(room.get(), fullDetails));
     }
 
     @GetMapping("/floor/{floor}")
@@ -152,43 +153,43 @@ public class RoomController {
             );
         }
 
-        List<Room> rooms = roomService.getAuleByPiano(floor);
+        List<Room> rooms = roomService.getRoomsByFloor(floor);
         logger.debug("FINE getRoomsByFloor - Aule recuperate con successo per piano: {}, totale: {}", floor, rooms.size());
         return new ResponseEntity<>(
             createSuccessResponse(rooms.isEmpty() ? "Nessuna aula trovata per questo piano" : "Aule recuperate con successo",
-                                RoomListPayload.of(rooms).withPiano(floor), sessionId),
+                                RoomListPayload.of(rooms).withFloor(floor), sessionId),
             HttpStatus.OK
         );
     }
 
     @GetMapping("/capacity")
     @Operation(summary = "Filtra aule per capienza minima")
-    public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByCapacity(@RequestParam("minCapacity") int minCapienza) {
+    public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByCapacity(@RequestParam("minCapacity") int minCapacity) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO getRoomsByCapacity - Capienza minima richiesta: {}", minCapienza);
+        logger.debug("INIZIO getRoomsByCapacity - Capienza minima richiesta: {}", minCapacity);
 
-        if (minCapienza < 0) {
-            logger.warn("FINE getRoomsByCapacity - Capienza minima non valida: {}", minCapienza);
+        if (minCapacity < 0) {
+            logger.warn("FINE getRoomsByCapacity - Capienza minima non valida: {}", minCapacity);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_CAPACITY", "Invalid capacity",
                                   "La capienza minima deve essere un numero maggiore o uguale a 0.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
         }
-        if (minCapienza > CAPIENZA_MASSIMA_RICHIEDIBILE) {
-            logger.warn("FINE getRoomsByCapacity - Capienza minima troppo alta: {}", minCapienza);
+        if (minCapacity > MAX_REQUESTABLE_CAPACITY) {
+            logger.warn("FINE getRoomsByCapacity - Capienza minima troppo alta: {}", minCapacity);
             return new ResponseEntity<>(
                 createErrorResponse("CAPACITY_TOO_HIGH", "Capacity above the allowed maximum",
                                   "La capienza minima richiesta è troppo alta. Inserisci un valore realistico (massimo "
-                                  + CAPIENZA_MASSIMA_RICHIEDIBILE + ").", sessionId),
+                                  + MAX_REQUESTABLE_CAPACITY + ").", sessionId),
                 HttpStatus.BAD_REQUEST
             );
         }
 
-        List<Room> rooms = roomService.getAuleByCapienzaMinima(minCapienza);
-        logger.debug("FINE getRoomsByCapacity - Aule recuperate con successo per capienza >= {}, totale: {}", minCapienza, rooms.size());
+        List<Room> rooms = roomService.getRoomsByMinCapacity(minCapacity);
+        logger.debug("FINE getRoomsByCapacity - Aule recuperate con successo per capienza >= {}, totale: {}", minCapacity, rooms.size());
 
-        RoomListPayload payload = RoomListPayload.of(rooms).withMinCapacity(minCapienza);
+        RoomListPayload payload = RoomListPayload.of(rooms).withMinCapacity(minCapacity);
         if (rooms.isEmpty()) {
             return new ResponseEntity<>(
                 createSuccessResponse("Nessuna aula trovata con la capienza richiesta",

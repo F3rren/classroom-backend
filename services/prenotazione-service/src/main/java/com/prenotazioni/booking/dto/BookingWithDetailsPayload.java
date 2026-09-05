@@ -8,13 +8,13 @@ import java.util.List;
 /** Risposta non avvolta di GET /api/bookings/{id}/details. */
 @Getter
 public class BookingWithDetailsPayload {
-    private final Booking prenotazione;
-    private final List<BookingDetailDto> dettagliCompleti;
-    private final int totalDettagli;
+    private final Booking booking;
+    private final List<BookingDetailDto> fullDetails;
+    private final int totalDetails;
 
-    public BookingWithDetailsPayload(Booking prenotazione, List<BookingDetailDto> dettagliCompleti) {
-        this.prenotazione = prenotazione;
-        this.dettagliCompleti = dettagliCompleti;
-        this.totalDettagli = dettagliCompleti.size();
+    public BookingWithDetailsPayload(Booking booking, List<BookingDetailDto> fullDetails) {
+        this.booking = booking;
+        this.fullDetails = fullDetails;
+        this.totalDetails = fullDetails.size();
     }
 }

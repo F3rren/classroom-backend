@@ -25,7 +25,7 @@ public record BookingCancelledEvent(
         String roomName,
         String adminName,
         String bookingDate,
-        String oraInizio,
-        String oraFine,
-        String motivo) {
+        String startTime,
+        String endTime,
+        String reason) {
 }

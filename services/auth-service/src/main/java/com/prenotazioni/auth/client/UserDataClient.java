@@ -47,11 +47,11 @@ public class UserDataClient {
     private final HttpServletRequest currentRequest;
 
     UserDataClient(RestClient.Builder builder,
-                     @Value("${prenotazioni.notifica-service.url:http://localhost:17104}") String urlNotifiche,
-                     @Value("${prenotazioni.prenotazione-service.url:http://localhost:17103}") String urlPrenotazioni,
+                     @Value("${prenotazioni.notifica-service.url:http://localhost:17104}") String notificationsUrl,
+                     @Value("${prenotazioni.prenotazione-service.url:http://localhost:17103}") String bookingsUrl,
                      HttpServletRequest currentRequest) {
-        this.notifications = builder.clone().baseUrl(urlNotifiche).build();
-        this.bookings = builder.clone().baseUrl(urlPrenotazioni).build();
+        this.notifications = builder.clone().baseUrl(notificationsUrl).build();
+        this.bookings = builder.clone().baseUrl(bookingsUrl).build();
         this.currentRequest = currentRequest;
     }
 

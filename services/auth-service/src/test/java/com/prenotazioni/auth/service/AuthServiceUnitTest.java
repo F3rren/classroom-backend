@@ -53,7 +53,7 @@ class AuthServiceUnitTest {
         return u;
     }
 
-    private CreateUserRequest creazione(String email, String username) {
+    private CreateUserRequest creation(String email, String username) {
         CreateUserRequest r = new CreateUserRequest();
         r.setEmail(email);
         r.setUsername(username);
@@ -112,7 +112,7 @@ class AuthServiceUnitTest {
     void registerSegnalaEmailGiaRegistrata() {
         when(userRepository.findByEmail("gia@test.it")).thenReturn(user(1L, "gia@test.it"));
 
-        assertThatThrownBy(() -> service.register(creazione("gia@test.it", "nuovo")))
+        assertThatThrownBy(() -> service.register(creation("gia@test.it", "nuovo")))
                 .isInstanceOf(DomainConflictException.class);
         verify(userRepository, never()).save(any());
     }
@@ -122,7 +122,7 @@ class AuthServiceUnitTest {
         when(userRepository.findByEmail("nuova@test.it")).thenReturn(null);
         when(userRepository.findByUsername("occupato")).thenReturn(user(2L, "altro@test.it"));
 
-        assertThatThrownBy(() -> service.register(creazione("nuova@test.it", "occupato")))
+        assertThatThrownBy(() -> service.register(creation("nuova@test.it", "occupato")))
                 .isInstanceOf(DomainConflictException.class);
         verify(userRepository, never()).save(any());
     }
@@ -138,7 +138,7 @@ class AuthServiceUnitTest {
             return u;
         });
 
-        User created = service.register(creazione("nuova@test.it", "nuovo"));
+        User created = service.register(creation("nuova@test.it", "nuovo"));
 
         assertThat(created).isNotNull();
         // la password non deve mai essere salvata in chiaro
@@ -187,46 +187,46 @@ class AuthServiceUnitTest {
 
     @Test
     void updateKeepsExistingPasswordWhenBlank() {
-        User esistente = user(1L, "mia@test.it");
-        when(userRepository.findById(1L)).thenReturn(Optional.of(esistente));
-        when(userRepository.findByEmail("mia@test.it")).thenReturn(esistente);
-        when(userRepository.findByUsername("mio")).thenReturn(esistente);
+        User existing = user(1L, "mia@test.it");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);
+        when(userRepository.findByUsername("mio")).thenReturn(existing);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updateUser(1L, modifica("mia@test.it", "mio", "   "));
 
-        assertThat(esistente.getPassword()).isEqualTo("hash");
+        assertThat(existing.getPassword()).isEqualTo("hash");
         verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
     void laModificaRicifraLaPasswordSeIndicata() {
-        User esistente = user(1L, "mia@test.it");
-        when(userRepository.findById(1L)).thenReturn(Optional.of(esistente));
-        when(userRepository.findByEmail("mia@test.it")).thenReturn(esistente);
-        when(userRepository.findByUsername("mio")).thenReturn(esistente);
+        User existing = user(1L, "mia@test.it");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);
+        when(userRepository.findByUsername("mio")).thenReturn(existing);
         when(passwordEncoder.encode("nuova-password")).thenReturn("nuovo-hash");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updateUser(1L, modifica("mia@test.it", "mio", "nuova-password"));
 
-        assertThat(esistente.getPassword()).isEqualTo("nuovo-hash");
+        assertThat(existing.getPassword()).isEqualTo("nuovo-hash");
     }
 
     @Test
     void updateFallsBackToExistingRoleWhenNoneGiven() {
-        User esistente = user(1L, "mia@test.it");
-        esistente.setRole(Role.ADMIN);
+        User existing = user(1L, "mia@test.it");
+        existing.setRole(Role.ADMIN);
         UpdateUserRequest request = modifica("mia@test.it", "mio", "");
         request.setRole(null);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(esistente));
-        when(userRepository.findByEmail("mia@test.it")).thenReturn(esistente);
-        when(userRepository.findByUsername("mio")).thenReturn(esistente);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);
+        when(userRepository.findByUsername("mio")).thenReturn(existing);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updateUser(1L, request);
 
-        assertThat(esistente.getRole()).isEqualTo(Role.ADMIN);
+        assertThat(existing.getRole()).isEqualTo(Role.ADMIN);
     }
 }

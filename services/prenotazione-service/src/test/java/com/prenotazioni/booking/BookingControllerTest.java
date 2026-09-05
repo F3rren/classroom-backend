@@ -51,7 +51,7 @@ class BookingControllerTest {
     @Autowired
     private BookingRepository bookingRepository;
 
-    private Long prenotazioneIdDiOwner;
+    private Long ownerBookingId;
     private Long roomId;
     private String tokenOwner;
     private String tokenOther;
@@ -61,9 +61,9 @@ class BookingControllerTest {
         bookingRepository.deleteAll();
         roomRepository.deleteAll();
 
-        BookingOwner owner = nuovoUtente(1L, "owner", "Owner Test");
+        BookingOwner owner = newUser(1L, "owner", "Owner Test");
 
-        BookingOwner other = nuovoUtente(2L, "other", "Other Test");
+        BookingOwner other = newUser(2L, "other", "Other Test");
 
         Room room = new Room();
         room.setName("Aula IT Test");
@@ -83,14 +83,14 @@ class BookingControllerTest {
         booking.setDescription("Riunione privata di owner");
         booking.setCreatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
-        prenotazioneIdDiOwner = booking.getId();
+        ownerBookingId = booking.getId();
 
-        tokenOwner = TestJwt.perUtente(1L, "owner@test.it", "Owner Test");
-        tokenOther = TestJwt.perUtente(2L, "other@test.it", "Other Test");
+        tokenOwner = TestJwt.forUser(1L, "owner@test.it", "Owner Test");
+        tokenOther = TestJwt.forUser(2L, "other@test.it", "Other Test");
     }
 
     /** L'istantanea di un proprietario. Prima creava un utente vero: la tabella non e' piu' qui. */
-    private BookingOwner nuovoUtente(Long id, String username, String name) {
+    private BookingOwner newUser(Long id, String username, String name) {
         return new BookingOwner(id, username, name);
     }
 
@@ -104,7 +104,7 @@ class BookingControllerTest {
     @Test
     void otherUserCannotReadOwnersBooking() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/" + prenotazioneIdDiOwner,
+                "/api/bookings/" + ownerBookingId,
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOther)),
                 String.class);
@@ -116,7 +116,7 @@ class BookingControllerTest {
     @Test
     void otherUserCannotReadOwnersBookingDetails() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/" + prenotazioneIdDiOwner + "/details",
+                "/api/bookings/" + ownerBookingId + "/details",
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOther)),
                 String.class);
@@ -127,7 +127,7 @@ class BookingControllerTest {
     @Test
     void ilProprietarioPuoLeggereLaPropriaPrenotazione() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/" + prenotazioneIdDiOwner,
+                "/api/bookings/" + ownerBookingId,
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOwner)),
                 String.class);
@@ -139,7 +139,7 @@ class BookingControllerTest {
     @Test
     void passwordIsNeverSerializedInAnyPrenotazioneResponse() {
         ResponseEntity<String> ownerView = rest.exchange(
-                "/api/bookings/" + prenotazioneIdDiOwner,
+                "/api/bookings/" + ownerBookingId,
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOwner)),
                 String.class);
@@ -189,12 +189,12 @@ class BookingControllerTest {
                 String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        Map<String, Object> responseBody = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> responseBody = TestJson.asMap(resp.getBody());
         assertThat(responseBody.keySet()).containsExactlyInAnyOrder(
                 "success", "message", "data", "timestamp", "sessionId");
 
         Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
-        assertThat(data.keySet()).containsExactlyInAnyOrder("prenotazione", "roomId", "periodo");
+        assertThat(data.keySet()).containsExactlyInAnyOrder("booking", "roomId", "period");
     }
 
     @Test
@@ -213,7 +213,7 @@ class BookingControllerTest {
                 String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        Map<String, Object> responseBody = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> responseBody = TestJson.asMap(resp.getBody());
         assertThat(responseBody.keySet()).containsExactlyInAnyOrder(
                 "success", "error", "message", "userMessage", "timestamp", "sessionId");
         assertThat(responseBody.get("success")).isEqualTo(false);
@@ -224,37 +224,37 @@ class BookingControllerTest {
     @Test
     void ilProprietarioPuoAnnullareLaPropriaPrenotazione() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                "/api/bookings/" + ownerBookingId, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStatus())
+        assertThat(bookingRepository.findById(ownerBookingId).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.CANCELLED);
     }
 
     @Test
     void annullareDueVolteVieneRifiutatoInveceCheRiuscireInSilenzio() throws Exception {
-        rest.exchange("/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+        rest.exchange("/api/bookings/" + ownerBookingId, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
-        ResponseEntity<String> secondo = rest.exchange(
-                "/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+        ResponseEntity<String> second = rest.exchange(
+                "/api/bookings/" + ownerBookingId, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
-        assertThat(secondo.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(TestJson.comeMappa(secondo.getBody()).get("error")).isEqualTo("INVALID_STATE");
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(TestJson.asMap(second.getBody()).get("error")).isEqualTo("INVALID_STATE");
     }
 
     @Test
     void strangerCannotCancelSomeoneElsesBooking() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                "/api/bookings/" + ownerBookingId, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
         // la prenotazione resta intatta
-        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStatus())
+        assertThat(bookingRepository.findById(ownerBookingId).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.BOOKED);
     }
 

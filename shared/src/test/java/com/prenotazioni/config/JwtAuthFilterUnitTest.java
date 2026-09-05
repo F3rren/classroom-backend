@@ -53,7 +53,7 @@ class JwtAuthFilterUnitTest {
 
     @Test
     void unTokenValidoDiventaUnUtenteAutenticato() throws Exception {
-        Authentication auth = eseguiConHeader("Bearer " + TestJwt.perUtente(7L, "mario@example.it"));
+        Authentication auth = eseguiConHeader("Bearer " + TestJwt.forUser(7L, "mario@example.it"));
 
         assertThat(auth).isNotNull();
         AppPrincipal principal = (AppPrincipal) auth.getPrincipal();
@@ -64,7 +64,7 @@ class JwtAuthFilterUnitTest {
 
     @Test
     void unTokenDaAdminPortaLAuthorityCheCercaPreAuthorize() throws Exception {
-        Authentication auth = eseguiConHeader("Bearer " + TestJwt.perAdmin(1L, "admin@example.it"));
+        Authentication auth = eseguiConHeader("Bearer " + TestJwt.forAdmin(1L, "admin@example.it"));
 
         // hasRole('ADMIN') cerca esattamente questa stringa
         assertThat(auth.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_ADMIN");
@@ -77,7 +77,7 @@ class JwtAuthFilterUnitTest {
 
     @Test
     void unaIntestazioneSenzaIlPrefissoBearerVieneIgnorata() throws Exception {
-        assertThat(eseguiConHeader(TestJwt.perUtente(7L, "mario@example.it"))).isNull();
+        assertThat(eseguiConHeader(TestJwt.forUser(7L, "mario@example.it"))).isNull();
     }
 
     @Test

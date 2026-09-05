@@ -35,22 +35,22 @@ public class EdgeCorrelationFilter implements GlobalFilter, Ordered {
         // proprio la catena che questo filtro esiste per tenere insieme.
         String id = (ricevuto == null || ricevuto.isBlank()) ? generate() : ricevuto;
 
-        ServerWebExchange conId = exchange.mutate()
+        ServerWebExchange withId = exchange.mutate()
                 .request(r -> r.headers(h -> h.set(INTESTAZIONE, id)))
                 .build();
         // Anche nell'exchange, cosi' GatewayErrorHandler puo' citarlo quando risponde
         // al posto di un servizio irraggiungibile.
-        conId.getAttributes().put(INTESTAZIONE, id);
+        withId.getAttributes().put(INTESTAZIONE, id);
         // set() prima di inoltrare non basta: il servizio a valle rimanda a sua volta la
         // sua X-Request-Id, il gateway la unisce a quella gia' presente e il client si
         // ritrova l'intestazione DUE volte (stesso valore, ma comunque una lista).
         // beforeCommit gira dopo la fusione, quindi qui set() sostituisce davvero.
-        conId.getResponse().beforeCommit(() -> {
-            conId.getResponse().getHeaders().set(INTESTAZIONE, id);
+        withId.getResponse().beforeCommit(() -> {
+            withId.getResponse().getHeaders().set(INTESTAZIONE, id);
             return Mono.empty();
         });
 
-        return chain.filter(conId);
+        return chain.filter(withId);
     }
 
     /**

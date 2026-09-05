@@ -88,25 +88,25 @@ spring:
         # ricevuta dal servizio a valle DOPO averlo interrogato: la richiesta arriverebbe
         # comunque. forward: la dirotta sul gateway stesso, che non ha alcun handler per
         # quel percorso e risponde 404 senza inoltrare nulla.
-        - id: notifiche-interne-bloccate
-          uri: forward:/rotta-non-esposta
+        - id: notifications-internal-blocked
+          uri: forward:/route-not-exposed
           predicates:
             - Path=/api/notifications/internal/**
 
         # Anche le prenotazioni hanno rotte interne fra servizi: auth-service le chiama
         # per cancellare le prenotazioni di un utente rimosso. Stessa regola, stesso ordine.
-        - id: prenotazioni-interne-bloccate
-          uri: forward:/rotta-non-esposta
+        - id: bookings-internal-blocked
+          uri: forward:/route-not-exposed
           predicates:
             - Path=/api/bookings/internal/**
 
-        - id: notifiche
+        - id: notifications
           uri: ${NOTIFICA_SERVICE_URL:http://localhost:17104}
           predicates:
             - Path=/api/notifications/**
 
         # Login, profilo e amministrazione utenti: auth-service.
-        - id: autenticazione
+        - id: authentication
           uri: ${AUTH_SERVICE_URL:http://localhost:17105}
           predicates:
             # Un prefisso, non un elenco. Prima qui c'era la lista degli endpoint admin di
@@ -116,7 +116,7 @@ spring:
             - Path=/api/auth/**,/api/me/**,/api/admin/users,/api/admin/users/**
 
         # Aule, prenotazioni e amministrazione delle stesse.
-        - id: applicazione
+        - id: application
           uri: ${PRENOTAZIONE_SERVICE_URL:http://localhost:17103}
           predicates:
             - Path=/api/rooms/**,/api/bookings/**,/api/admin/**

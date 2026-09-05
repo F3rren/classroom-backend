@@ -31,10 +31,10 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  */
 class UserDataClientUnitTest {
 
-    private static final String NOTIFICHE = "http://notifiche.test";
-    private static final String PRENOTAZIONI = "http://prenotazioni.test";
-    private static final String URI_NOTIFICHE = NOTIFICHE + "/api/notifications/internal/user/7";
-    private static final String URI_PRENOTAZIONI = PRENOTAZIONI + "/api/bookings/internal/user/7";
+    private static final String NOTIFICATIONS = "http://notifiche.test";
+    private static final String BOOKINGS = "http://prenotazioni.test";
+    private static final String URI_NOTIFICATIONS = NOTIFICATIONS + "/api/notifications/internal/user/7";
+    private static final String URI_BOOKINGS = BOOKINGS + "/api/bookings/internal/user/7";
 
     private RestClient.Builder costruttore;
     private MockRestServiceServer servizioFinto;
@@ -46,13 +46,13 @@ class UserDataClientUnitTest {
         servizioFinto = MockRestServiceServer.bindTo(costruttore).build();
         // La richiesta corrente serve solo a inoltrare l'intestazione Authorization: qui non
         // c'e' una richiesta HTTP in corso, e un mock che risponde null va benissimo.
-        client = new UserDataClient(costruttore, NOTIFICHE, PRENOTAZIONI, mock(HttpServletRequest.class));
+        client = new UserDataClient(costruttore, NOTIFICATIONS, BOOKINGS, mock(HttpServletRequest.class));
     }
 
     @Test
     void quandoVaTuttoBeneNonRestaNienteIndietro() {
-        servizioFinto.expect(requestTo(URI_NOTIFICHE)).andRespond(withSuccess());
-        servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
+        servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
+        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).isEmpty();
         servizioFinto.verify();
@@ -63,9 +63,9 @@ class UserDataClientUnitTest {
         // LA ragione dei ritentativi. Un servizio che sta riavviando fallisce il primo colpo
         // e risponde al secondo: prima bastava questo a lasciare la cancellazione a meta',
         // e a farla concludere doveva essere una persona che se ne accorgeva.
-        servizioFinto.expect(requestTo(URI_NOTIFICHE)).andRespond(withServerError());
-        servizioFinto.expect(requestTo(URI_NOTIFICHE)).andRespond(withSuccess());
-        servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
+        servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
+        servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
+        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).isEmpty();
         servizioFinto.verify();
@@ -75,8 +75,8 @@ class UserDataClientUnitTest {
     void dopoTreTentativiSiArrende() {
         // I ritentativi non sono infiniti: un servizio davvero giu' non deve tenere appesa
         // la richiesta dell'amministratore.
-        servizioFinto.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICHE)).andRespond(withServerError());
-        servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
+        servizioFinto.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
+        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).containsExactly("notifications");
         servizioFinto.verify();
@@ -87,9 +87,9 @@ class UserDataClientUnitTest {
         // Un 4xx e' una risposta, non un guasto: ripeterla darebbe lo stesso esito. Il
         // conteggio esatto e' l'unica cosa che distingue questo caso dal precedente -
         // l'esito e' identico, il comportamento no.
-        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICHE))
+        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
-        servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
+        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).containsExactly("notifications");
         servizioFinto.verify();
@@ -99,9 +99,9 @@ class UserDataClientUnitTest {
     void ilSecondoServizioVieneTentatoAncheSeIlPrimoFallisce() {
         // Fermarsi al primo errore lascerebbe piu' roba indietro senza dire di piu' a chi
         // legge il messaggio: entrambi vanno tentati, e l'errore li nomina entrambi.
-        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICHE))
+        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
-        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_PRENOTAZIONI))
+        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_BOOKINGS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
         List<String> failed = client.deleteDataOf(7L);
@@ -114,12 +114,12 @@ class UserDataClientUnitTest {
     void ogniChiamataPortaLIdentificativoDiCorrelazione() {
         // Senza, un'operazione che attraversa tre servizi finisce nei log sotto tre chiavi
         // diverse: la correlazione funzionerebbe ovunque tranne dove serve.
-        servizioFinto.expect(requestTo(URI_NOTIFICHE))
+        servizioFinto.expect(requestTo(URI_NOTIFICATIONS))
                 .andExpect(method(org.springframework.http.HttpMethod.DELETE))
                 .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers
                         .header("X-Request-Id", org.hamcrest.Matchers.not(org.hamcrest.Matchers.blankOrNullString())))
                 .andRespond(withSuccess());
-        servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
+        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).isEmpty();
         servizioFinto.verify();

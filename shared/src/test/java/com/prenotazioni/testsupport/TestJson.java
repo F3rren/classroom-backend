@@ -33,7 +33,7 @@ public final class TestJson {
      * caso da gestire, e' il test che deve fallire subito indicando cosa e' arrivato.
      */
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> comeMappa(String json) {
+    public static Map<String, Object> asMap(String json) {
         try {
             return MAPPER.readValue(json, Map.class);
         } catch (Exception e) {
@@ -42,7 +42,7 @@ public final class TestJson {
     }
 
     /** Il corpo di una risposta, gia' come mappa. */
-    public static Map<String, Object> corpoDi(ResponseEntity<String> response) {
-        return comeMappa(response.getBody());
+    public static Map<String, Object> bodyOf(ResponseEntity<String> response) {
+        return asMap(response.getBody());
     }
 }

@@ -56,13 +56,13 @@ public class NotificationService {
         notification.setCreatedAt(LocalDateTime.now());
         notification.setRead(false);
         
-        Notification savedNotifica = notificationRepository.save(notification);
-        logger.debug("FINE - Notifica creata con successo con ID: {}", savedNotifica.getId());
-        return savedNotifica;
+        Notification savedNotification = notificationRepository.save(notification);
+        logger.debug("FINE - Notifica creata con successo con ID: {}", savedNotification.getId());
+        return savedNotification;
     }
 
     public Notification createBookingCancelledNotification(Long userId, Long bookingId, 
-            String roomName, String adminName, String bookingDate, String oraInizio, String oraFine, String motivo) {
+            String roomName, String adminName, String bookingDate, String startTime, String endTime, String reason) {
         
         logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", userId, bookingId);
 
@@ -72,15 +72,15 @@ public class NotificationService {
         if (adminName != null) {
             message = String.format(
                 "La tua prenotazione per la stanza '%s' il %s dalle %s alle %s è stata cancellata dall'amministratore %s.",
-                roomName, bookingDate, oraInizio, oraFine, adminName
+                roomName, bookingDate, startTime, endTime, adminName
             );
-            if (motivo != null && !motivo.trim().isEmpty()) {
-                message += " Motivo: " + motivo;
+            if (reason != null && !reason.trim().isEmpty()) {
+                message += " Motivo: " + reason;
             }
         } else {
             message = String.format(
                 "Hai annullato la tua prenotazione per la stanza '%s' il %s dalle %s alle %s.",
-                roomName, bookingDate, oraInizio, oraFine
+                roomName, bookingDate, startTime, endTime
             );
         }
         
@@ -93,7 +93,7 @@ public class NotificationService {
         notification.setBookingId(bookingId);
         notification.setRoomName(roomName);
         notification.setAdminName(adminName);
-        notification.setBookingDate(componiIstante(bookingDate, oraInizio));
+        notification.setBookingDate(componiIstante(bookingDate, startTime));
         notification = notificationRepository.save(notification);
         logger.debug("FINE - Notifica di cancellazione creata con ID: {}", notification.getId());
         return notification;
@@ -119,9 +119,9 @@ public class NotificationService {
             // Verifica che la notifica appartenga all'utente corretto
             if (notification.getUserId().equals(userId)) {
                 notification.setRead(true);
-                Notification updatedNotifica = notificationRepository.save(notification);
+                Notification updatedNotification = notificationRepository.save(notification);
                 logger.debug("FINE - Notifica ID: {} segnata come letta.", notificationId);
-                return Optional.of(updatedNotifica);
+                return Optional.of(updatedNotification);
             } else {
                 logger.warn("FINE - Tentativo fallito. L'utente ID: {} non è autorizzato a modificare la notifica ID: {}", userId, notificationId);
                 return Optional.empty(); // Utente non autorizzato
@@ -135,7 +135,7 @@ public class NotificationService {
     @Transactional
     public void markAllAsRead(Long userId) {
         logger.debug("INIZIO - Segna tutte le notifiche come lette per utente ID: {}", userId);
-        notificationRepository.segnaTutteComeLette(userId);
+        notificationRepository.markAllAsRead(userId);
         logger.debug("FINE - Tutte le notifiche per utente ID: {} sono state segnate come lette.", userId);
     }
 

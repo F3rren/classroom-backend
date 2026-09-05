@@ -1,12 +1,12 @@
 package com.prenotazioni.exception;
 
 /**
- * La risorsa richiesta non esiste. Diventa un 404.
+ * The requested resource does not exist. Becomes a 404.
  *
- * Sostituisce il null che i service restituivano per "non trovata", indistinguibile da
- * quello che restituivano per "operazione fallita". Il caso peggiore era deleteAula, che
- * usava false per entrambi: un'aula ancora referenziata da una prenotazione rispondeva 404,
- * cioe' "non esiste", su un'aula che esisteva eccome.
+ * It replaces the null that the services used to return for "not found", which was
+ * indistinguishable from the null they returned for "the operation failed". The worst case
+ * was deleteRoom, which used false for both: a room still referenced by a booking answered
+ * 404, meaning "it does not exist", about a room that existed perfectly well.
  */
 public class ResourceNotFoundException extends ApplicationException {
 
@@ -14,10 +14,16 @@ public class ResourceNotFoundException extends ApplicationException {
         super(errorCode, message, userMessage);
     }
 
-    /** Scorciatoia per il caso piu' comune: entita' cercata per id. */
-    public static ResourceNotFoundException perId(String type, String codice, Object id) {
-        return new ResourceNotFoundException(codice,
-                String.format("%s not found with id: %s", type, id),
-                String.format("%s richiesta non esiste.", type));
+    /**
+     * The shortcut for the common case: an entity looked up by id.
+     *
+     * The id goes in the technical message only. It is useful in a log and means nothing
+     * to the person reading the answer, who already knows what they asked for.
+     */
+    public static ResourceNotFoundException forId(ResourceType type, Object id) {
+        return new ResourceNotFoundException(
+                type.getErrorCode(),
+                String.format("%s not found with id: %s", type.getTechnicalName(), id),
+                type.getUserMessage());
     }
 }

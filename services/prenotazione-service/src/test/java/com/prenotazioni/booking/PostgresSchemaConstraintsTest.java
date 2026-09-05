@@ -117,10 +117,10 @@ class PostgresSchemaConstraintsTest {
         // lo vincola piu' - ed e' esattamente cio' che la V4 ha reso possibile.
         user = new BookingOwner(42L, "pg-user", "Utente Postgres");
 
-        room = nuovaAula("Aula Postgres");
+        room = newRoom("Aula Postgres");
     }
 
-    private Room nuovaAula(String name) {
+    private Room newRoom(String name) {
         Room a = new Room();
         a.setName(name);
         a.setCapacity(30);
@@ -131,9 +131,9 @@ class PostgresSchemaConstraintsTest {
     }
 
     /** saveAndFlush e non save: altrimenti l'INSERT puo' essere rinviato oltre l'assert. */
-    private Booking salva(Room suAula, LocalDateTime startTime, LocalDateTime endTime, BookingStatus status) {
+    private Booking save(Room onRoom, LocalDateTime startTime, LocalDateTime endTime, BookingStatus status) {
         Booking p = new Booking();
-        p.setRoom(suAula);
+        p.setRoom(onRoom);
         p.setUser(user);
         p.setStartTime(startTime);
         p.setEndTime(endTime);
@@ -197,19 +197,19 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void duePrenotazioniSovrappostePerLaStessaAulaSonoRifiutateDalDatabase() {
-        salva(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
+        save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
-        assertThatThrownBy(() -> salva(room, BASE.plusHours(1), BASE.plusHours(3), BookingStatus.BOOKED))
+        assertThatThrownBy(() -> save(room, BASE.plusHours(1), BASE.plusHours(3), BookingStatus.BOOKED))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("bookings_no_overlap");
     }
 
     @Test
     void prenotazioniConsecutiveSonoAmmesse() {
-        salva(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
+        save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
         // tsrange e' semiaperto: [10,12) e [12,14) non si sovrappongono.
-        assertThatCode(() -> salva(room, BASE.plusHours(2), BASE.plusHours(4), BookingStatus.BOOKED))
+        assertThatCode(() -> save(room, BASE.plusHours(2), BASE.plusHours(4), BookingStatus.BOOKED))
                 .doesNotThrowAnyException();
 
         // e il predicato applicativo concorda
@@ -219,21 +219,21 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void unaPrenotazioneAnnullataNonBloccaLoStessoIntervallo() {
-        salva(room, BASE, BASE.plusHours(2), BookingStatus.CANCELLED);
+        save(room, BASE, BASE.plusHours(2), BookingStatus.CANCELLED);
 
         // Prova indirettamente anche che il converter scrive "cancelled" minuscolo:
         // il vincolo filtra con WHERE stato <> 'annullata', quindi se il converter
         // scrivesse il nome della costante questo inserimento verrebbe rifiutato.
-        assertThatCode(() -> salva(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED))
+        assertThatCode(() -> save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void loStessoIntervalloSuAuleDiverseEAmmesso() {
-        Room altra = nuovaAula("Aula Postgres 2");
-        salva(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
+        Room altra = newRoom("Aula Postgres 2");
+        save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
-        assertThatCode(() -> salva(altra, BASE, BASE.plusHours(2), BookingStatus.BOOKED))
+        assertThatCode(() -> save(altra, BASE, BASE.plusHours(2), BookingStatus.BOOKED))
                 .doesNotThrowAnyException();
     }
 
@@ -253,24 +253,24 @@ class PostgresSchemaConstraintsTest {
             "-240,-120,false",  // staccato prima
             "240, 360, false"   // staccato dopo
     })
-    void predicatoApplicativoEVincoloDbConcordano(long daMin, long aMin, boolean conflittoAtteso) {
-        salva(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
+    void predicatoApplicativoEVincoloDbConcordano(long daMin, long aMin, boolean expectedConflict) {
+        save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
         LocalDateTime startTime = BASE.plusMinutes(daMin);
         LocalDateTime endTime = BASE.plusMinutes(aMin);
 
-        boolean conflittoApplicativo =
+        boolean applicationConflict =
                 !bookingRepository.findConflictingBookings(room.getId(), startTime, endTime).isEmpty();
-        assertThat(conflittoApplicativo)
+        assertThat(applicationConflict)
                 .as("predicato applicativo per [%d,%d)", daMin, aMin)
-                .isEqualTo(conflittoAtteso);
+                .isEqualTo(expectedConflict);
 
-        if (conflittoAtteso) {
-            assertThatThrownBy(() -> salva(room, startTime, endTime, BookingStatus.BOOKED))
+        if (expectedConflict) {
+            assertThatThrownBy(() -> save(room, startTime, endTime, BookingStatus.BOOKED))
                     .as("il database deve rifiutare [%d,%d)", daMin, aMin)
                     .isInstanceOf(DataIntegrityViolationException.class);
         } else {
-            assertThatCode(() -> salva(room, startTime, endTime, BookingStatus.BOOKED))
+            assertThatCode(() -> save(room, startTime, endTime, BookingStatus.BOOKED))
                     .as("il database deve accettare [%d,%d)", daMin, aMin)
                     .doesNotThrowAnyException();
         }
@@ -278,7 +278,7 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void intervalloDiDurataZero_ilDatabaseLoAmmetteMaLApplicazioneNo() {
-        salva(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
+        save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
         // Divergenza reale e documentata: tsrange(t,t) e' vuoto e non si sovrappone
         // mai, quindi il vincolo DB accetta. Il predicato applicativo invece segnala
@@ -287,7 +287,7 @@ class PostgresSchemaConstraintsTest {
         assertThat(bookingRepository.findConflictingBookings(
                 room.getId(), BASE.plusHours(1), BASE.plusHours(1))).isNotEmpty();
 
-        assertThatCode(() -> salva(room, BASE.plusHours(1), BASE.plusHours(1), BookingStatus.BOOKED))
+        assertThatCode(() -> save(room, BASE.plusHours(1), BASE.plusHours(1), BookingStatus.BOOKED))
                 .doesNotThrowAnyException();
     }
 

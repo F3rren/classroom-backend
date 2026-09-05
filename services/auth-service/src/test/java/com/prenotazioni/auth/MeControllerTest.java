@@ -96,7 +96,7 @@ class MeControllerTest {
                 "/api/me", HttpMethod.GET, new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.get("success")).isEqualTo(true);
         Map<String, Object> data = (Map<String, Object>) body.get("data");
         assertThat(data.get("email")).isEqualTo("me-owner@test.it");

@@ -43,7 +43,7 @@ class RoomQueryTest {
     private BookingRepository bookingRepository;
 
     private String token;
-    private Long aulaFisicaGrandeId;
+    private Long largePhysicalRoomId;
 
     @BeforeEach
     void setUp() {
@@ -51,14 +51,14 @@ class RoomQueryTest {
         roomRepository.deleteAll();
 
 
-        aulaFisicaGrandeId = salvaAula("Aula Grande", 1, 100, false);
-        salvaAula("Aula Piccola", 2, 10, false);
-        salvaAula("Aula Virtuale", 0, 50, true);
+        largePhysicalRoomId = saveRoom("Aula Grande", 1, 100, false);
+        saveRoom("Aula Piccola", 2, 10, false);
+        saveRoom("Aula Virtuale", 0, 50, true);
 
-        token = TestJwt.perUtente(1L, "roomquery@test.it", "Room Query");
+        token = TestJwt.forUser(1L, "roomquery@test.it", "Room Query");
     }
 
-    private Long salvaAula(String name, int floor, int capacity, boolean virtuale) {
+    private Long saveRoom(String name, int floor, int capacity, boolean virtuale) {
         Room a = new Room();
         a.setName(name);
         a.setFloor(floor);
@@ -78,7 +78,7 @@ class RoomQueryTest {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> dataOf(ResponseEntity<String> resp) throws Exception {
-        return (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        return (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
     }
 
     @Test
@@ -109,7 +109,7 @@ class RoomQueryTest {
         ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=1001");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("CAPACITY_TOO_HIGH");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("CAPACITY_TOO_HIGH");
     }
 
     @Test
@@ -117,7 +117,7 @@ class RoomQueryTest {
         ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=-1");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_CAPACITY");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("INVALID_CAPACITY");
     }
 
     @Test
@@ -162,7 +162,7 @@ class RoomQueryTest {
 
     @Test
     void ilDettaglioPerIdEAvvoltoNellaChiaveRoom() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/" + aulaFisicaGrandeId + "/detailed");
+        ResponseEntity<String> resp = get("/api/rooms/" + largePhysicalRoomId + "/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = dataOf(resp);
@@ -174,7 +174,7 @@ class RoomQueryTest {
         ResponseEntity<String> resp = get("/api/rooms/999999/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 
     @Test
@@ -182,7 +182,7 @@ class RoomQueryTest {
         ResponseEntity<String> resp = get("/api/rooms/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = TestJson.comeMappa(resp.getBody());
+        Map<String, Object> body = TestJson.asMap(resp.getBody());
         // shape storica: nessun envelope success/data
         assertThat(body.keySet()).containsExactlyInAnyOrder("bookings", "totalBookings");
     }

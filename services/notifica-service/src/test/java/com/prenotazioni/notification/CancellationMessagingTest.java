@@ -92,7 +92,7 @@ class CancellationMessagingTest {
 
     private void pubblica(BookingCancelledEvent event) {
         rabbitTemplate.convertAndSend(
-                EventTopology.EXCHANGE, EventTopology.ROUTING_KEY_CANCELLAZIONE, event);
+                EventTopology.EXCHANGE, EventTopology.ROUTING_KEY_CANCELLATION, event);
     }
 
     @Test

@@ -50,7 +50,7 @@ public class EventPublisher {
             String requestId = RequestCorrelationFilter.current();
             rabbitTemplate.convertAndSend(
                     EventTopology.EXCHANGE,
-                    EventTopology.ROUTING_KEY_CANCELLAZIONE,
+                    EventTopology.ROUTING_KEY_CANCELLATION,
                     event,
                     message -> {
                         message.getMessageProperties()

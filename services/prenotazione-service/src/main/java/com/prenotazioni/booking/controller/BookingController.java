@@ -3,6 +3,7 @@ package com.prenotazioni.booking.controller;
 import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.exception.InvalidRequestException;
 import com.prenotazioni.exception.ResourceNotFoundException;
+import com.prenotazioni.exception.ResourceType;
 import com.prenotazioni.dto.*;
 // entrambe: in com.prenotazioni.dto restano le classi comuni di shared,
 // in com.prenotazioni.booking.dto quelle di questo servizio
@@ -294,10 +295,10 @@ public class BookingController {
         String sessionId = generateSessionId();
         logger.debug("INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", roomId, startTime, endTime);
 
-        LocalDateTime inizioDateTime;
-        LocalDateTime fineDateTime;
+        LocalDateTime startDateTime;
+        LocalDateTime endDateTime;
         try {
-            inizioDateTime = LocalDateTime.parse(startTime);
+            startDateTime = LocalDateTime.parse(startTime);
         } catch (DateTimeParseException e) {
             logger.warn("FINE verificaDisponibilita - Errore parsing data inizio: '{}'", startTime);
             return new ResponseEntity<>(
@@ -307,7 +308,7 @@ public class BookingController {
             );
         }
         try {
-            fineDateTime = LocalDateTime.parse(endTime);
+            endDateTime = LocalDateTime.parse(endTime);
         } catch (DateTimeParseException e) {
             logger.warn("FINE verificaDisponibilita - Errore parsing data fine: '{}'", endTime);
             return new ResponseEntity<>(
@@ -317,7 +318,7 @@ public class BookingController {
             );
         }
 
-        if (fineDateTime.isBefore(inizioDateTime)) {
+        if (endDateTime.isBefore(startDateTime)) {
             logger.warn("FINE verificaDisponibilita - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
@@ -326,13 +327,13 @@ public class BookingController {
             );
         }
 
-        logger.debug("Verifica disponibilità per AulaId: {} nel periodo: {} - {}", roomId, formatTimestamp(inizioDateTime), formatTimestamp(fineDateTime));
-        boolean disponibile = bookingService.isRoomAvailable(roomId, inizioDateTime, fineDateTime);
-        logger.debug("FINE verificaDisponibilita - AulaId: {}, Disponibile: {}", roomId, disponibile);
+        logger.debug("Verifica disponibilità per AulaId: {} nel periodo: {} - {}", roomId, formatTimestamp(startDateTime), formatTimestamp(endDateTime));
+        boolean available = bookingService.isRoomAvailable(roomId, startDateTime, endDateTime);
+        logger.debug("FINE verificaDisponibilita - AulaId: {}, Disponibile: {}", roomId, available);
 
         return new ResponseEntity<>(
             createSuccessResponse("Verifica disponibilità completata",
-                                new AvailabilityPayload(roomId, disponibile, formatTimestamp(inizioDateTime) + " - " + formatTimestamp(fineDateTime)),
+                                new AvailabilityPayload(roomId, available, formatTimestamp(startDateTime) + " - " + formatTimestamp(endDateTime)),
                                 sessionId),
             HttpStatus.OK
         );
@@ -358,14 +359,14 @@ public class BookingController {
     @Operation(summary = "Le prenotazioni dell'utente autenticato")
     public ResponseEntity<SingleBookingPayload> getMyBookings(@AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("INIZIO getMiePrenotazioni");
-        List<Booking> tuttePrenotazioni = bookingService.getUserBookings(principal.id());
+        List<Booking> allBookings = bookingService.getUserBookings(principal.id());
 
-        List<Booking> bookings = tuttePrenotazioni.stream()
+        List<Booking> bookings = allBookings.stream()
             .filter(p -> p.getStatus() != BookingStatus.CANCELLED)
             .collect(Collectors.toList());
 
         logger.debug("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)",
-                   principal.id(), bookings.size(), tuttePrenotazioni.size() - bookings.size());
+                   principal.id(), bookings.size(), allBookings.size() - bookings.size());
         return ResponseEntity.ok(new SingleBookingPayload(bookings));
     }
 
@@ -405,8 +406,8 @@ public class BookingController {
     public ResponseEntity<?> getAllBookings() {
         logger.debug("INIZIO getAllPrenotazioni");
 
-        List<Booking> tuttePrenotazioni = bookingService.getAllBookings();
-        List<Booking> bookings = tuttePrenotazioni.stream()
+        List<Booking> allBookings = bookingService.getAllBookings();
+        List<Booking> bookings = allBookings.stream()
             .filter(p -> p.getStatus() != BookingStatus.CANCELLED)
             .map(this::sanitizeOwnerForListing)
             .collect(Collectors.toList());
@@ -417,7 +418,7 @@ public class BookingController {
         }
 
         logger.debug("FINE getAllPrenotazioni - Prenotazioni attive recuperate: {} (totale con annullate: {})",
-                   bookings.size(), tuttePrenotazioni.size());
+                   bookings.size(), allBookings.size());
         return ResponseEntity.ok(new SingleBookingPayload(bookings));
     }
 
@@ -436,7 +437,7 @@ public class BookingController {
             // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
             // "userMessage", e "error" conteneva una frase invece di un codice. Un client
             // che legge userMessage otteneva undefined proprio su questi due endpoint.
-            throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", id);
+            throw ResourceNotFoundException.forId(ResourceType.BOOKING, id);
         }
 
         logger.debug("FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", booking.getId());
@@ -458,13 +459,13 @@ public class BookingController {
             // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
             // "userMessage", e "error" conteneva una frase invece di un codice. Un client
             // che legge userMessage otteneva undefined proprio su questi due endpoint.
-            throw ResourceNotFoundException.perId("Prenotazione", "PRENOTAZIONE_NOT_FOUND", id);
+            throw ResourceNotFoundException.forId(ResourceType.BOOKING, id);
         }
 
         logger.debug("Prenotazione trovata: ID: {}", booking.getId());
-        List<BookingDetailDto> dettagliCompleti = bookingService.getBookingCompleteDetails(id);
-        logger.debug("FINE getPrenotazioneDetailsById - Dettagli completi recuperati con successo, totale dettagli: {}", dettagliCompleti.size());
-        return ResponseEntity.ok(new BookingWithDetailsPayload(booking, dettagliCompleti));
+        List<BookingDetailDto> fullDetails = bookingService.getBookingCompleteDetails(id);
+        logger.debug("FINE getPrenotazioneDetailsById - Dettagli completi recuperati con successo, totale dettagli: {}", fullDetails.size());
+        return ResponseEntity.ok(new BookingWithDetailsPayload(booking, fullDetails));
     }
 
     // Vista completa di tutte le prenotazioni con dettagli - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
@@ -472,9 +473,9 @@ public class BookingController {
     @Operation(summary = "Dettagli completi di tutte le prenotazioni")
     public ResponseEntity<BookingDetailListPayload> getAllBookingsWithDetails() {
         logger.debug("INIZIO getAllPrenotazioniWithDetails");
-        List<BookingDetailDto> dettagliCompleti = bookingService.getAllCompleteDetails();
-        logger.debug("FINE getAllPrenotazioniWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", dettagliCompleti.size());
-        return ResponseEntity.ok(new BookingDetailListPayload(dettagliCompleti));
+        List<BookingDetailDto> fullDetails = bookingService.getAllCompleteDetails();
+        logger.debug("FINE getAllPrenotazioniWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", fullDetails.size());
+        return ResponseEntity.ok(new BookingDetailListPayload(fullDetails));
     }
 
     // Prenotazioni per stato - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI

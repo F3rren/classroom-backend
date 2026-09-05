@@ -55,11 +55,11 @@ class RoomDetailsWithBookingsTest {
     private BookingRepository bookingRepository;
 
     private String token;
-    private Long aulaOccupataId;
-    private Long aulaBloccataId;
-    private Long aulaManutenzioneId;
-    private Long aulaImminenteId;
-    private Long aulaLiberaId;
+    private Long busyRoomId;
+    private Long blockedRoomId;
+    private Long maintenanceRoomId;
+    private Long upcomingRoomId;
+    private Long freeRoomId;
 
     @BeforeEach
     void setUp() {
@@ -71,26 +71,26 @@ class RoomDetailsWithBookingsTest {
 
         LocalDateTime now = LocalDateTime.now();
 
-        aulaOccupataId = salvaAula("Aula Occupata", 1, 30, false);
-        prenota(aulaOccupataId, user, BookingStatus.BOOKED, now.minusHours(1), now.plusHours(1), "Lezione di Analisi");
+        busyRoomId = saveRoom("Aula Occupata", 1, 30, false);
+        book(busyRoomId, user, BookingStatus.BOOKED, now.minusHours(1), now.plusHours(1), "Lezione di Analisi");
 
-        aulaBloccataId = salvaAula("Aula Bloccata", 1, 30, false);
-        prenota(aulaBloccataId, user, BookingStatus.BLOCKED, now.minusHours(1), now.plusHours(1), "Evento riservato");
+        blockedRoomId = saveRoom("Aula Bloccata", 1, 30, false);
+        book(blockedRoomId, user, BookingStatus.BLOCKED, now.minusHours(1), now.plusHours(1), "Evento riservato");
 
-        aulaManutenzioneId = salvaAula("Aula Manutenzione", 2, 20, false);
-        prenota(aulaManutenzioneId, user, BookingStatus.MAINTENANCE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
+        maintenanceRoomId = saveRoom("Aula Manutenzione", 2, 20, false);
+        book(maintenanceRoomId, user, BookingStatus.MAINTENANCE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
 
         // Aula virtuale con prenotazione IMMINENTE (entro 2 ore, ma non ancora iniziata):
         // copre il secondo ramo e il lato virtuale del terzo clone.
-        aulaImminenteId = salvaAula("Aula Virtuale Imminente", 0, 50, true);
-        prenota(aulaImminenteId, user, BookingStatus.BOOKED, now.plusMinutes(30), now.plusMinutes(90), null);
+        upcomingRoomId = saveRoom("Aula Virtuale Imminente", 0, 50, true);
+        book(upcomingRoomId, user, BookingStatus.BOOKED, now.plusMinutes(30), now.plusMinutes(90), null);
 
-        aulaLiberaId = salvaAula("Aula Libera", 3, 10, false);
+        freeRoomId = saveRoom("Aula Libera", 3, 10, false);
 
-        token = TestJwt.perUtente(1L, "roomdetailswithbookingstest@test.it", "Utente Test");
+        token = TestJwt.forUser(1L, "roomdetailswithbookingstest@test.it", "Utente Test");
     }
 
-    private Long salvaAula(String name, int floor, int capacity, boolean virtuale) {
+    private Long saveRoom(String name, int floor, int capacity, boolean virtuale) {
         Room a = new Room();
         a.setName(name);
         a.setFloor(floor);
@@ -100,7 +100,7 @@ class RoomDetailsWithBookingsTest {
         return roomRepository.save(a).getId();
     }
 
-    private void prenota(Long roomId, BookingOwner user, BookingStatus status,
+    private void book(Long roomId, BookingOwner user, BookingStatus status,
                          LocalDateTime startTime, LocalDateTime endTime, String description) {
         Booking p = new Booking();
         p.setRoom(roomRepository.findById(roomId).orElseThrow());
@@ -123,7 +123,7 @@ class RoomDetailsWithBookingsTest {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> roomsOf(ResponseEntity<String> resp) throws Exception {
-        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         return (List<Map<String, Object>>) data.get("rooms");
     }
 
@@ -217,11 +217,11 @@ class RoomDetailsWithBookingsTest {
 
     @Test
     void ilDettaglioDiUnaSolaAulaRiportaLaPrenotazioneInCorso() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/" + aulaOccupataId + "/detailed");
+        ResponseEntity<String> resp = get("/api/rooms/" + busyRoomId + "/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
@@ -231,10 +231,10 @@ class RoomDetailsWithBookingsTest {
 
     @Test
     void ilDettaglioDiUnaSolaAulaRiportaIDatiDelBlocco() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/" + aulaBloccataId + "/detailed");
+        ResponseEntity<String> resp = get("/api/rooms/" + blockedRoomId + "/detailed");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
@@ -244,10 +244,10 @@ class RoomDetailsWithBookingsTest {
 
     @Test
     void ilDettaglioDiUnaSolaAulaSegnalaLaPrenotazioneImminente() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/" + aulaImminenteId + "/detailed");
+        ResponseEntity<String> resp = get("/api/rooms/" + upcomingRoomId + "/detailed");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
+        Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         @SuppressWarnings("unchecked")
         Map<String, Object> room = (Map<String, Object>) data.get("room");
 
@@ -278,18 +278,18 @@ class RoomDetailsWithBookingsTest {
 
     @Test
     void statoAulaReflectsTheActiveBookingKind() throws Exception {
-        assertThat(statoDi(aulaOccupataId)).isEqualTo("BOOKED");
-        assertThat(statoDi(aulaBloccataId)).isEqualTo("BLOCKED");
-        assertThat(statoDi(aulaManutenzioneId)).isEqualTo("MAINTENANCE");
-        assertThat(statoDi(aulaLiberaId)).isEqualTo("FREE");
+        assertThat(statusOf(busyRoomId)).isEqualTo("BOOKED");
+        assertThat(statusOf(blockedRoomId)).isEqualTo("BLOCKED");
+        assertThat(statusOf(maintenanceRoomId)).isEqualTo("MAINTENANCE");
+        assertThat(statusOf(freeRoomId)).isEqualTo("FREE");
         // la prenotazione imminente non e' ancora attiva: l'aula risulta libera adesso
-        assertThat(statoDi(aulaImminenteId)).isEqualTo("FREE");
+        assertThat(statusOf(upcomingRoomId)).isEqualTo("FREE");
     }
 
-    private String statoDi(Long roomId) throws Exception {
+    private String statusOf(Long roomId) throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/room-status/" + roomId);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) TestJson.comeMappa(resp.getBody()).get("status");
+        return (String) TestJson.asMap(resp.getBody()).get("status");
     }
 
 }

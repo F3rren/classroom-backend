@@ -130,7 +130,7 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
                     "La richiesta non e' stata accettata.");
         }
 
-        if (nonRaggiungibile(error)) {
+        if (unreachable(error)) {
             return new Outcome(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE",
                     "Servizio a valle non raggiungibile",
                     "Il servizio non e' momentaneamente disponibile. Riprova fra qualche istante.");
@@ -154,7 +154,7 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
      * Confronto per nome e non per classe: cosi' non serve dipendere dai tipi interni di
      * Netty solo per nominarli.
      */
-    private boolean nonRaggiungibile(Throwable error) {
+    private boolean unreachable(Throwable error) {
         for (Throwable t = error; t != null && t.getCause() != t; t = t.getCause()) {
             if (t instanceof ConnectException || t instanceof UnknownHostException) {
                 return true;

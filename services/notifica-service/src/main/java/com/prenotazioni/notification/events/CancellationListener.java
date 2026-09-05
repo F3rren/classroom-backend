@@ -28,44 +28,44 @@ public class CancellationListener {
 
     private static final Logger logger = LoggerFactory.getLogger(CancellationListener.class);
 
-    private final NotificationService notificaService;
+    private final NotificationService notificationService;
 
-    CancellationListener(NotificationService notificaService) {
-        this.notificaService = notificaService;
+    CancellationListener(NotificationService notificationService) {
+        this.notificationService = notificationService;
     }
 
-    @RabbitListener(queues = EventTopology.CODA_NOTIFICHE_CANCELLAZIONE)
+    @RabbitListener(queues = EventTopology.CANCELLATION_QUEUE)
     public void onCancellation(
-            BookingCancelledEvent evento,
-            @Header(name = RequestCorrelationFilter.INTESTAZIONE, required = false) String idRichiesta) {
+            BookingCancelledEvent event,
+            @Header(name = RequestCorrelationFilter.INTESTAZIONE, required = false) String requestId) {
         // Rimesso in MDC per la durata del trattamento: e' cio' che permette di leggere in
         // fila la richiesta HTTP che ha annullato la prenotazione e la notifica creata qui,
         // che avviene su un altro servizio, un altro thread e qualche istante dopo.
         // required = false perche' un messaggio pubblicato prima di questa modifica, o da
         // un'altra versione, deve continuare a essere consumato.
-        RequestCorrelationFilter.applyToMdc(idRichiesta);
+        RequestCorrelationFilter.applyToMdc(requestId);
         try {
-            if (evento == null || evento.userId() == null) {
+            if (event == null || event.userId() == null) {
                 // Scartato di proposito: senza destinatario la notifica non ha a chi andare, e
                 // rimetterlo in coda lo farebbe girare per sempre.
-                logger.error("Evento di cancellazione scartato perche' privo di destinatario: {}", evento);
+                logger.error("Evento di cancellazione scartato perche' privo di destinatario: {}", event);
                 return;
             }
 
             logger.debug("Evento di cancellazione ricevuto per utenteId={}, prenotazioneId={}",
-                    evento.userId(), evento.bookingId());
+                    event.userId(), event.bookingId());
 
-            notificaService.createBookingCancelledNotification(
-                    evento.userId(),
-                    evento.bookingId(),
-                    evento.roomName(),
-                    evento.adminName(),
-                    evento.bookingDate(),
-                    evento.oraInizio(),
-                    evento.oraFine(),
-                    evento.motivo());
+            notificationService.createBookingCancelledNotification(
+                    event.userId(),
+                    event.bookingId(),
+                    event.roomName(),
+                    event.adminName(),
+                    event.bookingDate(),
+                    event.startTime(),
+                    event.endTime(),
+                    event.reason());
 
-            logger.info("Notifica di cancellazione creata da evento per utenteId={}", evento.userId());
+            logger.info("Notifica di cancellazione creata da evento per utenteId={}", event.userId());
         } finally {
             RequestCorrelationFilter.clearMdc();
         }
