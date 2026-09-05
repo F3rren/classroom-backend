@@ -20,11 +20,11 @@ package com.prenotazioni.events;
  * rimuoverne o rinominarne uno no: rompe i messaggi gia' pubblicati e non ancora letti.
  */
 public record BookingCancelledEvent(
-        Long utenteId,
-        Long prenotazioneId,
-        String nomeStanza,
-        String adminNome,
-        String dataPrenotazione,
+        Long userId,
+        Long bookingId,
+        String roomName,
+        String adminName,
+        String bookingDate,
         String oraInizio,
         String oraFine,
         String motivo) {

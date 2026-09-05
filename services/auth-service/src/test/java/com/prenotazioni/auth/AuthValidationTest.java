@@ -18,7 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,9 +66,9 @@ class AuthValidationTest {
         u.setEmail(email);
         u.setUsername(username);
         u.setPassword(passwordEncoder.encode(rawPassword));
-        u.setNome(username);
-        u.setRuolo(role);
-        u.setDataRegistrazione(LocalDateTime.now());
+        u.setName(username);
+        u.setRole(role);
+        u.setRegisteredAt(LocalDateTime.now());
         userRepository.save(u);
     }
 
@@ -106,8 +105,8 @@ class AuthValidationTest {
                 "username", "nuovoutente",
                 "email", "non-e-una-email",
                 "password", "password1234",
-                "nome", "Nuovo Utente",
-                "ruolo", "user");
+                "name", "Nuovo Utente",
+                "role", "user");
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
@@ -124,8 +123,8 @@ class AuthValidationTest {
                 "username", "nuovoutente2",
                 "email", "nuovoutente2@validation.test",
                 "password", "short",
-                "nome", "Nuovo Utente 2",
-                "ruolo", "user");
+                "name", "Nuovo Utente 2",
+                "role", "user");
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
@@ -140,8 +139,8 @@ class AuthValidationTest {
                 "username", "nuovoutente3",
                 "email", "nuovoutente3@validation.test",
                 "password", "password1234",
-                "nome", "Nuovo Utente 3",
-                "ruolo", "superadmin");
+                "name", "Nuovo Utente 3",
+                "role", "superadmin");
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
@@ -156,8 +155,8 @@ class AuthValidationTest {
                 "username", "nuovoutente4",
                 "email", "nuovoutente4@validation.test",
                 "password", "password1234",
-                "nome", "Nuovo Utente 4",
-                "ruolo", "user");
+                "name", "Nuovo Utente 4",
+                "role", "user");
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
@@ -169,7 +168,7 @@ class AuthValidationTest {
     @Test
     void nonAdminCannotRegisterUsers() {
         Map<String, Object> body = Map.of(
-                "username", "x", "email", "x@validation.test", "password", "password1234", "nome", "X");
+                "username", "x", "email", "x@validation.test", "password", "password1234", "name", "X");
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenUser)), String.class);
@@ -226,7 +225,7 @@ class AuthValidationTest {
 
         Map<String, Object> user = (Map<String, Object>) data.get("user");
         assertThat(user.keySet()).containsExactlyInAnyOrder(
-                "id", "username", "nome", "email", "ruolo");
+                "id", "username", "name", "email", "role");
     }
 
     @Test
@@ -240,8 +239,8 @@ class AuthValidationTest {
                 "username", "user-validation",
                 "email", "user@validation.test",
                 "password", "",
-                "nome", "User Validation Rinominato",
-                "ruolo", "user");
+                "name", "User Validation Rinominato",
+                "role", "user");
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/users/" + id, HttpMethod.PUT,

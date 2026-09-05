@@ -42,16 +42,16 @@ public class UserDataClient {
     /** Cresce a ogni giro (0.2s, 0.4s): un servizio che riavvia non torna in un istante. */
     private static final long ATTESA_INIZIALE_MS = 200;
 
-    private final RestClient notifiche;
-    private final RestClient prenotazioni;
+    private final RestClient notifications;
+    private final RestClient bookings;
     private final HttpServletRequest currentRequest;
 
     UserDataClient(RestClient.Builder builder,
                      @Value("${prenotazioni.notifica-service.url:http://localhost:17104}") String urlNotifiche,
                      @Value("${prenotazioni.prenotazione-service.url:http://localhost:17103}") String urlPrenotazioni,
                      HttpServletRequest currentRequest) {
-        this.notifiche = builder.clone().baseUrl(urlNotifiche).build();
-        this.prenotazioni = builder.clone().baseUrl(urlPrenotazioni).build();
+        this.notifications = builder.clone().baseUrl(urlNotifiche).build();
+        this.bookings = builder.clone().baseUrl(urlPrenotazioni).build();
         this.currentRequest = currentRequest;
     }
 
@@ -67,11 +67,11 @@ public class UserDataClient {
         List<String> failed = new ArrayList<>();
         // Entrambe le chiamate vengono tentate anche se la prima fallisce: fermarsi
         // lascerebbe piu' roba indietro senza dire di piu' a chi legge l'errore.
-        if (!delete(notifiche, "/api/notifications/internal/user/{id}", userId, "notifiche")) {
-            failed.add("notifiche");
+        if (!delete(notifications, "/api/notifications/internal/user/{id}", userId, "notifications")) {
+            failed.add("notifications");
         }
-        if (!delete(prenotazioni, "/api/bookings/internal/user/{id}", userId, "prenotazioni")) {
-            failed.add("prenotazioni");
+        if (!delete(bookings, "/api/bookings/internal/user/{id}", userId, "bookings")) {
+            failed.add("bookings");
         }
         return failed;
     }

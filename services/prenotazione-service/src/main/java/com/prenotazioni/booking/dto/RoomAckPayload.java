@@ -6,15 +6,15 @@ import lombok.Getter;
 /** Riepilogo di un'aula creata/modificata, riusato da createRoom e updateRoom. */
 @Getter
 public class RoomAckPayload {
-    private final Long aulaId;
-    private final String nome;
-    private final int piano;
-    private final int capienza;
+    private final Long roomId;
+    private final String name;
+    private final int floor;
+    private final int capacity;
 
-    public RoomAckPayload(Room aula) {
-        this.aulaId = aula.getId();
-        this.nome = aula.getNome();
-        this.piano = aula.getPiano();
-        this.capienza = aula.getCapienza();
+    public RoomAckPayload(Room room) {
+        this.roomId = room.getId();
+        this.name = room.getName();
+        this.floor = room.getFloor();
+        this.capacity = room.getCapacity();
     }
 }

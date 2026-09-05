@@ -12,7 +12,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -45,18 +44,18 @@ class RoomServiceErrorsUnitTest {
         service = new RoomService(roomRepository, mock(BookingRepository.class));
     }
 
-    private RoomRequest request(String nome) {
+    private RoomRequest request(String name) {
         RoomRequest r = new RoomRequest();
-        r.setNome(nome);
-        r.setCapienza(30);
-        r.setPiano(1);
+        r.setName(name);
+        r.setCapacity(30);
+        r.setFloor(1);
         r.setVirtual(false);
         return r;
     }
 
     @Test
     void unaViolazioneDiVincoloInCreazioneNonVieneNascosta() {
-        when(roomRepository.existsByNomeIgnoreCase(anyString())).thenReturn(false);
+        when(roomRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new DataIntegrityViolationException("aule_nome_key"));
 
@@ -67,7 +66,7 @@ class RoomServiceErrorsUnitTest {
 
     @Test
     void unGuastoDelDatabaseInCreazioneNonDiventaUnErroreDellUtente() {
-        when(roomRepository.existsByNomeIgnoreCase(anyString())).thenReturn(false);
+        when(roomRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new IllegalStateException("connessione persa"));
 
@@ -81,7 +80,7 @@ class RoomServiceErrorsUnitTest {
     void unNomeGiaUsatoDiventaUnConflittoDiDominio() {
         // Prima era un null, che il controller presentava come 400. Ora e' un tipo, e
         // il gestore globale lo traduce in 409 con un codice che nomina la causa.
-        when(roomRepository.existsByNomeIgnoreCase("Aula Magna")).thenReturn(true);
+        when(roomRepository.existsByNameIgnoreCase("Aula Magna")).thenReturn(true);
 
         assertThatThrownBy(() -> service.createRoom(request("Aula Magna")))
                 .isInstanceOf(DomainConflictException.class)
@@ -92,9 +91,9 @@ class RoomServiceErrorsUnitTest {
     void unaViolazioneDiVincoloInAggiornamentoNonVieneNascosta() {
         Room esistente = new Room();
         esistente.setId(1L);
-        esistente.setNome("Aula A");
+        esistente.setName("Aula A");
         when(roomRepository.findById(1L)).thenReturn(Optional.of(esistente));
-        when(roomRepository.existsByNomeIgnoreCaseAndIdNot(anyString(), anyLong())).thenReturn(false);
+        when(roomRepository.existsByNameIgnoreCaseAndIdNot(anyString(), anyLong())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new DataIntegrityViolationException("aule_nome_key"));
 

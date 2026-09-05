@@ -14,14 +14,8 @@ import com.prenotazioni.booking.model.Booking;
 import com.prenotazioni.booking.model.BookingOwner;
 import com.prenotazioni.booking.model.BookingStatus;
 import com.prenotazioni.security.AppPrincipal;
-import com.prenotazioni.util.LogSanitizer;
-
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -79,11 +73,11 @@ public class AdminController {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getAllRooms (admin) - Richiesta lista completa aule");
 
-        List<Room> aule = roomService.getAllAule();
-        logger.debug("FINE getAllRooms - Aule recuperate con successo, totale: {}", aule.size());
+        List<Room> rooms = roomService.getAllAule();
+        logger.debug("FINE getAllRooms - Aule recuperate con successo, totale: {}", rooms.size());
         return new ResponseEntity<>(
-            createSuccessResponse(aule.isEmpty() ? "Nessuna aula presente nel sistema" : "Lista aule recuperata con successo",
-                                RoomListPayload.of(aule), sessionId),
+            createSuccessResponse(rooms.isEmpty() ? "Nessuna aula presente nel sistema" : "Lista aule recuperata con successo",
+                                RoomListPayload.of(rooms), sessionId),
             HttpStatus.OK
         );
     }
@@ -113,7 +107,7 @@ public class AdminController {
             );
         }
 
-        logger.debug("FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}", room.get().getId(), room.get().getNome());
+        logger.debug("FINE getRoomById - Aula recuperata con successo: ID: {}, Nome: {}", room.get().getId(), room.get().getName());
         return new ResponseEntity<>(
             createSuccessResponse("Aula recuperata con successo", new RoomWrapper<>(room.get()), sessionId),
             HttpStatus.OK
@@ -124,10 +118,10 @@ public class AdminController {
     @Operation(summary = "Crea una nuova aula (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> createRoom(@Valid @RequestBody RoomRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO createRoom | Nome: {} | Piano: {} | Capienza: {}", roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
+        logger.debug("INIZIO createRoom | Nome: {} | Piano: {} | Capienza: {}", roomRequest.getName(), roomRequest.getFloor(), roomRequest.getCapacity());
 
         Room nuovaAula = roomService.createRoom(roomRequest);
-        logger.debug("FINE createRoom - Aula creata con successo | ID: {} | Nome: {}", nuovaAula.getId(), nuovaAula.getNome());
+        logger.debug("FINE createRoom - Aula creata con successo | ID: {} | Nome: {}", nuovaAula.getId(), nuovaAula.getName());
         return new ResponseEntity<>(
             createSuccessResponse("Aula creata con successo", new RoomAckPayload(nuovaAula), sessionId),
             HttpStatus.CREATED
@@ -138,7 +132,7 @@ public class AdminController {
     @Operation(summary = "Modifica un'aula esistente (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(@PathVariable("id") Long id, @Valid @RequestBody RoomRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO updateRoom | ID Aula: {} | Nuovo Nome: {} | Piano: {} | Capienza: {}", id, roomRequest.getNome(), roomRequest.getPiano(), roomRequest.getCapienza());
+        logger.debug("INIZIO updateRoom | ID Aula: {} | Nuovo Nome: {} | Piano: {} | Capienza: {}", id, roomRequest.getName(), roomRequest.getFloor(), roomRequest.getCapacity());
 
         if (id == null || id <= 0) {
             logger.warn("FINE updateRoom - ID aula non valido: {}", id);
@@ -150,7 +144,7 @@ public class AdminController {
         }
 
         Room aulaAggiornata = roomService.updateRoom(id, roomRequest);
-        logger.debug("FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}", aulaAggiornata.getId(), aulaAggiornata.getNome());
+        logger.debug("FINE updateRoom - Aula aggiornata con successo | ID: {} | Nome: {}", aulaAggiornata.getId(), aulaAggiornata.getName());
         return new ResponseEntity<>(
             createSuccessResponse("Aula aggiornata con successo", new RoomAckPayload(aulaAggiornata), sessionId),
             HttpStatus.OK
@@ -195,7 +189,7 @@ public class AdminController {
 
         List<Booking> tuttePrenotazioni = bookingService.getAllBookings();
         long attive = tuttePrenotazioni.stream()
-            .filter(p -> p.getStato() != BookingStatus.ANNULLATA)
+            .filter(p -> p.getStatus() != BookingStatus.ANNULLATA)
             .count();
         long annullate = tuttePrenotazioni.size() - attive;
 
@@ -240,8 +234,8 @@ public class AdminController {
             );
         }
 
-        BookingOwner utentePrenotazione = booking.getUtente();
-        Room aulaPrenotazione = booking.getAula();
+        BookingOwner utentePrenotazione = booking.getUser();
+        Room aulaPrenotazione = booking.getRoom();
 
         String motivo = (requestBody != null && requestBody.getReason() != null)
             ? requestBody.getReason()
@@ -261,19 +255,19 @@ public class AdminController {
         try {
             // Il nome dell'admin arriva dal token: chiederlo ad auth-service significherebbe
             // una chiamata di rete per compilare il testo di una notifica.
-            String adminNome = principal.nome() != null ? principal.nome() : "Amministratore";
-            String dataPrenotazione = booking.getInizio().toLocalDate().toString();
-            String oraInizio = booking.getInizio().toLocalTime().toString();
-            String oraFine = booking.getFine().toLocalTime().toString();
-            String nomeStanza = aulaPrenotazione != null ? aulaPrenotazione.getNome() : "Stanza non specificata";
+            String adminName = principal.name() != null ? principal.name() : "Amministratore";
+            String bookingDate = booking.getStartTime().toLocalDate().toString();
+            String oraInizio = booking.getStartTime().toLocalTime().toString();
+            String oraFine = booking.getEndTime().toLocalTime().toString();
+            String roomName = aulaPrenotazione != null ? aulaPrenotazione.getName() : "Stanza non specificata";
 
             // Pubblicato su coda e non chiamato via REST: cosi' la notifica non si perde
             // se notifica-service e' spento. Il record tipizzato ha anche sostituito la
             // mappa di stringhe che c'era prima, dove un nome di campo sbagliato sarebbe
             // arrivato a destinazione come semplice valore mancante.
             eventPublisher.publishCancellation(new BookingCancelledEvent(
-                    utentePrenotazione.getId(), id, nomeStanza, adminNome,
-                    dataPrenotazione, oraInizio, oraFine, motivo));
+                    utentePrenotazione.getId(), id, roomName, adminName,
+                    bookingDate, oraInizio, oraFine, motivo));
 
             logger.debug("Notifica di cancellazione creata per utente: {}", utentePrenotazione.getId());
         } catch (Exception e) {

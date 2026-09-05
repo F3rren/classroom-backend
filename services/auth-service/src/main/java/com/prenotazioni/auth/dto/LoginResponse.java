@@ -4,8 +4,6 @@ import lombok.Getter;
 
 import com.prenotazioni.util.Timestamps;
 
-import java.time.LocalDateTime;
-
 /**
  * Risposta di successo del login. Il token compare sia al livello radice ("token")
  * sia dentro "data" - duplicazione intenzionale del comportamento gia' esistente,

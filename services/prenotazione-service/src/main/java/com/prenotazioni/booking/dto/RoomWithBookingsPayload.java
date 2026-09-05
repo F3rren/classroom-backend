@@ -8,13 +8,13 @@ import java.util.List;
 /** Aula + le sue prenotazioni con dettagli, non avvolta nell'envelope ApiEnvelope (comportamento gia' esistente). */
 @Getter
 public class RoomWithBookingsPayload {
-    private final Room aula;
-    private final List<BookingDetailDto> prenotazioni;
-    private final int totalPrenotazioni;
+    private final Room room;
+    private final List<BookingDetailDto> bookings;
+    private final int totalBookings;
 
-    public RoomWithBookingsPayload(Room aula, List<BookingDetailDto> prenotazioni) {
-        this.aula = aula;
-        this.prenotazioni = prenotazioni;
-        this.totalPrenotazioni = prenotazioni.size();
+    public RoomWithBookingsPayload(Room room, List<BookingDetailDto> bookings) {
+        this.room = room;
+        this.bookings = bookings;
+        this.totalBookings = bookings.size();
     }
 }

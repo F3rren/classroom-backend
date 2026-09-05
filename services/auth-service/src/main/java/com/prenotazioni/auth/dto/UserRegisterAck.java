@@ -10,12 +10,12 @@ public class UserRegisterAck {
     private final Long userId;
     private final String email;
     private final String username;
-    private final Role ruolo;
+    private final Role role;
 
-    public UserRegisterAck(User utente) {
-        this.userId = utente.getId();
-        this.email = utente.getEmail();
-        this.username = utente.getUsername();
-        this.ruolo = utente.getRuolo();
+    public UserRegisterAck(User user) {
+        this.userId = user.getId();
+        this.email = user.getEmail();
+        this.username = user.getUsername();
+        this.role = user.getRole();
     }
 }

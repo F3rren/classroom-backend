@@ -4,7 +4,6 @@ import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.booking.model.Room;
 import com.prenotazioni.booking.model.RoomStatus;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.booking.repository.RoomRepository;
 import com.prenotazioni.booking.repository.BookingRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,13 +58,13 @@ class RoomQueryTest {
         token = TestJwt.perUtente(1L, "roomquery@test.it", "Room Query");
     }
 
-    private Long salvaAula(String nome, int piano, int capienza, boolean virtuale) {
+    private Long salvaAula(String name, int floor, int capacity, boolean virtuale) {
         Room a = new Room();
-        a.setNome(nome);
-        a.setPiano(piano);
-        a.setCapienza(capienza);
+        a.setName(name);
+        a.setFloor(floor);
+        a.setCapacity(capacity);
         a.setVirtual(virtuale);
-        a.setStato(RoomStatus.LIBERA);
+        a.setStatus(RoomStatus.LIBERA);
         return roomRepository.save(a).getId();
     }
 
@@ -91,7 +89,7 @@ class RoomQueryTest {
         Map<String, Object> data = dataOf(resp);
         // Aula Grande (100) e Aula Virtuale (50) passano, Aula Piccola (10) no
         assertThat(data.get("totalRooms")).isEqualTo(2);
-        assertThat(data).containsEntry("capienzaMinima", 50);
+        assertThat(data).containsEntry("minCapacity", 50);
         assertThat(data).containsEntry("maxCapacityFound", 100);
     }
 
@@ -186,7 +184,7 @@ class RoomQueryTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
         // shape storica: nessun envelope success/data
-        assertThat(body.keySet()).containsExactlyInAnyOrder("prenotazioni", "totalPrenotazioni");
+        assertThat(body.keySet()).containsExactlyInAnyOrder("bookings", "totalBookings");
     }
 
     @Test

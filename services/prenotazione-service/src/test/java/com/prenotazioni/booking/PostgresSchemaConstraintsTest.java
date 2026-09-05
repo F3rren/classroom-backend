@@ -1,6 +1,5 @@
 package com.prenotazioni.booking;
 
-import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.booking.model.Room;
 import com.prenotazioni.booking.model.Booking;
 import com.prenotazioni.booking.model.RoomStatus;
@@ -121,25 +120,25 @@ class PostgresSchemaConstraintsTest {
         room = nuovaAula("Aula Postgres");
     }
 
-    private Room nuovaAula(String nome) {
+    private Room nuovaAula(String name) {
         Room a = new Room();
-        a.setNome(nome);
-        a.setCapienza(30);
-        a.setPiano(1);
+        a.setName(name);
+        a.setCapacity(30);
+        a.setFloor(1);
         a.setVirtual(false);
-        a.setStato(RoomStatus.LIBERA);
+        a.setStatus(RoomStatus.LIBERA);
         return roomRepository.save(a);
     }
 
     /** saveAndFlush e non save: altrimenti l'INSERT puo' essere rinviato oltre l'assert. */
-    private Booking salva(Room suAula, LocalDateTime inizio, LocalDateTime fine, BookingStatus status) {
+    private Booking salva(Room suAula, LocalDateTime startTime, LocalDateTime endTime, BookingStatus status) {
         Booking p = new Booking();
-        p.setAula(suAula);
-        p.setUtente(user);
-        p.setInizio(inizio);
-        p.setFine(fine);
-        p.setStato(status);
-        p.setDataCreazione(BASE.minusDays(1));
+        p.setRoom(suAula);
+        p.setUser(user);
+        p.setStartTime(startTime);
+        p.setEndTime(endTime);
+        p.setStatus(status);
+        p.setCreatedAt(BASE.minusDays(1));
         return bookingRepository.saveAndFlush(p);
     }
 
@@ -183,7 +182,7 @@ class PostgresSchemaConstraintsTest {
         assertThat(vincoli).containsExactlyInAnyOrder(
                 // utente_ruolo_check non compare piu': vive nel database di auth-service,
                 // insieme alla tabella che vincola. Lo verifica un test omologo la'.
-                "prenotazioni_no_overlap", "aula_stato_check", "prenotazione_stato_check");
+                "bookings_no_overlap", "room_status_check", "booking_status_check");
     }
 
     @Test
@@ -202,7 +201,7 @@ class PostgresSchemaConstraintsTest {
 
         assertThatThrownBy(() -> salva(room, BASE.plusHours(1), BASE.plusHours(3), BookingStatus.PRENOTATA))
                 .isInstanceOf(DataIntegrityViolationException.class)
-                .hasMessageContaining("prenotazioni_no_overlap");
+                .hasMessageContaining("bookings_no_overlap");
     }
 
     @Test
@@ -214,7 +213,7 @@ class PostgresSchemaConstraintsTest {
                 .doesNotThrowAnyException();
 
         // e il predicato applicativo concorda
-        assertThat(bookingRepository.findConflittingReservations(
+        assertThat(bookingRepository.findConflictingBookings(
                 room.getId(), BASE.plusHours(2), BASE.plusHours(4))).hasSize(1);
     }
 
@@ -239,7 +238,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     /**
-     * Il predicato applicativo (findConflittingReservations) e quello del vincolo DB
+     * Il predicato applicativo (findConflictingBookings) e quello del vincolo DB
      * devono concordare. Riferimento: [BASE, BASE+120min).
      */
     @ParameterizedTest(name = "offset [{0},{1}) minuti -> conflitto atteso: {2}")
@@ -257,21 +256,21 @@ class PostgresSchemaConstraintsTest {
     void predicatoApplicativoEVincoloDbConcordano(long daMin, long aMin, boolean conflittoAtteso) {
         salva(room, BASE, BASE.plusHours(2), BookingStatus.PRENOTATA);
 
-        LocalDateTime inizio = BASE.plusMinutes(daMin);
-        LocalDateTime fine = BASE.plusMinutes(aMin);
+        LocalDateTime startTime = BASE.plusMinutes(daMin);
+        LocalDateTime endTime = BASE.plusMinutes(aMin);
 
         boolean conflittoApplicativo =
-                !bookingRepository.findConflittingReservations(room.getId(), inizio, fine).isEmpty();
+                !bookingRepository.findConflictingBookings(room.getId(), startTime, endTime).isEmpty();
         assertThat(conflittoApplicativo)
                 .as("predicato applicativo per [%d,%d)", daMin, aMin)
                 .isEqualTo(conflittoAtteso);
 
         if (conflittoAtteso) {
-            assertThatThrownBy(() -> salva(room, inizio, fine, BookingStatus.PRENOTATA))
+            assertThatThrownBy(() -> salva(room, startTime, endTime, BookingStatus.PRENOTATA))
                     .as("il database deve rifiutare [%d,%d)", daMin, aMin)
                     .isInstanceOf(DataIntegrityViolationException.class);
         } else {
-            assertThatCode(() -> salva(room, inizio, fine, BookingStatus.PRENOTATA))
+            assertThatCode(() -> salva(room, startTime, endTime, BookingStatus.PRENOTATA))
                     .as("il database deve accettare [%d,%d)", daMin, aMin)
                     .doesNotThrowAnyException();
         }
@@ -285,7 +284,7 @@ class PostgresSchemaConstraintsTest {
         // mai, quindi il vincolo DB accetta. Il predicato applicativo invece segnala
         // conflitto. E' raggiungibile via HTTP: il controller rifiuta solo fine < inizio,
         // non fine == inizio. A fermarlo e' quindi solo il livello applicativo.
-        assertThat(bookingRepository.findConflittingReservations(
+        assertThat(bookingRepository.findConflictingBookings(
                 room.getId(), BASE.plusHours(1), BASE.plusHours(1))).isNotEmpty();
 
         assertThatCode(() -> salva(room, BASE.plusHours(1), BASE.plusHours(1), BookingStatus.PRENOTATA))
@@ -304,7 +303,7 @@ class PostgresSchemaConstraintsTest {
                 "INSERT INTO aule (nome, capienza, piano, is_virtual, stato) "
                         + "VALUES ('Aula Rotta', 10, 1, false, 'distrutta')"))
                 .isInstanceOf(DataIntegrityViolationException.class)
-                .hasMessageContaining("aula_stato_check");
+                .hasMessageContaining("room_status_check");
     }
 
     @Test
@@ -316,7 +315,7 @@ class PostgresSchemaConstraintsTest {
                 room.getId(), user.getId(),
                 BASE.plusDays(30), BASE.plusDays(30).plusHours(1), BASE))
                 .isInstanceOf(DataIntegrityViolationException.class)
-                .hasMessageContaining("prenotazione_stato_check");
+                .hasMessageContaining("booking_status_check");
     }
 
     @Test
@@ -327,19 +326,19 @@ class PostgresSchemaConstraintsTest {
         for (RoomStatus s : RoomStatus.values()) {
             assertThatCode(() -> jdbc.update(
                     "INSERT INTO aule (nome, capienza, piano, is_virtual, stato) VALUES (?, 10, 1, false, ?)",
-                    "Aula " + s.getValore(), s.getValore()))
-                    .as("stato aula %s deve essere ammesso", s.getValore())
+                    "Aula " + s.getValue(), s.getValue()))
+                    .as("stato aula %s deve essere ammesso", s.getValue())
                     .doesNotThrowAnyException();
         }
 
         int giorno = 40;
         for (BookingStatus s : BookingStatus.values()) {
-            LocalDateTime inizio = BASE.plusDays(giorno++);
+            LocalDateTime startTime = BASE.plusDays(giorno++);
             assertThatCode(() -> jdbc.update(
                     "INSERT INTO prenotazioni (aula_id, utente_id, inizio, fine, stato, data_creazione) "
                             + "VALUES (?, ?, ?, ?, ?, ?)",
-                    room.getId(), user.getId(), inizio, inizio.plusHours(1), s.getValore(), BASE))
-                    .as("stato prenotazione %s deve essere ammesso", s.getValore())
+                    room.getId(), user.getId(), startTime, startTime.plusHours(1), s.getValue(), BASE))
+                    .as("stato prenotazione %s deve essere ammesso", s.getValue())
                     .doesNotThrowAnyException();
         }
     }

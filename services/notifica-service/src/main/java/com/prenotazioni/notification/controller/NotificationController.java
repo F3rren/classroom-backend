@@ -84,7 +84,7 @@ public class NotificationController {
         }
 
         Notification notification = notificationOpt.get();
-        if (!notification.getUtenteId().equals(principal.id())) {
+        if (!notification.getUserId().equals(principal.id())) {
             logger.warn("UtenteId={} non autorizzato a eliminare la notifica {}", principal.id(), id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

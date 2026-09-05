@@ -6,7 +6,6 @@ import com.prenotazioni.booking.model.Room;
 import com.prenotazioni.booking.model.RoomStatus;
 import com.prenotazioni.booking.model.Booking;
 import com.prenotazioni.booking.model.BookingStatus;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.booking.model.BookingOwner;
 import com.prenotazioni.booking.repository.RoomRepository;
 import com.prenotazioni.booking.repository.BookingRepository;
@@ -67,22 +66,22 @@ class BookingControllerTest {
         BookingOwner other = nuovoUtente(2L, "other", "Other Test");
 
         Room room = new Room();
-        room.setNome("Aula IT Test");
-        room.setPiano(1);
-        room.setCapienza(20);
+        room.setName("Aula IT Test");
+        room.setFloor(1);
+        room.setCapacity(20);
         room.setVirtual(false);
-        room.setStato(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.LIBERA);
         roomRepository.save(room);
         roomId = room.getId();
 
         Booking booking = new Booking();
-        booking.setAula(room);
-        booking.setUtente(owner);
-        booking.setInizio(LocalDateTime.now().plusDays(1));
-        booking.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
-        booking.setStato(BookingStatus.PRENOTATA);
-        booking.setDescrizione("Riunione privata di owner");
-        booking.setDataCreazione(LocalDateTime.now());
+        booking.setRoom(room);
+        booking.setUser(owner);
+        booking.setStartTime(LocalDateTime.now().plusDays(1));
+        booking.setEndTime(LocalDateTime.now().plusDays(1).plusHours(2));
+        booking.setStatus(BookingStatus.PRENOTATA);
+        booking.setDescription("Riunione privata di owner");
+        booking.setCreatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
         prenotazioneIdDiOwner = booking.getId();
 
@@ -91,8 +90,8 @@ class BookingControllerTest {
     }
 
     /** L'istantanea di un proprietario. Prima creava un utente vero: la tabella non e' piu' qui. */
-    private BookingOwner nuovoUtente(Long id, String username, String nome) {
-        return new BookingOwner(id, username, nome);
+    private BookingOwner nuovoUtente(Long id, String username, String name) {
+        return new BookingOwner(id, username, name);
     }
 
     @SuppressWarnings("unchecked")
@@ -179,9 +178,9 @@ class BookingControllerTest {
         HttpHeaders headers = bearer(tokenOwner);
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         Map<String, Object> body = Map.of(
-                "aulaId", roomId,
-                "inizio", LocalDateTime.now().plusDays(2).toString(),
-                "fine", LocalDateTime.now().plusDays(2).plusHours(1).toString());
+                "roomId", roomId,
+                "startTime", LocalDateTime.now().plusDays(2).toString(),
+                "endTime", LocalDateTime.now().plusDays(2).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/bookings/book",
@@ -195,7 +194,7 @@ class BookingControllerTest {
                 "success", "message", "data", "timestamp", "sessionId");
 
         Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
-        assertThat(data.keySet()).containsExactlyInAnyOrder("prenotazione", "aulaId", "periodo");
+        assertThat(data.keySet()).containsExactlyInAnyOrder("prenotazione", "roomId", "periodo");
     }
 
     @Test
@@ -204,8 +203,8 @@ class BookingControllerTest {
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         // aulaId mancante
         Map<String, Object> body = Map.of(
-                "inizio", LocalDateTime.now().plusDays(2).toString(),
-                "fine", LocalDateTime.now().plusDays(2).plusHours(1).toString());
+                "startTime", LocalDateTime.now().plusDays(2).toString(),
+                "endTime", LocalDateTime.now().plusDays(2).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/bookings/book",
@@ -229,7 +228,7 @@ class BookingControllerTest {
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
+        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.ANNULLATA);
     }
 
@@ -255,7 +254,7 @@ class BookingControllerTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
         // la prenotazione resta intatta
-        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStato())
+        assertThat(bookingRepository.findById(prenotazioneIdDiOwner).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.PRENOTATA);
     }
 

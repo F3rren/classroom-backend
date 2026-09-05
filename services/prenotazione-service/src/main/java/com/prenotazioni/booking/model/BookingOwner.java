@@ -22,22 +22,22 @@ import jakarta.persistence.Embeddable;
 @Embeddable
 public class BookingOwner {
 
-    @Column(name = "utente_id", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long id;
 
-    @Column(name = "utente_username", length = 50)
+    @Column(name = "user_username", length = 50)
     private String username;
 
-    @Column(name = "utente_nome", length = 100)
-    private String nome;
+    @Column(name = "user_name", length = 100)
+    private String name;
 
     public BookingOwner() {
     }
 
-    public BookingOwner(Long id, String username, String nome) {
+    public BookingOwner(Long id, String username, String name) {
         this.id = id;
         this.username = username;
-        this.nome = nome;
+        this.name = name;
     }
 
     public Long getId() {
@@ -56,11 +56,11 @@ public class BookingOwner {
         this.username = username;
     }
 
-    public String getNome() {
-        return nome;
+    public String getName() {
+        return name;
     }
 
-    public void setNome(String nome) {
-        this.nome = nome;
+    public void setName(String name) {
+        this.name = name;
     }
 }

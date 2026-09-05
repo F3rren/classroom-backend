@@ -41,18 +41,18 @@ public class FirstAdminBootstrap implements ApplicationRunner {
     private final AuthService authService;
     private final String email;
     private final String password;
-    private final String nome;
+    private final String name;
 
     FirstAdminBootstrap(UserRepository userRepository,
                     AuthService authService,
                     @Value("${BOOTSTRAP_ADMIN_EMAIL:}") String email,
                     @Value("${BOOTSTRAP_ADMIN_PASSWORD:}") String password,
-                    @Value("${BOOTSTRAP_ADMIN_NOME:Amministratore}") String nome) {
+                    @Value("${BOOTSTRAP_ADMIN_NOME:Amministratore}") String name) {
         this.userRepository = userRepository;
         this.authService = authService;
         this.email = email;
         this.password = password;
-        this.nome = nome;
+        this.name = name;
     }
 
     @Override
@@ -76,8 +76,8 @@ public class FirstAdminBootstrap implements ApplicationRunner {
         request.setEmail(email);
         request.setUsername(email);
         request.setPassword(password);
-        request.setNome(nome);
-        request.setRuolo("admin");
+        request.setName(name);
+        request.setRole("admin");
 
         User created = authService.register(request);
         logger.info("Primo amministratore creato su database vuoto - utenteId={} email={}. "

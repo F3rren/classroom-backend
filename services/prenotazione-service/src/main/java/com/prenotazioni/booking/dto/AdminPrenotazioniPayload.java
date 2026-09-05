@@ -8,6 +8,6 @@ import java.util.List;
 /** Vista admin di tutte le prenotazioni (incluse annullate), con statistiche per stato. */
 @Value
 public class AdminPrenotazioniPayload {
-    List<Booking> prenotazioni;
+    List<Booking> bookings;
     BookingStats statistiche;
 }

@@ -33,16 +33,16 @@ public enum BookingStatus {
     MANUTENZIONE("manutenzione"),
     ANNULLATA("annullata");
 
-    private final String valore;
+    private final String value;
 
-    BookingStatus(String valore) {
-        this.valore = valore;
+    BookingStatus(String value) {
+        this.value = value;
     }
 
     /** Valore usato nel JSON e nel database. */
     @JsonValue
-    public String getValore() {
-        return valore;
+    public String getValue() {
+        return value;
     }
 
     /**
@@ -51,17 +51,17 @@ public enum BookingStatus {
      * devono continuare a essere accettati.
      */
     @JsonCreator
-    public static BookingStatus da(String valore) {
-        if (valore == null) {
+    public static BookingStatus da(String value) {
+        if (value == null) {
             return null;
         }
-        String normalizzato = valore.trim().toLowerCase(Locale.ROOT);
-        for (BookingStatus stato : values()) {
-            if (stato.valore.equals(normalizzato)) {
-                return stato;
+        String normalizzato = value.trim().toLowerCase(Locale.ROOT);
+        for (BookingStatus status : values()) {
+            if (status.value.equals(normalizzato)) {
+                return status;
             }
         }
-        throw new IllegalArgumentException("Stato prenotazione non valido: " + valore);
+        throw new IllegalArgumentException("Stato prenotazione non valido: " + value);
     }
 
     /** True se la prenotazione e' attiva, cioe' annullabile dall'utente. */
@@ -82,13 +82,13 @@ public enum BookingStatus {
     public static class JpaConverter implements AttributeConverter<BookingStatus, String> {
 
         @Override
-        public String convertToDatabaseColumn(BookingStatus stato) {
-            return stato == null ? null : stato.getValore();
+        public String convertToDatabaseColumn(BookingStatus status) {
+            return status == null ? null : status.getValue();
         }
 
         @Override
-        public BookingStatus convertToEntityAttribute(String valore) {
-            return da(valore);
+        public BookingStatus convertToEntityAttribute(String value) {
+            return da(value);
         }
     }
 }

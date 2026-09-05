@@ -19,21 +19,21 @@ public class BookingCancellationRequest {
 
     @NotNull(message = "L'utente destinatario e' obbligatorio.")
     @Schema(description = "Destinatario della notifica", example = "7")
-    private Long utenteId;
+    private Long userId;
 
     @Schema(description = "Prenotazione cancellata", example = "42")
-    private Long prenotazioneId;
+    private Long bookingId;
 
     @Size(max = 100)
     @Schema(description = "Nome dell'aula", example = "Aula Magna")
-    private String nomeStanza;
+    private String roomName;
 
     @Size(max = 100)
     @Schema(description = "Chi ha cancellato; null se l'ha fatto l'utente stesso", example = "Mario Rossi")
-    private String adminNome;
+    private String adminName;
 
     @Schema(description = "Giorno della prenotazione", example = "2026-12-25")
-    private String dataPrenotazione;
+    private String bookingDate;
 
     @Schema(description = "Ora di inizio", example = "14:30")
     private String oraInizio;

@@ -2,7 +2,6 @@ package com.prenotazioni.booking;
 
 import com.prenotazioni.testsupport.TestJson;
 import com.prenotazioni.testsupport.TestJwt;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.booking.repository.RoomRepository;
 import com.prenotazioni.booking.repository.BookingRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +72,7 @@ class ValidationAndAdminTest {
 
     @Test
     void createRoomWithNegativeCapienzaIsRejected() throws Exception {
-        Map<String, Object> body = Map.of("nome", "Aula X", "piano", 1, "capienza", -5);
+        Map<String, Object> body = Map.of("name", "Aula X", "floor", 1, "capacity", -5);
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
@@ -84,7 +83,7 @@ class ValidationAndAdminTest {
 
     @Test
     void createRoomWithBlankNameIsRejected() throws Exception {
-        Map<String, Object> body = Map.of("nome", "  ", "piano", 1, "capienza", 10);
+        Map<String, Object> body = Map.of("name", "  ", "floor", 1, "capacity", 10);
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
@@ -95,7 +94,7 @@ class ValidationAndAdminTest {
 
     @Test
     void createRoomWithValidDataSucceeds() {
-        Map<String, Object> body = Map.of("nome", "Aula Valida", "piano", 2, "capienza", 25);
+        Map<String, Object> body = Map.of("name", "Aula Valida", "floor", 2, "capacity", 25);
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
@@ -108,8 +107,8 @@ class ValidationAndAdminTest {
     @Test
     void bloccaAulaWithMissingAulaIdIsRejectedByBeanValidation() throws Exception {
         Map<String, Object> body = Map.of(
-                "inizio", LocalDateTime.now().plusDays(1).toString(),
-                "fine", LocalDateTime.now().plusDays(1).plusHours(1).toString());
+                "startTime", LocalDateTime.now().plusDays(1).toString(),
+                "endTime", LocalDateTime.now().plusDays(1).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
                 "/api/bookings/block", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);

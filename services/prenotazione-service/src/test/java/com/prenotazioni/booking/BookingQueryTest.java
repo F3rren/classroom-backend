@@ -6,7 +6,6 @@ import com.prenotazioni.booking.model.Room;
 import com.prenotazioni.booking.model.RoomStatus;
 import com.prenotazioni.booking.model.Booking;
 import com.prenotazioni.booking.model.BookingStatus;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.booking.model.BookingOwner;
 import com.prenotazioni.booking.repository.RoomRepository;
 import com.prenotazioni.booking.repository.BookingRepository;
@@ -54,8 +53,8 @@ class BookingQueryTest {
     private String token;
     private Long roomId;
     private Long bookingId;
-    private LocalDateTime inizio;
-    private LocalDateTime fine;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
 
     @BeforeEach
     void setUp() {
@@ -64,26 +63,26 @@ class BookingQueryTest {
 
 
         Room room = new Room();
-        room.setNome("Aula Query");
-        room.setPiano(2);
-        room.setCapienza(30);
+        room.setName("Aula Query");
+        room.setFloor(2);
+        room.setCapacity(30);
         room.setVirtual(false);
-        room.setStato(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.LIBERA);
         roomId = roomRepository.save(room).getId();
 
-        inizio = LocalDateTime.now().plusDays(2).withNano(0);
-        fine = inizio.plusHours(2);
+        startTime = LocalDateTime.now().plusDays(2).withNano(0);
+        endTime = startTime.plusHours(2);
 
         BookingOwner user = new BookingOwner(1L, "query-user", "Query User");
 
         Booking p = new Booking();
-        p.setAula(room);
-        p.setUtente(user);
-        p.setInizio(inizio);
-        p.setFine(fine);
-        p.setStato(BookingStatus.PRENOTATA);
-        p.setDescrizione("Prenotazione per test di query");
-        p.setDataCreazione(LocalDateTime.now());
+        p.setRoom(room);
+        p.setUser(user);
+        p.setStartTime(startTime);
+        p.setEndTime(endTime);
+        p.setStatus(BookingStatus.PRENOTATA);
+        p.setDescription("Prenotazione per test di query");
+        p.setCreatedAt(LocalDateTime.now());
         bookingId = bookingRepository.save(p).getId();
 
         token = TestJwt.perUtente(1L, "prenotazionequerytest@test.it", "Utente Test");
@@ -107,19 +106,19 @@ class BookingQueryTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
-        // shape storica: solo "prenotazioni", nessun envelope e nessun totale
-        assertThat(body.keySet()).containsExactly("prenotazioni");
-        assertThat((java.util.List<?>) body.get("prenotazioni")).hasSize(1);
+        // shape storica: solo "bookings", nessun envelope e nessun totale
+        assertThat(body.keySet()).containsExactly("bookings");
+        assertThat((java.util.List<?>) body.get("bookings")).hasSize(1);
     }
 
     @Test
     void miePrenotazioniEscludeLeAnnullate() throws Exception {
         Booking p = bookingRepository.findById(bookingId).orElseThrow();
-        p.setStato(BookingStatus.ANNULLATA);
+        p.setStatus(BookingStatus.ANNULLATA);
         bookingRepository.save(p);
 
         Map<String, Object> body = TestJson.comeMappa(get("/api/bookings/mine").getBody());
-        assertThat((java.util.List<?>) body.get("prenotazioni")).isEmpty();
+        assertThat((java.util.List<?>) body.get("bookings")).isEmpty();
     }
 
     @Test
@@ -128,8 +127,8 @@ class BookingQueryTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
-        assertThat(body.keySet()).containsExactlyInAnyOrder("prenotazioni", "totalPrenotazioni");
-        assertThat(body.get("totalPrenotazioni")).isEqualTo(1);
+        assertThat(body.keySet()).containsExactlyInAnyOrder("bookings", "totalBookings");
+        assertThat(body.get("totalBookings")).isEqualTo(1);
     }
 
     @Test
@@ -148,8 +147,8 @@ class BookingQueryTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
-        assertThat(body.keySet()).containsExactlyInAnyOrder("prenotazioni", "totalPrenotazioni");
-        assertThat(body.get("totalPrenotazioni")).isEqualTo(1);
+        assertThat(body.keySet()).containsExactlyInAnyOrder("bookings", "totalBookings");
+        assertThat(body.get("totalBookings")).isEqualTo(1);
     }
 
     @Test
@@ -164,15 +163,15 @@ class BookingQueryTest {
 
     @Test
     void laDisponibilitaSegnalaLiberaUnaFasciaLibera() throws Exception {
-        String libero = inizio.plusDays(5).format(ISO);
-        String liberoFine = inizio.plusDays(5).plusHours(1).format(ISO);
+        String libero = startTime.plusDays(5).format(ISO);
+        String liberoFine = startTime.plusDays(5).plusHours(1).format(ISO);
 
         ResponseEntity<String> resp = get(
                 "/api/bookings/availability?roomId=" + roomId + "&start=" + libero + "&end=" + liberoFine);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
-        assertThat(data.keySet()).containsExactlyInAnyOrder("aulaId", "disponibile", "periodo", "status");
+        assertThat(data.keySet()).containsExactlyInAnyOrder("roomId", "disponibile", "periodo", "status");
         assertThat(data.get("disponibile")).isEqualTo(true);
         assertThat(data.get("status")).isEqualTo("LIBERA");
     }
@@ -181,7 +180,7 @@ class BookingQueryTest {
     void laDisponibilitaSegnalaOccupataUnaFasciaPrenotata() throws Exception {
         ResponseEntity<String> resp = get(
                 "/api/bookings/availability?roomId=" + roomId
-                        + "&start=" + inizio.format(ISO) + "&end=" + fine.format(ISO));
+                        + "&start=" + startTime.format(ISO) + "&end=" + endTime.format(ISO));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
@@ -210,8 +209,8 @@ class BookingQueryTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
-        assertThat(body.keySet()).containsExactlyInAnyOrder("aulaId", "stato", "timestamp");
-        assertThat(body.get("aulaId")).isEqualTo(roomId.intValue());
+        assertThat(body.keySet()).containsExactlyInAnyOrder("roomId", "status", "timestamp");
+        assertThat(body.get("roomId")).isEqualTo(roomId.intValue());
     }
 
     @Test
@@ -220,9 +219,9 @@ class BookingQueryTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
-        assertThat(body.keySet()).containsExactlyInAnyOrder("stato", "prenotazioni", "totalPrenotazioni");
-        assertThat(body.get("stato")).isEqualTo("prenotata");
-        assertThat(body.get("totalPrenotazioni")).isEqualTo(1);
+        assertThat(body.keySet()).containsExactlyInAnyOrder("status", "bookings", "totalBookings");
+        assertThat(body.get("status")).isEqualTo("prenotata");
+        assertThat(body.get("totalBookings")).isEqualTo(1);
     }
 
     @Test
@@ -230,7 +229,7 @@ class BookingQueryTest {
         ResponseEntity<String> resp = get("/api/bookings/status/annullata");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(TestJson.comeMappa(resp.getBody()).get("totalPrenotazioni")).isEqualTo(0);
+        assertThat(TestJson.comeMappa(resp.getBody()).get("totalBookings")).isEqualTo(0);
     }
 
     @Test

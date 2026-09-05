@@ -64,9 +64,9 @@ class AdminUtentiTest {
         u.setEmail(email);
         u.setUsername(username);
         u.setPassword(passwordEncoder.encode("password-di-prova"));
-        u.setNome(username);
-        u.setRuolo(role);
-        u.setDataRegistrazione(LocalDateTime.now());
+        u.setName(username);
+        u.setRole(role);
+        u.setRegisteredAt(LocalDateTime.now());
         return userRepository.save(u).getId();
     }
 
@@ -104,8 +104,8 @@ class AdminUtentiTest {
 
     @Test
     void registrazioneConEmailGiaUsataVieneRifiutata() throws Exception {
-        Map<String, String> body = Map.of("username", "nuovo", "nome", "Nuovo",
-                "email", "normale@test.it", "password", "password-lunga", "ruolo", "user");
+        Map<String, String> body = Map.of("username", "nuovo", "name", "Nuovo",
+                "email", "normale@test.it", "password", "password-lunga", "role", "user");
 
         ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.POST, body);
 
@@ -115,8 +115,8 @@ class AdminUtentiTest {
 
     @Test
     void registrazioneConUsernameGiaUsatoVieneRifiutata() throws Exception {
-        Map<String, String> body = Map.of("username", "normale", "nome", "Nuovo",
-                "email", "un-altra@test.it", "password", "password-lunga", "ruolo", "user");
+        Map<String, String> body = Map.of("username", "normale", "name", "Nuovo",
+                "email", "un-altra@test.it", "password", "password-lunga", "role", "user");
 
         ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.POST, body);
 
@@ -125,7 +125,7 @@ class AdminUtentiTest {
 
     @Test
     void aggiornamentoDiUnUtenteInesistenteRisponde404() {
-        Map<String, String> body = Map.of("username", "x", "nome", "X", "email", "x@test.it");
+        Map<String, String> body = Map.of("username", "x", "name", "X", "email", "x@test.it");
 
         ResponseEntity<String> resp = chiama("/api/admin/users/999999", HttpMethod.PUT, body);
 

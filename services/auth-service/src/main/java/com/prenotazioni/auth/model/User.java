@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "utenti")
+@Table(name = "users")
 // Quando Utente e' referenziato come relazione LAZY (es. Notifica.utente), Hibernate lo
 // carica come subclasse proxy che aggiunge un getter pubblico "hibernateLazyInitializer";
 // senza questa esclusione Jackson prova a serializzarlo e fallisce con
@@ -39,7 +39,7 @@ public class User {
     private String username;
     
     @Column(nullable = false, length = 100)
-    private String nome;
+    private String name;
     
     @Column(nullable = false, unique = true, length = 100)
     private String email;
@@ -51,23 +51,23 @@ public class User {
     
     @Column(nullable = false, length = 20)
     // Persistito minuscolo dal converter di Ruolo (CHECK constraint utente_ruolo_check)
-    private Role ruolo;
+    private Role role;
     
-    @Column(name = "data_registrazione", nullable = false, updatable = false)
-    private LocalDateTime dataRegistrazione;
+    @Column(name = "registered_at", nullable = false, updatable = false)
+    private LocalDateTime registeredAt;
     
-    @Column(name = "ultimo_accesso")
-    private LocalDateTime ultimoAccesso;
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
     
     @PrePersist
     protected void onCreate() {
-        if (dataRegistrazione == null) {
-            dataRegistrazione = LocalDateTime.now();
+        if (registeredAt == null) {
+            registeredAt = LocalDateTime.now();
         }
         // Nessuna normalizzazione del case: la conversione da stringa passa da
         // Ruolo.da(), che accetta qualunque case e restituisce sempre la costante giusta.
-        if (ruolo == null) {
-            ruolo = Role.USER;
+        if (role == null) {
+            role = Role.USER;
         }
     }
     

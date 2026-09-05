@@ -24,7 +24,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -75,11 +74,11 @@ public class AdminUserController {
     @Operation(summary = "Crea un nuovo utente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("register - creazione utente da admin | {} | ruolo={}", LogSanitizer.maskEmail(request.getEmail()), request.getRuolo());
+        logger.debug("register - creazione utente da admin | {} | ruolo={}", LogSanitizer.maskEmail(request.getEmail()), request.getRole());
 
         User user = authService.register(request);
 
-        logger.info("Utente creato da admin - utenteId={} ruolo={}", user.getId(), user.getRuolo());
+        logger.info("Utente creato da admin - utenteId={} ruolo={}", user.getId(), user.getRole());
 
         return new ResponseEntity<>(
             createSuccessResponse("Utente registrato con successo dall'amministratore", new UserRegisterAck(user), sessionId),
@@ -109,7 +108,7 @@ public class AdminUserController {
     @Operation(summary = "Modifica un utente esistente (solo admin)")
     public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(@PathVariable("id") Long id, @Valid @RequestBody UpdateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("updateUtente - utenteId={} ruolo={}", id, request.getRuolo());
+        logger.debug("updateUtente - utenteId={} ruolo={}", id, request.getRole());
 
         if (id == null || id <= 0) {
             logger.warn("FINE updateUtente - ID utente non valido: {}", id);

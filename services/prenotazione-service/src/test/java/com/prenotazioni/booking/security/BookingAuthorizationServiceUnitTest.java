@@ -34,8 +34,8 @@ class BookingAuthorizationServiceUnitTest {
         a.setId(1L);
         Booking p = new Booking();
         p.setId(5L);
-        p.setUtente(istantaneaDi(u.getId(), u.getUsername(), u.getNome()));
-        p.setAula(a);
+        p.setUser(istantaneaDi(u.getId(), u.getUsername(), u.getName()));
+        p.setRoom(a);
         return p;
     }
 
@@ -74,7 +74,7 @@ class BookingAuthorizationServiceUnitTest {
     }
 
     /** L'istantanea del proprietario, ora costruita a mano: la tabella utenti non e' piu' qui. */
-    private static BookingOwner istantaneaDi(Long id, String username, String nome) {
-        return new BookingOwner(id, username, nome);
+    private static BookingOwner istantaneaDi(Long id, String username, String name) {
+        return new BookingOwner(id, username, name);
     }
 }

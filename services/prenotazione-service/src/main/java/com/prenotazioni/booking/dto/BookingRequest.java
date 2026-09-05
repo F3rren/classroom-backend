@@ -17,21 +17,21 @@ public class BookingRequest {
 
     @NotNull(message = "Devi specificare quale aula vuoi prenotare.")
     @Schema(description = "ID dell'aula da prenotare", example = "3")
-    private Long aulaId;
+    private Long roomId;
 
     @Schema(description = "ID del corso associato. Opzionale: assente per prenotazioni libere", example = "12")
-    private Long corsoId;
+    private Long courseId;
 
     @NotBlank(message = "Devi specificare quando inizia la prenotazione.")
     @Schema(description = "Inizio della prenotazione, formato ISO senza fuso orario. Deve essere nel futuro",
             example = "2026-12-25T14:30:00")
-    private String inizio;
+    private String startTime;
 
     @NotBlank(message = "Devi specificare quando finisce la prenotazione.")
     @Schema(description = "Fine della prenotazione, deve essere successiva a inizio",
             example = "2026-12-25T16:30:00")
-    private String fine;
+    private String endTime;
 
     @Schema(description = "Descrizione libera, mostrata nei dettagli aula", example = "Lezione di Analisi 1")
-    private String descrizione;
+    private String description;
 }

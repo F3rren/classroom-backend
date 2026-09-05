@@ -33,7 +33,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -57,7 +56,7 @@ public class BookingController {
      * e il token porta gia' esattamente questi tre campi.
      */
     private static BookingOwner istantaneaDi(AppPrincipal principal) {
-        return new BookingOwner(principal.id(), principal.username(), principal.nome());
+        return new BookingOwner(principal.id(), principal.username(), principal.name());
     }
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
@@ -92,14 +91,14 @@ public class BookingController {
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @RequestBody BookingRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO prenotaAula - AulaId: {}, CorsoId: {}, Periodo: {} - {}", request.getAulaId(), request.getCorsoId(), request.getInizio(), request.getFine());
+        logger.debug("INIZIO prenotaAula - AulaId: {}, CorsoId: {}, Periodo: {} - {}", request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
 
-        LocalDateTime inizio;
-        LocalDateTime fine;
+        LocalDateTime startTime;
+        LocalDateTime endTime;
         try {
-            inizio = LocalDateTime.parse(request.getInizio());
+            startTime = LocalDateTime.parse(request.getStartTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE prenotaAula - Errore parsing data inizio: '{}'", request.getInizio());
+            logger.warn("FINE prenotaAula - Errore parsing data inizio: '{}'", request.getStartTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
@@ -107,9 +106,9 @@ public class BookingController {
             );
         }
         try {
-            fine = LocalDateTime.parse(request.getFine());
+            endTime = LocalDateTime.parse(request.getEndTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE prenotaAula - Errore parsing data fine: '{}'", request.getFine());
+            logger.warn("FINE prenotaAula - Errore parsing data fine: '{}'", request.getEndTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
@@ -117,7 +116,7 @@ public class BookingController {
             );
         }
 
-        if (fine.isBefore(inizio)) {
+        if (endTime.isBefore(startTime)) {
             logger.warn("FINE prenotaAula - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
@@ -125,8 +124,8 @@ public class BookingController {
                 HttpStatus.BAD_REQUEST
             );
         }
-        if (inizio.isBefore(LocalDateTime.now())) {
-            logger.warn("FINE prenotaAula - Tentativo di prenotazione nel passato: {}", formatTimestamp(inizio));
+        if (startTime.isBefore(LocalDateTime.now())) {
+            logger.warn("FINE prenotaAula - Tentativo di prenotazione nel passato: {}", formatTimestamp(startTime));
             return new ResponseEntity<>(
                 createErrorResponse("PAST_DATE", "Date in the past",
                                   "Non puoi prenotare un'aula per una data già trascorsa.", sessionId),
@@ -134,22 +133,22 @@ public class BookingController {
             );
         }
 
-        logger.debug("Validazioni superate, tentativo prenotazione per periodo: {} - {}", formatTimestamp(inizio), formatTimestamp(fine));
+        logger.debug("Validazioni superate, tentativo prenotazione per periodo: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
 
         Booking booking;
         try {
             booking = bookingService.bookRoom(
-                request.getAulaId(), request.getCorsoId(), istantaneaDi(principal), inizio, fine, request.getDescrizione());
+                request.getRoomId(), request.getCourseId(), istantaneaDi(principal), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("FINE prenotaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getAulaId());
+            logger.warn("FINE prenotaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getRoomId());
             throw new BookingConflictException("BOOKING_CONFLICT", "Impossibile prenotare l'aula",
                     "L'aula è appena stata prenotata da un'altra richiesta per lo stesso periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getAulaId(), principal.id());
+        logger.debug("FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getRoomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione effettuata con successo",
-                                new BookingAckPayload(booking, request.getAulaId(), formatTimestamp(inizio) + " - " + formatTimestamp(fine)),
+                                new BookingAckPayload(booking, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
                                 sessionId),
             HttpStatus.CREATED
         );
@@ -162,14 +161,14 @@ public class BookingController {
                                                  @Valid @RequestBody BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO modificaPrenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, Periodo: {} - {}", bookingId, request.getAulaId(), request.getCorsoId(), request.getInizio(), request.getFine());
+        logger.debug("INIZIO modificaPrenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, Periodo: {} - {}", bookingId, request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
 
-        LocalDateTime inizio;
-        LocalDateTime fine;
+        LocalDateTime startTime;
+        LocalDateTime endTime;
         try {
-            inizio = LocalDateTime.parse(request.getInizio());
+            startTime = LocalDateTime.parse(request.getStartTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE modificaPrenotazione - Errore parsing data inizio: '{}'", request.getInizio());
+            logger.warn("FINE modificaPrenotazione - Errore parsing data inizio: '{}'", request.getStartTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
@@ -177,9 +176,9 @@ public class BookingController {
             );
         }
         try {
-            fine = LocalDateTime.parse(request.getFine());
+            endTime = LocalDateTime.parse(request.getEndTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE modificaPrenotazione - Errore parsing data fine: '{}'", request.getFine());
+            logger.warn("FINE modificaPrenotazione - Errore parsing data fine: '{}'", request.getEndTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
@@ -187,7 +186,7 @@ public class BookingController {
             );
         }
 
-        if (fine.isBefore(inizio)) {
+        if (endTime.isBefore(startTime)) {
             logger.warn("FINE modificaPrenotazione - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
@@ -195,8 +194,8 @@ public class BookingController {
                 HttpStatus.BAD_REQUEST
             );
         }
-        if (inizio.isBefore(LocalDateTime.now())) {
-            logger.warn("FINE modificaPrenotazione - Tentativo di modifica con data nel passato: {}", formatTimestamp(inizio));
+        if (startTime.isBefore(LocalDateTime.now())) {
+            logger.warn("FINE modificaPrenotazione - Tentativo di modifica con data nel passato: {}", formatTimestamp(startTime));
             return new ResponseEntity<>(
                 createErrorResponse("PAST_DATE", "Date in the past",
                                   "Non puoi modificare una prenotazione per una data già trascorsa.", sessionId),
@@ -204,22 +203,22 @@ public class BookingController {
             );
         }
 
-        logger.debug("Validazioni superate, tentativo modifica prenotazione ID {} per periodo: {} - {}", bookingId, formatTimestamp(inizio), formatTimestamp(fine));
+        logger.debug("Validazioni superate, tentativo modifica prenotazione ID {} per periodo: {} - {}", bookingId, formatTimestamp(startTime), formatTimestamp(endTime));
 
         Booking booking;
         try {
             booking = bookingService.updateBooking(
-                bookingId, request.getAulaId(), request.getCorsoId(), principal.id(), principal.isAdmin(), inizio, fine, request.getDescrizione());
+                bookingId, request.getRoomId(), request.getCourseId(), principal.id(), principal.isAdmin(), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("FINE modificaPrenotazione - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - PrenotazioneId: {}, AulaId: {}", bookingId, request.getAulaId());
+            logger.warn("FINE modificaPrenotazione - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - PrenotazioneId: {}, AulaId: {}", bookingId, request.getRoomId());
             throw new BookingConflictException("UPDATE_CONFLICT", "Impossibile modificare la prenotazione",
                     "L'aula è appena stata prenotata da un'altra richiesta per il nuovo periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getAulaId(), principal.id());
+        logger.debug("FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getRoomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione modificata con successo",
-                                new BookingAckPayload(booking, request.getAulaId(), formatTimestamp(inizio) + " - " + formatTimestamp(fine)),
+                                new BookingAckPayload(booking, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
                                 sessionId),
             HttpStatus.OK
         );
@@ -232,14 +231,14 @@ public class BookingController {
     public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @RequestBody BookingRequest request,
                                        @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO bloccaAula - AulaId: {}, Periodo: {} - {}", request.getAulaId(), request.getInizio(), request.getFine());
+        logger.debug("INIZIO bloccaAula - AulaId: {}, Periodo: {} - {}", request.getRoomId(), request.getStartTime(), request.getEndTime());
 
-        LocalDateTime inizio;
-        LocalDateTime fine;
+        LocalDateTime startTime;
+        LocalDateTime endTime;
         try {
-            inizio = LocalDateTime.parse(request.getInizio());
+            startTime = LocalDateTime.parse(request.getStartTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE bloccaAula - Errore parsing data inizio: '{}'", request.getInizio());
+            logger.warn("FINE bloccaAula - Errore parsing data inizio: '{}'", request.getStartTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -247,9 +246,9 @@ public class BookingController {
             );
         }
         try {
-            fine = LocalDateTime.parse(request.getFine());
+            endTime = LocalDateTime.parse(request.getEndTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE bloccaAula - Errore parsing data fine: '{}'", request.getFine());
+            logger.warn("FINE bloccaAula - Errore parsing data fine: '{}'", request.getEndTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -257,7 +256,7 @@ public class BookingController {
             );
         }
 
-        if (fine.isBefore(inizio)) {
+        if (endTime.isBefore(startTime)) {
             logger.warn("FINE bloccaAula - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
@@ -266,21 +265,21 @@ public class BookingController {
             );
         }
 
-        logger.debug("Validazioni superate, tentativo blocco aula per periodo: {} - {}", formatTimestamp(inizio), formatTimestamp(fine));
+        logger.debug("Validazioni superate, tentativo blocco aula per periodo: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
 
         Booking blocco;
         try {
-            blocco = bookingService.blockRoom(request.getAulaId(), istantaneaDi(principal), inizio, fine, request.getDescrizione());
+            blocco = bookingService.blockRoom(request.getRoomId(), istantaneaDi(principal), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("FINE bloccaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getAulaId());
+            logger.warn("FINE bloccaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getRoomId());
             throw new BookingConflictException("BLOCK_CONFLICT", "Impossibile bloccare l'aula",
                     "L'aula è appena stata occupata da un'altra richiesta per lo stesso periodo.");
         }
 
-        logger.debug("FINE bloccaAula - Aula bloccata con successo - ID blocco: {}, AulaId: {}, Admin: {}", blocco.getId(), request.getAulaId(), principal.id());
+        logger.debug("FINE bloccaAula - Aula bloccata con successo - ID blocco: {}, AulaId: {}, Admin: {}", blocco.getId(), request.getRoomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Aula bloccata con successo",
-                                new BlockAckPayload(blocco, request.getAulaId(), formatTimestamp(inizio) + " - " + formatTimestamp(fine), principal.id()),
+                                new BlockAckPayload(blocco, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime), principal.id()),
                                 sessionId),
             HttpStatus.CREATED
         );
@@ -290,17 +289,17 @@ public class BookingController {
     @GetMapping("/availability")
     @Operation(summary = "Verifica la disponibilità di un'aula in un periodo")
     public ResponseEntity<ApiEnvelope<AvailabilityPayload>> checkAvailability(@RequestParam("roomId") Long roomId,
-                                                   @RequestParam("start") String inizio,
-                                                   @RequestParam("end") String fine) {
+                                                   @RequestParam("start") String startTime,
+                                                   @RequestParam("end") String endTime) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", roomId, inizio, fine);
+        logger.debug("INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", roomId, startTime, endTime);
 
         LocalDateTime inizioDateTime;
         LocalDateTime fineDateTime;
         try {
-            inizioDateTime = LocalDateTime.parse(inizio);
+            inizioDateTime = LocalDateTime.parse(startTime);
         } catch (DateTimeParseException e) {
-            logger.warn("FINE verificaDisponibilita - Errore parsing data inizio: '{}'", inizio);
+            logger.warn("FINE verificaDisponibilita - Errore parsing data inizio: '{}'", startTime);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -308,9 +307,9 @@ public class BookingController {
             );
         }
         try {
-            fineDateTime = LocalDateTime.parse(fine);
+            fineDateTime = LocalDateTime.parse(endTime);
         } catch (DateTimeParseException e) {
-            logger.warn("FINE verificaDisponibilita - Errore parsing data fine: '{}'", fine);
+            logger.warn("FINE verificaDisponibilita - Errore parsing data fine: '{}'", endTime);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -361,13 +360,13 @@ public class BookingController {
         logger.debug("INIZIO getMiePrenotazioni");
         List<Booking> tuttePrenotazioni = bookingService.getUserBookings(principal.id());
 
-        List<Booking> prenotazioni = tuttePrenotazioni.stream()
-            .filter(p -> p.getStato() != BookingStatus.ANNULLATA)
+        List<Booking> bookings = tuttePrenotazioni.stream()
+            .filter(p -> p.getStatus() != BookingStatus.ANNULLATA)
             .collect(Collectors.toList());
 
         logger.debug("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)",
-                   principal.id(), prenotazioni.size(), tuttePrenotazioni.size() - prenotazioni.size());
-        return ResponseEntity.ok(new SingleBookingPayload(prenotazioni));
+                   principal.id(), bookings.size(), tuttePrenotazioni.size() - bookings.size());
+        return ResponseEntity.ok(new SingleBookingPayload(bookings));
     }
 
     // Annulla prenotazione
@@ -407,19 +406,19 @@ public class BookingController {
         logger.debug("INIZIO getAllPrenotazioni");
 
         List<Booking> tuttePrenotazioni = bookingService.getAllBookings();
-        List<Booking> prenotazioni = tuttePrenotazioni.stream()
-            .filter(p -> p.getStato() != BookingStatus.ANNULLATA)
+        List<Booking> bookings = tuttePrenotazioni.stream()
+            .filter(p -> p.getStatus() != BookingStatus.ANNULLATA)
             .map(this::sanitizeOwnerForListing)
             .collect(Collectors.toList());
 
-        if (prenotazioni.isEmpty()) {
+        if (bookings.isEmpty()) {
             logger.debug("FINE getAllPrenotazioni - Nessuna prenotazione attiva trovata");
             return ResponseEntity.ok(new MessageResponse("Nessuna prenotazione attiva trovata"));
         }
 
         logger.debug("FINE getAllPrenotazioni - Prenotazioni attive recuperate: {} (totale con annullate: {})",
-                   prenotazioni.size(), tuttePrenotazioni.size());
-        return ResponseEntity.ok(new SingleBookingPayload(prenotazioni));
+                   bookings.size(), tuttePrenotazioni.size());
+        return ResponseEntity.ok(new SingleBookingPayload(bookings));
     }
 
     // Singola prenotazione per ID (semplice) - SOLO IL PROPRIETARIO O UN ADMIN
@@ -486,11 +485,11 @@ public class BookingController {
     public ResponseEntity<?> getBookingsByStatus(@PathVariable("status") String status) {
         logger.debug("INIZIO getPrenotazioniByStato - Stato: {}", status);
         try {
-            List<Booking> prenotazioni = bookingService.getBookingsByStatus(status.toLowerCase())
+            List<Booking> bookings = bookingService.getBookingsByStatus(status.toLowerCase())
                 .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
 
-            logger.debug("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", status, prenotazioni.size());
-            return ResponseEntity.ok(new BookingsByStatusPayload(status, prenotazioni));
+            logger.debug("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", status, bookings.size());
+            return ResponseEntity.ok(new BookingsByStatusPayload(status, bookings));
         } catch (IllegalArgumentException e) {
             logger.debug("FINE getPrenotazioniByStato - Stato non valido: {}", status);
             // Uno stato inesistente e' un dato non valido, quindi 400 con l'envelope
@@ -500,9 +499,9 @@ public class BookingController {
             throw new InvalidRequestException("INVALID_STATE",
                     "Invalid state: " + status
                             + ". Allowed: " + java.util.Arrays.stream(BookingStatus.values())
-                            .map(BookingStatus::getValore).collect(Collectors.joining(", ")),
+                            .map(BookingStatus::getValue).collect(Collectors.joining(", ")),
                     "Stato non riconosciuto. Ammessi: " + java.util.Arrays.stream(BookingStatus.values())
-                            .map(BookingStatus::getValore).collect(Collectors.joining(", ")));
+                            .map(BookingStatus::getValue).collect(Collectors.joining(", ")));
         }
     }
 
@@ -511,9 +510,9 @@ public class BookingController {
     @Operation(summary = "Elenca le prenotazioni future")
     public ResponseEntity<BookingsListWithTotalPayload> getFutureBookings() {
         logger.debug("INIZIO getPrenotazioniFuture");
-        List<Booking> prenotazioni = bookingService.getFutureBookings()
+        List<Booking> bookings = bookingService.getFutureBookings()
             .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
-        logger.debug("FINE getPrenotazioniFuture - Prenotazioni future recuperate con successo, totale: {}", prenotazioni.size());
-        return ResponseEntity.ok(new BookingsListWithTotalPayload(prenotazioni));
+        logger.debug("FINE getPrenotazioniFuture - Prenotazioni future recuperate con successo, totale: {}", bookings.size());
+        return ResponseEntity.ok(new BookingsListWithTotalPayload(bookings));
     }
 }

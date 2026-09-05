@@ -16,8 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -53,9 +51,9 @@ class NotificationEndpointsTest {
         // owner: 2 non lette + 1 gia' letta
         notificationRepository.save(new Notification(OWNER_ID, "Prima", "Messaggio 1", "INFO"));
         notificationRepository.save(new Notification(OWNER_ID, "Seconda", "Messaggio 2", "INFO"));
-        Notification letta = new Notification(OWNER_ID, "Terza", "Gia' letta", "INFO");
-        letta.setLetta(true);
-        notificaLettaId = notificationRepository.save(letta).getId();
+        Notification read = new Notification(OWNER_ID, "Terza", "Gia' letta", "INFO");
+        read.setRead(true);
+        notificaLettaId = notificationRepository.save(read).getId();
 
         // other: 1 non letta, che non deve mai essere toccata dalle operazioni di owner
         notificationRepository.save(new Notification(OTHER_ID, "Altrui", "Non toccare", "INFO"));
@@ -74,8 +72,8 @@ class NotificationEndpointsTest {
 
     private long contaNonLette(Long userId) {
         return notificationRepository.findAll().stream()
-                .filter(n -> n.getUtenteId().equals(userId))
-                .filter(n -> !Boolean.TRUE.equals(n.getLetta()))
+                .filter(n -> n.getUserId().equals(userId))
+                .filter(n -> !Boolean.TRUE.equals(n.getRead()))
                 .count();
     }
 
@@ -129,13 +127,13 @@ class NotificationEndpointsTest {
         exchange("/api/notifications/read", HttpMethod.DELETE, tokenOwner);
 
         long rimasteDiOwner = notificationRepository.findAll().stream()
-                .filter(n -> n.getUtenteId().equals(OWNER_ID))
+                .filter(n -> n.getUserId().equals(OWNER_ID))
                 .count();
         assertThat(rimasteDiOwner).isZero();
 
         // l'inbox dell'altro utente e' intatta
         long rimasteDiOther = notificationRepository.findAll().stream()
-                .filter(n -> n.getUtenteId().equals(OTHER_ID))
+                .filter(n -> n.getUserId().equals(OTHER_ID))
                 .count();
         assertThat(rimasteDiOther).isEqualTo(1);
     }
@@ -143,7 +141,7 @@ class NotificationEndpointsTest {
     @Test
     void otherUserCannotMarkOwnersNotificationAsRead() {
         Long idDiOwner = notificationRepository.findAll().stream()
-                .filter(n -> n.getUtenteId().equals(OWNER_ID))
+                .filter(n -> n.getUserId().equals(OWNER_ID))
                 .findFirst().orElseThrow().getId();
 
         ResponseEntity<String> resp = exchange(

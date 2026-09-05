@@ -7,6 +7,6 @@ import lombok.Value;
 @Value
 public class BookingAckPayload {
     Booking prenotazione;
-    Long aulaId;
+    Long roomId;
     String periodo;
 }

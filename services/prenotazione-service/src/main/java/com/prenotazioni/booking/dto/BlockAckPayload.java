@@ -7,7 +7,7 @@ import lombok.Value;
 @Value
 public class BlockAckPayload {
     Booking blocco;
-    Long aulaId;
+    Long roomId;
     String periodo;
     Long amministratore;
 }

@@ -8,13 +8,13 @@ import java.util.List;
 /** Risposta non avvolta di GET /api/bookings/status/{stato}. */
 @Getter
 public class BookingsByStatusPayload {
-    private final String stato;
-    private final List<Booking> prenotazioni;
-    private final int totalPrenotazioni;
+    private final String status;
+    private final List<Booking> bookings;
+    private final int totalBookings;
 
-    public BookingsByStatusPayload(String stato, List<Booking> prenotazioni) {
-        this.stato = stato;
-        this.prenotazioni = prenotazioni;
-        this.totalPrenotazioni = prenotazioni.size();
+    public BookingsByStatusPayload(String status, List<Booking> bookings) {
+        this.status = status;
+        this.bookings = bookings;
+        this.totalBookings = bookings.size();
     }
 }

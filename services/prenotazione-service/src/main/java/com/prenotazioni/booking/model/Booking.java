@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "prenotazioni")
+@Table(name = "bookings")
 public class Booking {
 
     @Id
@@ -28,42 +28,42 @@ public class Booking {
     private Long id;
     
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "aula_id", nullable = false)
-    private Room aula;
+    @JoinColumn(name = "room_id", nullable = false)
+    private Room room;
     
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "corso_id", nullable = true) // Nullable per blocchi admin
-    private Course corso;
+    @JoinColumn(name = "course_id", nullable = true) // Nullable per blocchi admin
+    private Course course;
     
     // Istantanea e non relazione: gli utenti vivono in un altro servizio.
     // Vedi ProprietarioPrenotazione per il perche' e per le conseguenze.
     @Embedded
-    private BookingOwner utente;
+    private BookingOwner user;
     
     @Column(nullable = false)
-    private LocalDateTime inizio;
+    private LocalDateTime startTime;
     
     @Column(nullable = false)
-    private LocalDateTime fine;
+    private LocalDateTime endTime;
     
     // Persistito come stringa minuscola dal converter di StatoPrenotazione, per restare
     // compatibile con il CHECK constraint prenotazione_stato_check e col frontend.
     @Column(nullable = false, length = 20)
-    private BookingStatus stato;
+    private BookingStatus status;
     
     @Column(columnDefinition = "TEXT")
-    private String descrizione;
+    private String description;
     
-    @Column(name = "data_creazione", nullable = false, updatable = false)
-    private LocalDateTime dataCreazione;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        if (dataCreazione == null) {
-            dataCreazione = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
         }
-        if (stato == null) {
-            stato = BookingStatus.PRENOTATA;
+        if (status == null) {
+            status = BookingStatus.PRENOTATA;
         }
     }
 }

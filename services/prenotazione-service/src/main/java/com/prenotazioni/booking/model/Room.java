@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "aule")
+@Table(name = "rooms")
 public class Room {
     
     @Id
@@ -25,30 +25,30 @@ public class Room {
     private Long id;
     
     @Column(nullable = false, unique = true, length = 100)
-    private String nome;
+    private String name;
     
     @Column(nullable = false)
-    private int capienza;
+    private int capacity;
     
     @Column(nullable = false)
-    private int piano;
+    private int floor;
     
     @Column(name = "is_virtual", nullable = false)
     @JsonProperty("isVirtual")
     private boolean isVirtual = false;
     
     @Column(columnDefinition = "TEXT")
-    private String descrizione;
+    private String description;
     
     @Column(length = 20)
     // Persistito minuscolo dal converter di StatoAula (CHECK constraint aula_stato_check)
-    private RoomStatus stato;
+    private RoomStatus status;
     
     @PrePersist
     @PreUpdate
     protected void setDefaults() {
-        if (stato == null) {
-            stato = RoomStatus.LIBERA;
+        if (status == null) {
+            status = RoomStatus.LIBERA;
         }
     }
 }

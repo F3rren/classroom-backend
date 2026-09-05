@@ -10,11 +10,11 @@ import java.time.LocalDateTime;
 @Schema(description = "Stato di occupazione di un'aula in questo momento")
 public class RoomStatusPayload {
     @Schema(description = "Aula interrogata", example = "3")
-    Long aulaId;
-    @Schema(description = "Stato calcolato adesso. Vocabolario MAIUSCOLO, diverso da aula.stato persistito: "
+    Long roomId;
+    @Schema(description = "Stato calcolato adesso. Vocabolario MAIUSCOLO, diverso da aula.status persistito: "
             + "include PRENOTATA e non ha OCCUPATA",
             allowableValues = {"LIBERA", "PRENOTATA", "BLOCCATA", "MANUTENZIONE"}, example = "LIBERA")
-    String stato;
+    String status;
     @Schema(description = "Momento a cui si riferisce lo stato")
     LocalDateTime timestamp;
 }

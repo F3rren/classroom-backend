@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * dominio si stacca senza dover chiamare nessuno per rendere le proprie risposte.
  */
 @Entity
-@Table(name = "notifiche")
+@Table(name = "notifications")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Notification {
 
@@ -31,85 +31,85 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "utente_id", nullable = false)
-    private Long utenteId;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    @Column(name = "titolo", nullable = false, length = 200)
-    private String titolo;
+    @Column(name = "title", nullable = false, length = 200)
+    private String title;
 
-    @Column(name = "messaggio", nullable = false, length = 1000)
-    private String messaggio;
+    @Column(name = "message", nullable = false, length = 1000)
+    private String message;
 
-    @Column(name = "tipo", nullable = false, length = 50)
-    private String tipo; // INFO, WARNING, ERROR, SUCCESS
+    @Column(name = "type", nullable = false, length = 50)
+    private String type; // INFO, WARNING, ERROR, SUCCESS
 
-    @Column(name = "letta", nullable = false)
-    private Boolean letta = false;
+    @Column(name = "is_read", nullable = false)
+    private Boolean read = false;
 
-    @Column(name = "data_creazione", nullable = false)
-    private LocalDateTime dataCreazione;
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name = "data_lettura")
-    private LocalDateTime dataLettura;
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
 
     // Dati aggiuntivi per le notifiche di prenotazione
-    @Column(name = "prenotazione_id")
-    private Long prenotazioneId;
+    @Column(name = "booking_id")
+    private Long bookingId;
 
-    @Column(name = "nome_stanza", length = 100)
-    private String nomeStanza;
+    @Column(name = "room_name", length = 100)
+    private String roomName;
 
-    @Column(name = "data_prenotazione")
-    private LocalDateTime dataPrenotazione;
+    @Column(name = "booking_date")
+    private LocalDateTime bookingDate;
 
-    @Column(name = "admin_nome", length = 100)
-    private String adminNome;
+    @Column(name = "admin_name", length = 100)
+    private String adminName;
 
     public Notification() {
-        this.dataCreazione = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 
-    public Notification(Long utenteId, String titolo, String messaggio, String tipo) {
+    public Notification(Long userId, String title, String message, String type) {
         this();
-        this.utenteId = utenteId;
-        this.titolo = titolo;
-        this.messaggio = messaggio;
-        this.tipo = tipo;
+        this.userId = userId;
+        this.title = title;
+        this.message = message;
+        this.type = type;
     }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Long getUtenteId() { return utenteId; }
-    public void setUtenteId(Long utenteId) { this.utenteId = utenteId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-    public String getTitolo() { return titolo; }
-    public void setTitolo(String titolo) { this.titolo = titolo; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getMessaggio() { return messaggio; }
-    public void setMessaggio(String messaggio) { this.messaggio = messaggio; }
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
 
-    public String getTipo() { return tipo; }
-    public void setTipo(String tipo) { this.tipo = tipo; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 
-    public Boolean getLetta() { return letta; }
-    public void setLetta(Boolean letta) { this.letta = letta; }
+    public Boolean getRead() { return read; }
+    public void setRead(Boolean read) { this.read = read; }
 
-    public LocalDateTime getDataCreazione() { return dataCreazione; }
-    public void setDataCreazione(LocalDateTime dataCreazione) { this.dataCreazione = dataCreazione; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getDataLettura() { return dataLettura; }
-    public void setDataLettura(LocalDateTime dataLettura) { this.dataLettura = dataLettura; }
+    public LocalDateTime getReadAt() { return readAt; }
+    public void setReadAt(LocalDateTime readAt) { this.readAt = readAt; }
 
-    public Long getPrenotazioneId() { return prenotazioneId; }
-    public void setPrenotazioneId(Long prenotazioneId) { this.prenotazioneId = prenotazioneId; }
+    public Long getBookingId() { return bookingId; }
+    public void setBookingId(Long bookingId) { this.bookingId = bookingId; }
 
-    public String getNomeStanza() { return nomeStanza; }
-    public void setNomeStanza(String nomeStanza) { this.nomeStanza = nomeStanza; }
+    public String getRoomName() { return roomName; }
+    public void setRoomName(String roomName) { this.roomName = roomName; }
 
-    public LocalDateTime getDataPrenotazione() { return dataPrenotazione; }
-    public void setDataPrenotazione(LocalDateTime dataPrenotazione) { this.dataPrenotazione = dataPrenotazione; }
+    public LocalDateTime getBookingDate() { return bookingDate; }
+    public void setBookingDate(LocalDateTime bookingDate) { this.bookingDate = bookingDate; }
 
-    public String getAdminNome() { return adminNome; }
-    public void setAdminNome(String adminNome) { this.adminNome = adminNome; }
+    public String getAdminName() { return adminName; }
+    public void setAdminName(String adminName) { this.adminName = adminName; }
 }

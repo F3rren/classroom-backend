@@ -22,14 +22,14 @@ public enum RoomAvailability {
     PRENOTATA("prenotata"),
     BLOCCATA("bloccata");
 
-    private final String valore;
+    private final String value;
 
-    RoomAvailability(String valore) {
-        this.valore = valore;
+    RoomAvailability(String value) {
+        this.value = value;
     }
 
     @JsonValue
-    public String getValore() {
-        return valore;
+    public String getValue() {
+        return value;
     }
 }

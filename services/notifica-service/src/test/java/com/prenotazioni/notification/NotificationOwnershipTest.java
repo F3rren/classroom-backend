@@ -16,8 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -102,7 +100,7 @@ class NotificationOwnershipTest {
                 new HttpEntity<>(bearer(tokenOwner)), Notification.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(resp.getBody().getLetta()).isTrue();
+        assertThat(resp.getBody().getRead()).isTrue();
     }
 
     @Test

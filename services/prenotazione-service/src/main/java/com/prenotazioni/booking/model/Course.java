@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "corsi")
+@Table(name = "courses")
 public class Course {
     
     @Id
@@ -21,11 +21,11 @@ public class Course {
     private Long id;
     
     @Column(nullable = false, length = 100)
-    private String nome;
+    private String name;
     
     @Column(nullable = false, length = 100)
-    private String docente;
+    private String teacher;
     
     @Column(columnDefinition = "TEXT")
-    private String descrizione;
+    private String description;
 }

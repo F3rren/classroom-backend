@@ -15,9 +15,9 @@ public class ResourceNotFoundException extends ApplicationException {
     }
 
     /** Scorciatoia per il caso piu' comune: entita' cercata per id. */
-    public static ResourceNotFoundException perId(String tipo, String codice, Object id) {
+    public static ResourceNotFoundException perId(String type, String codice, Object id) {
         return new ResourceNotFoundException(codice,
-                String.format("%s not found with id: %s", tipo, id),
-                String.format("%s richiesta non esiste.", tipo));
+                String.format("%s not found with id: %s", type, id),
+                String.format("%s richiesta non esiste.", type));
     }
 }

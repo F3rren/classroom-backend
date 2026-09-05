@@ -6,7 +6,6 @@ import com.prenotazioni.booking.model.Room;
 import com.prenotazioni.booking.model.RoomStatus;
 import com.prenotazioni.booking.model.Booking;
 import com.prenotazioni.booking.model.BookingStatus;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.booking.model.BookingOwner;
 import com.prenotazioni.booking.repository.RoomRepository;
 import com.prenotazioni.booking.repository.BookingRepository;
@@ -70,47 +69,47 @@ class RoomDetailsWithBookingsTest {
         // Il nome finisce dentro currentBooking, quindi conta che sia valorizzato.
         BookingOwner user = new BookingOwner(1L, "dettagli", "Mario Rossi");
 
-        LocalDateTime ora = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
         aulaOccupataId = salvaAula("Aula Occupata", 1, 30, false);
-        prenota(aulaOccupataId, user, BookingStatus.PRENOTATA, ora.minusHours(1), ora.plusHours(1), "Lezione di Analisi");
+        prenota(aulaOccupataId, user, BookingStatus.PRENOTATA, now.minusHours(1), now.plusHours(1), "Lezione di Analisi");
 
         aulaBloccataId = salvaAula("Aula Bloccata", 1, 30, false);
-        prenota(aulaBloccataId, user, BookingStatus.BLOCCATA, ora.minusHours(1), ora.plusHours(1), "Evento riservato");
+        prenota(aulaBloccataId, user, BookingStatus.BLOCCATA, now.minusHours(1), now.plusHours(1), "Evento riservato");
 
         aulaManutenzioneId = salvaAula("Aula Manutenzione", 2, 20, false);
-        prenota(aulaManutenzioneId, user, BookingStatus.MANUTENZIONE, ora.minusHours(1), ora.plusHours(1), "Sostituzione proiettore");
+        prenota(aulaManutenzioneId, user, BookingStatus.MANUTENZIONE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
 
         // Aula virtuale con prenotazione IMMINENTE (entro 2 ore, ma non ancora iniziata):
         // copre il secondo ramo e il lato virtuale del terzo clone.
         aulaImminenteId = salvaAula("Aula Virtuale Imminente", 0, 50, true);
-        prenota(aulaImminenteId, user, BookingStatus.PRENOTATA, ora.plusMinutes(30), ora.plusMinutes(90), null);
+        prenota(aulaImminenteId, user, BookingStatus.PRENOTATA, now.plusMinutes(30), now.plusMinutes(90), null);
 
         aulaLiberaId = salvaAula("Aula Libera", 3, 10, false);
 
         token = TestJwt.perUtente(1L, "roomdetailswithbookingstest@test.it", "Utente Test");
     }
 
-    private Long salvaAula(String nome, int piano, int capienza, boolean virtuale) {
+    private Long salvaAula(String name, int floor, int capacity, boolean virtuale) {
         Room a = new Room();
-        a.setNome(nome);
-        a.setPiano(piano);
-        a.setCapienza(capienza);
+        a.setName(name);
+        a.setFloor(floor);
+        a.setCapacity(capacity);
         a.setVirtual(virtuale);
-        a.setStato(RoomStatus.LIBERA);
+        a.setStatus(RoomStatus.LIBERA);
         return roomRepository.save(a).getId();
     }
 
     private void prenota(Long roomId, BookingOwner user, BookingStatus status,
-                         LocalDateTime inizio, LocalDateTime fine, String descrizione) {
+                         LocalDateTime startTime, LocalDateTime endTime, String description) {
         Booking p = new Booking();
-        p.setAula(roomRepository.findById(roomId).orElseThrow());
-        p.setUtente(user);
-        p.setInizio(inizio);
-        p.setFine(fine);
-        p.setStato(status);
-        p.setDescrizione(descrizione);
-        p.setDataCreazione(LocalDateTime.now()); // letto da blockInfo.blockedAt
+        p.setRoom(roomRepository.findById(roomId).orElseThrow());
+        p.setUser(user);
+        p.setStartTime(startTime);
+        p.setEndTime(endTime);
+        p.setStatus(status);
+        p.setDescription(description);
+        p.setCreatedAt(LocalDateTime.now()); // letto da blockInfo.blockedAt
         bookingRepository.save(p);
     }
 
@@ -128,11 +127,11 @@ class RoomDetailsWithBookingsTest {
         return (List<Map<String, Object>>) data.get("rooms");
     }
 
-    private Map<String, Object> byName(List<Map<String, Object>> rooms, String nome) {
+    private Map<String, Object> byName(List<Map<String, Object>> rooms, String name) {
         return rooms.stream()
-                .filter(r -> nome.equals(r.get("name")))
+                .filter(r -> name.equals(r.get("name")))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("aula non trovata nella risposta: " + nome));
+                .orElseThrow(() -> new AssertionError("aula non trovata nella risposta: " + name));
     }
 
     // ==================== clone 1: /api/rooms/detailed ====================
@@ -290,7 +289,7 @@ class RoomDetailsWithBookingsTest {
     private String statoDi(Long roomId) throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/room-status/" + roomId);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) TestJson.comeMappa(resp.getBody()).get("stato");
+        return (String) TestJson.comeMappa(resp.getBody()).get("status");
     }
 
 }

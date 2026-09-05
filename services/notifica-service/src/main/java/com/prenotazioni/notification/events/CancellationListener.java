@@ -45,7 +45,7 @@ public class CancellationListener {
         // un'altra versione, deve continuare a essere consumato.
         RequestCorrelationFilter.applyToMdc(idRichiesta);
         try {
-            if (evento == null || evento.utenteId() == null) {
+            if (evento == null || evento.userId() == null) {
                 // Scartato di proposito: senza destinatario la notifica non ha a chi andare, e
                 // rimetterlo in coda lo farebbe girare per sempre.
                 logger.error("Evento di cancellazione scartato perche' privo di destinatario: {}", evento);
@@ -53,19 +53,19 @@ public class CancellationListener {
             }
 
             logger.debug("Evento di cancellazione ricevuto per utenteId={}, prenotazioneId={}",
-                    evento.utenteId(), evento.prenotazioneId());
+                    evento.userId(), evento.bookingId());
 
             notificaService.createBookingCancelledNotification(
-                    evento.utenteId(),
-                    evento.prenotazioneId(),
-                    evento.nomeStanza(),
-                    evento.adminNome(),
-                    evento.dataPrenotazione(),
+                    evento.userId(),
+                    evento.bookingId(),
+                    evento.roomName(),
+                    evento.adminName(),
+                    evento.bookingDate(),
                     evento.oraInizio(),
                     evento.oraFine(),
                     evento.motivo());
 
-            logger.info("Notifica di cancellazione creata da evento per utenteId={}", evento.utenteId());
+            logger.info("Notifica di cancellazione creata da evento per utenteId={}", evento.userId());
         } finally {
             RequestCorrelationFilter.clearMdc();
         }

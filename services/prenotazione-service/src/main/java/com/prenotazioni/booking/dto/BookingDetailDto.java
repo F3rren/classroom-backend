@@ -16,21 +16,21 @@ import java.time.LocalDateTime;
 @Value
 public class BookingDetailDto {
 
-    Long prenotazioneId;
-    LocalDateTime inizio;
-    LocalDateTime fine;
-    BookingStatus stato;
+    Long bookingId;
+    LocalDateTime startTime;
+    LocalDateTime endTime;
+    BookingStatus status;
     String notePrenotazione;
-    LocalDateTime dataCreazione;
-    Long aulaId;
+    LocalDateTime createdAt;
+    Long roomId;
     String aulaNome;
     Integer aulaCapienza;
     Integer aulaPiano;
-    Long utenteId;
+    Long userId;
     String username;
     String utenteNome;
-    Long corsoId;
+    Long courseId;
     String corsoNome;
-    String docente;
+    String teacher;
     String statoTemporale;
 }

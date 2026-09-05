@@ -57,7 +57,7 @@ class UserServiceUnitTest {
         // L'invariante. Se cadesse, un fallimento a valle lascerebbe prenotazioni e notifiche
         // senza un utente a cui ricondurle, e ripetere l'operazione non servirebbe piu' a
         // niente: non ci sarebbe nessuno da cui ripartire.
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("prenotazioni"));
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("bookings"));
 
         assertThatThrownBy(() -> service().deleteById(7L))
                 .isInstanceOf(ServiceUnavailableException.class);
@@ -70,12 +70,12 @@ class UserServiceUnitTest {
         // "Qualcosa e' fallito" non basta a chi deve decidere se ripetere: il messaggio deve
         // nominare i dati rimasti, altrimenti l'unico modo di saperlo e' leggere i log di
         // tre servizi diversi.
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifiche", "prenotazioni"));
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifications", "bookings"));
 
         assertThatThrownBy(() -> service().deleteById(7L))
                 .isInstanceOf(ServiceUnavailableException.class)
-                .hasMessageContaining("notifiche")
-                .hasMessageContaining("prenotazioni");
+                .hasMessageContaining("notifications")
+                .hasMessageContaining("bookings");
     }
 
     @Test
@@ -83,7 +83,7 @@ class UserServiceUnitTest {
         // Il messaggio per l'utente e il codice sono cio' che distingue "e' rotto" da
         // "riprova". Sono due azioni diverse, e con un 500 generico la seconda non veniva
         // in mente: l'operazione restava a meta' perche' nessuno la ripeteva.
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifiche"));
+        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifications"));
 
         ServiceUnavailableException error = (ServiceUnavailableException)
                 org.assertj.core.api.Assertions.catchThrowable(() -> service().deleteById(7L));

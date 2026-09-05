@@ -65,7 +65,7 @@ class FirstAdminBootstrapUnitTest {
         assertThat(request.getValue().getEmail()).isEqualTo("primo@admin.it");
         // Il ruolo e' minuscolo: e' il valore dell'enum Ruolo, non il nome della costante.
         // Sbagliarlo creerebbe un utente normale e il nodo resterebbe stretto, senza errori.
-        assertThat(request.getValue().getRuolo()).isEqualTo("admin");
+        assertThat(request.getValue().getRole()).isEqualTo("admin");
     }
 
     @Test

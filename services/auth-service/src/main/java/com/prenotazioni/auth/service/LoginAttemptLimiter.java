@@ -71,8 +71,8 @@ public class LoginAttemptLimiter {
         }
 
         synchronized (finestra) {
-            if (adesso - finestra.inizio > finestraMs) {
-                finestra.inizio = adesso;
+            if (adesso - finestra.startTime > finestraMs) {
+                finestra.startTime = adesso;
                 finestra.tentativi = 0;
             }
             finestra.tentativi++;
@@ -92,7 +92,7 @@ public class LoginAttemptLimiter {
         finestre.entrySet().removeIf(voce -> {
             Finestra f = voce.getValue();
             synchronized (f) {
-                return adesso - f.inizio > finestraMs;
+                return adesso - f.startTime > finestraMs;
             }
         });
         int rimosse = prima - finestre.size();
@@ -116,11 +116,11 @@ public class LoginAttemptLimiter {
     }
 
     private static final class Finestra {
-        long inizio;
+        long startTime;
         int tentativi;
 
-        Finestra(long inizio) {
-            this.inizio = inizio;
+        Finestra(long startTime) {
+            this.startTime = startTime;
         }
     }
 }

@@ -33,9 +33,9 @@ public class UpdateUserRequest {
     @Pattern(regexp = "(?i)admin|user", message = "Il ruolo deve essere 'admin' o 'user'.")
     @Schema(description = "Nuovo ruolo. Se omesso resta quello attuale",
             allowableValues = {"admin", "user"}, example = "user")
-    private String ruolo;
+    private String role;
 
     @NotBlank(message = "Il nome è obbligatorio.")
     @Schema(description = "Nome e cognome mostrati nell'interfaccia", example = "Mario Rossi")
-    private String nome;
+    private String name;
 }

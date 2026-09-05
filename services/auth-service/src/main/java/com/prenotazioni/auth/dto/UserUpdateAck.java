@@ -10,14 +10,14 @@ public class UserUpdateAck {
     private final Long userId;
     private final String email;
     private final String username;
-    private final String nome;
-    private final Role ruolo;
+    private final String name;
+    private final Role role;
 
-    public UserUpdateAck(User utente) {
-        this.userId = utente.getId();
-        this.email = utente.getEmail();
-        this.username = utente.getUsername();
-        this.nome = utente.getNome() != null ? utente.getNome() : "";
-        this.ruolo = utente.getRuolo();
+    public UserUpdateAck(User user) {
+        this.userId = user.getId();
+        this.email = user.getEmail();
+        this.username = user.getUsername();
+        this.name = user.getName() != null ? user.getName() : "";
+        this.role = user.getRole();
     }
 }

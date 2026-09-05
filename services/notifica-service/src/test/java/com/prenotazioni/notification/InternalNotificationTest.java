@@ -16,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,7 +64,7 @@ class InternalNotificationTest {
     private Map<String, Object> corpoCancellazione() {
         // HashMap e non Map.of: adminNome e motivo possono essere null, come nel client
         Map<String, Object> body = new HashMap<>();
-        body.put("utenteId", DESTINATARIO);
+        body.put("userId", DESTINATARIO);
         body.put("prenotazioneId", 99L);
         body.put("nomeStanza", "Aula Magna");
         body.put("adminNome", "Mario Rossi");
@@ -88,7 +87,7 @@ class InternalNotificationTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(notificationRepository.findAll())
-                .extracting(Notification::getUtenteId)
+                .extracting(Notification::getUserId)
                 .containsExactly(7L);
     }
 }

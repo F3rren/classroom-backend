@@ -23,44 +23,44 @@ public class UserSummaryDto {
     @Schema(description = "Username univoco", example = "m.rossi")
     private String username;
     @Schema(description = "Nome e cognome", example = "Mario Rossi")
-    private String nome;
+    private String name;
     @Schema(description = "Email dell'utente", example = "mario.rossi@example.it")
     private String email;
     @Schema(description = "Ruolo applicativo", example = "user")
-    private Role ruolo;
+    private Role role;
     @Schema(description = "Data di registrazione. Omessa quando non disponibile", example = "2026-01-15 09:30:00")
-    private String dataRegistrazione;
+    private String registeredAt;
     @Schema(description = "Ultimo accesso. Omesso quando non disponibile", example = "2026-08-31 14:05:00")
-    private String ultimoAccesso;
+    private String lastLogin;
 
-    public static UserSummaryDto basic(User utente) {
+    public static UserSummaryDto basic(User user) {
         UserSummaryDto dto = new UserSummaryDto();
-        dto.id = utente.getId();
-        dto.username = utente.getUsername() != null ? utente.getUsername() : "";
-        dto.nome = utente.getNome() != null ? utente.getNome() : "";
-        dto.email = utente.getEmail() != null ? utente.getEmail() : "";
-        dto.ruolo = utente.getRuolo();
+        dto.id = user.getId();
+        dto.username = user.getUsername() != null ? user.getUsername() : "";
+        dto.name = user.getName() != null ? user.getName() : "";
+        dto.email = user.getEmail() != null ? user.getEmail() : "";
+        dto.role = user.getRole();
         return dto;
     }
 
     /** Usato da GET /api/me: ultimoAccesso non impostato "e' adesso", dataRegistrazione mancante e' omessa. */
-    public static UserSummaryDto forProfile(User utente) {
-        UserSummaryDto dto = basic(utente);
+    public static UserSummaryDto forProfile(User user) {
+        UserSummaryDto dto = basic(user);
         // Timestamps.format restituisce null su input null: il ternario qui sarebbe ridondante
-        dto.dataRegistrazione = Timestamps.format(utente.getDataRegistrazione());
-        dto.ultimoAccesso = utente.getUltimoAccesso() != null
-                ? Timestamps.format(utente.getUltimoAccesso())
+        dto.registeredAt = Timestamps.format(user.getRegisteredAt());
+        dto.lastLogin = user.getLastLogin() != null
+                ? Timestamps.format(user.getLastLogin())
                 : Timestamps.now();
         return dto;
     }
 
     /** Usato da GET /api/admin/users: sia dataRegistrazione che ultimoAccesso mancanti diventano "" (mai omessi). */
-    public static UserSummaryDto forAdminListing(User utente) {
-        UserSummaryDto dto = basic(utente);
-        dto.dataRegistrazione = utente.getDataRegistrazione() != null
-                ? Timestamps.format(utente.getDataRegistrazione()) : "";
-        dto.ultimoAccesso = utente.getUltimoAccesso() != null
-                ? Timestamps.format(utente.getUltimoAccesso()) : "";
+    public static UserSummaryDto forAdminListing(User user) {
+        UserSummaryDto dto = basic(user);
+        dto.registeredAt = user.getRegisteredAt() != null
+                ? Timestamps.format(user.getRegisteredAt()) : "";
+        dto.lastLogin = user.getLastLogin() != null
+                ? Timestamps.format(user.getLastLogin()) : "";
         return dto;
     }
 }

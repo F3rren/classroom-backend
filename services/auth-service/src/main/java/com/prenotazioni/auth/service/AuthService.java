@@ -42,7 +42,7 @@ public class AuthService {
             // dedurre nulla. E' il null AMBIGUO il problema, non il null in se'.
             return null;
         }
-        user.setUltimoAccesso(LocalDateTime.now());
+        user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
         logger.info("Login riuscito - utenteId={} ({})", user.getId(), LogSanitizer.maskEmail(email));
         return user;
@@ -65,13 +65,13 @@ public class AuthService {
         }
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setNome(request.getNome());
+        user.setName(request.getName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRuolo(Role.da(request.getRuolo()));
+        user.setRole(Role.da(request.getRole()));
         user.setUsername(request.getUsername());
         
         // Imposta la data di registrazione (non modificabile)
-        user.setDataRegistrazione(LocalDateTime.now());
+        user.setRegisteredAt(LocalDateTime.now());
         // ultimoAccesso viene aggiornato solo al login
         User saved = userRepository.save(user);
         logger.info("Utente creato - utenteId={} ({})", saved.getId(), LogSanitizer.maskEmail(saved.getEmail()));
@@ -79,9 +79,9 @@ public class AuthService {
     }
 
     public List<User> getAllUsers() {
-        List<User> utenti = userRepository.findAll();
-        logger.debug("Elenco utenti recuperato - totale={}", utenti.size());
-        return utenti;
+        List<User> users = userRepository.findAll();
+        logger.debug("Elenco utenti recuperato - totale={}", users.size());
+        return users;
     }
 
     public User updateUser(Long id, UpdateUserRequest request) {
@@ -108,7 +108,7 @@ public class AuthService {
         }
         // Aggiorna i campi modificabili
         user.setEmail(request.getEmail());
-        user.setNome(request.getNome());
+        user.setName(request.getName());
         
         // Aggiorna la password solo se ne viene fornita una nuova
         boolean passwordCambiata = request.getPassword() != null && !request.getPassword().trim().isEmpty();
@@ -118,8 +118,8 @@ public class AuthService {
         
         // Il formato del ruolo (admin|user, case-insensitive) e' gia' garantito da @Pattern
         // sul DTO; qui resta solo la normalizzazione e il fallback per un ruolo non fornito.
-        Role role = request.getRuolo() != null ? Role.da(request.getRuolo()) : user.getRuolo();
-        user.setRuolo(role);
+        Role role = request.getRole() != null ? Role.da(request.getRole()) : user.getRole();
+        user.setRole(role);
         user.setUsername(request.getUsername());
         
         // NON modifichiamo dataRegistrazione - rimane quella originale

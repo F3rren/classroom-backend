@@ -8,7 +8,7 @@ import lombok.Getter;
 @Schema(description = "Esito della verifica di disponibilita' di un'aula in un periodo")
 public class AvailabilityPayload {
     @Schema(description = "Aula verificata", example = "3")
-    private final Long aulaId;
+    private final Long roomId;
     @Schema(description = "true se l'aula e' libera nel periodo richiesto", example = "true")
     private final boolean disponibile;
     @Schema(description = "Periodo verificato", example = "2026-12-25 14:30:00 - 2026-12-25 16:30:00")
@@ -17,8 +17,8 @@ public class AvailabilityPayload {
             allowableValues = {"LIBERA", "OCCUPATA"}, example = "LIBERA")
     private final String status;
 
-    public AvailabilityPayload(Long aulaId, boolean disponibile, String periodo) {
-        this.aulaId = aulaId;
+    public AvailabilityPayload(Long roomId, boolean disponibile, String periodo) {
+        this.roomId = roomId;
         this.disponibile = disponibile;
         this.periodo = periodo;
         this.status = disponibile ? "LIBERA" : "OCCUPATA";

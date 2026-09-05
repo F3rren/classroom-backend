@@ -5,7 +5,6 @@ import com.prenotazioni.booking.model.BookingOwner;
 import com.prenotazioni.testsupport.TestJwt;
 import com.prenotazioni.booking.model.Room;
 import com.prenotazioni.booking.model.RoomStatus;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.booking.repository.RoomRepository;
 import com.prenotazioni.booking.repository.BookingRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,11 +58,11 @@ class RoomControllerTest {
         BookingOwner user = new BookingOwner(1L, "room-user", "Room User");
 
         Room room = new Room();
-        room.setNome("Aula Room Test");
-        room.setPiano(3);
-        room.setCapienza(15);
+        room.setName("Aula Room Test");
+        room.setFloor(3);
+        room.setCapacity(15);
         room.setVirtual(false);
-        room.setStato(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.LIBERA);
         roomId = roomRepository.save(room).getId();
 
         token = TestJwt.perUtente(1L, "room-user@test.it", "Room User");
@@ -118,7 +116,7 @@ class RoomControllerTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
         // Nessun envelope success/message/data qui: shape gia' esistente, preservata
-        assertThat(body.keySet()).containsExactlyInAnyOrder("aula", "prenotazioni", "totalPrenotazioni");
+        assertThat(body.keySet()).containsExactlyInAnyOrder("room", "bookings", "totalBookings");
     }
 
     @Test
@@ -128,7 +126,7 @@ class RoomControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
-        assertThat(data).containsEntry("piano", 3);
+        assertThat(data).containsEntry("floor", 3);
         assertThat(data).doesNotContainKey("type"); // campo opzionale omesso quando non usato
     }
 
@@ -140,7 +138,7 @@ class RoomControllerTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");
         assertThat(data).containsEntry("type", "physical");
-        assertThat(data).doesNotContainKey("piano");
+        assertThat(data).doesNotContainKey("floor");
     }
 
     @Test

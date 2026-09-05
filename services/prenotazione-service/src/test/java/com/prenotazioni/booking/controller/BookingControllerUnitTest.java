@@ -64,33 +64,33 @@ class BookingControllerUnitTest {
 
     // ---------- helper ----------
 
-    private BookingRequest request(String inizio, String fine) {
+    private BookingRequest request(String startTime, String endTime) {
         BookingRequest r = new BookingRequest();
-        r.setAulaId(10L);
-        r.setCorsoId(null);
-        r.setInizio(inizio);
-        r.setFine(fine);
-        r.setDescrizione("descrizione di test");
+        r.setRoomId(10L);
+        r.setCourseId(null);
+        r.setStartTime(startTime);
+        r.setEndTime(endTime);
+        r.setDescription("descrizione di test");
         return r;
     }
 
     private BookingRequest richiestaValida() {
-        LocalDateTime inizio = LocalDateTime.now().plusDays(1).withNano(0);
-        return request(inizio.format(ISO), inizio.plusHours(2).format(ISO));
+        LocalDateTime startTime = LocalDateTime.now().plusDays(1).withNano(0);
+        return request(startTime.format(ISO), startTime.plusHours(2).format(ISO));
     }
 
     private Booking prenotazioneFinta() {
         Room room = new Room();
         room.setId(10L);
-        room.setNome("Aula Finta");
+        room.setName("Aula Finta");
         BookingOwner u = new BookingOwner(1L, "utente", "Utente Test");
         Booking p = new Booking();
         p.setId(99L);
-        p.setAula(room);
-        p.setUtente(istantaneaDi(u.getId(), u.getUsername(), u.getNome()));
-        p.setInizio(LocalDateTime.now().plusDays(1));
-        p.setFine(LocalDateTime.now().plusDays(1).plusHours(2));
-        p.setStato(BookingStatus.PRENOTATA);
+        p.setRoom(room);
+        p.setUser(istantaneaDi(u.getId(), u.getUsername(), u.getName()));
+        p.setStartTime(LocalDateTime.now().plusDays(1));
+        p.setEndTime(LocalDateTime.now().plusDays(1).plusHours(2));
+        p.setStatus(BookingStatus.PRENOTATA);
         return p;
     }
 
@@ -150,7 +150,7 @@ class BookingControllerUnitTest {
     @Test
     void prenotaAulaTranslatesDbConstraintIntoBookingConflict() {
         when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString()))
-                .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
+                .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
         BookingRequest req = richiestaValida();
         assertThatThrownBy(() -> controller.bookRoom(req, user))
@@ -221,7 +221,7 @@ class BookingControllerUnitTest {
     @Test
     void modificaTranslatesDbConstraintIntoUpdateConflict() {
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
-                .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
+                .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
         BookingRequest req = richiestaValida();
         assertThatThrownBy(() -> controller.editBooking(5L, req, user))
@@ -280,7 +280,7 @@ class BookingControllerUnitTest {
     @Test
     void bloccaTranslatesDbConstraintIntoBlockConflict() {
         when(service.blockRoom(anyLong(), any(), any(), any(), anyString()))
-                .thenThrow(new DataIntegrityViolationException("prenotazioni_no_overlap"));
+                .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
         BookingRequest req = richiestaValida();
         assertThatThrownBy(() -> controller.blockRoom(req, admin))
@@ -327,7 +327,7 @@ class BookingControllerUnitTest {
     }
 
     /** L'istantanea del proprietario, ora costruita a mano: la tabella utenti non e' piu' qui. */
-    private static BookingOwner istantaneaDi(Long id, String username, String nome) {
-        return new BookingOwner(id, username, nome);
+    private static BookingOwner istantaneaDi(Long id, String username, String name) {
+        return new BookingOwner(id, username, name);
     }
 }

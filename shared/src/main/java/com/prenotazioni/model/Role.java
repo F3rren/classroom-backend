@@ -16,7 +16,7 @@ import java.util.Locale;
  * costruisce a partire da questo valore, e le espressioni @PreAuthorize("hasRole('ADMIN')")
  * sono stringhe SpEL che il compilatore non verifica: cambiare il valore di questo enum
  * senza aggiornarle romperebbe l'autorizzazione in modo silenzioso. Per lo stesso motivo
- * il claim "ruolo" del JWT e AppPrincipal restano String: sono formato di trasporto,
+ * il claim "role" del JWT e AppPrincipal restano String: sono formato di trasporto,
  * non il modello di dominio.
  */
 public enum Role {
@@ -24,30 +24,30 @@ public enum Role {
     ADMIN("admin"),
     USER("user");
 
-    private final String valore;
+    private final String value;
 
-    Role(String valore) {
-        this.valore = valore;
+    Role(String value) {
+        this.value = value;
     }
 
     /** Valore minuscolo usato in JSON, nel database e nel claim JWT. */
     @JsonValue
-    public String getValore() {
-        return valore;
+    public String getValue() {
+        return value;
     }
 
     @JsonCreator
-    public static Role da(String valore) {
-        if (valore == null) {
+    public static Role da(String value) {
+        if (value == null) {
             return null;
         }
-        String normalizzato = valore.trim().toLowerCase(Locale.ROOT);
-        for (Role ruolo : values()) {
-            if (ruolo.valore.equals(normalizzato)) {
-                return ruolo;
+        String normalizzato = value.trim().toLowerCase(Locale.ROOT);
+        for (Role role : values()) {
+            if (role.value.equals(normalizzato)) {
+                return role;
             }
         }
-        throw new IllegalArgumentException("Ruolo non valido: " + valore);
+        throw new IllegalArgumentException("Ruolo non valido: " + value);
     }
 
     /**
@@ -62,13 +62,13 @@ public enum Role {
     public static class JpaConverter implements AttributeConverter<Role, String> {
 
         @Override
-        public String convertToDatabaseColumn(Role ruolo) {
-            return ruolo == null ? null : ruolo.getValore();
+        public String convertToDatabaseColumn(Role role) {
+            return role == null ? null : role.getValue();
         }
 
         @Override
-        public Role convertToEntityAttribute(String valore) {
-            return da(valore);
+        public Role convertToEntityAttribute(String value) {
+            return da(value);
         }
     }
 }

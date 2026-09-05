@@ -8,7 +8,7 @@ import jakarta.persistence.Converter;
 import java.util.Locale;
 
 /**
- * Stato PERSISTITO di un'aula, cioe' il campo aula.stato salvato a database.
+ * Stato PERSISTITO di un'aula, cioe' il campo aula.status salvato a database.
  *
  * Da non confondere con i due vocabolari MAIUSCOLI calcolati a runtime, che sono
  * contratti diversi e restano stringhe:
@@ -32,42 +32,42 @@ public enum RoomStatus {
     BLOCCATA("bloccata"),
     MANUTENZIONE("manutenzione");
 
-    private final String valore;
+    private final String value;
 
-    RoomStatus(String valore) {
-        this.valore = valore;
+    RoomStatus(String value) {
+        this.value = value;
     }
 
     @JsonValue
-    public String getValore() {
-        return valore;
+    public String getValue() {
+        return value;
     }
 
     @JsonCreator
-    public static RoomStatus da(String valore) {
-        if (valore == null) {
+    public static RoomStatus da(String value) {
+        if (value == null) {
             return null;
         }
-        String normalizzato = valore.trim().toLowerCase(Locale.ROOT);
-        for (RoomStatus stato : values()) {
-            if (stato.valore.equals(normalizzato)) {
-                return stato;
+        String normalizzato = value.trim().toLowerCase(Locale.ROOT);
+        for (RoomStatus status : values()) {
+            if (status.value.equals(normalizzato)) {
+                return status;
             }
         }
-        throw new IllegalArgumentException("Stato aula non valido: " + valore);
+        throw new IllegalArgumentException("Stato aula non valido: " + value);
     }
 
     @Converter(autoApply = true)
     public static class JpaConverter implements AttributeConverter<RoomStatus, String> {
 
         @Override
-        public String convertToDatabaseColumn(RoomStatus stato) {
-            return stato == null ? null : stato.getValore();
+        public String convertToDatabaseColumn(RoomStatus status) {
+            return status == null ? null : status.getValue();
         }
 
         @Override
-        public RoomStatus convertToEntityAttribute(String valore) {
-            return da(valore);
+        public RoomStatus convertToEntityAttribute(String value) {
+            return da(value);
         }
     }
 }

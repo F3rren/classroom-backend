@@ -27,34 +27,34 @@ public class NotificationService {
 
     public List<Notification> getNotificationsByUser(Long userId) {
         logger.debug("INIZIO - Recupero notifiche per utente ID: {}", userId);
-        List<Notification> notifiche = notificationRepository.findByUtenteIdOrderByDataCreazioneDesc(userId);
-        logger.debug("FINE - Recuperate {} notifiche per utente ID: {}", notifiche.size(), userId);
-        return notifiche;
+        List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        logger.debug("FINE - Recuperate {} notifiche per utente ID: {}", notifications.size(), userId);
+        return notifications;
     }
 
     public List<Notification> getUnreadNotificationsByUser(Long userId) {
         logger.debug("INIZIO - Recupero notifiche non lette per utente ID: {}", userId);
-        List<Notification> notifiche = notificationRepository.findByUtenteIdAndLettaFalseOrderByDataCreazioneDesc(userId);
-        logger.debug("FINE - Recuperate {} notifiche non lette per utente ID: {}", notifiche.size(), userId);
-        return notifiche;
+        List<Notification> notifications = notificationRepository.findByUserIdAndReadFalseOrderByCreatedAtDesc(userId);
+        logger.debug("FINE - Recuperate {} notifiche non lette per utente ID: {}", notifications.size(), userId);
+        return notifications;
     }
 
     public Long getUnreadNotificationCount(Long userId) {
         logger.debug("INIZIO - Conteggio notifiche non lette per utente ID: {}", userId);
-        Long count = notificationRepository.countByUtenteIdAndLettaFalse(userId);
+        Long count = notificationRepository.countByUserIdAndReadFalse(userId);
         logger.debug("FINE - Trovate {} notifiche non lette per utente ID: {}", count, userId);
         return count;
     }
 
-    public Notification createNotification(Long userId, String tipo, String titolo, String message) {
-        logger.debug("INIZIO - Creazione notifica per utente ID: {}, Tipo: {}, Titolo: {}", userId, tipo, titolo);
+    public Notification createNotification(Long userId, String type, String title, String message) {
+        logger.debug("INIZIO - Creazione notifica per utente ID: {}, Tipo: {}, Titolo: {}", userId, type, title);
         Notification notification = new Notification();
-        notification.setUtenteId(userId);
-        notification.setTipo(tipo);
-        notification.setTitolo(titolo);
-        notification.setMessaggio(message);
-        notification.setDataCreazione(LocalDateTime.now());
-        notification.setLetta(false);
+        notification.setUserId(userId);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setRead(false);
         
         Notification savedNotifica = notificationRepository.save(notification);
         logger.debug("FINE - Notifica creata con successo con ID: {}", savedNotifica.getId());
@@ -62,17 +62,17 @@ public class NotificationService {
     }
 
     public Notification createBookingCancelledNotification(Long userId, Long bookingId, 
-            String nomeStanza, String adminNome, String dataPrenotazione, String oraInizio, String oraFine, String motivo) {
+            String roomName, String adminName, String bookingDate, String oraInizio, String oraFine, String motivo) {
         
         logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", userId, bookingId);
 
-        String titolo = "Cancellazione Prenotazione: " + nomeStanza;
+        String title = "Cancellazione Prenotazione: " + roomName;
         String message;
 
-        if (adminNome != null) {
+        if (adminName != null) {
             message = String.format(
                 "La tua prenotazione per la stanza '%s' il %s dalle %s alle %s è stata cancellata dall'amministratore %s.",
-                nomeStanza, dataPrenotazione, oraInizio, oraFine, adminNome
+                roomName, bookingDate, oraInizio, oraFine, adminName
             );
             if (motivo != null && !motivo.trim().isEmpty()) {
                 message += " Motivo: " + motivo;
@@ -80,20 +80,20 @@ public class NotificationService {
         } else {
             message = String.format(
                 "Hai annullato la tua prenotazione per la stanza '%s' il %s dalle %s alle %s.",
-                nomeStanza, dataPrenotazione, oraInizio, oraFine
+                roomName, bookingDate, oraInizio, oraFine
             );
         }
         
-        Notification notification = createNotification(userId, "cancellazione", titolo, message);
+        Notification notification = createNotification(userId, "cancellazione", title, message);
 
         // Queste quattro colonne esistevano gia' sull'entita' ma NESSUNO le valorizzava:
         // erano permanentemente null da prima della separazione in servizi. Sono le uniche
         // che permettono al frontend di collegare la notifica alla prenotazione senza
         // interpretare il testo del messaggio, quindi vanno riempite.
-        notification.setPrenotazioneId(bookingId);
-        notification.setNomeStanza(nomeStanza);
-        notification.setAdminNome(adminNome);
-        notification.setDataPrenotazione(componiIstante(dataPrenotazione, oraInizio));
+        notification.setBookingId(bookingId);
+        notification.setRoomName(roomName);
+        notification.setAdminName(adminName);
+        notification.setBookingDate(componiIstante(bookingDate, oraInizio));
         notification = notificationRepository.save(notification);
         logger.debug("FINE - Notifica di cancellazione creata con ID: {}", notification.getId());
         return notification;
@@ -117,8 +117,8 @@ public class NotificationService {
         if (notificationOpt.isPresent()) {
             Notification notification = notificationOpt.get();
             // Verifica che la notifica appartenga all'utente corretto
-            if (notification.getUtenteId().equals(userId)) {
-                notification.setLetta(true);
+            if (notification.getUserId().equals(userId)) {
+                notification.setRead(true);
                 Notification updatedNotifica = notificationRepository.save(notification);
                 logger.debug("FINE - Notifica ID: {} segnata come letta.", notificationId);
                 return Optional.of(updatedNotifica);
@@ -149,7 +149,7 @@ public class NotificationService {
     @Transactional
     public void deleteReadNotifications(Long userId) {
         logger.debug("INIZIO - Eliminazione notifiche lette per utente ID: {}", userId);
-        notificationRepository.deleteByUtenteIdAndLettaTrue(userId);
+        notificationRepository.deleteByUserIdAndReadTrue(userId);
         logger.debug("FINE - Eliminazione notifiche lette completata per utente ID: {}", userId);
     }
 
@@ -163,7 +163,7 @@ public class NotificationService {
     @Transactional
     public void deleteAllByUser(Long userId) {
         logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", userId);
-        notificationRepository.deleteByUtenteId(userId);
+        notificationRepository.deleteByUserId(userId);
     }
 
     /**
@@ -171,19 +171,19 @@ public class NotificationService {
      * formato non e' quello atteso: una notifica con un campo in meno resta utile, una
      * cancellazione che fallisce per un timestamp malformato no.
      */
-    private static LocalDateTime componiIstante(String data, String ora) {
+    private static LocalDateTime componiIstante(String data, String now) {
         // I due null di questo metodo NON sono un segnale d'errore che attraversa un
         // confine: e' un helper privato di parsing, e null significa "non interpretabile",
         // che e' l'unico significato possibile. Convertirli in eccezioni farebbe fallire
         // la creazione di una notifica per una data malformata, quando la notifica ha
         // ancora senso senza quel campo.
-        if (data == null || ora == null) {
+        if (data == null || now == null) {
             return null;
         }
         try {
-            return LocalDate.parse(data).atTime(LocalTime.parse(ora));
+            return LocalDate.parse(data).atTime(LocalTime.parse(now));
         } catch (DateTimeParseException e) {
-            logger.warn("Data prenotazione non interpretabile: data={} ora={}", data, ora);
+            logger.warn("Data prenotazione non interpretabile: data={} ora={}", data, now);
             return null;
         }
     }

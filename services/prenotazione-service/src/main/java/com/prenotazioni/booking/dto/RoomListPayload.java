@@ -16,8 +16,8 @@ import java.util.List;
 public class RoomListPayload {
     private List<?> rooms;
     private int totalRooms;
-    private Integer piano;
-    private Integer capienzaMinima;
+    private Integer floor;
+    private Integer minCapacity;
     private String type;
     private String suggestion;
     private Integer maxCapacityFound;
@@ -29,8 +29,8 @@ public class RoomListPayload {
         return p;
     }
 
-    public RoomListPayload withPiano(int piano) { this.piano = piano; return this; }
-    public RoomListPayload withCapienzaMinima(int capienzaMinima) { this.capienzaMinima = capienzaMinima; return this; }
+    public RoomListPayload withPiano(int floor) { this.floor = floor; return this; }
+    public RoomListPayload withMinCapacity(int minCapacity) { this.minCapacity = minCapacity; return this; }
     public RoomListPayload withType(String type) { this.type = type; return this; }
     public RoomListPayload withSuggestion(String suggestion) { this.suggestion = suggestion; return this; }
     public RoomListPayload withMaxCapacityFound(int maxCapacityFound) { this.maxCapacityFound = maxCapacityFound; return this; }

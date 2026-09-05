@@ -46,7 +46,7 @@ public class InternalBookingController {
     @Transactional
     public ResponseEntity<MessageResponse> deleteUserBookings(@PathVariable("userId") Long userId) {
         logger.info("Eliminazione prenotazioni dell'utenteId={} su richiesta del servizio utenti", userId);
-        bookingRepository.deleteByUtenteId(userId);
+        bookingRepository.deleteByUserId(userId);
         return ResponseEntity.ok(new MessageResponse("Prenotazioni dell'utente eliminate"));
     }
 }

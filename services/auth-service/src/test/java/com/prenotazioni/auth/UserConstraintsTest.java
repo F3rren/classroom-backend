@@ -71,7 +71,7 @@ class UserConstraintsTest {
                 "SELECT con.conname FROM pg_constraint con JOIN pg_class rel ON rel.oid = con.conrelid "
                         + "WHERE rel.relname = 'utenti' AND con.contype = 'c'", String.class);
 
-        assertThat(vincoli).contains("utente_ruolo_check");
+        assertThat(vincoli).contains("user_role_check");
     }
 
     @Test
@@ -80,7 +80,7 @@ class UserConstraintsTest {
         // quindi il vincolo va provato scavalcando il livello applicativo.
         assertThatThrownBy(() -> inserisci("superuser", "SUPERUSER"))
                 .isInstanceOf(DataIntegrityViolationException.class)
-                .hasMessageContaining("utente_ruolo_check");
+                .hasMessageContaining("user_role_check");
     }
 
     @Test
@@ -94,8 +94,8 @@ class UserConstraintsTest {
     @Test
     void ogniValoreDellEnumEAmmessoDalVincolo() {
         for (Role r : Role.values()) {
-            assertThatCode(() -> inserisci("utente-" + r.name().toLowerCase(), r.getValore()))
-                    .as("il valore '%s' dell'enum Ruolo deve essere accettato dal CHECK", r.getValore())
+            assertThatCode(() -> inserisci("utente-" + r.name().toLowerCase(), r.getValue()))
+                    .as("il valore '%s' dell'enum Ruolo deve essere accettato dal CHECK", r.getValue())
                     .doesNotThrowAnyException();
         }
     }

@@ -40,14 +40,14 @@ class GlobalExceptionHandlerUnitTest {
      * Prima si usava AulaRequest, che vive nel modulo applicativo: qui basta un bean locale.
      */
     static class OggettoConCapienza {
-        private Integer capienza;
+        private Integer capacity;
 
-        public Integer getCapienza() {
-            return capienza;
+        public Integer getCapacity() {
+            return capacity;
         }
 
-        public void setCapienza(Integer capienza) {
-            this.capienza = capienza;
+        public void setCapacity(Integer capacity) {
+            this.capacity = capacity;
         }
     }
 
@@ -127,7 +127,7 @@ class GlobalExceptionHandlerUnitTest {
         // produrrebbe un errore globale e getFieldError() tornerebbe null
         BeanPropertyBindingResult binding =
                 new BeanPropertyBindingResult(new OggettoConCapienza(), "oggettoConCapienza");
-        binding.rejectValue("capienza", "Positive", "La capienza deve essere un numero positivo.");
+        binding.rejectValue("capacity", "Positive", "La capienza deve essere un numero positivo.");
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleValidation(
                 new MethodArgumentNotValidException(parametro, binding));

@@ -55,18 +55,18 @@ class MeControllerTest {
         owner.setEmail("me-owner@test.it");
         owner.setUsername("me-owner");
         owner.setPassword(passwordEncoder.encode("owner-password"));
-        owner.setNome("Me Owner");
-        owner.setRuolo(Role.USER);
-        owner.setDataRegistrazione(LocalDateTime.now());
+        owner.setName("Me Owner");
+        owner.setRole(Role.USER);
+        owner.setRegisteredAt(LocalDateTime.now());
         userRepository.save(owner);
 
         other = new User();
         other.setEmail("me-other@test.it");
         other.setUsername("me-other");
         other.setPassword(passwordEncoder.encode("other-password"));
-        other.setNome("Me Other");
-        other.setRuolo(Role.USER);
-        other.setDataRegistrazione(LocalDateTime.now());
+        other.setName("Me Other");
+        other.setRole(Role.USER);
+        other.setRegisteredAt(LocalDateTime.now());
         userRepository.save(other);
 
         tokenOwner = login("me-owner@test.it", "owner-password");

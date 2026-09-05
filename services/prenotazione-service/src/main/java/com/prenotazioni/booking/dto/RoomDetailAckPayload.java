@@ -15,8 +15,8 @@ public class RoomDetailAckPayload {
     public RoomDetailAckPayload(Room room) {
         this.room = room;
         this.roomId = room.getId();
-        this.roomName = room.getNome();
-        this.floor = room.getPiano();
-        this.capacity = room.getCapienza();
+        this.roomName = room.getName();
+        this.floor = room.getFloor();
+        this.capacity = room.getCapacity();
     }
 }

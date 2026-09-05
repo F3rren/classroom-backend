@@ -39,8 +39,8 @@ public final class TestJwt {
     }
 
     /** Token per un utente di cui conta il nome: finisce nei dettagli aula. */
-    public static String perUtente(Long id, String email, String nome) {
-        return firma(id, email, nome, "user");
+    public static String perUtente(Long id, String email, String name) {
+        return firma(id, email, name, "user");
     }
 
     /** Token per un amministratore. */
@@ -53,7 +53,7 @@ public final class TestJwt {
         return costruisci(id, email, nomeDa(email), "user", new Date(System.currentTimeMillis() - DURATA_MS));
     }
 
-    /** Token senza il claim "nome": simula un token emesso prima che venisse introdotto. */
+    /** Token senza il claim "name": simula un token emesso prima che venisse introdotto. */
     public static String senzaNome(Long id, String email) {
         return costruisci(id, email, null, "user", new Date(System.currentTimeMillis() + DURATA_MS));
     }
@@ -62,18 +62,18 @@ public final class TestJwt {
         return email == null ? null : email.split("@")[0];
     }
 
-    private static String firma(Long id, String email, String nome, String role) {
-        return costruisci(id, email, nome, role, new Date(System.currentTimeMillis() + DURATA_MS));
+    private static String firma(Long id, String email, String name, String role) {
+        return costruisci(id, email, name, role, new Date(System.currentTimeMillis() + DURATA_MS));
     }
 
-    private static String costruisci(Long id, String email, String nome, String role, Date scadenza) {
+    private static String costruisci(Long id, String email, String name, String role, Date scadenza) {
         SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(SEGRETO_DI_TEST));
         return Jwts.builder()
                 .subject(email)
                 .claim("id", id)
-                .claim("nome", nome)
-                .claim("username", nome == null ? null : nome.toLowerCase().replace(" ", "."))
-                .claim("ruolo", role)
+                .claim("name", name)
+                .claim("username", name == null ? null : name.toLowerCase().replace(" ", "."))
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(scadenza)
                 .signWith(key)

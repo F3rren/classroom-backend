@@ -15,7 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -69,9 +68,9 @@ class AuthControllerUnitTest {
         u.setId(1L);
         u.setEmail("u@test.it");
         u.setUsername("utente");
-        u.setNome("Utente Test");
-        u.setRuolo(Role.USER);
-        u.setDataRegistrazione(LocalDateTime.now());
+        u.setName("Utente Test");
+        u.setRole(Role.USER);
+        u.setRegisteredAt(LocalDateTime.now());
         return u;
     }
 

@@ -23,14 +23,14 @@ class AppPrincipalUnitTest {
 
     @Test
     void isAdminRecognisesTheRoleWhateverTheCasing() {
-        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Role.ADMIN.getValore()).isAdmin()).isTrue();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Role.ADMIN.getValue()).isAdmin()).isTrue();
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "ADMIN").isAdmin()).isTrue();
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "Admin").isAdmin()).isTrue();
     }
 
     @Test
     void isAdminIsFalseForEveryoneElse() {
-        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Role.USER.getValore()).isAdmin()).isFalse();
+        assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Role.USER.getValue()).isAdmin()).isFalse();
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "superuser").isAdmin()).isFalse();
         // un token senza claim di ruolo non deve promuovere nessuno ad admin
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", null).isAdmin()).isFalse();

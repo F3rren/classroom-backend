@@ -58,12 +58,12 @@ public class EventPublisher {
                         return message;
                     });
             logger.debug("Evento di cancellazione pubblicato per utenteId={}, prenotazioneId={}",
-                    event.utenteId(), event.prenotazioneId());
+                    event.userId(), event.bookingId());
             return true;
         } catch (Exception e) {
             logger.error("Evento di cancellazione NON pubblicato per utenteId={}, prenotazioneId={}: "
                             + "la notifica andra' persa. Causa: {}",
-                    event.utenteId(), event.prenotazioneId(), e.getMessage());
+                    event.userId(), event.bookingId(), e.getMessage());
             return false;
         }
     }

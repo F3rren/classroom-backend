@@ -1,7 +1,6 @@
 package com.prenotazioni.auth.controller;
 
 import com.prenotazioni.config.RequestCorrelationFilter;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.LoginPayload;
 import com.prenotazioni.auth.dto.LoginRequest;
@@ -26,7 +25,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -244,7 +242,7 @@ public class AuthController {
             
             logger.debug("FINE login - Login effettuato con successo | Utente ID: {} | Username: {} | Ruolo: {}", user.getId(), 
                        user.getUsername() != null ? user.getUsername() : "N/A",
-                       user.getRuolo() != null ? user.getRuolo().getValore() : "USER");
+                       user.getRole() != null ? user.getRole().getValue() : "USER");
             
             // Preparazione dati di risposta (senza informazioni sensibili)
             LoginPayload authData = new LoginPayload(token, UserSummaryDto.basic(user), formatTimestamp(LocalDateTime.now()));

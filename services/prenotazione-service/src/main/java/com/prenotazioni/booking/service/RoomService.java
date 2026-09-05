@@ -37,7 +37,7 @@ public class RoomService {
     private static final String SCOPO_PREDEFINITO = "Lezione";
     private static final String MOTIVO_BLOCCO_PREDEFINITO = "Aula bloccata";
     /** Chi risulta autore di un blocco: i blocchi sono per definizione interventi admin. */
-    private static final String BLOCCATA_DA = Role.ADMIN.getValore();
+    private static final String BLOCCATA_DA = Role.ADMIN.getValue();
 
     private final RoomRepository roomRepository;
 
@@ -51,9 +51,9 @@ public class RoomService {
     // Ottieni tutte le aule
     public List<Room> getAllAule() {
         logger.debug("getAllAule - Recupero tutte le aule");
-        List<Room> aule = roomRepository.findAll();
-        logger.debug("getAllAule - Totale aule recuperate: {}", aule.size());
-        return aule;
+        List<Room> rooms = roomRepository.findAll();
+        logger.debug("getAllAule - Totale aule recuperate: {}", rooms.size());
+        return rooms;
     }
 
     // Ottieni una singola aula per ID
@@ -67,12 +67,12 @@ public class RoomService {
     // Crea una nuova aula
     public Room createRoom(RoomRequest request) {
         logger.debug("INIZIO createAula - Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
-                   request.getNome(), request.getCapienza(), request.getPiano(), request.isVirtual());
+                   request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
         
-        if (roomRepository.existsByNomeIgnoreCase(request.getNome())) {
-            logger.debug("FINE createAula - Nome gia' esistente: {}", request.getNome());
+        if (roomRepository.existsByNameIgnoreCase(request.getName())) {
+            logger.debug("FINE createAula - Nome gia' esistente: {}", request.getName());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Aula name already taken: " + request.getNome(),
+                    "Aula name already taken: " + request.getName(),
                     "Esiste gia' un'aula con questo nome.");
         }
         
@@ -83,13 +83,13 @@ public class RoomService {
         // punti in cui la stessa regola poteva divergere.
 
         Room room = new Room();
-        room.setNome(request.getNome().trim());
-        room.setCapienza(request.getCapienza());
-        room.setPiano(request.getPiano());
+        room.setName(request.getName().trim());
+        room.setCapacity(request.getCapacity());
+        room.setFloor(request.getFloor());
         room.setVirtual(request.isVirtual());
 
         logger.debug("Validazioni superate, creazione aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
-                   room.getNome(), room.getCapienza(), room.getPiano(), room.isVirtual());
+                   room.getName(), room.getCapacity(), room.getFloor(), room.isVirtual());
 
         // Nessun try/catch: un errore di salvataggio deve arrivare a GlobalExceptionHandler,
         // che sa tradurlo. Prima veniva ingoiato e restituito come null, e il controller lo
@@ -97,40 +97,40 @@ public class RoomService {
         // falsa quando la causa era il database. Il caso concreto e' la violazione di
         // aule.nome UNIQUE fra due creazioni concorrenti: ora e' un 409, non un 400.
         Room savedAula = roomRepository.save(room);
-        logger.debug("FINE createAula - Aula salvata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
+        logger.debug("FINE createAula - Aula salvata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getName());
         return savedAula;
     }
 
     // Aggiorna un'aula esistente
     public Room updateRoom(Long id, RoomRequest request) {
         logger.debug("INIZIO updateAula - ID: {}, Dati ricevuti: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
-                   id, request.getNome(), request.getCapienza(), request.getPiano(), request.isVirtual());
+                   id, request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
         
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", id));
         logger.debug("Aula esistente trovata - Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
-                   room.getNome(), room.getCapienza(), room.getPiano(), room.isVirtual());
+                   room.getName(), room.getCapacity(), room.getFloor(), room.isVirtual());
 
-        if (roomRepository.existsByNomeIgnoreCaseAndIdNot(request.getNome(), id)) {
-            logger.debug("FINE updateAula - Nome gia' esistente: {}", request.getNome());
+        if (roomRepository.existsByNameIgnoreCaseAndIdNot(request.getName(), id)) {
+            logger.debug("FINE updateAula - Nome gia' esistente: {}", request.getName());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Aula name already taken: " + request.getNome(),
+                    "Aula name already taken: " + request.getName(),
                     "Esiste gia' un'aula con questo nome.");
         }
 
         // Come in createAula: le validazioni le fa @Valid, non questo metodo.
 
-        room.setNome(request.getNome().trim());
-        room.setCapienza(request.getCapienza());
-        room.setPiano(request.getPiano());
+        room.setName(request.getName().trim());
+        room.setCapacity(request.getCapacity());
+        room.setFloor(request.getFloor());
         room.setVirtual(request.isVirtual());
 
         logger.debug("Validazioni superate, aggiornamento aula - Dati finali: Nome: {}, Capienza: {}, Piano: {}, isVirtual: {}", 
-                   room.getNome(), room.getCapienza(), room.getPiano(), room.isVirtual());
+                   room.getName(), room.getCapacity(), room.getFloor(), room.isVirtual());
 
         // Come in createAula: l'errore va lasciato salire fino al gestore globale.
         Room savedAula = roomRepository.save(room);
-        logger.debug("FINE updateAula - Aula aggiornata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getNome());
+        logger.debug("FINE updateAula - Aula aggiornata con successo - ID: {}, Nome: {}", savedAula.getId(), savedAula.getName());
         return savedAula;
     }
 
@@ -151,19 +151,19 @@ public class RoomService {
     }
 
     // Filtra aule per piano
-    public List<Room> getAuleByPiano(int piano) {
-        logger.debug("INIZIO getAuleByPiano - Piano: {}", piano);
-        List<Room> aule = roomRepository.findByPiano(piano);
-        logger.debug("FINE getAuleByPiano - Aule trovate: {}", aule.size());
-        return aule;
+    public List<Room> getAuleByPiano(int floor) {
+        logger.debug("INIZIO getAuleByPiano - Piano: {}", floor);
+        List<Room> rooms = roomRepository.findByFloor(floor);
+        logger.debug("FINE getAuleByPiano - Aule trovate: {}", rooms.size());
+        return rooms;
     }
     
     // Filtra aule per capienza minima
     public List<Room> getAuleByCapienzaMinima(int minCapienza) {
         logger.debug("INIZIO getAuleByCapienzaMinima - Capienza minima: {}", minCapienza);
-        List<Room> aule = roomRepository.findByCapienzaGreaterThanEqual(minCapienza);
-        logger.debug("FINE getAuleByCapienzaMinima - Aule trovate: {}", aule.size());
-        return aule;
+        List<Room> rooms = roomRepository.findByCapacityGreaterThanEqual(minCapienza);
+        logger.debug("FINE getAuleByCapienzaMinima - Aule trovate: {}", rooms.size());
+        return rooms;
     }
 
     // Ottieni i dettagli completi di tutte le aule con informazioni di stato e prenotazioni
@@ -182,7 +182,7 @@ public class RoomService {
                 .orElseThrow(() -> ResourceNotFoundException.perId("Aula", "ROOM_NOT_FOUND", roomId));
 
         RoomDetailsResponse roomDetails = toRoomDetails(
-                room, bookingRepository.findByAulaId(room.getId()), LocalDateTime.now());
+                room, bookingRepository.findByRoomId(room.getId()), LocalDateTime.now());
 
         logger.debug("FINE getRoomWithDetails - Dettagli elaborati per aula: {}", roomId);
         return roomDetails;
@@ -194,24 +194,24 @@ public class RoomService {
     // Ottieni aule fisiche ordinate per piano e nome
     public List<Room> getPhysicalRoomsOrdered() {
         logger.debug("INIZIO getPhysicalRoomsOrdered - Recupero aule fisiche ordinate");
-        List<Room> aule = roomRepository.findPhysicalRoomsOrderByPianoAndNome();
-        logger.debug("FINE getPhysicalRoomsOrdered - Aule fisiche ordinate: {}", aule.size());
-        return aule;
+        List<Room> rooms = roomRepository.findPhysicalRoomsOrderByPianoAndNome();
+        logger.debug("FINE getPhysicalRoomsOrdered - Aule fisiche ordinate: {}", rooms.size());
+        return rooms;
     }
     
     // Ottieni aule virtuali ordinate per nome
     public List<Room> getVirtualRoomsOrdered() {
         logger.debug("INIZIO getVirtualRoomsOrdered - Recupero aule virtuali ordinate");
-        List<Room> aule = roomRepository.findVirtualRoomsOrderByNome();
-        logger.debug("FINE getVirtualRoomsOrdered - Aule virtuali ordinate: {}", aule.size());
-        return aule;
+        List<Room> rooms = roomRepository.findVirtualRoomsOrderByNome();
+        logger.debug("FINE getVirtualRoomsOrdered - Aule virtuali ordinate: {}", rooms.size());
+        return rooms;
     }
     
     // Ottieni i dettagli delle aule fisiche
     public List<RoomDetailsResponse> getPhysicalRoomsWithDetails() {
         logger.debug("INIZIO getPhysicalRoomsWithDetails - Recupero dettagli aule fisiche");
-        List<Room> aule = roomRepository.findByIsVirtual(false);
-        List<RoomDetailsResponse> details = getRoomsDetailsFromList(aule);
+        List<Room> rooms = roomRepository.findByIsVirtual(false);
+        List<RoomDetailsResponse> details = getRoomsDetailsFromList(rooms);
         logger.debug("FINE getPhysicalRoomsWithDetails - Dettagli elaborati: {}", details.size());
         return details;
     }
@@ -219,8 +219,8 @@ public class RoomService {
     // Ottieni i dettagli delle aule virtuali
     public List<RoomDetailsResponse> getVirtualRoomsWithDetails() {
         logger.debug("INIZIO getVirtualRoomsWithDetails - Recupero dettagli aule virtuali");
-        List<Room> aule = roomRepository.findByIsVirtual(true);
-        List<RoomDetailsResponse> details = getRoomsDetailsFromList(aule);
+        List<Room> rooms = roomRepository.findByIsVirtual(true);
+        List<RoomDetailsResponse> details = getRoomsDetailsFromList(rooms);
         logger.debug("FINE getVirtualRoomsWithDetails - Dettagli elaborati: {}", details.size());
         return details;
     }
@@ -242,8 +242,8 @@ public class RoomService {
     }
     
     // Costruisce i dettagli per un elenco di aule gia' selezionato.
-    private List<RoomDetailsResponse> getRoomsDetailsFromList(List<Room> aule) {
-        logger.debug("INIZIO getRoomsDetailsFromList - Elaborazione dettagli per {} aule", aule.size());
+    private List<RoomDetailsResponse> getRoomsDetailsFromList(List<Room> rooms) {
+        logger.debug("INIZIO getRoomsDetailsFromList - Elaborazione dettagli per {} aule", rooms.size());
 
         // Un solo istante per tutte le aule. Prima LocalDateTime.now() veniva invocato
         // dentro il ciclo, quindi aule della stessa risposta potevano essere valutate
@@ -252,14 +252,14 @@ public class RoomService {
 
         // Una query per tutte le aule, non una per aula: prima l'elenco costava 1+N
         // interrogazioni, e con le relazioni EAGER di Prenotazione anche parecchie di piu'.
-        List<Long> roomIds = aule.stream().map(Room::getId).toList();
+        List<Long> roomIds = rooms.stream().map(Room::getId).toList();
         Map<Long, List<Booking>> prenotazioniPerAula = roomIds.isEmpty()
                 ? Map.of()
-                : bookingRepository.findByAulaIdIn(roomIds).stream()
-                        .collect(Collectors.groupingBy(booking -> booking.getAula().getId()));
+                : bookingRepository.findByRoomIdIn(roomIds).stream()
+                        .collect(Collectors.groupingBy(booking -> booking.getRoom().getId()));
 
         List<RoomDetailsResponse> response = new ArrayList<>();
-        for (Room room : aule) {
+        for (Room room : rooms) {
             response.add(toRoomDetails(
                     room, prenotazioniPerAula.getOrDefault(room.getId(), List.of()), adesso));
         }
@@ -279,26 +279,26 @@ public class RoomService {
      * L'istante arriva dal chiamante invece di essere letto qui: rende il metodo
      * deterministico e permette a un elenco di aule di condividere lo stesso "adesso".
      */
-    private RoomDetailsResponse toRoomDetails(Room room, List<Booking> prenotazioni, LocalDateTime adesso) {
+    private RoomDetailsResponse toRoomDetails(Room room, List<Booking> bookings, LocalDateTime adesso) {
         RoomDetailsResponse roomDetails = new RoomDetailsResponse(
-                room.getId(), room.getNome(), room.getPiano(), room.getCapienza(), room.isVirtual());
+                room.getId(), room.getName(), room.getFloor(), room.getCapacity(), room.isVirtual());
 
         RoomAvailability status = RoomAvailability.LIBERA;
         RoomDetailsResponse.CurrentBooking currentBooking = null;
         RoomDetailsResponse.BlockInfo blockInfo = null;
 
         // L'aula e' occupata o bloccata proprio adesso?
-        for (Booking booking : prenotazioni) {
-            if (booking.getInizio().isBefore(adesso) && booking.getFine().isAfter(adesso)) {
-                if (booking.getStato() == BookingStatus.PRENOTATA) {
+        for (Booking booking : bookings) {
+            if (booking.getStartTime().isBefore(adesso) && booking.getEndTime().isAfter(adesso)) {
+                if (booking.getStatus() == BookingStatus.PRENOTATA) {
                     status = RoomAvailability.PRENOTATA;
                     currentBooking = toCurrentBooking(booking);
-                } else if (booking.getStato().isInterventoAdmin()) {
+                } else if (booking.getStatus().isInterventoAdmin()) {
                     status = RoomAvailability.BLOCCATA;
                     blockInfo = new RoomDetailsResponse.BlockInfo(
                         descrizioneOppure(booking, MOTIVO_BLOCCO_PREDEFINITO),
                         BLOCCATA_DA,
-                        booking.getDataCreazione().toLocalDate().format(FORMATO_DATA)
+                        booking.getCreatedAt().toLocalDate().format(FORMATO_DATA)
                     );
                 }
                 break;
@@ -308,9 +308,9 @@ public class RoomService {
         // Se e' libera adesso, guarda se c'e' una prenotazione imminente.
         if (status == RoomAvailability.LIBERA) {
             LocalDateTime finePreavviso = adesso.plusHours(ORE_DI_PREAVVISO);
-            for (Booking booking : prenotazioni) {
-                if (booking.getInizio().isAfter(adesso) && booking.getInizio().isBefore(finePreavviso) &&
-                    booking.getStato() == BookingStatus.PRENOTATA) {
+            for (Booking booking : bookings) {
+                if (booking.getStartTime().isAfter(adesso) && booking.getStartTime().isBefore(finePreavviso) &&
+                    booking.getStatus() == BookingStatus.PRENOTATA) {
                     status = RoomAvailability.PRENOTATA;
                     currentBooking = toCurrentBooking(booking);
                     break;
@@ -319,13 +319,13 @@ public class RoomService {
         }
 
         List<RoomDetailsResponse.BookingInfo> bookingInfos = new ArrayList<>();
-        for (Booking booking : prenotazioni) {
-            if (booking.getStato() == BookingStatus.PRENOTATA) {
+        for (Booking booking : bookings) {
+            if (booking.getStatus() == BookingStatus.PRENOTATA) {
                 bookingInfos.add(new RoomDetailsResponse.BookingInfo(
-                    booking.getInizio().toLocalDate().format(FORMATO_DATA),
-                    booking.getInizio().format(FORMATO_ORA),
-                    booking.getFine().format(FORMATO_ORA),
-                    booking.getUtente().getNome(),
+                    booking.getStartTime().toLocalDate().format(FORMATO_DATA),
+                    booking.getStartTime().format(FORMATO_ORA),
+                    booking.getEndTime().format(FORMATO_ORA),
+                    booking.getUser().getName(),
                     descrizioneOppure(booking, SCOPO_PREDEFINITO)
                 ));
             }
@@ -340,13 +340,13 @@ public class RoomService {
 
     private RoomDetailsResponse.CurrentBooking toCurrentBooking(Booking booking) {
         return new RoomDetailsResponse.CurrentBooking(
-                booking.getUtente().getNome(),
-                booking.getInizio().toLocalDate().format(FORMATO_DATA),
-                booking.getInizio().format(FORMATO_ORA) + "-" + booking.getFine().format(FORMATO_ORA),
+                booking.getUser().getName(),
+                booking.getStartTime().toLocalDate().format(FORMATO_DATA),
+                booking.getStartTime().format(FORMATO_ORA) + "-" + booking.getEndTime().format(FORMATO_ORA),
                 descrizioneOppure(booking, SCOPO_PREDEFINITO));
     }
 
     private static String descrizioneOppure(Booking booking, String predefinita) {
-        return booking.getDescrizione() != null ? booking.getDescrizione() : predefinita;
+        return booking.getDescription() != null ? booking.getDescription() : predefinita;
     }
 }

@@ -6,7 +6,6 @@ import com.prenotazioni.booking.model.Room;
 import com.prenotazioni.booking.model.RoomStatus;
 import com.prenotazioni.booking.model.Booking;
 import com.prenotazioni.booking.model.BookingStatus;
-import com.prenotazioni.model.Role;
 import com.prenotazioni.booking.model.BookingOwner;
 import com.prenotazioni.booking.repository.RoomRepository;
 import com.prenotazioni.booking.repository.BookingRepository;
@@ -83,21 +82,21 @@ class AdminManagementTest {
         utenteNormaleId = ID_UTENTE_NORMALE;
 
         Room room = new Room();
-        room.setNome("Aula Admin");
-        room.setPiano(1);
-        room.setCapienza(25);
+        room.setName("Aula Admin");
+        room.setFloor(1);
+        room.setCapacity(25);
         room.setVirtual(false);
-        room.setStato(RoomStatus.LIBERA);
+        room.setStatus(RoomStatus.LIBERA);
         roomId = roomRepository.save(room).getId();
 
         Booking p = new Booking();
-        p.setAula(room);
-        p.setUtente(new BookingOwner(utenteNormaleId, "user-mgmt", "User Mgmt"));
-        p.setInizio(LocalDateTime.now().plusDays(3).withNano(0));
-        p.setFine(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
-        p.setStato(BookingStatus.PRENOTATA);
-        p.setDescrizione("Prenotazione gestita da admin");
-        p.setDataCreazione(LocalDateTime.now());
+        p.setRoom(room);
+        p.setUser(new BookingOwner(utenteNormaleId, "user-mgmt", "User Mgmt"));
+        p.setStartTime(LocalDateTime.now().plusDays(3).withNano(0));
+        p.setEndTime(LocalDateTime.now().plusDays(3).plusHours(2).withNano(0));
+        p.setStatus(BookingStatus.PRENOTATA);
+        p.setDescription("Prenotazione gestita da admin");
+        p.setCreatedAt(LocalDateTime.now());
         bookingId = bookingRepository.save(p).getId();
 
         tokenAdmin = TestJwt.perAdmin(ID_ADMIN, "admin-mgmt@test.it");
@@ -154,21 +153,21 @@ class AdminManagementTest {
 
     @Test
     void adminUpdatesRoomAndChangeIsPersisted() throws Exception {
-        Map<String, Object> body = Map.of("nome", "Aula Rinominata", "capienza", 42, "piano", 4);
+        Map<String, Object> body = Map.of("name", "Aula Rinominata", "capacity", 42, "floor", 4);
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(dataOf(resp).get("nome")).isEqualTo("Aula Rinominata");
+        assertThat(dataOf(resp).get("name")).isEqualTo("Aula Rinominata");
 
         Room ricaricata = roomRepository.findById(roomId).orElseThrow();
-        assertThat(ricaricata.getNome()).isEqualTo("Aula Rinominata");
-        assertThat(ricaricata.getCapienza()).isEqualTo(42);
+        assertThat(ricaricata.getName()).isEqualTo("Aula Rinominata");
+        assertThat(ricaricata.getCapacity()).isEqualTo(42);
     }
 
     @Test
     void laModificaDiUnAulaRifiutaUnCorpoNonValido() {
         // capienza negativa viola @Positive su AulaRequest
-        Map<String, Object> body = Map.of("nome", "X", "capienza", -5, "piano", 1);
+        Map<String, Object> body = Map.of("name", "X", "capacity", -5, "floor", 1);
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -200,7 +199,7 @@ class AdminManagementTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = dataOf(resp);
-        assertThat(data.keySet()).containsExactlyInAnyOrder("prenotazioni", "statistiche");
+        assertThat(data.keySet()).containsExactlyInAnyOrder("bookings", "statistiche");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> stats = (Map<String, Object>) data.get("statistiche");
@@ -223,7 +222,7 @@ class AdminManagementTest {
 
         // la prenotazione risulta annullata e il proprietario riceve una notifica
         Booking dopo = bookingRepository.findById(bookingId).orElseThrow();
-        assertThat(dopo.getStato()).isEqualTo(BookingStatus.ANNULLATA);
+        assertThat(dopo.getStatus()).isEqualTo(BookingStatus.ANNULLATA);
         verify(eventPublisher).publishCancellation(any(BookingCancelledEvent.class));
     }
 
@@ -241,7 +240,7 @@ class AdminManagementTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         // e la prenotazione NON deve essere stata annullata da una richiesta rifiutata
-        assertThat(bookingRepository.findById(bookingId).orElseThrow().getStato())
+        assertThat(bookingRepository.findById(bookingId).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.PRENOTATA);
     }
 
@@ -305,7 +304,7 @@ class AdminManagementTest {
 
     @Test
     void adminCreateRoomRejectsDuplicateName() throws Exception {
-        Map<String, Object> body = Map.of("nome", "Aula Admin", "capienza", 10, "piano", 1);
+        Map<String, Object> body = Map.of("name", "Aula Admin", "capacity", 10, "floor", 1);
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms", HttpMethod.POST, tokenAdmin, body);
 
@@ -318,7 +317,7 @@ class AdminManagementTest {
 
     @Test
     void laModificaConUnIdNonValidoVieneRifiutata() throws Exception {
-        Map<String, Object> body = Map.of("nome", "Qualsiasi", "capienza", 10, "piano", 1);
+        Map<String, Object> body = Map.of("name", "Qualsiasi", "capacity", 10, "floor", 1);
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, body);
 
@@ -328,7 +327,7 @@ class AdminManagementTest {
 
     @Test
     void laModificaDiUnAulaInesistenteRisponde404() throws Exception {
-        Map<String, Object> body = Map.of("nome", "Inesistente", "capienza", 10, "piano", 1);
+        Map<String, Object> body = Map.of("name", "Inesistente", "capacity", 10, "floor", 1);
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, body);
 

@@ -31,6 +31,6 @@ public class BookingAuthorizationService {
         if (booking == null) {
             return true;
         }
-        return booking.getUtente().getId().equals(principal.id()) || principal.isAdmin();
+        return booking.getUser().getId().equals(principal.id()) || principal.isAdmin();
     }
 }

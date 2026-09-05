@@ -19,7 +19,7 @@ class RoomStatusTest {
     @Test
     void statoAulaKeepsItsOwnLowercaseVocabulary() {
         // aula_stato_check: 4 valori, diversi da quelli della prenotazione
-        assertThat(java.util.Arrays.stream(RoomStatus.values()).map(RoomStatus::getValore))
+        assertThat(java.util.Arrays.stream(RoomStatus.values()).map(RoomStatus::getValue))
                 .containsExactlyInAnyOrder("libera", "occupata", "bloccata", "manutenzione");
     }
 

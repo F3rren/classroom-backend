@@ -46,10 +46,10 @@ class AuthServiceUnitTest {
         u.setId(id);
         u.setEmail(email);
         u.setUsername("utente" + id);
-        u.setNome("Nome " + id);
-        u.setRuolo(Role.USER);
+        u.setName("Nome " + id);
+        u.setRole(Role.USER);
         u.setPassword("hash");
-        u.setDataRegistrazione(LocalDateTime.now());
+        u.setRegisteredAt(LocalDateTime.now());
         return u;
     }
 
@@ -58,8 +58,8 @@ class AuthServiceUnitTest {
         r.setEmail(email);
         r.setUsername(username);
         r.setPassword("password123");
-        r.setNome("Nuovo Utente");
-        r.setRuolo("user"); // DTO di richiesta: resta String, validata da @Pattern
+        r.setName("Nuovo Utente");
+        r.setRole("user"); // DTO di richiesta: resta String, validata da @Pattern
         return r;
     }
 
@@ -68,8 +68,8 @@ class AuthServiceUnitTest {
         r.setEmail(email);
         r.setUsername(username);
         r.setPassword(password);
-        r.setNome("Nome Aggiornato");
-        r.setRuolo("user"); // DTO di richiesta: resta String, validata da @Pattern
+        r.setName("Nome Aggiornato");
+        r.setRole("user"); // DTO di richiesta: resta String, validata da @Pattern
         return r;
     }
 
@@ -95,14 +95,14 @@ class AuthServiceUnitTest {
     @Test
     void loginRiuscitoRegistraLUltimoAccesso() {
         User u = user(1L, "u@test.it");
-        u.setUltimoAccesso(null);
+        u.setLastLogin(null);
         when(userRepository.findByEmail("u@test.it")).thenReturn(u);
         when(passwordEncoder.matches("giusta", "hash")).thenReturn(true);
 
         User loggato = service.login("u@test.it", "giusta");
 
         assertThat(loggato).isSameAs(u);
-        assertThat(u.getUltimoAccesso()).isNotNull();
+        assertThat(u.getLastLogin()).isNotNull();
         verify(userRepository).save(u);
     }
 
@@ -143,7 +143,7 @@ class AuthServiceUnitTest {
         assertThat(created).isNotNull();
         // la password non deve mai essere salvata in chiaro
         assertThat(created.getPassword()).isEqualTo("hash-calcolato");
-        assertThat(created.getDataRegistrazione()).isNotNull();
+        assertThat(created.getRegisteredAt()).isNotNull();
     }
 
     // ==================== getAllUsers ====================
@@ -216,9 +216,9 @@ class AuthServiceUnitTest {
     @Test
     void updateFallsBackToExistingRoleWhenNoneGiven() {
         User esistente = user(1L, "mia@test.it");
-        esistente.setRuolo(Role.ADMIN);
+        esistente.setRole(Role.ADMIN);
         UpdateUserRequest request = modifica("mia@test.it", "mio", "");
-        request.setRuolo(null);
+        request.setRole(null);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(esistente));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(esistente);
@@ -227,6 +227,6 @@ class AuthServiceUnitTest {
 
         service.updateUser(1L, request);
 
-        assertThat(esistente.getRuolo()).isEqualTo(Role.ADMIN);
+        assertThat(esistente.getRole()).isEqualTo(Role.ADMIN);
     }
 }

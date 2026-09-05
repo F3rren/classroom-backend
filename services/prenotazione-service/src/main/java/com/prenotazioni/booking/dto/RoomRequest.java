@@ -14,31 +14,31 @@ import lombok.NoArgsConstructor;
 public class RoomRequest {
     @NotBlank(message = "Il nome dell'aula è obbligatorio.")
     @Schema(description = "Nome univoco dell'aula", example = "Aula Magna")
-    private String nome;
+    private String name;
 
     @Positive(message = "La capienza deve essere un numero positivo.")
     @Schema(description = "Numero massimo di persone, deve essere positivo", example = "120")
-    private int capienza;
+    private int capacity;
 
     @PositiveOrZero(message = "Il piano deve essere un numero non negativo.")
     @Schema(description = "Piano dell'edificio, 0 per il piano terra", example = "1")
-    private int piano;
+    private int floor;
 
     @JsonProperty("isVirtual")
     @Schema(description = "true per le aule virtuali, che non occupano spazio fisico", example = "false")
     private boolean isVirtual = false;
 
-    public RoomRequest(String nome, int capienza, int piano) {
-        this.nome = nome;
-        this.capienza = capienza;
-        this.piano = piano;
+    public RoomRequest(String name, int capacity, int floor) {
+        this.name = name;
+        this.capacity = capacity;
+        this.floor = floor;
         this.isVirtual = false;
     }
 
-    public RoomRequest(String nome, int capienza, int piano, boolean isVirtual) {
-        this.nome = nome;
-        this.capienza = capienza;
-        this.piano = piano;
+    public RoomRequest(String name, int capacity, int floor, boolean isVirtual) {
+        this.name = name;
+        this.capacity = capacity;
+        this.floor = floor;
         this.isVirtual = isVirtual;
     }
 }

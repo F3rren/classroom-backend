@@ -103,15 +103,15 @@ class CancellationMessagingTest {
         // Il consumo e' asincrono: si attende l'effetto invece di dormire un tempo fisso,
         // che sarebbe lento quando va bene e instabile quando va male.
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
-            List<Notification> notifiche = notificationRepository.findAll();
-            assertThat(notifiche).hasSize(1);
+            List<Notification> notifications = notificationRepository.findAll();
+            assertThat(notifications).hasSize(1);
 
-            Notification n = notifiche.get(0);
-            assertThat(n.getUtenteId()).isEqualTo(7L);
-            assertThat(n.getPrenotazioneId()).isEqualTo(42L);
-            assertThat(n.getNomeStanza()).isEqualTo("Aula Magna");
-            assertThat(n.getAdminNome()).isEqualTo("Mario Rossi");
-            assertThat(n.getLetta()).isFalse();
+            Notification n = notifications.get(0);
+            assertThat(n.getUserId()).isEqualTo(7L);
+            assertThat(n.getBookingId()).isEqualTo(42L);
+            assertThat(n.getRoomName()).isEqualTo("Aula Magna");
+            assertThat(n.getAdminName()).isEqualTo("Mario Rossi");
+            assertThat(n.getRead()).isFalse();
         });
     }
 
@@ -156,11 +156,11 @@ class CancellationMessagingTest {
                 11L, 2L, "Aula Y", "Admin", "2026-01-02", "10:00", "12:00", "Motivo"));
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
-            List<Notification> notifiche = notificationRepository.findAll();
-            assertThat(notifiche)
+            List<Notification> notifications = notificationRepository.findAll();
+            assertThat(notifications)
                     .as("solo l'evento valido deve produrre una notifica")
                     .hasSize(1);
-            assertThat(notifiche.get(0).getUtenteId()).isEqualTo(11L);
+            assertThat(notifications.get(0).getUserId()).isEqualTo(11L);
         });
     }
 }

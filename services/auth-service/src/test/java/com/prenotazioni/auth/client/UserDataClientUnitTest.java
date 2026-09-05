@@ -78,7 +78,7 @@ class UserDataClientUnitTest {
         servizioFinto.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICHE)).andRespond(withServerError());
         servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
 
-        assertThat(client.deleteDataOf(7L)).containsExactly("notifiche");
+        assertThat(client.deleteDataOf(7L)).containsExactly("notifications");
         servizioFinto.verify();
     }
 
@@ -91,7 +91,7 @@ class UserDataClientUnitTest {
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
         servizioFinto.expect(requestTo(URI_PRENOTAZIONI)).andRespond(withSuccess());
 
-        assertThat(client.deleteDataOf(7L)).containsExactly("notifiche");
+        assertThat(client.deleteDataOf(7L)).containsExactly("notifications");
         servizioFinto.verify();
     }
 
@@ -106,7 +106,7 @@ class UserDataClientUnitTest {
 
         List<String> failed = client.deleteDataOf(7L);
 
-        assertThat(failed).containsExactly("notifiche", "prenotazioni");
+        assertThat(failed).containsExactly("notifications", "bookings");
         servizioFinto.verify();
     }
 

@@ -85,11 +85,11 @@ public class JwtVerifier {
     }
 
     public String getNomeFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("nome", String.class));
+        return extractClaim(token, claims -> claims.get("name", String.class));
     }
 
     public String getRoleFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("ruolo", String.class));
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     public Long getUserIdFromToken(String token) {

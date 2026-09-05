@@ -8,11 +8,11 @@ import java.util.List;
 /** Risposta non avvolta di GET /api/bookings/future: { prenotazioni, totalPrenotazioni }. */
 @Getter
 public class BookingsListWithTotalPayload {
-    private final List<Booking> prenotazioni;
-    private final int totalPrenotazioni;
+    private final List<Booking> bookings;
+    private final int totalBookings;
 
-    public BookingsListWithTotalPayload(List<Booking> prenotazioni) {
-        this.prenotazioni = prenotazioni;
-        this.totalPrenotazioni = prenotazioni.size();
+    public BookingsListWithTotalPayload(List<Booking> bookings) {
+        this.bookings = bookings;
+        this.totalBookings = bookings.size();
     }
 }
