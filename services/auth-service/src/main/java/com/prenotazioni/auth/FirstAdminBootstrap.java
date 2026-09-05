@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * Crea il primo amministratore su un database utenti vuoto.
  *
  * Esiste per sciogliere un nodo: AdminUtentiController e' annotato @PreAuthorize
- * hasRole('ADMIN') a livello di classe, quindi anche /api/admin/utenti lo richiede. Su un
+ * hasRole('ADMIN') a livello di classe, quindi anche /api/admin/users lo richiede. Su un
  * database appena creato serve un token da amministratore per creare il primo
  * amministratore, e l'unica via d'uscita era una INSERT scritta a mano - da rifare a ogni
  * ambiente nuovo, e con l'hash della password calcolato fuori.
@@ -68,7 +68,7 @@ public class FirstAdminBootstrap implements ApplicationRunner {
             logger.warn("Nessun utente nel database e nessun amministratore iniziale da creare. "
                     + "Valorizzare BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD in .env e "
                     + "riavviare, oppure inserire il primo amministratore a mano: senza, "
-                    + "/api/admin/utenti non e' raggiungibile perche' richiede un token da admin.");
+                    + "/api/admin/users non e' raggiungibile perche' richiede un token da admin.");
             return;
         }
 

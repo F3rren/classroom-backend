@@ -5,7 +5,7 @@ import lombok.Value;
 
 import java.time.LocalDateTime;
 
-/** Risposta non avvolta di GET /api/prenotazioni/stato/{aulaId} (comportamento gia' esistente). */
+/** Risposta non avvolta di GET /api/bookings/status/{aulaId} (comportamento gia' esistente). */
 @Value
 @Schema(description = "Stato di occupazione di un'aula in questo momento")
 public class RoomStatusPayload {

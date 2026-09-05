@@ -22,13 +22,13 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @TestPropertySource(properties = {
         "spring.cloud.gateway.routes[0].id=notifiche-interne-bloccate",
         "spring.cloud.gateway.routes[0].uri=forward:/rotta-non-esposta",
-        "spring.cloud.gateway.routes[0].predicates[0]=Path=/api/notifiche/interne/**",
+        "spring.cloud.gateway.routes[0].predicates[0]=Path=/api/notifications/internal/**",
         "spring.cloud.gateway.routes[1].id=notifiche",
         "spring.cloud.gateway.routes[1].uri=http://localhost:9",
-        "spring.cloud.gateway.routes[1].predicates[0]=Path=/api/notifiche/**",
+        "spring.cloud.gateway.routes[1].predicates[0]=Path=/api/notifications/**",
         "spring.cloud.gateway.routes[2].id=applicazione",
         "spring.cloud.gateway.routes[2].uri=http://localhost:9",
-        "spring.cloud.gateway.routes[2].predicates[0]=Path=/api/auth/**,/api/me/**,/api/rooms/**,/api/prenotazioni/**,/api/admin/**"
+        "spring.cloud.gateway.routes[2].predicates[0]=Path=/api/auth/**,/api/me/**,/api/rooms/**,/api/bookings/**,/api/admin/**"
 })
 class RoutingTest {
 
@@ -40,11 +40,11 @@ class RoutingTest {
         // 404 e non 5xx: la richiesta non e' nemmeno partita verso notifica-service.
         // E' il controllo piu' importante del file: quelle rotte creano notifiche
         // arbitrarie e devono restare una conversazione fra servizi.
-        client.post().uri("/api/notifiche/interne/cancellazione-prenotazione")
+        client.post().uri("/api/notifications/internal/cancellazione-prenotazione")
                 .exchange()
                 .expectStatus().isNotFound();
 
-        client.delete().uri("/api/notifiche/interne/utente/1")
+        client.delete().uri("/api/notifications/internal/user/1")
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -53,14 +53,14 @@ class RoutingTest {
     void lePathPubblicheDelleNotificheVengonoInstradate() {
         // 5xx: il gateway ha deciso di inoltrare e non ha trovato nessuno in ascolto.
         // E' la prova che la rotta e' stata riconosciuta.
-        client.get().uri("/api/notifiche")
+        client.get().uri("/api/notifications")
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
 
     @Test
     void leRottePrincipaliDellApplicazioneVengonoInstradate() {
-        for (String path : new String[]{"/api/rooms", "/api/prenotazioni", "/api/me", "/api/admin/utenti"}) {
+        for (String path : new String[]{"/api/rooms", "/api/bookings", "/api/me", "/api/admin/users"}) {
             client.get().uri(path)
                     .exchange()
                     .expectStatus().is5xxServerError();

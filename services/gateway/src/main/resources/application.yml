@@ -91,19 +91,19 @@ spring:
         - id: notifiche-interne-bloccate
           uri: forward:/rotta-non-esposta
           predicates:
-            - Path=/api/notifiche/interne/**
+            - Path=/api/notifications/internal/**
 
         # Anche le prenotazioni hanno rotte interne fra servizi: auth-service le chiama
         # per cancellare le prenotazioni di un utente rimosso. Stessa regola, stesso ordine.
         - id: prenotazioni-interne-bloccate
           uri: forward:/rotta-non-esposta
           predicates:
-            - Path=/api/prenotazioni/interne/**
+            - Path=/api/bookings/internal/**
 
         - id: notifiche
           uri: ${NOTIFICA_SERVICE_URL:http://localhost:17104}
           predicates:
-            - Path=/api/notifiche/**
+            - Path=/api/notifications/**
 
         # Login, profilo e amministrazione utenti: auth-service.
         - id: autenticazione
@@ -113,13 +113,13 @@ spring:
             # auth-service, copiata dal controller: aggiungerne uno la' senza toccare
             # questa riga lo avrebbe mandato a prenotazione-service, con un 404 e niente
             # che indicasse il perche'. Ora la rotta descrive un confine fra servizi.
-            - Path=/api/auth/**,/api/me/**,/api/admin/utenti,/api/admin/utenti/**
+            - Path=/api/auth/**,/api/me/**,/api/admin/users,/api/admin/users/**
 
         # Aule, prenotazioni e amministrazione delle stesse.
         - id: applicazione
           uri: ${PRENOTAZIONE_SERVICE_URL:http://localhost:17103}
           predicates:
-            - Path=/api/rooms/**,/api/prenotazioni/**,/api/admin/**
+            - Path=/api/rooms/**,/api/bookings/**,/api/admin/**
 
 logging:
   level:

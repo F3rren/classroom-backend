@@ -196,7 +196,7 @@ class AdminManagementTest {
 
     @Test
     void lAdminElencaTutteLePrenotazioniConLeStatistiche() throws Exception {
-        ResponseEntity<String> resp = exchange("/api/admin/prenotazioni", HttpMethod.GET, tokenAdmin, null);
+        ResponseEntity<String> resp = exchange("/api/admin/bookings", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = dataOf(resp);
@@ -213,7 +213,7 @@ class AdminManagementTest {
     @Test
     void adminForceDeletesAnyBookingAndNotifiesOwner() throws Exception {
         ResponseEntity<String> resp = exchange(
-                "/api/admin/prenotazioni/" + bookingId, HttpMethod.DELETE, tokenAdmin,
+                "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
                 Map.of("reason", "Aula richiesta per un esame"));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -236,7 +236,7 @@ class AdminManagementTest {
         String motivoEnorme = "x".repeat(1500);
 
         ResponseEntity<String> resp = exchange(
-                "/api/admin/prenotazioni/" + bookingId, HttpMethod.DELETE, tokenAdmin,
+                "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
                 Map.of("reason", motivoEnorme));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -250,7 +250,7 @@ class AdminManagementTest {
         String motivoLungoMaValido = "y".repeat(400);
 
         ResponseEntity<String> resp = exchange(
-                "/api/admin/prenotazioni/" + bookingId, HttpMethod.DELETE, tokenAdmin,
+                "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
                 Map.of("reason", motivoLungoMaValido));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -262,7 +262,7 @@ class AdminManagementTest {
     void adminForceDeleteWorksWithoutBody() {
         // il corpo con il motivo e' opzionale: senza, si usa un motivo di default
         ResponseEntity<String> resp = exchange(
-                "/api/admin/prenotazioni/" + bookingId, HttpMethod.DELETE, tokenAdmin, null);
+                "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
@@ -270,7 +270,7 @@ class AdminManagementTest {
     @Test
     void adminForceDeleteOnMissingBookingReturns404() {
         ResponseEntity<String> resp = exchange(
-                "/api/admin/prenotazioni/999999", HttpMethod.DELETE, tokenAdmin, null);
+                "/api/admin/bookings/999999", HttpMethod.DELETE, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -284,9 +284,9 @@ class AdminManagementTest {
                 new Chiamata("/api/admin/rooms", HttpMethod.GET),
                 new Chiamata("/api/admin/rooms/" + roomId, HttpMethod.GET),
                 new Chiamata("/api/admin/rooms/" + roomId, HttpMethod.DELETE),
-                new Chiamata("/api/admin/prenotazioni", HttpMethod.GET),
-                new Chiamata("/api/admin/prenotazioni/" + bookingId, HttpMethod.DELETE),
-                // /api/admin/utenti/{id} non e' piu' servito da questo servizio:
+                new Chiamata("/api/admin/bookings", HttpMethod.GET),
+                new Chiamata("/api/admin/bookings/" + bookingId, HttpMethod.DELETE),
+                // /api/admin/users/{id} non e' piu' servito da questo servizio:
                 // la gestione utenti e' passata ad auth-service.
         };
 
@@ -307,7 +307,7 @@ class AdminManagementTest {
     void adminCreateRoomRejectsDuplicateName() throws Exception {
         Map<String, Object> body = Map.of("nome", "Aula Admin", "capienza", 10, "piano", 1);
 
-        ResponseEntity<String> resp = exchange("/api/admin/createrooms", HttpMethod.POST, tokenAdmin, body);
+        ResponseEntity<String> resp = exchange("/api/admin/rooms", HttpMethod.POST, tokenAdmin, body);
 
         // 409 e non piu' 400: un nome gia' preso non e' una richiesta malformata, e il
         // chiamante non la risolve correggendo la sintassi. Il codice dice ora quale dei

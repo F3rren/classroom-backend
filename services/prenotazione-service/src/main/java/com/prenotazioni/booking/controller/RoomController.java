@@ -139,9 +139,9 @@ public class RoomController {
         return ResponseEntity.ok(new RoomWithBookingsPayload(room.get(), dettagliCompleti));
     }
 
-    @GetMapping("/piano/{piano}")
+    @GetMapping("/floor/{floor}")
     @Operation(summary = "Filtra aule per piano")
-    public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByFloor(@PathVariable("piano") int piano) {
+    public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByFloor(@PathVariable("floor") int piano) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getRoomsByFloor - Piano richiesto: {}", piano);
 
@@ -163,9 +163,9 @@ public class RoomController {
         );
     }
 
-    @GetMapping("/capienza")
+    @GetMapping("/capacity")
     @Operation(summary = "Filtra aule per capienza minima")
-    public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByCapacity(@RequestParam("minCapienza") int minCapienza) {
+    public ResponseEntity<ApiEnvelope<RoomListPayload>> getRoomsByCapacity(@RequestParam("minCapacity") int minCapienza) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO getRoomsByCapacity - Capienza minima richiesta: {}", minCapienza);
 

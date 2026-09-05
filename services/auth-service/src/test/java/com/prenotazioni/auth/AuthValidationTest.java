@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * Questi test stavano in ValidationAndAdminTest, nel modulo applicativo, insieme alla
  * validazione di aule e prenotazioni. Con la separazione hanno seguito gli endpoint che
- * verificano: /api/admin/utenti e /api/auth/login appartengono a questo servizio, e da
+ * verificano: /api/admin/users e /api/auth/login appartengono a questo servizio, e da
  * app rispondono 404.
  *
  * I due test sui codici "legacy" del login sono i piu' importanti del file: i controlli su
@@ -110,7 +110,7 @@ class AuthValidationTest {
                 "ruolo", "user");
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         Map<String, Object> responseBody = TestJson.comeMappa(resp.getBody());
@@ -128,7 +128,7 @@ class AuthValidationTest {
                 "ruolo", "user");
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -144,7 +144,7 @@ class AuthValidationTest {
                 "ruolo", "superadmin");
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -160,7 +160,7 @@ class AuthValidationTest {
                 "ruolo", "user");
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(TestJson.comeMappa(resp.getBody()).get("success")).isEqualTo(true);
@@ -172,7 +172,7 @@ class AuthValidationTest {
                 "username", "x", "email", "x@validation.test", "password", "password1234", "nome", "X");
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/utenti", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenUser)), String.class);
+                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenUser)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
@@ -244,7 +244,7 @@ class AuthValidationTest {
                 "ruolo", "user");
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/utenti/" + id, HttpMethod.PUT,
+                "/api/admin/users/" + id, HttpMethod.PUT,
                 new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);

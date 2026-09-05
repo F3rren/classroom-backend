@@ -83,7 +83,7 @@ class InternalNotificationTest {
         notificationRepository.save(new Notification(7L, "Di un altro", "Non toccare", "INFO"));
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/notifiche/interne/utente/" + DESTINATARIO, HttpMethod.DELETE,
+                "/api/notifications/internal/user/" + DESTINATARIO, HttpMethod.DELETE,
                 new HttpEntity<>(headers(TestJwt.perAdmin(1L, "admin@test.it"))), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);

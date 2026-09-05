@@ -82,7 +82,7 @@ class NotificationEndpointsTest {
     @Test
     void nonLetteReturnsOnlyUnreadOfCaller() {
         ResponseEntity<Notification[]> resp = rest.exchange(
-                "/api/notifiche/non-lette", HttpMethod.GET,
+                "/api/notifications/unread", HttpMethod.GET,
                 new HttpEntity<>(bearerHeaders(tokenOwner)), Notification[].class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -92,7 +92,7 @@ class NotificationEndpointsTest {
 
     @Test
     void markAllReadClearsOnlyCallersNotifications() throws Exception {
-        ResponseEntity<String> resp = exchange("/api/notifiche/mark-all-read", HttpMethod.PUT, tokenOwner);
+        ResponseEntity<String> resp = exchange("/api/notifications/mark-all-read", HttpMethod.PUT, tokenOwner);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(TestJson.comeMappa(resp.getBody()).get("message"))
@@ -105,15 +105,15 @@ class NotificationEndpointsTest {
 
     @Test
     void countNonLetteIsZeroAfterMarkAllRead() throws Exception {
-        exchange("/api/notifiche/mark-all-read", HttpMethod.PUT, tokenOwner);
+        exchange("/api/notifications/mark-all-read", HttpMethod.PUT, tokenOwner);
 
-        ResponseEntity<String> resp = exchange("/api/notifiche/count-non-lette", HttpMethod.GET, tokenOwner);
+        ResponseEntity<String> resp = exchange("/api/notifications/unread-count", HttpMethod.GET, tokenOwner);
         assertThat(TestJson.comeMappa(resp.getBody()).get("count")).isEqualTo(0);
     }
 
     @Test
     void deleteReadRemovesOnlyReadNotificationsOfCaller() throws Exception {
-        ResponseEntity<String> resp = exchange("/api/notifiche/read", HttpMethod.DELETE, tokenOwner);
+        ResponseEntity<String> resp = exchange("/api/notifications/read", HttpMethod.DELETE, tokenOwner);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(TestJson.comeMappa(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
@@ -125,8 +125,8 @@ class NotificationEndpointsTest {
 
     @Test
     void deleteReadAfterMarkAllReadEmptiesOwnInbox() {
-        exchange("/api/notifiche/mark-all-read", HttpMethod.PUT, tokenOwner);
-        exchange("/api/notifiche/read", HttpMethod.DELETE, tokenOwner);
+        exchange("/api/notifications/mark-all-read", HttpMethod.PUT, tokenOwner);
+        exchange("/api/notifications/read", HttpMethod.DELETE, tokenOwner);
 
         long rimasteDiOwner = notificationRepository.findAll().stream()
                 .filter(n -> n.getUtenteId().equals(OWNER_ID))
@@ -147,14 +147,14 @@ class NotificationEndpointsTest {
                 .findFirst().orElseThrow().getId();
 
         ResponseEntity<String> resp = exchange(
-                "/api/notifiche/" + idDiOwner + "/mark-read", HttpMethod.PUT, tokenOther);
+                "/api/notifications/" + idDiOwner + "/mark-read", HttpMethod.PUT, tokenOther);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void notificaEndpointsRequireAuthentication() {
-        for (String url : new String[]{"/api/notifiche/non-lette", "/api/notifiche/count-non-lette"}) {
+        for (String url : new String[]{"/api/notifications/unread", "/api/notifications/unread-count"}) {
             ResponseEntity<String> resp = rest.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, String.class);
             assertThat(resp.getStatusCode())
                     .as("endpoint %s senza token", url)

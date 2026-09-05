@@ -168,7 +168,7 @@ Quel «non si può rinominare» è la parte che decide, e vale la pena scriverla
 
 Rinominare `Aula` in `Room` lascerebbe `@Table(name = "aule")` accanto: non uniformerebbe,
 **creerebbe** uno scarto fra il codice e tutto ciò che tocca. La stessa cosa varrebbe per un
-`BookingController` mappato su `/api/prenotazioni`.
+`BookingController` mappato su `/api/bookings`.
 
 `messaggistica/` in `prenotazione-service` e `eventi/` in `notifica-service` sono i due lati
 della stessa coda: chi pubblica e chi ascolta.
@@ -255,7 +255,7 @@ mvn spring-boot:run -pl gateway -am          # 17102
 
 Il gateway non valida i token: instrada e basta. Ogni servizio verifica il JWT da sé, così
 resta protetto anche se raggiunto direttamente. Il gateway chiude però dall'esterno le
-rotte `/api/notifiche/interne/**`, che sono chiamate fra servizi.
+rotte `/api/notifications/internal/**`, che sono chiamate fra servizi.
 
 Prima del primo avvio serve il suo database (vuoto: lo schema lo crea Flyway):
 
@@ -308,10 +308,10 @@ La differenza si vede meglio guardando cosa diventerebbero quelle rotte in prope
 ```properties
 spring.cloud.gateway.routes[3].id=autenticazione
 spring.cloud.gateway.routes[3].uri=${AUTH_SERVICE_URL:http://localhost:17105}
-spring.cloud.gateway.routes[3].predicates[0]=Path=/api/auth/**,/api/admin/utenti/**
+spring.cloud.gateway.routes[3].predicates[0]=Path=/api/auth/**,/api/admin/users/**
 ```
 
-L'ordine delle rotte non e' decorativo: e' cio' che manda `/api/admin/utenti` ad
+L'ordine delle rotte non e' decorativo: e' cio' che manda `/api/admin/users` ad
 auth-service invece che a prenotazione-service, perche' entrambe le rotte accettano quel
 percorso e vince la prima. Scritto in properties, quell'ordine vive negli **indici**, e
 inserire una rotta a meta' vuol dire rinumerare tutte quelle sotto. Sbagliare la
@@ -400,7 +400,7 @@ Dal browser alla riga di database, con i punti in cui qualcosa può fermarla:
 
 ```
   browser
-     |  POST /api/prenotazioni      Authorization: Bearer <token>
+     |  POST /api/bookings      Authorization: Bearer <token>
      v
   gateway :17102 ------------------------------------------------ l'unica porta pubblicata
      |  1. EdgeCorrelationFilter conia X-Request-Id (o riusa quello ricevuto)
@@ -587,7 +587,7 @@ prenotazione è già stata cancellata.
 
 ## Il primo amministratore
 
-Su un database utenti vuoto `/api/admin/utenti` non è raggiungibile: richiede già un
+Su un database utenti vuoto `/api/admin/users` non è raggiungibile: richiede già un
 token con ruolo `ADMIN`. Non è una conseguenza della separazione — il monolite aveva lo
 stesso vincolo — ma su database nuovi si incontra subito, e prima si usciva dal cerchio
 solo con una `INSERT` a mano e un hash BCrypt calcolato fuori.

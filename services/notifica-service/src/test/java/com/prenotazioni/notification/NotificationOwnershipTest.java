@@ -69,7 +69,7 @@ class NotificationOwnershipTest {
     @Test
     void ownerSeesTheirOwnNotifications() {
         ResponseEntity<Notification[]> resp = rest.exchange(
-                "/api/notifiche", HttpMethod.GET, new HttpEntity<>(bearer(tokenOwner)), Notification[].class);
+                "/api/notifications", HttpMethod.GET, new HttpEntity<>(bearer(tokenOwner)), Notification[].class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).hasSize(1);
@@ -79,7 +79,7 @@ class NotificationOwnershipTest {
     @Test
     void otherUserDoesNotSeeOwnersNotifications() {
         ResponseEntity<Notification[]> resp = rest.exchange(
-                "/api/notifiche", HttpMethod.GET, new HttpEntity<>(bearer(tokenOther)), Notification[].class);
+                "/api/notifications", HttpMethod.GET, new HttpEntity<>(bearer(tokenOther)), Notification[].class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).isEmpty();
@@ -88,7 +88,7 @@ class NotificationOwnershipTest {
     @Test
     void otherUserCannotDeleteOwnersNotification() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/notifiche/" + notificaIdDiOwner, HttpMethod.DELETE,
+                "/api/notifications/" + notificaIdDiOwner, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -98,7 +98,7 @@ class NotificationOwnershipTest {
     @Test
     void ownerCanMarkTheirOwnNotificationAsRead() {
         ResponseEntity<Notification> resp = rest.exchange(
-                "/api/notifiche/" + notificaIdDiOwner + "/mark-read", HttpMethod.PUT,
+                "/api/notifications/" + notificaIdDiOwner + "/mark-read", HttpMethod.PUT,
                 new HttpEntity<>(bearer(tokenOwner)), Notification.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -108,7 +108,7 @@ class NotificationOwnershipTest {
     @Test
     void countNonLetteReflectsUnreadNotifications() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/notifiche/count-non-lette", HttpMethod.GET,
+                "/api/notifications/unread-count", HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -123,7 +123,7 @@ class NotificationOwnershipTest {
         String tokenFasullo = tokenOwner.substring(0, tokenOwner.lastIndexOf('.')) + ".firmaSbagliata";
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/notifiche", HttpMethod.GET, new HttpEntity<>(bearer(tokenFasullo)), String.class);
+                "/api/notifications", HttpMethod.GET, new HttpEntity<>(bearer(tokenFasullo)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }

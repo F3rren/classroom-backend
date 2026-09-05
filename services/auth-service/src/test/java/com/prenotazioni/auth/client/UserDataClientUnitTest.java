@@ -33,8 +33,8 @@ class UserDataClientUnitTest {
 
     private static final String NOTIFICHE = "http://notifiche.test";
     private static final String PRENOTAZIONI = "http://prenotazioni.test";
-    private static final String URI_NOTIFICHE = NOTIFICHE + "/api/notifiche/interne/utente/7";
-    private static final String URI_PRENOTAZIONI = PRENOTAZIONI + "/api/prenotazioni/interne/utente/7";
+    private static final String URI_NOTIFICHE = NOTIFICHE + "/api/notifications/internal/user/7";
+    private static final String URI_PRENOTAZIONI = PRENOTAZIONI + "/api/bookings/internal/user/7";
 
     private RestClient.Builder costruttore;
     private MockRestServiceServer servizioFinto;

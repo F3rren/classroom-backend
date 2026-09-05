@@ -124,7 +124,7 @@ class RoomControllerTest {
     @Test
     void leAulePerPianoIncludonoIlCampoPiano() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/rooms/piano/3", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
+                "/api/rooms/floor/3", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = (Map<String, Object>) TestJson.comeMappa(resp.getBody()).get("data");

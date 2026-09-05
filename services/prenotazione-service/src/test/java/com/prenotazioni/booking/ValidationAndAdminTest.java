@@ -76,7 +76,7 @@ class ValidationAndAdminTest {
         Map<String, Object> body = Map.of("nome", "Aula X", "piano", 1, "capienza", -5);
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/createrooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -87,7 +87,7 @@ class ValidationAndAdminTest {
         Map<String, Object> body = Map.of("nome", "  ", "piano", 1, "capienza", 10);
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/createrooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -98,7 +98,7 @@ class ValidationAndAdminTest {
         Map<String, Object> body = Map.of("nome", "Aula Valida", "piano", 2, "capienza", 25);
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/createrooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
@@ -112,7 +112,7 @@ class ValidationAndAdminTest {
                 "fine", LocalDateTime.now().plusDays(1).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/blocca", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+                "/api/bookings/block", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");

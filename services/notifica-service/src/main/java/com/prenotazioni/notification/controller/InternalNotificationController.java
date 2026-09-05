@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  * amministrative, quindi hasRole('ADMIN') e' il controllo corretto e non un ripiego.
  */
 @RestController
-@RequestMapping("/api/notifiche/interne")
+@RequestMapping("/api/notifications/internal")
 @Tag(name = "Notifiche (interne)", description = "Chiamate da altri servizi, non dal frontend")
 public class InternalNotificationController {
 
@@ -59,10 +59,10 @@ public class InternalNotificationController {
      * Se questa fallisce restano notifiche orfane: e' il costo della separazione, e verra'
      * affrontato con un evento quando ci sara' un broker.
      */
-    @DeleteMapping("/utente/{utenteId}")
+    @DeleteMapping("/user/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Elimina tutte le notifiche di un utente")
-    public ResponseEntity<MessageResponse> deleteUserNotifications(@PathVariable("utenteId") Long userId) {
+    public ResponseEntity<MessageResponse> deleteUserNotifications(@PathVariable("userId") Long userId) {
         logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", userId);
         notificationService.deleteAllByUser(userId);
         return ResponseEntity.ok(new MessageResponse("Notifiche dell'utente eliminate"));

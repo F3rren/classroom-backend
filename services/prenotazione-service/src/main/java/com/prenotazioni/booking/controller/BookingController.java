@@ -37,7 +37,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/prenotazioni")
+@RequestMapping("/api/bookings")
 @Tag(name = "Prenotazioni")
 public class BookingController {
 
@@ -87,7 +87,7 @@ public class BookingController {
     }
 
     // Prenota un'aula
-    @PostMapping("/prenota")
+    @PostMapping("/book")
     @Operation(summary = "Prenota un'aula")
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @RequestBody BookingRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
@@ -156,9 +156,9 @@ public class BookingController {
     }
 
     // Modifica una prenotazione esistente
-    @PutMapping("/{prenotazioneId}")
+    @PutMapping("/{bookingId}")
     @Operation(summary = "Modifica una prenotazione esistente (solo proprietario o admin)")
-    public ResponseEntity<ApiEnvelope<BookingAckPayload>> editBooking(@PathVariable("prenotazioneId") Long bookingId,
+    public ResponseEntity<ApiEnvelope<BookingAckPayload>> editBooking(@PathVariable("bookingId") Long bookingId,
                                                  @Valid @RequestBody BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
@@ -226,7 +226,7 @@ public class BookingController {
     }
 
     // Blocca un'aula (solo admin)
-    @PostMapping("/blocca")
+    @PostMapping("/block")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Blocca un'aula per un periodo (solo admin)")
     public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @RequestBody BookingRequest request,
@@ -287,11 +287,11 @@ public class BookingController {
     }
 
     // Verifica disponibilità aula
-    @GetMapping("/disponibilita")
+    @GetMapping("/availability")
     @Operation(summary = "Verifica la disponibilità di un'aula in un periodo")
-    public ResponseEntity<ApiEnvelope<AvailabilityPayload>> checkAvailability(@RequestParam("aulaId") Long roomId,
-                                                   @RequestParam("inizio") String inizio,
-                                                   @RequestParam("fine") String fine) {
+    public ResponseEntity<ApiEnvelope<AvailabilityPayload>> checkAvailability(@RequestParam("roomId") Long roomId,
+                                                   @RequestParam("start") String inizio,
+                                                   @RequestParam("end") String fine) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", roomId, inizio, fine);
 
@@ -345,9 +345,9 @@ public class BookingController {
     // path, Spring li registrava entrambi ma a runtime falliva con "Ambiguous handler
     // methods mapped", quindi ENTRAMBI gli endpoint rispondevano 500. Nessun client
     // funzionante poteva dipendere dal vecchio path, per questo il rename e' sicuro.
-    @GetMapping("/stato-aula/{aulaId}")
+    @GetMapping("/room-status/{roomId}")
     @Operation(summary = "Stato attuale di un'aula")
-    public ResponseEntity<RoomStatusPayload> getRoomStatus(@PathVariable("aulaId") Long roomId) {
+    public ResponseEntity<RoomStatusPayload> getRoomStatus(@PathVariable("roomId") Long roomId) {
         logger.debug("INIZIO getStatoAula - AulaId: {}", roomId);
         String status = bookingService.getRoomStatus(roomId, LocalDateTime.now());
         logger.debug("FINE getStatoAula - AulaId: {}, Stato: {}", roomId, status);
@@ -355,7 +355,7 @@ public class BookingController {
     }
 
     // Lista prenotazioni utente - ESCLUDE automaticamente le prenotazioni annullate
-    @GetMapping("/mie")
+    @GetMapping("/mine")
     @Operation(summary = "Le prenotazioni dell'utente autenticato")
     public ResponseEntity<SingleBookingPayload> getMyBookings(@AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("INIZIO getMiePrenotazioni");
@@ -371,9 +371,9 @@ public class BookingController {
     }
 
     // Annulla prenotazione
-    @DeleteMapping("/{prenotazioneId}")
+    @DeleteMapping("/{bookingId}")
     @Operation(summary = "Annulla una prenotazione (solo proprietario o admin)")
-    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("prenotazioneId") Long bookingId,
+    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("bookingId") Long bookingId,
                                                 @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("INIZIO annullaPrenotazione - PrenotazioneId: {}", bookingId);
@@ -479,11 +479,11 @@ public class BookingController {
     }
 
     // Prenotazioni per stato - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
-    @GetMapping("/stato/{stato}")
+    @GetMapping("/status/{status}")
     @Operation(summary = "Elenca le prenotazioni per stato")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingsByStatusPayload.class)))
-    public ResponseEntity<?> getBookingsByStatus(@PathVariable("stato") String status) {
+    public ResponseEntity<?> getBookingsByStatus(@PathVariable("status") String status) {
         logger.debug("INIZIO getPrenotazioniByStato - Stato: {}", status);
         try {
             List<Booking> prenotazioni = bookingService.getBookingsByStatus(status.toLowerCase())

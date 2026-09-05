@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 // esponevano /api/admin e il gateway li separava elencando i percorsi esatti di questo:
 // un elenco copiato da qui, che nessuno teneva allineato. Aggiungere un endpoint lo
 // avrebbe fatto finire in silenzio all'altro servizio, con un 404 senza spiegazione.
-@RequestMapping("/api/admin/utenti")
+@RequestMapping("/api/admin/users")
 @Tag(name = "Amministrazione utenti")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {

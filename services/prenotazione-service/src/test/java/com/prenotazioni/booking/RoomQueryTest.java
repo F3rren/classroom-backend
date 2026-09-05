@@ -85,7 +85,7 @@ class RoomQueryTest {
 
     @Test
     void laCapienzaFiltraLeAuleSopraLaSoglia() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=50");
+        ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=50");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = dataOf(resp);
@@ -97,7 +97,7 @@ class RoomQueryTest {
 
     @Test
     void laCapienzaSenzaRisultatiTornaUnSuggerimento() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=999");
+        ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=999");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = dataOf(resp);
@@ -108,7 +108,7 @@ class RoomQueryTest {
 
     @Test
     void unaCapienzaOltreIlMassimoVieneRifiutata() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=1001");
+        ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=1001");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("CAPACITY_TOO_HIGH");
@@ -116,7 +116,7 @@ class RoomQueryTest {
 
     @Test
     void unaCapienzaNegativaVieneRifiutata() throws Exception {
-        ResponseEntity<String> resp = get("/api/rooms/capienza?minCapienza=-1");
+        ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=-1");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_CAPACITY");
@@ -193,7 +193,7 @@ class RoomQueryTest {
     void gliEndpointDiInterrogazioneAuleRichiedonoAutenticazione() {
         for (String url : new String[]{
                 "/api/rooms/stats", "/api/rooms/virtual", "/api/rooms/detailed",
-                "/api/rooms/capienza?minCapienza=1"}) {
+                "/api/rooms/capacity?minCapacity=1"}) {
             ResponseEntity<String> resp = rest.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, String.class);
             assertThat(resp.getStatusCode())
                     .as("endpoint %s senza token", url)

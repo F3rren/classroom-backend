@@ -5,7 +5,7 @@ import lombok.Getter;
 
 import java.util.List;
 
-/** Risposta non avvolta di GET /api/prenotazioni/{id}/details. */
+/** Risposta non avvolta di GET /api/bookings/{id}/details. */
 @Getter
 public class BookingWithDetailsPayload {
     private final Booking prenotazione;

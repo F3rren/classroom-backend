@@ -29,7 +29,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Copre gli endpoint di sola lettura di /api/prenotazioni finora senza test:
+ * Copre gli endpoint di sola lettura di /api/bookings finora senza test:
  * /mie, /future, /all-details, /disponibilita, /{id}/details e /stato/{...}.
  *
  * Il valore qui non e' solo "risponde 200": ogni test blocca anche l'esatto set di
@@ -103,7 +103,7 @@ class BookingQueryTest {
 
     @Test
     void miePrenotazioniTornaSoloLeProprieSenzaBusta() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/mie");
+        ResponseEntity<String> resp = get("/api/bookings/mine");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -118,13 +118,13 @@ class BookingQueryTest {
         p.setStato(BookingStatus.ANNULLATA);
         bookingRepository.save(p);
 
-        Map<String, Object> body = TestJson.comeMappa(get("/api/prenotazioni/mie").getBody());
+        Map<String, Object> body = TestJson.comeMappa(get("/api/bookings/mine").getBody());
         assertThat((java.util.List<?>) body.get("prenotazioni")).isEmpty();
     }
 
     @Test
     void lePrenotazioniFutureIncludonoIlTotale() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/future");
+        ResponseEntity<String> resp = get("/api/bookings/future");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -136,7 +136,7 @@ class BookingQueryTest {
     void lePrenotazioniFutureNonEspongonoIDatiDelProprietario() {
         // La lista e' visibile a qualunque utente autenticato: il proprietario va
         // ridotto a id/username/nome, mai email o ruolo (sanitizeOwnerForListing).
-        ResponseEntity<String> resp = get("/api/prenotazioni/future");
+        ResponseEntity<String> resp = get("/api/bookings/future");
 
         assertThat(resp.getBody()).doesNotContain("query-user@test.it");
         assertThat(resp.getBody()).doesNotContain("query-password");
@@ -144,7 +144,7 @@ class BookingQueryTest {
 
     @Test
     void ilDettaglioCompletoTornaLaListaTipizzata() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/all-details");
+        ResponseEntity<String> resp = get("/api/bookings/all-details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -154,7 +154,7 @@ class BookingQueryTest {
 
     @Test
     void prenotazioneDetailsByIdReturnsDettagli() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/" + bookingId + "/details");
+        ResponseEntity<String> resp = get("/api/bookings/" + bookingId + "/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -168,7 +168,7 @@ class BookingQueryTest {
         String liberoFine = inizio.plusDays(5).plusHours(1).format(ISO);
 
         ResponseEntity<String> resp = get(
-                "/api/prenotazioni/disponibilita?aulaId=" + roomId + "&inizio=" + libero + "&fine=" + liberoFine);
+                "/api/bookings/availability?roomId=" + roomId + "&start=" + libero + "&end=" + liberoFine);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
@@ -180,8 +180,8 @@ class BookingQueryTest {
     @Test
     void laDisponibilitaSegnalaOccupataUnaFasciaPrenotata() throws Exception {
         ResponseEntity<String> resp = get(
-                "/api/prenotazioni/disponibilita?aulaId=" + roomId
-                        + "&inizio=" + inizio.format(ISO) + "&fine=" + fine.format(ISO));
+                "/api/bookings/availability?roomId=" + roomId
+                        + "&start=" + inizio.format(ISO) + "&end=" + fine.format(ISO));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = castMap(TestJson.comeMappa(resp.getBody()).get("data"));
@@ -192,7 +192,7 @@ class BookingQueryTest {
     @Test
     void laDisponibilitaConUnaDataMalformataRisponde400() throws Exception {
         ResponseEntity<String> resp = get(
-                "/api/prenotazioni/disponibilita?aulaId=" + roomId + "&inizio=non-una-data&fine=nemmeno");
+                "/api/bookings/availability?roomId=" + roomId + "&start=non-una-data&end=nemmeno");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("INVALID_START_DATE");
@@ -206,7 +206,7 @@ class BookingQueryTest {
      */
     @Test
     void statoAulaReturnsRoomStatusPayload() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + roomId);
+        ResponseEntity<String> resp = get("/api/bookings/room-status/" + roomId);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -216,7 +216,7 @@ class BookingQueryTest {
 
     @Test
     void ilFiltroPerStatoTornaSoloLePrenotazioniCorrispondenti() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/stato/prenotata");
+        ResponseEntity<String> resp = get("/api/bookings/status/prenotata");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -227,7 +227,7 @@ class BookingQueryTest {
 
     @Test
     void prenotazioniByStatoWithNoMatchReturnsEmptyList() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/stato/annullata");
+        ResponseEntity<String> resp = get("/api/bookings/status/annullata");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(TestJson.comeMappa(resp.getBody()).get("totalPrenotazioni")).isEqualTo(0);
@@ -236,9 +236,9 @@ class BookingQueryTest {
     @Test
     void gliEndpointDiInterrogazioneRichiedonoAutenticazione() {
         for (String url : new String[]{
-                "/api/prenotazioni/mie",
-                "/api/prenotazioni/future",
-                "/api/prenotazioni/all-details"}) {
+                "/api/bookings/mine",
+                "/api/bookings/future",
+                "/api/bookings/all-details"}) {
             ResponseEntity<String> resp = rest.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, String.class);
             assertThat(resp.getStatusCode())
                     .as("endpoint %s senza token", url)
@@ -258,7 +258,7 @@ class BookingQueryTest {
         // tutta loro, senza "success" ne' "userMessage", con "error" che conteneva una
         // frase invece di un codice. Nessun test lo copriva, ed e' il motivo per cui la
         // divergenza e' sopravvissuta cosi' a lungo.
-        ResponseEntity<String> resp = get("/api/prenotazioni/999999");
+        ResponseEntity<String> resp = get("/api/bookings/999999");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());
@@ -270,7 +270,7 @@ class BookingQueryTest {
 
     @Test
     void ancheIDettagliDiUnaPrenotazioneInesistenteUsanoLaFormaComune() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/999999/details");
+        ResponseEntity<String> resp = get("/api/bookings/999999/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(TestJson.comeMappa(resp.getBody()).get("error")).isEqualTo("PRENOTAZIONE_NOT_FOUND");
@@ -278,7 +278,7 @@ class BookingQueryTest {
 
     @Test
     void unoStatoInesistenteRispondeNellaFormaComuneEDiceQualiSonoAmmessi() throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/stato/inventato");
+        ResponseEntity<String> resp = get("/api/bookings/status/inventato");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         Map<String, Object> body = TestJson.comeMappa(resp.getBody());

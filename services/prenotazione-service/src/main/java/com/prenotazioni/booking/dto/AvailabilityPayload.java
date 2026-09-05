@@ -3,7 +3,7 @@ package com.prenotazioni.booking.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
-/** Risposta di GET /api/prenotazioni/disponibilita. */
+/** Risposta di GET /api/bookings/availability. */
 @Getter
 @Schema(description = "Esito della verifica di disponibilita' di un'aula in un periodo")
 public class AvailabilityPayload {

@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-/** Corpo opzionale per DELETE /api/admin/prenotazioni/{id}: motivo dell'eliminazione forzata. */
+/** Corpo opzionale per DELETE /api/admin/bookings/{id}: motivo dell'eliminazione forzata. */
 @Data
 @Schema(description = "Motivo con cui un amministratore annulla la prenotazione di un altro utente. "
         + "Il corpo e' opzionale: se assente viene usato un motivo predefinito.")

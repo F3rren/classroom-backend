@@ -329,7 +329,7 @@ class BookingServiceUnitTest {
     @Test
     void annullaRifiutaUnBloccoAmministrativo() {
         // I blocchi e le manutenzioni sono roba da admin: si annullano dall'endpoint
-        // admin dedicato, non da DELETE /api/prenotazioni/{id}.
+        // admin dedicato, non da DELETE /api/bookings/{id}.
         Room a = room(10L, RoomStatus.BLOCCATA);
         Booking p = booking(5L, a, user(1L), BookingStatus.BLOCCATA);
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));

@@ -23,9 +23,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * di li' senza che nessuno se ne accorga.
  *
  * Cio' che va tenuto fermo e' soprattutto UN ORDINE. Due servizi diversi espongono
- * /api/admin: auth-service sotto /api/admin/utenti, prenotazione-service tutto il resto.
+ * /api/admin: auth-service sotto /api/admin/users, prenotazione-service tutto il resto.
  * Spring Cloud Gateway valuta le rotte nell'ordine in cui sono dichiarate, quindi quella
- * piu' specifica deve venire prima. Se qualcuno le riordinasse, /api/admin/utenti finirebbe
+ * piu' specifica deve venire prima. Se qualcuno le riordinasse, /api/admin/users finirebbe
  * a prenotazione-service e risponderebbe 404 - senza errori di configurazione, senza log,
  * e senza niente che indichi il perche'.
  */
@@ -60,24 +60,24 @@ class RouteTableTest {
     void gliUtentiAmministrativiVannoAlServizioUtenti() {
         // LA regressione da tenere chiusa: questa rotta e' dichiarata PRIMA di quella
         // generica su /api/admin/**, ed e' l'ordine a farla vincere.
-        assertThat(primaRottaChePrende("/api/admin/utenti")).isEqualTo("autenticazione");
-        assertThat(primaRottaChePrende("/api/admin/utenti/42")).isEqualTo("autenticazione");
+        assertThat(primaRottaChePrende("/api/admin/users")).isEqualTo("autenticazione");
+        assertThat(primaRottaChePrende("/api/admin/users/42")).isEqualTo("autenticazione");
     }
 
     @Test
     void ilRestoDiAdminVaAlServizioPrenotazioni() {
         assertThat(primaRottaChePrende("/api/admin/rooms")).isEqualTo("applicazione");
-        assertThat(primaRottaChePrende("/api/admin/prenotazioni")).isEqualTo("applicazione");
+        assertThat(primaRottaChePrende("/api/admin/bookings")).isEqualTo("applicazione");
     }
 
     @Test
     void soloLOrdineDecideChiRiceveGliUtentiAmministrativi() {
         // Senza questo, i due test sopra potrebbero passare per costruzione: se
-        // /api/admin/utenti corrispondesse a una rotta sola, l'ordine non conterebbe e non
+        // /api/admin/users corrispondesse a una rotta sola, l'ordine non conterebbe e non
         // ci sarebbe niente da tenere fermo. Qui si pretende che ENTRAMBE lo accettino,
         // cosi' l'unica cosa che manda la richiesta al servizio giusto e' la posizione.
         ServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/admin/utenti").build());
+                MockServerHttpRequest.get("/api/admin/users").build());
         List<String> chiLoAccetta = rotte.getRoutes()
                 .filter(r -> Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(exchange)).block()))
                 .map(Route::getId)
@@ -97,8 +97,8 @@ class RouteTableTest {
     void leRotteInterneRestanoFuoriDallaPortata() {
         // Sono chiamate da altri servizi, non dal browser: esporle darebbe a chiunque abbia
         // un token da admin la possibilita' di fabbricare notifiche arbitrarie.
-        assertThat(primaRottaChePrende("/api/notifiche/interne/utente/1")).isEqualTo("notifiche-interne-bloccate");
-        assertThat(primaRottaChePrende("/api/prenotazioni/interne/utente/1")).isEqualTo("prenotazioni-interne-bloccate");
+        assertThat(primaRottaChePrende("/api/notifications/internal/user/1")).isEqualTo("notifiche-interne-bloccate");
+        assertThat(primaRottaChePrende("/api/bookings/internal/user/1")).isEqualTo("prenotazioni-interne-bloccate");
     }
 
     @Test
@@ -107,8 +107,8 @@ class RouteTableTest {
         // chiama, ed e' il modo in cui un endpoint nuovo resta invisibile dopo essere stato
         // scritto e messo in produzione.
         for (String path : new String[]{
-                "/api/auth/login", "/api/me", "/api/rooms", "/api/prenotazioni",
-                "/api/notifiche", "/api/admin/utenti", "/api/admin/rooms"}) {
+                "/api/auth/login", "/api/me", "/api/rooms", "/api/bookings",
+                "/api/notifications", "/api/admin/users", "/api/admin/rooms"}) {
             assertThat(primaRottaChePrende(path))
                     .as("nessuna rotta per %s", path)
                     .isNotNull();

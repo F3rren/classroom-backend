@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/notifiche")
+@RequestMapping("/api/notifications")
 @Tag(name = "Notifiche")
 public class NotificationController {
 
@@ -37,13 +37,13 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotificationsByUser(principal.id()));
     }
 
-    @GetMapping("/non-lette")
+    @GetMapping("/unread")
     @Operation(summary = "Notifiche non lette dell'utente autenticato")
     public ResponseEntity<List<Notification>> getUnreadNotifications(@AuthenticationPrincipal AppPrincipal principal) {
         return ResponseEntity.ok(notificationService.getUnreadNotificationsByUser(principal.id()));
     }
 
-    @GetMapping("/count-non-lette")
+    @GetMapping("/unread-count")
     @Operation(summary = "Conteggio notifiche non lette")
     public ResponseEntity<CountResponse> getUnreadNotificationCount(@AuthenticationPrincipal AppPrincipal principal) {
         Long count = notificationService.getUnreadNotificationCount(principal.id());

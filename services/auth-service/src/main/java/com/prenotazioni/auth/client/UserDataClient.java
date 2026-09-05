@@ -67,10 +67,10 @@ public class UserDataClient {
         List<String> failed = new ArrayList<>();
         // Entrambe le chiamate vengono tentate anche se la prima fallisce: fermarsi
         // lascerebbe piu' roba indietro senza dire di piu' a chi legge l'errore.
-        if (!delete(notifiche, "/api/notifiche/interne/utente/{id}", userId, "notifiche")) {
+        if (!delete(notifiche, "/api/notifications/internal/user/{id}", userId, "notifiche")) {
             failed.add("notifiche");
         }
-        if (!delete(prenotazioni, "/api/prenotazioni/interne/utente/{id}", userId, "prenotazioni")) {
+        if (!delete(prenotazioni, "/api/bookings/internal/user/{id}", userId, "prenotazioni")) {
             failed.add("prenotazioni");
         }
         return failed;

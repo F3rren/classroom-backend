@@ -288,7 +288,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     private String statoDi(Long roomId) throws Exception {
-        ResponseEntity<String> resp = get("/api/prenotazioni/stato-aula/" + roomId);
+        ResponseEntity<String> resp = get("/api/bookings/room-status/" + roomId);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         return (String) TestJson.comeMappa(resp.getBody()).get("stato");
     }

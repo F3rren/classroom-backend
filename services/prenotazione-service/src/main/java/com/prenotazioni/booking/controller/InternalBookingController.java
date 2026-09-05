@@ -22,13 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
  * insieme lo faceva una chiave esterna con ON DELETE, e prima ancora una singola
  * transazione. Ora e' una chiamata di rete, e puo' fallire.
  *
- * Il gateway chiude /api/prenotazioni/interne/** dall'esterno: raggiungerlo richiede di
+ * Il gateway chiude /api/bookings/internal/** dall'esterno: raggiungerlo richiede di
  * parlare direttamente con questo servizio. La protezione non si ferma pero' li',
  * perche' un gateway aggirato non deve bastare: serve comunque un token con ruolo ADMIN,
  * verificato qui come su qualunque altro endpoint.
  */
 @RestController
-@RequestMapping("/api/prenotazioni/interne")
+@RequestMapping("/api/bookings/internal")
 @Tag(name = "Prenotazioni (interne)", description = "Chiamate da altri servizi, non dal frontend")
 @PreAuthorize("hasRole('ADMIN')")
 public class InternalBookingController {
@@ -41,10 +41,10 @@ public class InternalBookingController {
         this.bookingRepository = bookingRepository;
     }
 
-    @DeleteMapping("/utente/{utenteId}")
+    @DeleteMapping("/user/{userId}")
     @Operation(summary = "Elimina le prenotazioni di un utente che sta per essere rimosso")
     @Transactional
-    public ResponseEntity<MessageResponse> deleteUserBookings(@PathVariable("utenteId") Long userId) {
+    public ResponseEntity<MessageResponse> deleteUserBookings(@PathVariable("userId") Long userId) {
         logger.info("Eliminazione prenotazioni dell'utenteId={} su richiesta del servizio utenti", userId);
         bookingRepository.deleteByUtenteId(userId);
         return ResponseEntity.ok(new MessageResponse("Prenotazioni dell'utente eliminate"));

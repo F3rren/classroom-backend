@@ -29,7 +29,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Regression suite per il fix IDOR/leak-password su /api/prenotazioni.
+ * Regression suite per il fix IDOR/leak-password su /api/bookings.
  * Owner (A) crea una prenotazione; Other (B), senza alcun rapporto con essa,
  * non deve poterla leggere ne' vederne la password in chiaro.
  */
@@ -105,7 +105,7 @@ class BookingControllerTest {
     @Test
     void otherUserCannotReadOwnersBooking() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/" + prenotazioneIdDiOwner,
+                "/api/bookings/" + prenotazioneIdDiOwner,
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOther)),
                 String.class);
@@ -117,7 +117,7 @@ class BookingControllerTest {
     @Test
     void otherUserCannotReadOwnersBookingDetails() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/" + prenotazioneIdDiOwner + "/details",
+                "/api/bookings/" + prenotazioneIdDiOwner + "/details",
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOther)),
                 String.class);
@@ -128,7 +128,7 @@ class BookingControllerTest {
     @Test
     void ilProprietarioPuoLeggereLaPropriaPrenotazione() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/" + prenotazioneIdDiOwner,
+                "/api/bookings/" + prenotazioneIdDiOwner,
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOwner)),
                 String.class);
@@ -140,7 +140,7 @@ class BookingControllerTest {
     @Test
     void passwordIsNeverSerializedInAnyPrenotazioneResponse() {
         ResponseEntity<String> ownerView = rest.exchange(
-                "/api/prenotazioni/" + prenotazioneIdDiOwner,
+                "/api/bookings/" + prenotazioneIdDiOwner,
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOwner)),
                 String.class);
@@ -148,7 +148,7 @@ class BookingControllerTest {
         assertThat(ownerView.getBody()).doesNotContain("\"password\"");
 
         ResponseEntity<String> listView = rest.exchange(
-                "/api/prenotazioni",
+                "/api/bookings",
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOther)),
                 String.class);
@@ -159,7 +159,7 @@ class BookingControllerTest {
     @Test
     void listEndpointHidesOwnerPiiFromOtherAuthenticatedUsers() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni",
+                "/api/bookings",
                 HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOther)),
                 String.class);
@@ -184,7 +184,7 @@ class BookingControllerTest {
                 "fine", LocalDateTime.now().plusDays(2).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/prenota",
+                "/api/bookings/book",
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
                 String.class);
@@ -208,7 +208,7 @@ class BookingControllerTest {
                 "fine", LocalDateTime.now().plusDays(2).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/prenota",
+                "/api/bookings/book",
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
                 String.class);
@@ -225,7 +225,7 @@ class BookingControllerTest {
     @Test
     void ilProprietarioPuoAnnullareLaPropriaPrenotazione() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                "/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -235,11 +235,11 @@ class BookingControllerTest {
 
     @Test
     void annullareDueVolteVieneRifiutatoInveceCheRiuscireInSilenzio() throws Exception {
-        rest.exchange("/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+        rest.exchange("/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         ResponseEntity<String> secondo = rest.exchange(
-                "/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                "/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(secondo.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -249,7 +249,7 @@ class BookingControllerTest {
     @Test
     void strangerCannotCancelSomeoneElsesBooking() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
+                "/api/bookings/" + prenotazioneIdDiOwner, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -262,7 +262,7 @@ class BookingControllerTest {
     @Test
     void annullareUnaPrenotazioneInesistenteRisponde404() {
         ResponseEntity<String> resp = rest.exchange(
-                "/api/prenotazioni/999999", HttpMethod.DELETE,
+                "/api/bookings/999999", HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);

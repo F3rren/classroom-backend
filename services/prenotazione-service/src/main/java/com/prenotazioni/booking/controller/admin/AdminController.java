@@ -120,7 +120,7 @@ public class AdminController {
         );
     }
 
-    @PostMapping("/createrooms")
+    @PostMapping("/rooms")
     @Operation(summary = "Crea una nuova aula (solo admin)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> createRoom(@Valid @RequestBody RoomRequest roomRequest) {
         String sessionId = generateSessionId();
@@ -187,7 +187,7 @@ public class AdminController {
 
     // ========== GESTIONE PRENOTAZIONI ADMIN ==========
 
-    @GetMapping("/prenotazioni")
+    @GetMapping("/bookings")
     @Operation(summary = "Elenca tutte le prenotazioni, incluse annullate (solo admin)")
     public ResponseEntity<ApiEnvelope<AdminPrenotazioniPayload>> getAllBookingsForAdmin() {
         String sessionId = generateSessionId();
@@ -210,7 +210,7 @@ public class AdminController {
         );
     }
 
-    @DeleteMapping("/prenotazioni/{id}")
+    @DeleteMapping("/bookings/{id}")
     @Operation(summary = "Elimina forzatamente qualsiasi prenotazione (solo admin)")
     public ResponseEntity<ApiEnvelope<BookingDeletionResponse>> deleteBookingAsAdmin(@PathVariable("id") Long id,
                                                       @AuthenticationPrincipal AppPrincipal principal,

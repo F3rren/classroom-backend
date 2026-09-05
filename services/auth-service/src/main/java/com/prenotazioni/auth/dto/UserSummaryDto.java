@@ -9,7 +9,7 @@ import lombok.Getter;
 
 /**
  * Rappresentazione pubblica di un Utente (mai la password), riusata da GET /api/me,
- * GET /api/admin/utenti e dall'oggetto "user" annidato nella risposta di login.
+ * GET /api/admin/users e dall'oggetto "user" annidato nella risposta di login.
  * dataRegistrazione/ultimoAccesso sono omessi (non null) quando non impostati,
  * cosi' la risposta di login (che oggi non li include) resta identica.
  */
@@ -54,7 +54,7 @@ public class UserSummaryDto {
         return dto;
     }
 
-    /** Usato da GET /api/admin/utenti: sia dataRegistrazione che ultimoAccesso mancanti diventano "" (mai omessi). */
+    /** Usato da GET /api/admin/users: sia dataRegistrazione che ultimoAccesso mancanti diventano "" (mai omessi). */
     public static UserSummaryDto forAdminListing(User utente) {
         UserSummaryDto dto = basic(utente);
         dto.dataRegistrazione = utente.getDataRegistrazione() != null
