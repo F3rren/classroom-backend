@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione.controller;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.prenotazione.service.AulaService;
 import com.prenotazioni.prenotazione.service.PrenotazioneService;
@@ -50,7 +50,7 @@ public class RoomController {
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return CorrelazioneRichiesta.corrente();
+        return RequestCorrelationFilter.corrente();
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String error, String message, String userMessage, String sessionId) {
@@ -94,7 +94,7 @@ public class RoomController {
         if (id == null || id <= 0) {
             logger.warn("FINE getRoomById - ID aula non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
+                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
                                   "L'ID dell'aula deve essere un numero positivo.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -104,7 +104,7 @@ public class RoomController {
         if (aula.isEmpty()) {
             logger.warn("FINE getRoomById - Aula non trovata con ID: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("ROOM_NOT_FOUND", "Aula non trovata",
+                createErrorResponse("ROOM_NOT_FOUND", "Aula not found",
                                   String.format("L'aula con ID %d non esiste nel sistema.", id), sessionId),
                 HttpStatus.NOT_FOUND
             );
@@ -148,7 +148,7 @@ public class RoomController {
         if (piano < 0) {
             logger.warn("FINE getRoomsByFloor - Piano non valido: {}", piano);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_FLOOR", "Piano non valido",
+                createErrorResponse("INVALID_FLOOR", "Invalid floor",
                                   "Il numero del piano deve essere maggiore o uguale a 0.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -172,7 +172,7 @@ public class RoomController {
         if (minCapienza < 0) {
             logger.warn("FINE getRoomsByCapacity - Capienza minima non valida: {}", minCapienza);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_CAPACITY", "Capienza non valida",
+                createErrorResponse("INVALID_CAPACITY", "Invalid capacity",
                                   "La capienza minima deve essere un numero maggiore o uguale a 0.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -180,7 +180,7 @@ public class RoomController {
         if (minCapienza > CAPIENZA_MASSIMA_RICHIEDIBILE) {
             logger.warn("FINE getRoomsByCapacity - Capienza minima troppo alta: {}", minCapienza);
             return new ResponseEntity<>(
-                createErrorResponse("CAPACITY_TOO_HIGH", "Capienza troppo elevata",
+                createErrorResponse("CAPACITY_TOO_HIGH", "Capacity above the allowed maximum",
                                   "La capienza minima richiesta è troppo alta. Inserisci un valore realistico (massimo "
                                   + CAPIENZA_MASSIMA_RICHIEDIBILE + ").", sessionId),
                 HttpStatus.BAD_REQUEST
@@ -229,7 +229,7 @@ public class RoomController {
         if (id == null || id <= 0) {
             logger.warn("FINE getRoomDetailed - ID aula non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
+                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
                                   "L'ID dell'aula deve essere un numero positivo maggiore di 0", sessionId),
                 HttpStatus.BAD_REQUEST
             );

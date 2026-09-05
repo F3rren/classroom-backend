@@ -18,9 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * per ogni classe che la tocca. I test qui sotto fissano i tre comportamenti da cui
  * dipende quella garanzia; se uno si rompe l'identificativo torna a essere decorativo.
  */
-class CorrelazioneRichiestaUnitTest {
+class RequestCorrelationFilterUnitTest {
 
-    private final CorrelazioneRichiesta filtro = new CorrelazioneRichiesta();
+    private final RequestCorrelationFilter filtro = new RequestCorrelationFilter();
 
     @AfterEach
     void pulisci() {
@@ -34,13 +34,13 @@ class CorrelazioneRichiestaUnitTest {
         // genera l'id, i servizi a valle lo ereditano. Se qui se ne generasse uno nuovo,
         // un giro fra gateway e servizio prenotazioni resterebbe impossibile da ricucire.
         MockHttpServletRequest richiesta = new MockHttpServletRequest();
-        richiesta.addHeader(CorrelazioneRichiesta.INTESTAZIONE, "REQ_DALGATEWAY");
+        richiesta.addHeader(RequestCorrelationFilter.INTESTAZIONE, "REQ_DALGATEWAY");
         MockHttpServletResponse risposta = new MockHttpServletResponse();
 
         filtro.doFilter(richiesta, risposta, new MockFilterChain());
 
-        assertThat(richiesta.getAttribute(CorrelazioneRichiesta.ATTRIBUTO)).isEqualTo("REQ_DALGATEWAY");
-        assertThat(risposta.getHeader(CorrelazioneRichiesta.INTESTAZIONE)).isEqualTo("REQ_DALGATEWAY");
+        assertThat(richiesta.getAttribute(RequestCorrelationFilter.ATTRIBUTO)).isEqualTo("REQ_DALGATEWAY");
+        assertThat(risposta.getHeader(RequestCorrelationFilter.INTESTAZIONE)).isEqualTo("REQ_DALGATEWAY");
     }
 
     @Test
@@ -50,11 +50,11 @@ class CorrelazioneRichiestaUnitTest {
 
         filtro.doFilter(richiesta, risposta, new MockFilterChain());
 
-        String id = (String) richiesta.getAttribute(CorrelazioneRichiesta.ATTRIBUTO);
+        String id = (String) richiesta.getAttribute(RequestCorrelationFilter.ATTRIBUTO);
         assertThat(id).isNotBlank();
         // Rimandarlo indietro serve a chi apre una segnalazione: puo' citare l'id anche
         // quando la risposta e' un 204 o un corpo che non lo contiene.
-        assertThat(risposta.getHeader(CorrelazioneRichiesta.INTESTAZIONE)).isEqualTo(id);
+        assertThat(risposta.getHeader(RequestCorrelationFilter.INTESTAZIONE)).isEqualTo(id);
     }
 
     @Test
@@ -69,8 +69,8 @@ class CorrelazioneRichiestaUnitTest {
         FilterChain dentroLaRichiesta = (req, res) -> {
             RequestContextHolder.setRequestAttributes(
                     new ServletRequestAttributes((MockHttpServletRequest) req));
-            letture[0] = CorrelazioneRichiesta.corrente();   // il controller
-            letture[1] = CorrelazioneRichiesta.corrente();   // il gestore degli errori
+            letture[0] = RequestCorrelationFilter.corrente();   // il controller
+            letture[1] = RequestCorrelationFilter.corrente();   // il gestore degli errori
         };
 
         filtro.doFilter(richiesta, new MockHttpServletResponse(), dentroLaRichiesta);
@@ -83,7 +83,7 @@ class CorrelazioneRichiestaUnitTest {
         // Un consumatore di messaggi o un'attivita' pianificata non ha una richiesta.
         // Meglio un identificativo scollegato che un null che finisce nella risposta
         // stampato come la stringa "null".
-        assertThat(CorrelazioneRichiesta.corrente()).isNotBlank();
+        assertThat(RequestCorrelationFilter.corrente()).isNotBlank();
     }
 
     @Test
@@ -91,7 +91,7 @@ class CorrelazioneRichiestaUnitTest {
         // La meta' della catena che non passa da HTTP: un ascoltatore AMQP gira su un
         // thread suo, fuori da qualunque richiesta, e senza questo la notifica creata da
         // un evento comparirebbe nei log scollegata dalla cancellazione che l'ha causata.
-        CorrelazioneRichiesta.applicaAMdc("REQ_DALLEVENTO");
+        RequestCorrelationFilter.applicaAMdc("REQ_DALLEVENTO");
 
         assertThat(MDC.get("requestId")).isEqualTo("REQ_DALLEVENTO");
     }
@@ -100,17 +100,17 @@ class CorrelazioneRichiestaUnitTest {
     void applicaAMdcRipiegaSuUnoGeneratoSeManca() {
         // Un messaggio pubblicato prima che l'intestazione esistesse deve continuare a
         // essere consumato: assente non e' un errore, e "null" nei log sarebbe peggio.
-        CorrelazioneRichiesta.applicaAMdc(null);
+        RequestCorrelationFilter.applicaAMdc(null);
         assertThat(MDC.get("requestId")).isNotBlank().isNotEqualTo("null");
 
-        CorrelazioneRichiesta.applicaAMdc("   ");
+        RequestCorrelationFilter.applicaAMdc("   ");
         assertThat(MDC.get("requestId")).isNotBlank().doesNotContain(" ");
     }
 
     @Test
     void svuotaMdcTogliLIdentificativo() {
-        CorrelazioneRichiesta.applicaAMdc("REQ_QUALCOSA");
-        CorrelazioneRichiesta.svuotaMdc();
+        RequestCorrelationFilter.applicaAMdc("REQ_QUALCOSA");
+        RequestCorrelationFilter.svuotaMdc();
 
         assertThat(MDC.get("requestId")).isNull();
     }

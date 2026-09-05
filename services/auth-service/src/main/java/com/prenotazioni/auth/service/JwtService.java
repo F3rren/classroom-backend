@@ -1,6 +1,6 @@
 package com.prenotazioni.auth.service;
 
-import com.prenotazioni.security.ChiaveJwt;
+import com.prenotazioni.security.JwtKey;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -30,7 +30,7 @@ public class JwtService {
 
     @PostConstruct
     public void init() {
-        this.key = ChiaveJwt.da(secret);
+        this.key = JwtKey.da(secret);
     }
 
     public String generateToken(Utente utente) {

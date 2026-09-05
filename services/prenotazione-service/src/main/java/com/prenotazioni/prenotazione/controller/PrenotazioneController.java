@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione.controller;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.exception.InvalidRequestException;
 import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.dto.*;
@@ -62,7 +62,7 @@ public class PrenotazioneController {
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return CorrelazioneRichiesta.corrente();
+        return RequestCorrelationFilter.corrente();
     }
 
     private String formatTimestamp(LocalDateTime dateTime) {
@@ -101,7 +101,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE prenotaAula - Errore parsing data inizio: '{}'", request.getInizio());
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Formato data di inizio non valido",
+                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -111,7 +111,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE prenotaAula - Errore parsing data fine: '{}'", request.getFine());
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Formato data di fine non valido",
+                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -120,7 +120,7 @@ public class PrenotazioneController {
         if (fine.isBefore(inizio)) {
             logger.warn("FINE prenotaAula - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Range temporale non valido",
+                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -128,7 +128,7 @@ public class PrenotazioneController {
         if (inizio.isBefore(LocalDateTime.now())) {
             logger.warn("FINE prenotaAula - Tentativo di prenotazione nel passato: {}", formatTimestamp(inizio));
             return new ResponseEntity<>(
-                createErrorResponse("PAST_DATE", "Data nel passato",
+                createErrorResponse("PAST_DATE", "Date in the past",
                                   "Non puoi prenotare un'aula per una data già trascorsa.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -171,7 +171,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE modificaPrenotazione - Errore parsing data inizio: '{}'", request.getInizio());
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Formato data di inizio non valido",
+                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -181,7 +181,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE modificaPrenotazione - Errore parsing data fine: '{}'", request.getFine());
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Formato data di fine non valido",
+                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -190,7 +190,7 @@ public class PrenotazioneController {
         if (fine.isBefore(inizio)) {
             logger.warn("FINE modificaPrenotazione - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Range temporale non valido",
+                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -198,7 +198,7 @@ public class PrenotazioneController {
         if (inizio.isBefore(LocalDateTime.now())) {
             logger.warn("FINE modificaPrenotazione - Tentativo di modifica con data nel passato: {}", formatTimestamp(inizio));
             return new ResponseEntity<>(
-                createErrorResponse("PAST_DATE", "Data nel passato",
+                createErrorResponse("PAST_DATE", "Date in the past",
                                   "Non puoi modificare una prenotazione per una data già trascorsa.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -241,7 +241,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE bloccaAula - Errore parsing data inizio: '{}'", request.getInizio());
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Formato data di inizio non valido",
+                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -251,7 +251,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE bloccaAula - Errore parsing data fine: '{}'", request.getFine());
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Formato data di fine non valido",
+                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -260,7 +260,7 @@ public class PrenotazioneController {
         if (fine.isBefore(inizio)) {
             logger.warn("FINE bloccaAula - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Range temporale non valido",
+                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -302,7 +302,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE verificaDisponibilita - Errore parsing data inizio: '{}'", inizio);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Formato data di inizio non valido",
+                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -312,7 +312,7 @@ public class PrenotazioneController {
         } catch (DateTimeParseException e) {
             logger.warn("FINE verificaDisponibilita - Errore parsing data fine: '{}'", fine);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Formato data di fine non valido",
+                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -321,7 +321,7 @@ public class PrenotazioneController {
         if (fineDateTime.isBefore(inizioDateTime)) {
             logger.warn("FINE verificaDisponibilita - Data fine precedente alla data inizio");
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Range temporale non valido",
+                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -498,8 +498,8 @@ public class PrenotazioneController {
             // scritto a mano: la versione scritta a mano si sarebbe scollata al primo
             // valore aggiunto, e nessuno se ne sarebbe accorto.
             throw new InvalidRequestException("INVALID_STATE",
-                    "Stato non valido: " + stato
-                            + ". Ammessi: " + java.util.Arrays.stream(StatoPrenotazione.values())
+                    "Invalid state: " + stato
+                            + ". Allowed: " + java.util.Arrays.stream(StatoPrenotazione.values())
                             .map(StatoPrenotazione::getValore).collect(Collectors.joining(", ")),
                     "Stato non riconosciuto. Ammessi: " + java.util.Arrays.stream(StatoPrenotazione.values())
                             .map(StatoPrenotazione::getValore).collect(Collectors.joining(", ")));

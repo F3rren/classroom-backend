@@ -33,9 +33,9 @@ import org.springframework.stereotype.Component;
  * seconda strada per crearne uno che possa divergere dalla prima.
  */
 @Component
-public class AvvioPrimoAdmin implements ApplicationRunner {
+public class FirstAdminBootstrap implements ApplicationRunner {
 
-    private static final Logger logger = LoggerFactory.getLogger(AvvioPrimoAdmin.class);
+    private static final Logger logger = LoggerFactory.getLogger(FirstAdminBootstrap.class);
 
     private final IUtenteRepository utenteRepository;
     private final AuthService authService;
@@ -43,7 +43,7 @@ public class AvvioPrimoAdmin implements ApplicationRunner {
     private final String password;
     private final String nome;
 
-    AvvioPrimoAdmin(IUtenteRepository utenteRepository,
+    FirstAdminBootstrap(IUtenteRepository utenteRepository,
                     AuthService authService,
                     @Value("${BOOTSTRAP_ADMIN_EMAIL:}") String email,
                     @Value("${BOOTSTRAP_ADMIN_PASSWORD:}") String password,

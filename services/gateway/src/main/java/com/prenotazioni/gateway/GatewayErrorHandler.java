@@ -45,16 +45,16 @@ import java.util.Map;
  */
 @Component
 @Order(-2)
-public class GestoreErroriGateway implements ErrorWebExceptionHandler {
+public class GatewayErrorHandler implements ErrorWebExceptionHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(GestoreErroriGateway.class);
+    private static final Logger logger = LoggerFactory.getLogger(GatewayErrorHandler.class);
 
     /** Lo stesso formato usato da util.Timestamps nei servizi, non l'ISO di Spring. */
     private static final DateTimeFormatter FORMATO_API = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ObjectMapper objectMapper;
 
-    GestoreErroriGateway(ObjectMapper objectMapper) {
+    GatewayErrorHandler(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
@@ -67,14 +67,14 @@ public class GestoreErroriGateway implements ErrorWebExceptionHandler {
         }
 
         Esito esito = classifica(errore);
-        // L'id lo conia CorrelazioneAlBordo all'ingresso, e i servizi a valle lo riusano:
+        // L'id lo conia EdgeCorrelationFilter all'ingresso, e i servizi a valle lo riusano:
         // un 503 mostrato qui porta cosi' la stessa chiave che l'utente vedrebbe se la
         // richiesta fosse arrivata a destinazione. Il ripiego copre i casi in cui si
         // fallisce prima ancora di entrare in quel filtro.
-        String sessionId = CorrelazioneAlBordo.dellaRichiesta(exchange);
+        String sessionId = EdgeCorrelationFilter.dellaRichiesta(exchange);
         // Su un percorso che non corrisponde a nessuna rotta il 404 nasce prima dei
         // GlobalFilter, quindi qui l'intestazione non l'ha ancora scritta nessuno.
-        exchange.getResponse().getHeaders().set(CorrelazioneAlBordo.INTESTAZIONE, sessionId);
+        exchange.getResponse().getHeaders().set(EdgeCorrelationFilter.INTESTAZIONE, sessionId);
 
         // Il percorso e' nel log, non nella risposta: al client non serve e a chi indaga si'.
         logger.error("{} su {} -> {}: {}", esito.codice,

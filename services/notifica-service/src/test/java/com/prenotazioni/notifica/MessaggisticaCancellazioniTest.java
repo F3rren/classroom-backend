@@ -1,7 +1,7 @@
 package com.prenotazioni.notifica;
 
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
-import com.prenotazioni.eventi.TopologiaEventi;
+import com.prenotazioni.eventi.EventTopology;
 import com.prenotazioni.notifica.model.Notifica;
 import com.prenotazioni.notifica.repository.NotificaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -92,7 +92,7 @@ class MessaggisticaCancellazioniTest {
 
     private void pubblica(PrenotazioneCancellataEvento evento) {
         rabbitTemplate.convertAndSend(
-                TopologiaEventi.EXCHANGE, TopologiaEventi.ROUTING_KEY_CANCELLAZIONE, evento);
+                EventTopology.EXCHANGE, EventTopology.ROUTING_KEY_CANCELLAZIONE, evento);
     }
 
     @Test

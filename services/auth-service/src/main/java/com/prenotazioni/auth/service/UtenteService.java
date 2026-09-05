@@ -1,10 +1,10 @@
 package com.prenotazioni.auth.service;
 
 import java.util.List;
-import com.prenotazioni.exception.ServizioNonDisponibileException;
+import com.prenotazioni.exception.ServiceUnavailableException;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.auth.repository.IUtenteRepository;
-import com.prenotazioni.auth.client.DatiUtenteClient;
+import com.prenotazioni.auth.client.UserDataClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -17,11 +17,11 @@ public class UtenteService {
 
     private final IUtenteRepository utenteRepository;
     
-    private final DatiUtenteClient datiUtenteClient;
+    private final UserDataClient userDataClient;
 
-    UtenteService(IUtenteRepository utenteRepository, DatiUtenteClient datiUtenteClient) {
+    UtenteService(IUtenteRepository utenteRepository, UserDataClient userDataClient) {
         this.utenteRepository = utenteRepository;
-        this.datiUtenteClient = datiUtenteClient;
+        this.userDataClient = userDataClient;
     }
 
     public Utente findById(Long id) {
@@ -55,7 +55,7 @@ public class UtenteService {
     public void deleteById(Long id) {
         logger.debug("INIZIO - Eliminazione utente e dati associati per ID: {}", id);
 
-        List<String> nonEliminati = datiUtenteClient.eliminaDatiDi(id);
+        List<String> nonEliminati = userDataClient.eliminaDatiDi(id);
         if (!nonEliminati.isEmpty()) {
             String cosa = String.join(" e ", nonEliminati);
             logger.error("Utente ID {} NON eliminato: {} non si sono potute cancellare. "
@@ -63,8 +63,8 @@ public class UtenteService {
             // 503 e non 500: dice a chi legge che ripetere ha senso, ed e' l'unica cosa che
             // porta a termine la cancellazione. Con "errore interno del server" ripetere non
             // era la conclusione ovvia, e la meta' fatta restava li'.
-            throw new ServizioNonDisponibileException("USER_DELETE_INCOMPLETE",
-                    "Non e' stato possibile eliminare " + cosa + " dell'utente " + id,
+            throw new ServiceUnavailableException("USER_DELETE_INCOMPLETE",
+                    "Could not delete " + cosa + " of utente " + id,
                     "L'utente non e' stato eliminato perche' " + cosa + " non si sono potute "
                             + "rimuovere. Riprova fra qualche istante.");
         }

@@ -1,7 +1,7 @@
 package com.prenotazioni.exception;
 
 import org.springframework.web.servlet.NoHandlerFoundException;
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.dto.ApiEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
      * alla stessa chiamata.
      */
     private String newSessionId() {
-        return CorrelazioneRichiesta.corrente();
+        return RequestCorrelationFilter.corrente();
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
                 : "I dati inviati non sono validi.";
         logger.warn("Validazione fallita: {}", ex.getMessage());
         return new ResponseEntity<>(
-                ApiEnvelope.error("VALIDATION_ERROR", "Dati della richiesta non validi", userMessage, sessionId),
+                ApiEnvelope.error("VALIDATION_ERROR", "Request body failed validation", userMessage, sessionId),
                 HttpStatus.BAD_REQUEST
         );
     }
@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
                 : "Accesso negato: privilegi insufficienti per questa operazione.";
         logger.warn("Accesso negato: {}", userMessage);
         return new ResponseEntity<>(
-                ApiEnvelope.error("ACCESS_DENIED", "Accesso negato", userMessage, sessionId),
+                ApiEnvelope.error("ACCESS_DENIED", "Access denied", userMessage, sessionId),
                 HttpStatus.FORBIDDEN
         );
     }
@@ -141,7 +141,7 @@ public class GlobalExceptionHandler {
         String sessionId = newSessionId();
         logger.warn("Vincolo del database violato: {}", ex.getMessage());
         return new ResponseEntity<>(
-                ApiEnvelope.error("CONFLICT", "Conflitto con lo stato attuale dei dati",
+                ApiEnvelope.error("CONFLICT", "Conflict with the current state of the data",
                         "L'operazione non e' andata a buon fine per un conflitto con dati esistenti.", sessionId),
                 HttpStatus.CONFLICT
         );
@@ -163,8 +163,8 @@ public class GlobalExceptionHandler {
      * non e' un difetto di questo servizio, ma la causa va potuta vedere - "non risponde" da
      * solo non distingue una connessione rifiutata da un timeout, e sono due diagnosi diverse.
      */
-    @ExceptionHandler(ServizioNonDisponibileException.class)
-    public ResponseEntity<ApiEnvelope<Void>> handleServizioNonDisponibile(ServizioNonDisponibileException ex) {
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleServizioNonDisponibile(ServiceUnavailableException ex) {
         String sessionId = newSessionId();
         logger.warn("Servizio a valle non disponibile: {}", ex.getMessage(), ex);
         return new ResponseEntity<>(
@@ -178,7 +178,7 @@ public class GlobalExceptionHandler {
         String sessionId = newSessionId();
         logger.debug("Risorsa non trovata: {}", ex.getResourcePath());
         return new ResponseEntity<>(
-                ApiEnvelope.error("NOT_FOUND", "Risorsa non trovata",
+                ApiEnvelope.error("NOT_FOUND", "Resource not found",
                         "L'indirizzo richiesto non esiste.", sessionId),
                 HttpStatus.NOT_FOUND
         );
@@ -202,7 +202,7 @@ public class GlobalExceptionHandler {
         String sessionId = newSessionId();
         logger.debug("Nessun gestore per {} {}", ex.getHttpMethod(), ex.getRequestURL());
         return new ResponseEntity<>(
-                ApiEnvelope.error("NOT_FOUND", "Risorsa non trovata",
+                ApiEnvelope.error("NOT_FOUND", "Resource not found",
                         "L'indirizzo richiesto non esiste.", sessionId),
                 HttpStatus.NOT_FOUND
         );
@@ -213,7 +213,7 @@ public class GlobalExceptionHandler {
         String sessionId = newSessionId();
         logger.error("Errore interno non gestito", ex);
         return new ResponseEntity<>(
-                ApiEnvelope.error("INTERNAL_ERROR", "Errore interno del server",
+                ApiEnvelope.error("INTERNAL_ERROR", "Unhandled internal error",
                         "Si e' verificato un errore imprevisto. Se il problema persiste, contatta il supporto tecnico.", sessionId),
                 HttpStatus.INTERNAL_SERVER_ERROR
         );

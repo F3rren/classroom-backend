@@ -1,8 +1,8 @@
 package com.prenotazioni.prenotazione.messaggistica;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
-import com.prenotazioni.eventi.TopologiaEventi;
+import com.prenotazioni.eventi.EventTopology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -26,13 +26,13 @@ import org.springframework.stereotype.Component;
  * cancellata, e far fallire la risposta all'admin non la farebbe tornare indietro.
  */
 @Component
-public class PubblicatoreEventi {
+public class EventPublisher {
 
-    private static final Logger logger = LoggerFactory.getLogger(PubblicatoreEventi.class);
+    private static final Logger logger = LoggerFactory.getLogger(EventPublisher.class);
 
     private final RabbitTemplate rabbitTemplate;
 
-    PubblicatoreEventi(RabbitTemplate rabbitTemplate) {
+    EventPublisher(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
     }
 
@@ -47,14 +47,14 @@ public class PubblicatoreEventi {
             // del record: il payload e' un contratto fra due servizi, e non va allargato
             // per un dato che serve solo a leggere i log. Cosi' la notifica creata piu'
             // tardi dal consumatore si ricollega alla cancellazione che l'ha causata.
-            String idRichiesta = CorrelazioneRichiesta.corrente();
+            String idRichiesta = RequestCorrelationFilter.corrente();
             rabbitTemplate.convertAndSend(
-                    TopologiaEventi.EXCHANGE,
-                    TopologiaEventi.ROUTING_KEY_CANCELLAZIONE,
+                    EventTopology.EXCHANGE,
+                    EventTopology.ROUTING_KEY_CANCELLAZIONE,
                     evento,
                     messaggio -> {
                         messaggio.getMessageProperties()
-                                .setHeader(CorrelazioneRichiesta.INTESTAZIONE, idRichiesta);
+                                .setHeader(RequestCorrelationFilter.INTESTAZIONE, idRichiesta);
                         return messaggio;
                     });
             logger.debug("Evento di cancellazione pubblicato per utenteId={}, prenotazioneId={}",

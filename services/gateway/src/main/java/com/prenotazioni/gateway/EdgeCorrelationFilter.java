@@ -13,7 +13,7 @@ import java.util.UUID;
  * L'identificativo della richiesta nasce qui, al bordo, e non dentro ogni servizio.
  *
  * I servizi a valle hanno gia' un filtro che riusa l'intestazione X-Request-Id se la
- * trovano (CorrelazioneRichiesta, nel modulo shared) - ma finche' nessuno la manda, ogni
+ * trovano (RequestCorrelationFilter, nel modulo shared) - ma finche' nessuno la manda, ogni
  * servizio se ne genera una propria e una chiamata che attraversa gateway e servizio
  * prenotazioni resta spezzata in due tronconi scollegati nei log. Coniarla qui e' cio' che
  * rende utile quel riuso: da questo punto in avanti tutti parlano della stessa richiesta.
@@ -23,7 +23,7 @@ import java.util.UUID;
  * gia' il suo identificativo da mostrare.
  */
 @Component
-public class CorrelazioneAlBordo implements GlobalFilter, Ordered {
+public class EdgeCorrelationFilter implements GlobalFilter, Ordered {
 
     static final String INTESTAZIONE = "X-Request-Id";
 
@@ -38,7 +38,7 @@ public class CorrelazioneAlBordo implements GlobalFilter, Ordered {
         ServerWebExchange conId = exchange.mutate()
                 .request(r -> r.headers(h -> h.set(INTESTAZIONE, id)))
                 .build();
-        // Anche nell'exchange, cosi' GestoreErroriGateway puo' citarlo quando risponde
+        // Anche nell'exchange, cosi' GatewayErrorHandler puo' citarlo quando risponde
         // al posto di un servizio irraggiungibile.
         conId.getAttributes().put(INTESTAZIONE, id);
         // set() prima di inoltrare non basta: il servizio a valle rimanda a sua volta la

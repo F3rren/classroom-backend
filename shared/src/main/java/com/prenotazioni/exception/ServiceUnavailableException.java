@@ -16,9 +16,9 @@ package com.prenotazioni.exception;
  * un 5xx a valle. Un rifiuto a valle - un 400, un 404 - non e' questo: ripetere darebbe lo
  * stesso esito e l'invito a farlo sarebbe una bugia.
  */
-public class ServizioNonDisponibileException extends ApplicationException {
+public class ServiceUnavailableException extends ApplicationException {
 
-    public ServizioNonDisponibileException(String errorCode, String message, String userMessage) {
+    public ServiceUnavailableException(String errorCode, String message, String userMessage) {
         super(errorCode, message, userMessage);
     }
 }

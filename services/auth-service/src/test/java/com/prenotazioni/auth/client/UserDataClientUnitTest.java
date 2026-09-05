@@ -29,7 +29,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  * secondo colpo spesso funziona; NON si ritenta su un 4xx, perche' e' il servizio a valle che
  * rifiuta e ripetere darebbe lo stesso esito ritardando solo la risposta.
  */
-class DatiUtenteClientUnitTest {
+class UserDataClientUnitTest {
 
     private static final String NOTIFICHE = "http://notifiche.test";
     private static final String PRENOTAZIONI = "http://prenotazioni.test";
@@ -38,7 +38,7 @@ class DatiUtenteClientUnitTest {
 
     private RestClient.Builder costruttore;
     private MockRestServiceServer servizioFinto;
-    private DatiUtenteClient client;
+    private UserDataClient client;
 
     @BeforeEach
     void setUp() {
@@ -46,7 +46,7 @@ class DatiUtenteClientUnitTest {
         servizioFinto = MockRestServiceServer.bindTo(costruttore).build();
         // La richiesta corrente serve solo a inoltrare l'intestazione Authorization: qui non
         // c'e' una richiesta HTTP in corso, e un mock che risponde null va benissimo.
-        client = new DatiUtenteClient(costruttore, NOTIFICHE, PRENOTAZIONI, mock(HttpServletRequest.class));
+        client = new UserDataClient(costruttore, NOTIFICHE, PRENOTAZIONI, mock(HttpServletRequest.class));
     }
 
     @Test

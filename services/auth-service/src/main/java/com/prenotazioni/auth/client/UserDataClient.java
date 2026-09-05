@@ -3,7 +3,7 @@ package com.prenotazioni.auth.client;
 import java.util.List;
 import java.util.ArrayList;
 import org.springframework.web.client.HttpClientErrorException;
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +32,9 @@ import org.springframework.web.client.RestClient;
  * corsia privilegiata fra servizi da proteggere separatamente.
  */
 @Component
-public class DatiUtenteClient {
+public class UserDataClient {
 
-    private static final Logger logger = LoggerFactory.getLogger(DatiUtenteClient.class);
+    private static final Logger logger = LoggerFactory.getLogger(UserDataClient.class);
 
     /** Tre tentativi: il primo, piu' due per i guasti che durano meno di un secondo. */
     private static final int TENTATIVI = 3;
@@ -46,7 +46,7 @@ public class DatiUtenteClient {
     private final RestClient prenotazioni;
     private final HttpServletRequest richiestaCorrente;
 
-    DatiUtenteClient(RestClient.Builder builder,
+    UserDataClient(RestClient.Builder builder,
                      @Value("${prenotazioni.notifica-service.url:http://localhost:17104}") String urlNotifiche,
                      @Value("${prenotazioni.prenotazione-service.url:http://localhost:17103}") String urlPrenotazioni,
                      HttpServletRequest richiestaCorrente) {
@@ -103,7 +103,7 @@ public class DatiUtenteClient {
                         // nuovo, e un'operazione che attraversa tre servizi finisce nei log
                         // sotto tre chiavi diverse. Cioe' la correlazione funzionerebbe
                         // ovunque tranne dove serve.
-                        .header(CorrelazioneRichiesta.INTESTAZIONE, CorrelazioneRichiesta.corrente())
+                        .header(RequestCorrelationFilter.INTESTAZIONE, RequestCorrelationFilter.corrente())
                         .retrieve()
                         .toBodilessEntity();
                 if (tentativo > 1) {

@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * casuali succede circa nell'87% dei casi - funzionava solo perche' il segreto in uso era
  * capitato nel 13% fortunato.
  */
-class ChiaveJwtUnitTest {
+class JwtKeyUnitTest {
 
     /** Stessi 48 byte nelle due codifiche: differiscono solo per '+/' contro '-_'. */
     private static final String STANDARD =
@@ -28,12 +28,12 @@ class ChiaveJwtUnitTest {
     void accettaUnSegretoInBase64Standard() {
         // E' la forma che produce "openssl rand -base64", cioe' quella che chiunque
         // segua la documentazione si ritrova incollata nel file.
-        assertThat(ChiaveJwt.da(STANDARD)).isNotNull();
+        assertThat(JwtKey.da(STANDARD)).isNotNull();
     }
 
     @Test
     void accettaUnSegretoInBase64Url() {
-        assertThat(ChiaveJwt.da(URL_SAFE)).isNotNull();
+        assertThat(JwtKey.da(URL_SAFE)).isNotNull();
     }
 
     @Test
@@ -41,8 +41,8 @@ class ChiaveJwtUnitTest {
         // E' il punto che conta davvero: chi firma e chi verifica possono avere il segreto
         // scritto nelle due forme, e devono comunque ottenere la stessa chiave. Se questa
         // asserzione cadesse, i token risulterebbero non validi senza alcun errore chiaro.
-        SecretKey daStandard = ChiaveJwt.da(STANDARD);
-        SecretKey daUrl = ChiaveJwt.da(URL_SAFE);
+        SecretKey daStandard = JwtKey.da(STANDARD);
+        SecretKey daUrl = JwtKey.da(URL_SAFE);
 
         assertThat(daStandard.getEncoded()).isEqualTo(daUrl.getEncoded());
     }
@@ -51,19 +51,19 @@ class ChiaveJwtUnitTest {
     void ignoraGliSpaziAiBordi() {
         // Un segreto incollato a mano si porta dietro spazi o un a capo piu' spesso di
         // quanto si creda, e il messaggio d'errore non aiuterebbe a capirlo.
-        assertThat(ChiaveJwt.da("  " + STANDARD + "  ").getEncoded())
-                .isEqualTo(ChiaveJwt.da(STANDARD).getEncoded());
+        assertThat(JwtKey.da("  " + STANDARD + "  ").getEncoded())
+                .isEqualTo(JwtKey.da(STANDARD).getEncoded());
     }
 
     @Test
     void unSegretoMancanteDiceCosaImpostare() {
         // Senza questo, un segreto assente arriva come NullPointerException dentro jjwt,
         // che non dice a nessuno quale variabile manchi.
-        assertThatThrownBy(() -> ChiaveJwt.da(null))
+        assertThatThrownBy(() -> JwtKey.da(null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("JWT_SECRET");
 
-        assertThatThrownBy(() -> ChiaveJwt.da("   "))
+        assertThatThrownBy(() -> JwtKey.da("   "))
                 .isInstanceOf(IllegalStateException.class);
     }
 }

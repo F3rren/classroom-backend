@@ -1,6 +1,6 @@
 package com.prenotazioni.auth.controller;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.util.LogSanitizer;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.UserSummaryDto;
@@ -35,7 +35,7 @@ public class MeController {
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return CorrelazioneRichiesta.corrente();
+        return RequestCorrelationFilter.corrente();
     }
 
     @GetMapping
@@ -52,7 +52,7 @@ public class MeController {
         if (utente == null) {
             logger.warn("getMe - nessun utente in database per {}", LogSanitizer.maskEmail(email));
             return new ResponseEntity<>(
-                    ApiEnvelope.error("USER_NOT_FOUND", "Utente non trovato",
+                    ApiEnvelope.error("USER_NOT_FOUND", "Utente not found",
                             "Nessun utente trovato con le tue credenziali. Effettua nuovamente il login.", sessionId),
                     HttpStatus.NOT_FOUND
             );

@@ -4,7 +4,7 @@ import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.retry.MessageRecoverer;
 import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
-import com.prenotazioni.eventi.TopologiaEventi;
+import com.prenotazioni.eventi.EventTopology;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
@@ -27,23 +27,23 @@ import org.springframework.context.annotation.Configuration;
  * al riavvio del broker, cioe' proprio nel momento in cui servirebbe.
  */
 @Configuration
-public class ConfigurazioneCodaNotifiche {
+public class NotificationQueueConfig {
 
     @Bean
     Queue codaCancellazioni() {
-        return new Queue(TopologiaEventi.CODA_NOTIFICHE_CANCELLAZIONE, true);
+        return new Queue(EventTopology.CODA_NOTIFICHE_CANCELLAZIONE, true);
     }
 
     @Bean
     TopicExchange exchangeEventi() {
-        return new TopicExchange(TopologiaEventi.EXCHANGE, true, false);
+        return new TopicExchange(EventTopology.EXCHANGE, true, false);
     }
 
     @Bean
     Binding bindingCancellazioni(Queue codaCancellazioni, TopicExchange exchangeEventi) {
         return BindingBuilder.bind(codaCancellazioni)
                 .to(exchangeEventi)
-                .with(TopologiaEventi.ROUTING_KEY_CANCELLAZIONE);
+                .with(EventTopology.ROUTING_KEY_CANCELLAZIONE);
     }
 
     @Bean
@@ -55,19 +55,19 @@ public class ConfigurazioneCodaNotifiche {
 
     @Bean
     Queue codaErrori() {
-        return new Queue(TopologiaEventi.CODA_ERRORI_CANCELLAZIONE, true);
+        return new Queue(EventTopology.CODA_ERRORI_CANCELLAZIONE, true);
     }
 
     @Bean
     DirectExchange exchangeErrori() {
-        return new DirectExchange(TopologiaEventi.EXCHANGE_ERRORI, true, false);
+        return new DirectExchange(EventTopology.EXCHANGE_ERRORI, true, false);
     }
 
     @Bean
     Binding bindingErrori(Queue codaErrori, DirectExchange exchangeErrori) {
         return BindingBuilder.bind(codaErrori)
                 .to(exchangeErrori)
-                .with(TopologiaEventi.ROUTING_KEY_ERRORI);
+                .with(EventTopology.ROUTING_KEY_ERRORI);
     }
 
     /**
@@ -84,7 +84,7 @@ public class ConfigurazioneCodaNotifiche {
     @Bean
     MessageRecoverer recuperoMessaggiFalliti(RabbitTemplate rabbitTemplate) {
         return new RepublishMessageRecoverer(rabbitTemplate,
-                TopologiaEventi.EXCHANGE_ERRORI,
-                TopologiaEventi.ROUTING_KEY_ERRORI);
+                EventTopology.EXCHANGE_ERRORI,
+                EventTopology.ROUTING_KEY_ERRORI);
     }
 }

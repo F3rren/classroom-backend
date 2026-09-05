@@ -1,9 +1,9 @@
 package com.prenotazioni.notifica.eventi;
 
 import org.springframework.messaging.handler.annotation.Header;
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
-import com.prenotazioni.eventi.TopologiaEventi;
+import com.prenotazioni.eventi.EventTopology;
 import com.prenotazioni.notifica.service.NotificaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,26 +24,26 @@ import org.springframework.stereotype.Component;
  * perche' quello si', al prossimo tentativo puo' andare a buon fine.
  */
 @Component
-public class AscoltatoreCancellazioni {
+public class CancellationListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(AscoltatoreCancellazioni.class);
+    private static final Logger logger = LoggerFactory.getLogger(CancellationListener.class);
 
     private final NotificaService notificaService;
 
-    AscoltatoreCancellazioni(NotificaService notificaService) {
+    CancellationListener(NotificaService notificaService) {
         this.notificaService = notificaService;
     }
 
-    @RabbitListener(queues = TopologiaEventi.CODA_NOTIFICHE_CANCELLAZIONE)
+    @RabbitListener(queues = EventTopology.CODA_NOTIFICHE_CANCELLAZIONE)
     public void suCancellazione(
             PrenotazioneCancellataEvento evento,
-            @Header(name = CorrelazioneRichiesta.INTESTAZIONE, required = false) String idRichiesta) {
+            @Header(name = RequestCorrelationFilter.INTESTAZIONE, required = false) String idRichiesta) {
         // Rimesso in MDC per la durata del trattamento: e' cio' che permette di leggere in
         // fila la richiesta HTTP che ha annullato la prenotazione e la notifica creata qui,
         // che avviene su un altro servizio, un altro thread e qualche istante dopo.
         // required = false perche' un messaggio pubblicato prima di questa modifica, o da
         // un'altra versione, deve continuare a essere consumato.
-        CorrelazioneRichiesta.applicaAMdc(idRichiesta);
+        RequestCorrelationFilter.applicaAMdc(idRichiesta);
         try {
             if (evento == null || evento.utenteId() == null) {
                 // Scartato di proposito: senza destinatario la notifica non ha a chi andare, e
@@ -67,7 +67,7 @@ public class AscoltatoreCancellazioni {
 
             logger.info("Notifica di cancellazione creata da evento per utenteId={}", evento.utenteId());
         } finally {
-            CorrelazioneRichiesta.svuotaMdc();
+            RequestCorrelationFilter.svuotaMdc();
         }
     }
 }

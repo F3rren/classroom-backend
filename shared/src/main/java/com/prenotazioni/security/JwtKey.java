@@ -28,9 +28,9 @@ import javax.crypto.SecretKey;
  * devono derivare la stessa identica chiave dallo stesso segreto. Due normalizzazioni
  * leggermente diverse produrrebbero token che nessuno riesce a validare.
  */
-public final class ChiaveJwt {
+public final class JwtKey {
 
-    private ChiaveJwt() {
+    private JwtKey() {
     }
 
     public static SecretKey da(String segreto) {

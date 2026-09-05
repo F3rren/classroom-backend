@@ -72,7 +72,7 @@ public class AulaService {
         if (aulaRepository.existsByNomeIgnoreCase(request.getNome())) {
             logger.debug("FINE createAula - Nome gia' esistente: {}", request.getNome());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Nome aula gia' esistente: " + request.getNome(),
+                    "Aula name already taken: " + request.getNome(),
                     "Esiste gia' un'aula con questo nome.");
         }
         
@@ -114,7 +114,7 @@ public class AulaService {
         if (aulaRepository.existsByNomeIgnoreCaseAndIdNot(request.getNome(), id)) {
             logger.debug("FINE updateAula - Nome gia' esistente: {}", request.getNome());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Nome aula gia' esistente: " + request.getNome(),
+                    "Aula name already taken: " + request.getNome(),
                     "Esiste gia' un'aula con questo nome.");
         }
 

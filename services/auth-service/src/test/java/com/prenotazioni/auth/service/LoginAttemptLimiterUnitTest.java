@@ -11,15 +11,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * mai svuotata, e senza un test che lo fissi il difetto puo' rientrare senza che nessuno
  * se ne accorga - non produce errori, produce solo memoria che non torna indietro.
  */
-class LimitatoreTentativiLoginUnitTest {
+class LoginAttemptLimiterUnitTest {
 
-    private LimitatoreTentativiLogin limitatore(int massimo, long finestraMs, int tetto) {
-        return new LimitatoreTentativiLogin(massimo, finestraMs, tetto);
+    private LoginAttemptLimiter attemptLimiter(int massimo, long finestraMs, int tetto) {
+        return new LoginAttemptLimiter(massimo, finestraMs, tetto);
     }
 
     @Test
     void lasciaPassareFinoAlLimite() {
-        LimitatoreTentativiLogin l = limitatore(3, 60_000, 1000);
+        LoginAttemptLimiter l = attemptLimiter(3, 60_000, 1000);
 
         assertThat(l.troppiTentativi("a")).isFalse();
         assertThat(l.troppiTentativi("a")).isFalse();
@@ -31,7 +31,7 @@ class LimitatoreTentativiLoginUnitTest {
     void ogniChiaveHaIlSuoContatore() {
         // Se i contatori non fossero separati, un solo attaccante basterebbe a bloccare
         // il login di tutti gli altri.
-        LimitatoreTentativiLogin l = limitatore(1, 60_000, 1000);
+        LoginAttemptLimiter l = attemptLimiter(1, 60_000, 1000);
 
         l.troppiTentativi("primo");
         assertThat(l.troppiTentativi("primo")).isTrue();
@@ -43,7 +43,7 @@ class LimitatoreTentativiLoginUnitTest {
         // Finestra negativa e non zero: con zero due chiamate nello stesso millisecondo
         // danno differenza 0, che non supera la soglia, e il test dipenderebbe
         // dall'orologio. Con -1 la condizione e' vera per costruzione.
-        LimitatoreTentativiLogin l = limitatore(1, -1, 1000);
+        LoginAttemptLimiter l = attemptLimiter(1, -1, 1000);
 
         l.troppiTentativi("a");
         assertThat(l.troppiTentativi("a")).isFalse();
@@ -53,7 +53,7 @@ class LimitatoreTentativiLoginUnitTest {
     void laPuliziaTogliLeChiaviScadute() {
         // LA regressione da tenere chiusa. Prima nessuna chiave usciva mai, e la parte
         // email della chiave la sceglie chi chiama: la memoria cresceva su richiesta.
-        LimitatoreTentativiLogin l = limitatore(5, 1000, 1000);
+        LoginAttemptLimiter l = attemptLimiter(5, 1000, 1000);
 
         for (int i = 0; i < 200; i++) {
             l.troppiTentativi("indirizzo-inventato-" + i + "@esempio.it");
@@ -69,7 +69,7 @@ class LimitatoreTentativiLoginUnitTest {
     void laPuliziaRisparmiaLeChiaviAncoraDentroLaFinestra() {
         // Ripulire troppo sarebbe l'errore opposto: azzererebbe i contatori di chi sta
         // attaccando adesso, cioe' proprio quelli che servono.
-        LimitatoreTentativiLogin l = limitatore(5, 600_000, 1000);
+        LoginAttemptLimiter l = attemptLimiter(5, 600_000, 1000);
 
         l.troppiTentativi("ancora-viva@esempio.it");
         l.ripulisci(System.currentTimeMillis());
@@ -83,7 +83,7 @@ class LimitatoreTentativiLoginUnitTest {
         // e solo se dopo la pulizia si e' ancora al limite si smette di registrare.
         // Stessa ragione: una finestra di 1 ms sarebbe scaduta o no a seconda di quanto
         // in fretta gira il ciclo. Negativa, sono scadute per costruzione.
-        LimitatoreTentativiLogin l = limitatore(5, -1, 50);
+        LoginAttemptLimiter l = attemptLimiter(5, -1, 50);
 
         for (int i = 0; i < 50; i++) {
             l.troppiTentativi("vecchia-" + i);
@@ -100,7 +100,7 @@ class LimitatoreTentativiLoginUnitTest {
         // Il fallimento e' aperto solo per le chiavi NUOVE: chi sta gia' attaccando
         // continua a essere contato, altrimenti riempire la mappa sarebbe il modo per
         // disattivare il limitatore.
-        LimitatoreTentativiLogin l = limitatore(1, 600_000, 2);
+        LoginAttemptLimiter l = attemptLimiter(1, 600_000, 2);
 
         l.troppiTentativi("nota");
         assertThat(l.troppiTentativi("nota")).isTrue();

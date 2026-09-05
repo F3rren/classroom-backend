@@ -11,7 +11,7 @@
   PERCHE' ESISTE: l'identificativo di richiesta era invisibile
   ============================================================================
 
-  CorrelazioneRichiesta mette l'identificativo in MDC da sempre, ma senza un tracciato che
+  RequestCorrelationFilter mette l'identificativo in MDC da sempre, ma senza un tracciato che
   lo stampi quel valore non compariva da nessuna parte. Nel frattempo 127 chiamate su 322
   se lo passavano a mano dentro il messaggio - e le altre 195 non avevano alcun modo di
   essere ricondotte a una richiesta.

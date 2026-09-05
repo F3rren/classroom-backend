@@ -1,8 +1,8 @@
 package com.prenotazioni.auth.service;
 
-import com.prenotazioni.auth.client.DatiUtenteClient;
+import com.prenotazioni.auth.client.UserDataClient;
 import com.prenotazioni.auth.repository.IUtenteRepository;
-import com.prenotazioni.exception.ServizioNonDisponibileException;
+import com.prenotazioni.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -37,15 +37,15 @@ class UtenteServiceUnitTest {
     private IUtenteRepository utenteRepository;
 
     @Mock
-    private DatiUtenteClient datiUtenteClient;
+    private UserDataClient userDataClient;
 
     private UtenteService service() {
-        return new UtenteService(utenteRepository, datiUtenteClient);
+        return new UtenteService(utenteRepository, userDataClient);
     }
 
     @Test
     void cancellaLUtenteQuandoLaCascataERiuscita() {
-        when(datiUtenteClient.eliminaDatiDi(7L)).thenReturn(List.of());
+        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of());
 
         service().deleteById(7L);
 
@@ -57,10 +57,10 @@ class UtenteServiceUnitTest {
         // L'invariante. Se cadesse, un fallimento a valle lascerebbe prenotazioni e notifiche
         // senza un utente a cui ricondurle, e ripetere l'operazione non servirebbe piu' a
         // niente: non ci sarebbe nessuno da cui ripartire.
-        when(datiUtenteClient.eliminaDatiDi(7L)).thenReturn(List.of("prenotazioni"));
+        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of("prenotazioni"));
 
         assertThatThrownBy(() -> service().deleteById(7L))
-                .isInstanceOf(ServizioNonDisponibileException.class);
+                .isInstanceOf(ServiceUnavailableException.class);
 
         verify(utenteRepository, never()).deleteById(anyLong());
     }
@@ -70,10 +70,10 @@ class UtenteServiceUnitTest {
         // "Qualcosa e' fallito" non basta a chi deve decidere se ripetere: il messaggio deve
         // nominare i dati rimasti, altrimenti l'unico modo di saperlo e' leggere i log di
         // tre servizi diversi.
-        when(datiUtenteClient.eliminaDatiDi(7L)).thenReturn(List.of("notifiche", "prenotazioni"));
+        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of("notifiche", "prenotazioni"));
 
         assertThatThrownBy(() -> service().deleteById(7L))
-                .isInstanceOf(ServizioNonDisponibileException.class)
+                .isInstanceOf(ServiceUnavailableException.class)
                 .hasMessageContaining("notifiche")
                 .hasMessageContaining("prenotazioni");
     }
@@ -83,9 +83,9 @@ class UtenteServiceUnitTest {
         // Il messaggio per l'utente e il codice sono cio' che distingue "e' rotto" da
         // "riprova". Sono due azioni diverse, e con un 500 generico la seconda non veniva
         // in mente: l'operazione restava a meta' perche' nessuno la ripeteva.
-        when(datiUtenteClient.eliminaDatiDi(7L)).thenReturn(List.of("notifiche"));
+        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of("notifiche"));
 
-        ServizioNonDisponibileException errore = (ServizioNonDisponibileException)
+        ServiceUnavailableException errore = (ServiceUnavailableException)
                 org.assertj.core.api.Assertions.catchThrowable(() -> service().deleteById(7L));
 
         assertThat(errore.getErrorCode()).isEqualTo("USER_DELETE_INCOMPLETE");
@@ -97,12 +97,12 @@ class UtenteServiceUnitTest {
         // L'ordine, non solo l'esito: i dati a valle si tentano SEMPRE, anche quando poi
         // andra' tutto bene. Se un giorno qualcuno invertisse le due righe, gli altri test
         // continuerebbero a passare mentre l'invariante sarebbe gia' persa.
-        when(datiUtenteClient.eliminaDatiDi(7L)).thenReturn(List.of());
+        when(userDataClient.eliminaDatiDi(7L)).thenReturn(List.of());
 
         service().deleteById(7L);
 
-        var ordine = org.mockito.Mockito.inOrder(datiUtenteClient, utenteRepository);
-        ordine.verify(datiUtenteClient).eliminaDatiDi(7L);
+        var ordine = org.mockito.Mockito.inOrder(userDataClient, utenteRepository);
+        ordine.verify(userDataClient).eliminaDatiDi(7L);
         ordine.verify(utenteRepository).deleteById(7L);
     }
 }

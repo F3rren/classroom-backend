@@ -1,6 +1,6 @@
 package com.prenotazioni.auth.controller;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.model.Ruolo;
 import com.prenotazioni.dto.ApiEnvelope;
 import com.prenotazioni.auth.dto.LoginPayload;
@@ -9,7 +9,7 @@ import com.prenotazioni.auth.dto.LoginResponse;
 import com.prenotazioni.auth.dto.UserSummaryDto;
 import com.prenotazioni.auth.model.Utente;
 import com.prenotazioni.auth.service.AuthService;
-import com.prenotazioni.auth.service.LimitatoreTentativiLogin;
+import com.prenotazioni.auth.service.LoginAttemptLimiter;
 import com.prenotazioni.auth.service.JwtService;
 import com.prenotazioni.util.LogSanitizer;
 
@@ -42,14 +42,14 @@ public class AuthController {
 
     private final JwtService jwtService;
 
-    // Il conteggio dei tentativi sta in LimitatoreTentativiLogin e non piu' qui: era un
+    // Il conteggio dei tentativi sta in LoginAttemptLimiter e non piu' qui: era un
     // campo static dentro il controller, e la mappa non veniva mai svuotata.
-    private final LimitatoreTentativiLogin limitatore;
+    private final LoginAttemptLimiter attemptLimiter;
 
-    AuthController(AuthService authService, JwtService jwtService, LimitatoreTentativiLogin limitatore) {
+    AuthController(AuthService authService, JwtService jwtService, LoginAttemptLimiter attemptLimiter) {
         this.authService = authService;
         this.jwtService = jwtService;
-        this.limitatore = limitatore;
+        this.attemptLimiter = attemptLimiter;
     }
 
 
@@ -62,7 +62,7 @@ public class AuthController {
      * sotto due id diversi, uno per il controller e uno per il gestore.
      */
     private String generateSessionId() {
-        return CorrelazioneRichiesta.corrente();
+        return RequestCorrelationFilter.corrente();
     }
     
     /**
@@ -114,7 +114,7 @@ public class AuthController {
                 logger.warn("FINE login - Email mancante");
                 return new ResponseEntity<>(
                     createErrorResponse("MISSING_EMAIL",
-                                      "Email mancante",
+                                      "Missing email",
                                       "L'email è obbligatoria per effettuare il login.",
                                       sessionId),
                     HttpStatus.BAD_REQUEST
@@ -131,11 +131,11 @@ public class AuthController {
             // e tenerlo fuori dal proprio account. server.forward-headers-strategy=framework,
             // in application.properties, e' cio' che rende questa riga di nuovo vera.
             String rateLimitKey = httpRequest.getRemoteAddr() + "|" + email;
-            if (limitatore.troppiTentativi(rateLimitKey)) {
+            if (attemptLimiter.troppiTentativi(rateLimitKey)) {
                 logger.warn("FINE login - Troppi tentativi di login per: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("TOO_MANY_ATTEMPTS",
-                                      "Troppi tentativi di login",
+                                      "Too many login attempts",
                                       "Hai effettuato troppi tentativi di accesso. Riprova tra qualche minuto.",
                                       sessionId),
                     HttpStatus.TOO_MANY_REQUESTS
@@ -147,7 +147,7 @@ public class AuthController {
                 logger.warn("FINE login - Formato email non valido: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("INVALID_EMAIL_FORMAT", 
-                                      "Formato email non valido", 
+                                      "Invalid email format", 
                                       "Il formato dell'email inserita non è valido.", 
                                       sessionId),
                     HttpStatus.BAD_REQUEST
@@ -159,7 +159,7 @@ public class AuthController {
                 logger.warn("FINE login - Password mancante per email: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("MISSING_PASSWORD", 
-                                      "Password mancante", 
+                                      "Missing password", 
                                       "La password è obbligatoria per effettuare il login.", 
                                       sessionId),
                     HttpStatus.BAD_REQUEST
@@ -171,7 +171,7 @@ public class AuthController {
                 logger.warn("FINE login - Password troppo corta per email: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("PASSWORD_TOO_SHORT", 
-                                      "Password troppo corta", 
+                                      "Password too short", 
                                       "La password deve essere di almeno 3 caratteri.", 
                                       sessionId),
                     HttpStatus.BAD_REQUEST
@@ -186,7 +186,7 @@ public class AuthController {
                 logger.error("FINE login - Errore critico durante autenticazione per email: {} | Errore: {}", maskedEmail, e.getMessage(), e);
                 return new ResponseEntity<>(
                     createErrorResponse("AUTHENTICATION_ERROR", 
-                                      "Errore durante l'autenticazione", 
+                                      "Authentication failed unexpectedly", 
                                       "Si è verificato un problema durante l'autenticazione. Riprova più tardi.", 
                                       sessionId),
                     HttpStatus.INTERNAL_SERVER_ERROR
@@ -198,7 +198,7 @@ public class AuthController {
                 logger.warn("FINE login - Credenziali non valide per email: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("INVALID_CREDENTIALS", 
-                                      "Credenziali non valide", 
+                                      "Invalid credentials", 
                                       "Email o password non corretti. Verifica le tue credenziali e riprova.", 
                                       sessionId),
                     HttpStatus.UNAUTHORIZED
@@ -210,7 +210,7 @@ public class AuthController {
                 logger.error("FINE login - Utente trovato ma con dati corrotti: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("USER_DATA_CORRUPTION", 
-                                      "Dati utente corrotti", 
+                                      "Utente record is inconsistent", 
                                       "I dati del tuo account sembrano essere corrotti. Contatta il supporto tecnico.", 
                                       sessionId),
                     HttpStatus.INTERNAL_SERVER_ERROR
@@ -225,7 +225,7 @@ public class AuthController {
                     logger.error("FINE login - Token generato è null o vuoto per utente ID: {}", utente.getId());
                     return new ResponseEntity<>(
                         createErrorResponse("TOKEN_GENERATION_FAILED", 
-                                          "Errore nella generazione del token", 
+                                          "Token generation failed", 
                                           "Si è verificato un problema nella generazione del token di accesso. Riprova.", 
                                           sessionId),
                         HttpStatus.INTERNAL_SERVER_ERROR
@@ -235,7 +235,7 @@ public class AuthController {
                 logger.error("FINE login - Errore critico durante generazione token per utente ID: {} | Errore: {}", utente.getId(), e.getMessage(), e);
                 return new ResponseEntity<>(
                     createErrorResponse("TOKEN_GENERATION_ERROR", 
-                                      "Errore nella generazione del token", 
+                                      "Token generation failed", 
                                       "Si è verificato un problema nella generazione del token di accesso.", 
                                       sessionId),
                     HttpStatus.INTERNAL_SERVER_ERROR
@@ -258,7 +258,7 @@ public class AuthController {
             logger.error("FINE login - Errore critico non gestito: {}", e.getMessage(), e);
             return new ResponseEntity<>(
                 createErrorResponse("INTERNAL_ERROR", 
-                                  "Errore interno del server", 
+                                  "Unhandled internal error", 
                                   "Si è verificato un errore imprevisto durante il login. Riprova più tardi.", 
                                   sessionId),
                 HttpStatus.INTERNAL_SERVER_ERROR

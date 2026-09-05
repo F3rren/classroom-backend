@@ -55,12 +55,12 @@ public class AuthService {
             // il messaggio: prima non diceva QUALE dei due campi fosse in conflitto, e chi
             // lo leggeva non sapeva cosa correggere.
             throw new DomainConflictException("USER_ALREADY_EXISTS",
-                    "Email gia' registrata",
+                    "Email already registered",
                     "Questa email e' gia' associata a un altro utente.");
         }
         if (utenteRepository.findByUsername(request.getUsername()) != null) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
-                    "Username gia' registrato: " + request.getUsername(),
+                    "Username already registered: " + request.getUsername(),
                     "Questo username e' gia' in uso.");
         }
         Utente utente = new Utente();
@@ -97,13 +97,13 @@ public class AuthService {
             // inesistente", e la risposta diceva "utente non trovato" di un utente che
             // esiste eccome. Era una risposta falsa, non solo imprecisa.
             throw new DomainConflictException("USER_ALREADY_EXISTS",
-                    "Email gia' in uso da un altro utente",
+                    "Email already used by another utente",
                     "Questa email e' gia' associata a un altro utente.");
         }
         Utente utenteConUsername = utenteRepository.findByUsername(request.getUsername());
         if (utenteConUsername != null && !utenteConUsername.getId().equals(id)) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
-                    "Username gia' in uso da un altro utente",
+                    "Username already used by another utente",
                     "Questo username e' gia' in uso.");
         }
         // Aggiorna i campi modificabili

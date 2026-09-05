@@ -26,7 +26,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
         "spring.cloud.gateway.routes[0].uri=http://localhost:9",
         "spring.cloud.gateway.routes[0].predicates[0]=Path=/api/rooms/**"
 })
-class CorrelazioneAlBordoTest {
+class EdgeCorrelationFilterTest {
 
     @Autowired
     private WebTestClient client;
@@ -35,7 +35,7 @@ class CorrelazioneAlBordoTest {
     void coniaUnIdentificativoQuandoIlChiamanteNonNeManda() {
         client.get().uri("/api/rooms")
                 .exchange()
-                .expectHeader().value(CorrelazioneAlBordo.INTESTAZIONE, id ->
+                .expectHeader().value(EdgeCorrelationFilter.INTESTAZIONE, id ->
                         org.assertj.core.api.Assertions.assertThat(id).startsWith("REQ_"))
                 .expectBody()
                 // Lo stesso valore nel corpo: chi apre una segnalazione cita un id solo, e
@@ -49,9 +49,9 @@ class CorrelazioneAlBordoTest {
         // o un frontend che gia' traccia le chiamate, sovrascrivere il suo id romperebbe
         // proprio la catena che questo filtro esiste per tenere insieme.
         client.get().uri("/api/rooms")
-                .header(CorrelazioneAlBordo.INTESTAZIONE, "REQ_DALCHIAMANTE")
+                .header(EdgeCorrelationFilter.INTESTAZIONE, "REQ_DALCHIAMANTE")
                 .exchange()
-                .expectHeader().valueEquals(CorrelazioneAlBordo.INTESTAZIONE, "REQ_DALCHIAMANTE")
+                .expectHeader().valueEquals(EdgeCorrelationFilter.INTESTAZIONE, "REQ_DALCHIAMANTE")
                 .expectBody()
                 .jsonPath("$.sessionId").isEqualTo("REQ_DALCHIAMANTE");
     }
@@ -60,13 +60,13 @@ class CorrelazioneAlBordoTest {
     void sopravviveAUnPercorsoSenzaRotta() {
         // Trovato dal vivo: su un percorso che non corrisponde a nessuna rotta il 404 nasce
         // nella mappatura, PRIMA che la catena dei GlobalFilter parta. Il filtro non gira e
-        // senza il ripiego in GestoreErroriGateway l'id del chiamante andava perso proprio
+        // senza il ripiego in GatewayErrorHandler l'id del chiamante andava perso proprio
         // sulla richiesta piu' sospetta - quella verso un percorso che non esiste.
         client.get().uri("/percorso/che/non/esiste")
-                .header(CorrelazioneAlBordo.INTESTAZIONE, "REQ_SENZAROTTA")
+                .header(EdgeCorrelationFilter.INTESTAZIONE, "REQ_SENZAROTTA")
                 .exchange()
                 .expectStatus().isNotFound()
-                .expectHeader().valueEquals(CorrelazioneAlBordo.INTESTAZIONE, "REQ_SENZAROTTA")
+                .expectHeader().valueEquals(EdgeCorrelationFilter.INTESTAZIONE, "REQ_SENZAROTTA")
                 .expectBody()
                 .jsonPath("$.sessionId").isEqualTo("REQ_SENZAROTTA");
     }
@@ -77,9 +77,9 @@ class CorrelazioneAlBordoTest {
         // gateway UNISCE le intestazioni della risposta a valle alle proprie e il client se
         // la ritrovava due volte. Il rimedio e' scriverla in beforeCommit, dopo la fusione.
         client.get().uri("/api/rooms")
-                .header(CorrelazioneAlBordo.INTESTAZIONE, "REQ_UNAVOLTASOLA")
+                .header(EdgeCorrelationFilter.INTESTAZIONE, "REQ_UNAVOLTASOLA")
                 .exchange()
-                .expectHeader().values(CorrelazioneAlBordo.INTESTAZIONE, valori ->
+                .expectHeader().values(EdgeCorrelationFilter.INTESTAZIONE, valori ->
                         org.assertj.core.api.Assertions.assertThat(valori)
                                 .containsExactly("REQ_UNAVOLTASOLA"));
     }

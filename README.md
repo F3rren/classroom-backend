@@ -141,7 +141,7 @@ services/auth-service/src/main/java/com/prenotazioni/auth/
   client/         chiamate verso GLI ALTRI servizi (solo dove servono)
 
 shared/src/main/java/com/prenotazioni/
-  config/         SecurityConfig, JwtAuthFilter, CorrelazioneRichiesta, gestori 401/403
+  config/         SecurityConfig, JwtAuthFilter, RequestCorrelationFilter, gestori 401/403
   exception/      GlobalExceptionHandler e le eccezioni di dominio
   security/       JwtVerifier, AppPrincipal
   eventi/         i messaggi che viaggiano su RabbitMQ e i nomi di code ed exchange
@@ -150,10 +150,56 @@ shared/src/main/java/com/prenotazioni/
   util/           LogSanitizer
 ```
 
-I nomi tecnici restano in inglese perché sono la convenzione di Spring e chiunque li
-riconosce; i nomi di dominio sono in italiano, come il dominio. `messaggistica/` in
-`prenotazione-service` e `eventi/` in `notifica-service` sono i due lati della stessa coda:
-chi pubblica e chi ascolta.
+### La regola sui nomi
+
+**Il vocabolario tecnico è in inglese, quello di dominio in italiano.**
+
+| | Esempi | Perché |
+|---|---|---|
+| tecnico → **inglese** | `RequestCorrelationFilter`, `LoginAttemptLimiter`, `EventPublisher`, `GatewayErrorHandler`, `JwtKey` | è la convenzione di Spring: chiunque apra il progetto li riconosce senza tradurre |
+| dominio → **italiano** | `Aula`, `Prenotazione`, `Utente`, `Corso`, `Notifica`, `Ruolo`, `StatoAula` | sono le parole degli utenti, ed è l'unico modo di restare allineati a ciò che non si può rinominare |
+
+Quel «non si può rinominare» è la parte che decide, e vale la pena scriverla:
+
+- le **tabelle** — `aule`, `corsi`, `notifiche`, `prenotazioni`, `utenti` — vivono nelle
+  migrazioni Flyway, e cambiarle ne cambierebbe il checksum;
+- i **percorsi dell'API** sono un contratto già pubblicato;
+- le **code AMQP** sono durabili e già create sul broker.
+
+Rinominare `Aula` in `Room` lascerebbe `@Table(name = "aule")` accanto: non uniformerebbe,
+**creerebbe** uno scarto fra il codice e tutto ciò che tocca. La stessa cosa varrebbe per un
+`BookingController` mappato su `/api/prenotazioni`.
+
+`messaggistica/` in `prenotazione-service` e `eventi/` in `notifica-service` sono i due lati
+della stessa coda: chi pubblica e chi ascolta.
+
+### La lingua delle risposte
+
+I due campi di testo dell'involucro hanno **due lettori diversi**, ed è l'unica ragione per
+cui esistono entrambi:
+
+```json
+{
+  "error":       "BOOKING_CONFLICT",
+  "message":     "Aula 3 busy from 2026-09-10T09:00 to 2026-09-10T11:00",
+  "userMessage": "L'aula non è disponibile nel periodo richiesto."
+}
+```
+
+- **`message` è in inglese.** Lo legge chi indaga un guasto: log, sviluppo, una segnalazione
+  girata a qualcun altro. È testo tecnico e segue la lingua del codice.
+- **`userMessage` è in italiano.** È l'unica stringa del sistema che legge una persona che
+  non sviluppa — chi prenota un'aula. Segue la lingua di chi usa il sistema, non quella di
+  chi lo scrive.
+
+I nomi di dominio restano in italiano anche dentro il messaggio inglese (`Aula 3 busy…`):
+sono le parole delle tabelle e dell'API, e tradurle solo lì reintrodurrebbe lo scarto.
+
+> Se un giorno servisse più di una lingua, la strada è `MessageSource` con i file
+> `messages_xx.properties` e la lingua scelta dall'header `Accept-Language`. Oggi non c'è, e
+> con una lingua sola sarebbe un meccanismo da mantenere senza nessuno che lo usi. Il campo
+> `error` è già un codice stabile (`BOOKING_CONFLICT`, `USER_ALREADY_EXISTS`), quindi un
+> frontend che voglia tradurre da sé può farlo su quello senza aspettare.
 
 **Il frontend conosce solo la 17102.** Le porte crescono in sequenza a partire da lì, così
 aggiungere un servizio non obbliga a ripensare l'assegnazione (il prossimo servizio prenderà la 17106). La 8080 è volutamente evitata: è troppo comune e collide con altri
@@ -357,13 +403,13 @@ Dal browser alla riga di database, con i punti in cui qualcosa può fermarla:
      |  POST /api/prenotazioni      Authorization: Bearer <token>
      v
   gateway :17102 ------------------------------------------------ l'unica porta pubblicata
-     |  1. CorrelazioneAlBordo conia X-Request-Id (o riusa quello ricevuto)
+     |  1. EdgeCorrelationFilter conia X-Request-Id (o riusa quello ricevuto)
      |  2. sceglie la rotta per prefisso del percorso
      |     -> nessuna rotta corrisponde ......................... 404
      |     -> il servizio non risponde ......................... 503
      v
   prenotazione-service :17103 ------------------------- non raggiungibile dall'esterno
-     |  3. CorrelazioneRichiesta rimette X-Request-Id in MDC
+     |  3. RequestCorrelationFilter rimette X-Request-Id in MDC
      |  4. JwtAuthFilter verifica la firma del token, da solo
      |     -> token assente, scaduto o falso .................... 401
      |  5. SecurityConfig controlla il ruolo
@@ -450,7 +496,7 @@ status una volta sola:
 | `DomainConflictException` | 409 | esiste, ma il suo stato non ammette l'operazione |
 | `BookingConflictException` | 409 | sovrapposizione di prenotazioni |
 | `DataIntegrityViolationException` | 409 | un vincolo del database ha detto no |
-| `ServizioNonDisponibileException` | 503 | un servizio a valle non risponde: **ripetere ha senso** |
+| `ServiceUnavailableException` | 503 | un servizio a valle non risponde: **ripetere ha senso** |
 | qualunque altra | 500 | imprevisto, con lo stack trace nei log |
 
 La distinzione fra 500 e 503 non è formale: suggeriscono due azioni diverse. Un 500 dice «è
@@ -473,7 +519,7 @@ dipendono da `shared`. Il gateway ha la propria copia, perche' non puo' dipender
 
 ```
 2026-09-05 17:45:30.369  WARN  REQ_A1B2C3D4 PrenotazioneService   : aula 3 occupata dal ...
-2026-09-05 17:45:30.372  INFO  -            AvvioPrimoAdmin       : primo amministratore creato
+2026-09-05 17:45:30.372  INFO  -            FirstAdminBootstrap       : primo amministratore creato
 ```
 
 La colonna dell'identificativo viene da `%X{requestId}`, che Logback legge da MDC: **ogni
@@ -481,7 +527,7 @@ riga la porta**, comprese quelle di Spring, Hibernate e Flyway, senza che nessun
 passarla. Il trattino segna le righe nate fuori da una richiesta — avvio, consumo di
 messaggi, attivita' pianificate.
 
-Prima non era cosi': `CorrelazioneRichiesta` metteva l'identificativo in MDC da sempre, ma
+Prima non era cosi': `RequestCorrelationFilter` metteva l'identificativo in MDC da sempre, ma
 senza un tracciato che lo stampasse non compariva da nessuna parte. 127 chiamate su 322 se lo
 passavano a mano dentro il messaggio; le altre 195 non avevano modo di essere ricondotte a
 una richiesta. Ora il tracciato lo mette su tutte, e i 127 prefissi manuali sono spariti.
@@ -559,14 +605,14 @@ amministratore con quelle credenziali. Poi vanno svuotate, insieme al cambio del
 La condizione è stretta apposta: a tabella non vuota il meccanismo è **inerte** — non
 promuove, non aggiorna, non tocca nessun utente esistente. È ciò che separa un aiuto
 all'avvio da una scorciatoia per ottenere privilegi da amministratore, ed è tenuto fermo dai
-test in `AvvioPrimoAdminUnitTest`. La creazione passa da `AuthService.register`, la stessa
+test in `FirstAdminBootstrapUnitTest`. La creazione passa da `AuthService.register`, la stessa
 strada di ogni altro utente, quindi la password attraversa lo stesso `PasswordEncoder`.
 
 Se il database è vuoto e le variabili non ci sono, il servizio parte comunque ma **logga a
 `WARN`** come procedere: un database vuoto e silenzioso è esattamente il modo in cui questo
 problema si ripresenta.
 
-Vedi [AvvioPrimoAdmin.java](services/auth-service/src/main/java/com/prenotazioni/auth/AvvioPrimoAdmin.java).
+Vedi [FirstAdminBootstrap.java](services/auth-service/src/main/java/com/prenotazioni/auth/FirstAdminBootstrap.java).
 
 ## Schema del database
 

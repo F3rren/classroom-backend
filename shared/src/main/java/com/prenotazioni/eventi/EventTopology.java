@@ -11,7 +11,7 @@ package com.prenotazioni.eventi;
  * Solo costanti: shared non dipende da Spring AMQP. Ogni servizio dichiara i propri bean
  * (l'exchange chi pubblica, la coda e il binding chi consuma) usando questi nomi.
  */
-public final class TopologiaEventi {
+public final class EventTopology {
 
     /** Exchange di tipo topic su cui viaggiano gli eventi delle prenotazioni. */
     public static final String EXCHANGE = "prenotazioni.eventi";
@@ -47,6 +47,6 @@ public final class TopologiaEventi {
 
     public static final String CODA_ERRORI_CANCELLAZIONE = "notifiche.prenotazione-cancellata.errori";
 
-    private TopologiaEventi() {
+    private EventTopology() {
     }
 }

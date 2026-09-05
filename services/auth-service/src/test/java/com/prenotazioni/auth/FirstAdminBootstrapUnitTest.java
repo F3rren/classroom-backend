@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
  * sotto e' quello, e vale piu' degli altri messi insieme.
  */
 @ExtendWith(MockitoExtension.class)
-class AvvioPrimoAdminUnitTest {
+class FirstAdminBootstrapUnitTest {
 
     @Mock
     private IUtenteRepository utenteRepository;
@@ -34,8 +34,8 @@ class AvvioPrimoAdminUnitTest {
     @Mock
     private AuthService authService;
 
-    private AvvioPrimoAdmin runner(String email, String password) {
-        return new AvvioPrimoAdmin(utenteRepository, authService, email, password, "Amministratore");
+    private FirstAdminBootstrap runner(String email, String password) {
+        return new FirstAdminBootstrap(utenteRepository, authService, email, password, "Amministratore");
     }
 
     @Test

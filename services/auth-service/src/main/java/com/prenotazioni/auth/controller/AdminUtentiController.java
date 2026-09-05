@@ -1,6 +1,6 @@
 package com.prenotazioni.auth.controller;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.auth.dto.CreateUserRequest;
 import com.prenotazioni.auth.dto.DeletedUserResponse;
 import com.prenotazioni.auth.dto.UpdateUserRequest;
@@ -60,7 +60,7 @@ public class AdminUtentiController {
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return CorrelazioneRichiesta.corrente();
+        return RequestCorrelationFilter.corrente();
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {
@@ -114,7 +114,7 @@ public class AdminUtentiController {
         if (id == null || id <= 0) {
             logger.warn("FINE updateUtente - ID utente non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "ID utente non valido",
+                createErrorResponse("INVALID_USER_ID", "Invalid user id",
                                   "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -138,7 +138,7 @@ public class AdminUtentiController {
         if (id == null || id <= 0) {
             logger.warn("FINE deleteUtente - ID utente non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "ID utente non valido",
+                createErrorResponse("INVALID_USER_ID", "Invalid user id",
                                   "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -147,7 +147,7 @@ public class AdminUtentiController {
         if (utenteService.findById(id) == null) {
             logger.warn("FINE deleteUtente - Utente non trovato - ID: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("USER_NOT_FOUND", "Utente non trovato o non eliminabile",
+                createErrorResponse("USER_NOT_FOUND", "Utente not found or not deletable",
                                   String.format("L'utente con ID %d non esiste o non può essere eliminato.", id), sessionId),
                 HttpStatus.NOT_FOUND
             );

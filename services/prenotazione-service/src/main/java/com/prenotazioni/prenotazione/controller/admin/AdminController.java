@@ -1,10 +1,10 @@
 package com.prenotazioni.prenotazione.controller.admin;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.prenotazione.service.AulaService;
 import com.prenotazioni.prenotazione.service.PrenotazioneService;
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
-import com.prenotazioni.prenotazione.messaggistica.PubblicatoreEventi;
+import com.prenotazioni.prenotazione.messaggistica.EventPublisher;
 import com.prenotazioni.dto.*;
 // entrambe: in com.prenotazioni.dto restano le classi comuni di shared,
 // in com.prenotazioni.prenotazione.dto quelle di questo servizio
@@ -48,18 +48,18 @@ public class AdminController {
 
     private final AulaService aulaService;
     private final PrenotazioneService prenotazioneService;
-    private final PubblicatoreEventi pubblicatoreEventi;
+    private final EventPublisher eventPublisher;
 
     AdminController(AulaService aulaService, PrenotazioneService prenotazioneService,
-                     PubblicatoreEventi pubblicatoreEventi) {
+                     EventPublisher eventPublisher) {
         this.aulaService = aulaService;
         this.prenotazioneService = prenotazioneService;
-        this.pubblicatoreEventi = pubblicatoreEventi;
+        this.eventPublisher = eventPublisher;
     }
 
     /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
     private String generateSessionId() {
-        return CorrelazioneRichiesta.corrente();
+        return RequestCorrelationFilter.corrente();
     }
 
     private <T> ApiEnvelope<T> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {
@@ -97,7 +97,7 @@ public class AdminController {
         if (id == null || id <= 0) {
             logger.warn("FINE getRoomById - ID aula non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
+                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
                                   "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -107,7 +107,7 @@ public class AdminController {
         if (aula.isEmpty()) {
             logger.warn("FINE getRoomById - Aula non trovata con ID: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("ROOM_NOT_FOUND", "Aula non trovata",
+                createErrorResponse("ROOM_NOT_FOUND", "Aula not found",
                                   String.format("L'aula con ID %d non esiste.", id), sessionId),
                 HttpStatus.NOT_FOUND
             );
@@ -143,7 +143,7 @@ public class AdminController {
         if (id == null || id <= 0) {
             logger.warn("FINE updateRoom - ID aula non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
+                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
                                   "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -166,7 +166,7 @@ public class AdminController {
         if (id == null || id <= 0) {
             logger.warn("FINE deleteRoom - ID aula non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "ID aula non valido",
+                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
                                   "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -221,7 +221,7 @@ public class AdminController {
         if (id == null || id <= 0) {
             logger.warn("FINE deletePrenotazioneAsAdmin - ID prenotazione non valido: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("INVALID_BOOKING_ID", "ID prenotazione non valido",
+                createErrorResponse("INVALID_BOOKING_ID", "Invalid prenotazione id",
                                   "L'ID della prenotazione deve essere un numero positivo valido.", sessionId),
                 HttpStatus.BAD_REQUEST
             );
@@ -234,7 +234,7 @@ public class AdminController {
         if (prenotazione == null) {
             logger.warn("FINE deletePrenotazioneAsAdmin - Prenotazione non trovata ID: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("BOOKING_NOT_FOUND", "Prenotazione non trovata",
+                createErrorResponse("BOOKING_NOT_FOUND", "Prenotazione not found",
                                   String.format("La prenotazione con ID %d non esiste.", id), sessionId),
                 HttpStatus.NOT_FOUND
             );
@@ -252,7 +252,7 @@ public class AdminController {
         if (!eliminata) {
             logger.warn("FINE deletePrenotazioneAsAdmin - Impossibile eliminare prenotazione ID: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("BOOKING_DELETION_FAILED", "Impossibile eliminare prenotazione",
+                createErrorResponse("BOOKING_DELETION_FAILED", "Could not delete the prenotazione",
                                   String.format("La prenotazione con ID %d non può essere eliminata.", id), sessionId),
                 HttpStatus.CONFLICT
             );
@@ -271,7 +271,7 @@ public class AdminController {
             // se notifica-service e' spento. Il record tipizzato ha anche sostituito la
             // mappa di stringhe che c'era prima, dove un nome di campo sbagliato sarebbe
             // arrivato a destinazione come semplice valore mancante.
-            pubblicatoreEventi.pubblicaCancellazione(new PrenotazioneCancellataEvento(
+            eventPublisher.pubblicaCancellazione(new PrenotazioneCancellataEvento(
                     utentePrenotazione.getId(), id, nomeStanza, adminNome,
                     dataPrenotazione, oraInizio, oraFine, motivo));
 

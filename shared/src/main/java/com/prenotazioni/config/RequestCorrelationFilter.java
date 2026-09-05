@@ -35,7 +35,7 @@ import java.util.UUID;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
-public class CorrelazioneRichiesta extends OncePerRequestFilter {
+public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     public static final String INTESTAZIONE = "X-Request-Id";
     public static final String ATTRIBUTO = "com.prenotazioni.requestId";

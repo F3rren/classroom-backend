@@ -44,7 +44,7 @@ public class NotificaInternaController {
     }
 
     // L'endpoint POST /cancellazione-prenotazione non esiste piu': quella notifica arriva
-    // ora come messaggio sulla coda, gestito da AscoltatoreCancellazioni. Una chiamata REST
+    // ora come messaggio sulla coda, gestito da CancellationListener. Una chiamata REST
     // andava persa se questo servizio era spento, un messaggio in coda lo aspetta.
     //
     // Questo endpoint di cancellazione dati resta invece sincrono, ed e' voluto: chi lo

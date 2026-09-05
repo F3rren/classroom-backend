@@ -52,7 +52,7 @@ public class PrenotazioneService {
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
             logger.warn("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
             throw new BookingConflictException("BOOKING_CONFLICT",
-                    "Aula " + aulaId + " occupata dal " + inizio + " al " + fine,
+                    "Aula " + aulaId + " busy from " + inizio + " to " + fine,
                     "L'aula non e' disponibile nel periodo richiesto.");
         }
         
@@ -109,7 +109,7 @@ public class PrenotazioneService {
         if (!isAulaDisponibile(aulaId, inizio, fine)) {
             logger.warn("Aula ID {} non disponibile per il periodo {} - {}", aulaId, inizio, fine);
             throw new BookingConflictException("BLOCK_CONFLICT",
-                    "Aula " + aulaId + " occupata dal " + inizio + " al " + fine,
+                    "Aula " + aulaId + " busy from " + inizio + " to " + fine,
                     "L'aula non e' disponibile nel periodo richiesto.");
         }
         
@@ -261,7 +261,7 @@ public class PrenotazioneService {
             // 409: la prenotazione esiste ed e' visibile, ma il suo stato non ammette
             // l'annullamento. Non e' "non trovata" e non e' "non autorizzato".
             throw new DomainConflictException("INVALID_STATE",
-                    "Prenotazione " + prenotazioneId + " in stato " + p.getStato().getValore(),
+                    "Prenotazione " + prenotazioneId + " in state " + p.getStato().getValore(),
                     "Questa prenotazione non puo' essere annullata nello stato attuale.");
         }
 
@@ -416,7 +416,7 @@ public class PrenotazioneService {
         // Verifica disponibilità aula per il nuovo periodo (escludendo questa prenotazione)
         if (!isAulaDisponibileEscludendo(aulaId, inizio, fine, prenotazioneId)) {
             throw new BookingConflictException("UPDATE_CONFLICT",
-                    "Aula " + aulaId + " occupata dal " + inizio + " al " + fine,
+                    "Aula " + aulaId + " busy from " + inizio + " to " + fine,
                     "L'aula non e' disponibile nel nuovo periodo richiesto.");
         }
         

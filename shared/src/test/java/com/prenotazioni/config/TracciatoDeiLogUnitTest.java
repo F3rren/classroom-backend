@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * letto, e ci fa passare attraverso un evento vero. E' la differenza fra "il file contiene
  * la stringa giusta" e "una riga di log mostra l'identificativo".
  *
- * Serve perche' quel campo e' stato invisibile a lungo: CorrelazioneRichiesta metteva
+ * Serve perche' quel campo e' stato invisibile a lungo: RequestCorrelationFilter metteva
  * l'identificativo in MDC da sempre, ma senza un tracciato che lo stampasse non compariva
  * da nessuna parte - e nessun test se ne sarebbe accorto, perche' un log mancante non fa
  * fallire niente.

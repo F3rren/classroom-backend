@@ -32,9 +32,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * gia' note continuano a essere limitate.
  */
 @Component
-public class LimitatoreTentativiLogin {
+public class LoginAttemptLimiter {
 
-    private static final Logger logger = LoggerFactory.getLogger(LimitatoreTentativiLogin.class);
+    private static final Logger logger = LoggerFactory.getLogger(LoginAttemptLimiter.class);
 
     private final ConcurrentHashMap<String, Finestra> finestre = new ConcurrentHashMap<>();
 
@@ -45,7 +45,7 @@ public class LimitatoreTentativiLogin {
     /** Per non ripetere lo stesso avviso a ogni richiesta quando la mappa e' piena. */
     private volatile long ultimoAvviso;
 
-    public LimitatoreTentativiLogin(
+    public LoginAttemptLimiter(
             @Value("${auth.rate-limit.max-attempts:5}") int massimoTentativi,
             @Value("${auth.rate-limit.window-ms:60000}") long finestraMs,
             @Value("${auth.rate-limit.max-entries:50000}") int tettoChiavi) {

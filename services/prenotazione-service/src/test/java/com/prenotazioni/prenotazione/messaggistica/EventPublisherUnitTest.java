@@ -1,8 +1,8 @@
 package com.prenotazioni.prenotazione.messaggistica;
 
-import com.prenotazioni.config.CorrelazioneRichiesta;
+import com.prenotazioni.config.RequestCorrelationFilter;
 import com.prenotazioni.eventi.PrenotazioneCancellataEvento;
-import com.prenotazioni.eventi.TopologiaEventi;
+import com.prenotazioni.eventi.EventTopology;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -30,10 +30,10 @@ import static org.mockito.Mockito.verify;
  * servizio e un altro thread. Senza, la correlazione si ferma al confine del servizio -
  * che e' esattamente il punto in cui inizia a servire.
  */
-class PubblicatoreEventiUnitTest {
+class EventPublisherUnitTest {
 
     private final RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
-    private final PubblicatoreEventi pubblicatore = new PubblicatoreEventi(rabbitTemplate);
+    private final EventPublisher eventPublisher = new EventPublisher(rabbitTemplate);
 
     private final PrenotazioneCancellataEvento evento = new PrenotazioneCancellataEvento(
             7L, 42L, "Aula 1", "Admin", "2026-09-03", "09:00", "11:00", "manutenzione");
@@ -47,8 +47,8 @@ class PubblicatoreEventiUnitTest {
     private MessageProperties intestazioniProdotte() {
         ArgumentCaptor<MessagePostProcessor> processore = ArgumentCaptor.forClass(MessagePostProcessor.class);
         verify(rabbitTemplate).convertAndSend(
-                eq(TopologiaEventi.EXCHANGE),
-                eq(TopologiaEventi.ROUTING_KEY_CANCELLAZIONE),
+                eq(EventTopology.EXCHANGE),
+                eq(EventTopology.ROUTING_KEY_CANCELLAZIONE),
                 eq(evento),
                 processore.capture());
 
@@ -59,12 +59,12 @@ class PubblicatoreEventiUnitTest {
     @Test
     void portaLIdentificativoDellaRichiestaCheHaCausatoLEvento() {
         MockHttpServletRequest richiesta = new MockHttpServletRequest();
-        richiesta.setAttribute(CorrelazioneRichiesta.ATTRIBUTO, "REQ_DALGATEWAY");
+        richiesta.setAttribute(RequestCorrelationFilter.ATTRIBUTO, "REQ_DALGATEWAY");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(richiesta));
 
-        pubblicatore.pubblicaCancellazione(evento);
+        eventPublisher.pubblicaCancellazione(evento);
 
-        assertThat((String) intestazioniProdotte().getHeader(CorrelazioneRichiesta.INTESTAZIONE))
+        assertThat((String) intestazioniProdotte().getHeader(RequestCorrelationFilter.INTESTAZIONE))
                 .isEqualTo("REQ_DALGATEWAY");
     }
 
@@ -73,9 +73,9 @@ class PubblicatoreEventiUnitTest {
         // Un evento puo' nascere anche fuori da una richiesta HTTP. Meglio un
         // identificativo scollegato che nessuno: senza, la riga di log del consumatore
         // resterebbe senza chiave e non si potrebbe nemmeno raggrupparla con se stessa.
-        pubblicatore.pubblicaCancellazione(evento);
+        eventPublisher.pubblicaCancellazione(evento);
 
-        assertThat((String) intestazioniProdotte().getHeader(CorrelazioneRichiesta.INTESTAZIONE))
+        assertThat((String) intestazioniProdotte().getHeader(RequestCorrelationFilter.INTESTAZIONE))
                 .isNotBlank();
     }
 
@@ -87,6 +87,6 @@ class PubblicatoreEventiUnitTest {
                 .when(rabbitTemplate).convertAndSend(any(String.class), any(String.class),
                         any(Object.class), any(MessagePostProcessor.class));
 
-        assertThat(pubblicatore.pubblicaCancellazione(evento)).isFalse();
+        assertThat(eventPublisher.pubblicaCancellazione(evento)).isFalse();
     }
 }

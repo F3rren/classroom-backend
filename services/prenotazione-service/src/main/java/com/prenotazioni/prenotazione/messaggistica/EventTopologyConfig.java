@@ -1,6 +1,6 @@
 package com.prenotazioni.prenotazione.messaggistica;
 
-import com.prenotazioni.eventi.TopologiaEventi;
+import com.prenotazioni.eventi.EventTopology;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -21,12 +21,12 @@ import org.springframework.context.annotation.Configuration;
  * compilata. Entrambi i servizi conoscono comunque il record condiviso in shared.
  */
 @Configuration
-public class ConfigurazioneEventi {
+public class EventTopologyConfig {
 
     @Bean
     TopicExchange exchangeEventi() {
         // durable: sopravvive al riavvio del broker, come la coda dall'altra parte.
-        return new TopicExchange(TopologiaEventi.EXCHANGE, true, false);
+        return new TopicExchange(EventTopology.EXCHANGE, true, false);
     }
 
     @Bean
