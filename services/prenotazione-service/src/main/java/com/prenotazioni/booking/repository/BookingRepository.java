@@ -15,7 +15,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     
     // Trova prenotazioni che si sovrappongono con un periodo dato
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId " +
-           "AND p.status != 'annullata' " +
+           "AND p.status != 'cancelled' " +
            "AND ((p.startTime <= :start AND p.endTime > :start) " +
            "OR (p.startTime < :end AND p.endTime >= :end) " +
            "OR (p.startTime >= :start AND p.endTime <= :end))")
@@ -25,7 +25,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     // Trova prenotazioni che si sovrappongono con un periodo dato escludendo una prenotazione specifica
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId " +
-           "AND p.status != 'annullata' " +
+           "AND p.status != 'cancelled' " +
            "AND p.id != :excludedBookingId " +
            "AND ((p.startTime <= :start AND p.endTime > :start) " +
            "OR (p.startTime < :end AND p.endTime >= :end) " +
@@ -37,9 +37,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     
     // Trova prenotazioni attive in un momento specifico
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId " +
-           "AND p.status != 'annullata' " +
+           "AND p.status != 'cancelled' " +
            "AND p.startTime <= :moment AND p.endTime > :moment " +
-           "ORDER BY p.status DESC") // MAINTENANCE, BLOCKED, BOOKED
+           "ORDER BY p.status DESC") // solo per un ordine stabile: la precedenza la decide il chiamante
     List<Booking> findActiveBookings(@Param("roomId") Long roomId,
                                              @Param("moment") LocalDateTime moment);
     
@@ -52,7 +52,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByStatus(BookingStatus status);
     
     // Trova prenotazioni future
-    @Query("SELECT p FROM Booking p WHERE p.startTime > :now AND p.status != 'annullata' " +
+    @Query("SELECT p FROM Booking p WHERE p.startTime > :now AND p.status != 'cancelled' " +
            "ORDER BY p.startTime ASC")
     List<Booking> findFutureBookings(@Param("now") LocalDateTime now);
     
