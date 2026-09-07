@@ -24,8 +24,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Regression suite per la Fase 3 del refactor Swagger: RoomController senza piu'
- * @RequestHeader("Authorization")/checkAuth manuale, con risposte tipizzate (RoomListPayload ecc).
+ * The regression suite for RoomController after it lost the manual
+ * @RequestHeader("Authorization") / checkAuth, with typed responses (RoomListPayload and so on).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -45,13 +45,13 @@ class RoomControllerTest {
 
     @BeforeEach
     void setUp() {
-        // Le prenotazioni PRIMA delle aule: hanno una chiave esterna verso di esse, e
-        // cancellare un'aula ancora referenziata viola il vincolo.
+        // Bookings BEFORE rooms: they hold a foreign key to them, and deleting a room that
+        // is still referenced violates the constraint.
         //
-        // Mancava, ed era l'unica classe delle sette sulle aule a non farlo. Non si vedeva
-        // perche' @DirtiesContext ricostruiva il contesto - e con esso l'H2 in memoria -
-        // dopo ogni classe: le righe della classe precedente non esistevano mai. Tolto
-        // quello, il difetto e' venuto fuori subito, ed era li' da sempre.
+        // It was missing, and this was the only one of the room classes not doing it. It
+        // did not show because @DirtiesContext rebuilt the context - and with it the
+        // in-memory H2 - after every class: the previous class's rows never existed. Once
+        // that was removed the defect surfaced immediately, and it had always been there.
         bookingRepository.deleteAll();
         roomRepository.deleteAll();
 
@@ -115,7 +115,7 @@ class RoomControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.asMap(resp.getBody());
-        // Nessun envelope success/message/data qui: shape gia' esistente, preservata
+        // No success/message/data envelope here: an existing shape, kept as it was
         assertThat(body.keySet()).containsExactlyInAnyOrder("room", "bookings", "totalBookings");
     }
 

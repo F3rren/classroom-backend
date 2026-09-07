@@ -9,12 +9,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Entità Prenotazione - Basata su analisi frontend
- * Campi utilizzati dal frontend (normalizeBookingData):
- * - id, aulaId/roomId, corsoId/courseId, utenteId/userId
- * - inizio/startTime, fine/endTime, stato/status
- * - descrizione/description, dataCreazione/createdAt
- * - nomeAula/roomName, nomeCorso/courseName (calcolati via JOIN)
+ * A booking of a room.
+ *
+ * The fields a client reads: id, roomId, courseId, userId, startTime, endTime, status,
+ * description, createdAt, plus roomName and courseName, which are computed through a JOIN
+ * rather than stored here.
  */
 @Entity
 @Data

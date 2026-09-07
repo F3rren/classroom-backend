@@ -28,15 +28,15 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Regression suite per il fix IDOR/leak-password su /api/bookings.
- * Owner (A) crea una prenotazione; Other (B), senza alcun rapporto con essa,
- * non deve poterla leggere ne' vederne la password in chiaro.
+ * The regression suite for the IDOR / password-leak fix on /api/bookings.
+ * Owner (A) creates a booking; Other (B), with no relationship to it, must not be able to
+ * read it nor see any password in the clear.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-// Isola il contesto (e quindi lo schema H2) da questa classe: senza, dati lasciati da
+// Isolates the context (and so the H2 schema) from this class: without it, data left by
 // altre classi di test @SpringBootTest nello stesso DB in-memory condiviso possono violare
-// vincoli FK qui (es. un Utente referenziato da una Notifica creata da un'altra classe).
+// FK constraints here (a user referenced by a notification another class created, say).
 class BookingControllerTest {
 
     @LocalServerPort
@@ -89,7 +89,7 @@ class BookingControllerTest {
         tokenOther = TestJwt.forUser(2L, "other@test.it", "Other Test");
     }
 
-    /** L'istantanea di un proprietario. Prima creava un utente vero: la tabella non e' piu' qui. */
+    /** An owner's snapshot. It used to create a real user: that table is not here any more. */
     private BookingOwner newUser(Long id, String username, String name) {
         return new BookingOwner(id, username, name);
     }
@@ -167,10 +167,10 @@ class BookingControllerTest {
         assertThat(resp.getBody()).doesNotContain("owner@test.it");
     }
 
-    // ==================== SHAPE-LOCK: blocca derive accidentali di forma durante il refactor Swagger ====================
+    // ==================== shape lock: catches accidental drift in the response shape ====================
 
 
-    // La forma della risposta di login e' verificata in auth-service, che ora possiede
+    // The shape of the login response is checked in auth-service, which now owns
     // /api/auth/login: da qui quell'endpoint risponde 404.
 
     @Test
@@ -253,7 +253,7 @@ class BookingControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
-        // la prenotazione resta intatta
+        // the booking is left untouched
         assertThat(bookingRepository.findById(ownerBookingId).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.BOOKED);
     }

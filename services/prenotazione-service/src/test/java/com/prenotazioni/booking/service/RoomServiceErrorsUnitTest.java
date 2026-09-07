@@ -21,17 +21,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Cosa succede quando il database rifiuta un'operazione su un'aula.
+ * What happens when the database refuses an operation on a room.
  *
- * Serviva un test proprio perche' prima non succedeva nulla di visibile: AulaService
- * catturava ogni eccezione e restituiva null, e il controller la presentava come
- * "verifica che il nome non sia gia' esistente" con un 400. Un problema di database
- * arrivava al client travestito da errore dell'utente.
+ * A test was needed precisely because nothing visible used to happen: RoomService caught
+ * every exception and returned null, and the controller presented that as "check the name is
+ * not already taken" with a 400. A database problem reached the client disguised as a user
+ * error.
  *
- * Il caso concreto non e' ipotetico: aule.nome e' UNIQUE a database, quindi due creazioni
- * concorrenti con lo stesso nome superano entrambe il controllo existsByNomeIgnoreCase e
- * una delle due viene respinta dal vincolo. Quella e' una collisione, cioe' un 409, e
- * GlobalExceptionHandler sa gia' produrlo - bastava lasciargliela arrivare.
+ * The concrete case is not hypothetical: rooms.name is UNIQUE in the database, so two
+ * concurrent creations with the same name both pass the existsByNameIgnoreCase check and one
+ * of them is refused by the constraint. That is a collision, meaning a 409, and
+ * GlobalExceptionHandler already knows how to produce one - it just had to be let through.
  */
 class RoomServiceErrorsUnitTest {
 
@@ -59,7 +59,7 @@ class RoomServiceErrorsUnitTest {
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new DataIntegrityViolationException("aule_nome_key"));
 
-        // Deve salire, non diventare null: GlobalExceptionHandler la traduce in 409.
+        // It has to propagate, not become null: GlobalExceptionHandler turns it into a 409.
         assertThatThrownBy(() -> service.createRoom(request("Aula Magna")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -70,16 +70,16 @@ class RoomServiceErrorsUnitTest {
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new IllegalStateException("connessione persa"));
 
-        // Prima diventava un 400 "verifica che il nome non sia gia' esistente": un
-        // messaggio falso, che mandava chi legge a cercare il problema nel posto sbagliato.
+        // It used to become a 400 saying "check the name is not already taken": a false
+        // message, sending the reader to look for the problem in the wrong place.
         assertThatThrownBy(() -> service.createRoom(request("Aula Nuova")))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void anAlreadyUsedNameBecomesADomainConflict() {
-        // Prima era un null, che il controller presentava come 400. Ora e' un tipo, e
-        // il gestore globale lo traduce in 409 con un codice che nomina la causa.
+        // It used to be a null, which the controller presented as a 400. It is a type now,
+        // and the global handler turns it into a 409 with a code that names the cause.
         when(roomRepository.existsByNameIgnoreCase("Aula Magna")).thenReturn(true);
 
         assertThatThrownBy(() -> service.createRoom(request("Aula Magna")))
@@ -109,9 +109,9 @@ class RoomServiceErrorsUnitTest {
         doThrow(new DataIntegrityViolationException("prenotazioni_aula_id_fkey"))
                 .when(roomRepository).deleteById(1L);
 
-        // Prima tornava false, indistinguibile da "aula non trovata": il client riceveva
-        // un 404 su un'aula che esiste eccome, e il vero motivo - ci sono prenotazioni
-        // che la referenziano - non arrivava da nessuna parte.
+        // It used to return false, indistinguishable from "room not found": the client got
+        // a 404 about a room that exists perfectly well, and the real reason - there are
+        // bookings referencing it - never reached anybody.
         assertThatThrownBy(() -> service.deleteRoom(1L))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -119,7 +119,7 @@ class RoomServiceErrorsUnitTest {
     @Test
     void deletingAMissingRoomSaysItDoesNotExist() {
         // Prima tornava false, indistinguibile da "cancellazione fallita". Ora e' un 404
-        // che nomina la risorsa, e "cancellazione fallita" e' un caso diverso e separato.
+        // that names the resource, and "the deletion failed" is a different, separate case.
         when(roomRepository.existsById(99L)).thenReturn(false);
 
         assertThatThrownBy(() -> service.deleteRoom(99L))

@@ -23,10 +23,10 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Regression suite per la Fase 2 del refactor Swagger: Bean Validation sui DTO
+ * The regression suite for Bean Validation on the DTOs,
  * (CreateUserRequest/UpdateUserRequest/AulaRequest/PrenotazioneRequest) e conferma
- * che il comportamento di AuthController.login NON sia cambiato (nessun @Valid li',
- * deliberatamente, per non alterare l'ordine rispetto al rate limiter).
+ * and that the behaviour of AuthController.login has NOT changed (no @Valid there,
+ * deliberately, so as not to disturb the order with respect to the rate limiter).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -125,7 +125,7 @@ class ValidationAndAdminTest {
         return headers;
     }
 
-    // ==================== Filtro di sicurezza: 401/403 ricchi anche senza dispatch al controller ====================
+    // ============ security filter: full 401/403 bodies even without reaching a controller ============
 
     @Test
     void aProtectedEndpointWithoutATokenReturns401WithAJsonBody() throws Exception {

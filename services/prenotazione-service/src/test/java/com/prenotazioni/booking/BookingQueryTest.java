@@ -28,12 +28,12 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Copre gli endpoint di sola lettura di /api/bookings finora senza test:
- * /mie, /future, /all-details, /disponibilita, /{id}/details e /stato/{...}.
+ * Covers the read-only endpoints of /api/bookings that had no test until now:
+ * /mine, /future, /all-details, /availability, /{id}/details and /status/{...}.
  *
- * Il valore qui non e' solo "risponde 200": ogni test blocca anche l'esatto set di
- * chiavi JSON, perche' alcuni di questi endpoint NON sono avvolti nell'envelope
- * ApiEnvelope (shape storica preservata per il frontend) e la differenza va difesa.
+ * The value here is not just "it answers 200": every test also pins the exact set of JSON
+ * keys, because some of these endpoints are NOT wrapped in the ApiEnvelope (a historic shape
+ * kept for the frontend) and that difference has to be defended.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -106,7 +106,7 @@ class BookingQueryTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> body = TestJson.asMap(resp.getBody());
-        // shape storica: solo "bookings", nessun envelope e nessun totale
+        // the historic shape: only "bookings", no envelope and no total
         assertThat(body.keySet()).containsExactly("bookings");
         assertThat((java.util.List<?>) body.get("bookings")).hasSize(1);
     }
@@ -133,8 +133,8 @@ class BookingQueryTest {
 
     @Test
     void futureBookingsDoNotExposeTheOwnersData() {
-        // La lista e' visibile a qualunque utente autenticato: il proprietario va
-        // ridotto a id/username/nome, mai email o ruolo (sanitizeOwnerForListing).
+        // The list is visible to any authenticated user, so the owner has to be reduced to
+        // id/username/name, never the email or the role (sanitizeOwnerForListing).
         ResponseEntity<String> resp = get("/api/bookings/future");
 
         assertThat(resp.getBody()).doesNotContain("query-user@test.it");
@@ -198,10 +198,10 @@ class BookingQueryTest {
     }
 
     /**
-     * Regressione: "/stato/{aulaId}" e "/stato/{stato}" erano dichiarati sullo stesso
-     * pattern di path, quindi a runtime Spring falliva con "Ambiguous handler methods
-     * mapped" e ENTRAMBI gli endpoint rispondevano 500. Lo stato aula vive ora su
-     * "/stato-aula/{aulaId}"; questi due test difendono la separazione.
+     * A regression: "/status/{roomId}" and "/status/{status}" were declared on the same
+     * path pattern, so at runtime Spring failed with "Ambiguous handler methods mapped" and
+     * BOTH endpoints answered 500. The room status now lives at "/room-status/{roomId}";
+     * these two tests defend that separation.
      */
     @Test
     void roomStatusReturnsTheRoomStatusPayload() throws Exception {
@@ -253,10 +253,10 @@ class BookingQueryTest {
 
     @Test
     void aMissingBookingAnswersInTheCommonShape() throws Exception {
-        // Questi endpoint rispondevano {"error":"Prenotazione non trovata"}: una forma
-        // tutta loro, senza "success" ne' "userMessage", con "error" che conteneva una
-        // frase invece di un codice. Nessun test lo copriva, ed e' il motivo per cui la
-        // divergenza e' sopravvissuta cosi' a lungo.
+        // These endpoints used to answer {"error":"Prenotazione non trovata"}: a shape all
+        // of their own, with no "success" and no "userMessage", and an "error" holding a
+        // sentence instead of a code. No test covered it, which is why the divergence
+        // survived so long.
         ResponseEntity<String> resp = get("/api/bookings/999999");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -282,8 +282,8 @@ class BookingQueryTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         Map<String, Object> body = TestJson.asMap(resp.getBody());
         assertThat(body.get("success")).isEqualTo(false);
-        // L'elenco degli stati ammessi si ricava dall'enum: se ne aggiungessero uno e il
-        // messaggio restasse indietro, questo assert se ne accorgerebbe.
+        // The list of allowed statuses is derived from the enum: if one were added and the
+        // message lagged behind, this assertion would notice.
         assertThat(String.valueOf(body.get("userMessage"))).contains("booked", "cancelled");
     }
 }

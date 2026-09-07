@@ -30,13 +30,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit test di PrenotazioneService con i 4 repository mockati.
+ * Unit tests for BookingService with its repositories mocked.
  *
- * I test di integrazione esercitano solo il percorso felice: qui si coprono tutti i rami
- * di rifiuto (risorsa inesistente, permessi, slot occupato) che via HTTP sarebbero
- * scomodi o impossibili da provocare, e le transizioni di stato dell'aula.
+ * The integration tests only exercise the happy path: covered here are all the rejection
+ * branches (missing resource, permissions, occupied slot) that would be awkward or
+ * impossible to provoke over HTTP, plus the room's status transitions.
  *
- * Package com.prenotazioni.service perche' il costruttore del service e' package-private.
+ * It sits in this package because the service's constructor is package-private.
  */
 class BookingServiceUnitTest {
 
@@ -59,7 +59,7 @@ class BookingServiceUnitTest {
         endTime = startTime.plusHours(2);
     }
 
-    // ---------- helper ----------
+    // ---------- helpers ----------
 
     private Room room(Long id, RoomStatus status) {
         Room a = new Room();
@@ -70,9 +70,9 @@ class BookingServiceUnitTest {
     }
 
     /**
-     * L'istantanea del proprietario. Prima era un'entita' Utente con un ruolo: il ruolo
-     * non serve piu' qui, perche' il servizio lo riceve dal chiamante come flag isAdmin
-     * invece di rileggerlo dal database.
+     * The owner's snapshot. It used to be a User entity carrying a role: the role is not
+     * needed here any more, because the service receives it from the caller as an isAdmin
+     * flag instead of re-reading it from the database.
      */
     private BookingOwner user(Long id) {
         return new BookingOwner(id, "utente" + id, "Utente " + id);
@@ -89,7 +89,7 @@ class BookingServiceUnitTest {
         return p;
     }
 
-    /** Nessun conflitto: l'aula risulta libera per il periodo richiesto. */
+    /** No conflict: the room comes out free for the requested period. */
     private void freeRoom() {
         when(bookingRepository.findConflictingBookings(anyLong(), any(), any()))
                 .thenReturn(List.of());
@@ -100,7 +100,7 @@ class BookingServiceUnitTest {
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 
-    // ==================== prenotaAula ====================
+    // ==================== bookRoom ====================
 
     @Test
     void bookRoomRefusesWhenTheRoomIsBusy() {
@@ -121,9 +121,9 @@ class BookingServiceUnitTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
-    // Il test "utente inesistente" e' stato rimosso con la separazione: questo servizio non
-    // consulta piu' la tabella utenti, quindi non puo' piu' distinguere quel caso. A garantire
-    // l'esistenza e' il token firmato da auth-service, entro la sua scadenza.
+    // The "no such user" test went with the split: this service no longer consults the users
+    // table, so it can no longer tell that case apart. Existence is guaranteed by the token
+    // auth-service signed, within its expiry.
 
     @Test
     void bookRoomReportsAMissingCourse() {
@@ -159,7 +159,7 @@ class BookingServiceUnitTest {
         saveAsGiven();
         Room a = room(10L, RoomStatus.FREE);
         when(roomRepository.findById(10L)).thenReturn(Optional.of(a));
-        // nessuna prenotazione attiva ADESSO -> lo stato resta "free", nessun save sull'aula
+        // no booking active RIGHT NOW -> the status stays "free", no save on the room
         when(bookingRepository.findActiveBookings(anyLong(), any())).thenReturn(List.of());
 
         assertThat(service.bookRoom(10L, null, user(1L), startTime, endTime, "x")).isNotNull();
@@ -209,7 +209,7 @@ class BookingServiceUnitTest {
         assertThat(a.getStatus()).isEqualTo(RoomStatus.BLOCKED);
     }
 
-    // ==================== bloccaAula ====================
+    // ==================== blockRoom ====================
 
     @Test
     void blockRoomRefusesWhenTheRoomIsBusy() {
@@ -229,9 +229,9 @@ class BookingServiceUnitTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
-    // Rimosso: bloccaAula non rilegge piu' il ruolo dal database. A filtrare i non-admin
-    // e' @PreAuthorize("hasRole('ADMIN')") sul controller, con il ruolo preso dal token;
-    // verificarlo di nuovo qui richiederebbe una chiamata ad auth-service.
+    // Removed: blockRoom no longer re-reads the role from the database. Non-admins are
+    // filtered by @PreAuthorize("hasRole('ADMIN')") on the controller, with the role taken
+    // from the token; checking it again here would mean calling auth-service.
 
     @Test
     void blockRoomCreatesABlockedBookingForTheAdmin() {
@@ -247,7 +247,7 @@ class BookingServiceUnitTest {
         assertThat(blocco.getDescription()).isEqualTo("manutenzione straordinaria");
     }
 
-    // ==================== annullaPrenotazione ====================
+    // ==================== cancelBooking ====================
 
     @Test
     void cancelReportsAMissingBooking() {
@@ -257,8 +257,8 @@ class BookingServiceUnitTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
-    // Rimosso con la separazione: "utente inesistente" non e' piu' un caso che questo
-    // servizio possa distinguere, perche' non consulta piu' la tabella utenti.
+    // Removed with the split: "no such user" is no longer a case this service can tell
+    // apart, because it no longer consults the users table.
 
     @Test
     void cancelRefusesAnUnrelatedUser() {
@@ -282,7 +282,7 @@ class BookingServiceUnitTest {
 
         assertThat(service.cancelBooking(5L, 1L, false)).isTrue();
         assertThat(p.getStatus()).isEqualTo(BookingStatus.CANCELLED);
-        // l'aula torna libera e viene salvata perche' lo stato e' cambiato
+        // the room goes back to free and is saved, because its status changed
         assertThat(a.getStatus()).isEqualTo(RoomStatus.FREE);
         verify(roomRepository).save(a);
     }
@@ -301,7 +301,7 @@ class BookingServiceUnitTest {
 
     @Test
     void cancelHandlesAMissingRoomDuringTheStateRefresh() {
-        // ramo "aula non trovata" dentro aggiornaStatoAula
+        // the "room not found" branch inside updateRoomStatus
         Room a = room(10L, RoomStatus.FREE);
         Booking p = booking(5L, a, user(1L), BookingStatus.BOOKED);
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
@@ -314,8 +314,8 @@ class BookingServiceUnitTest {
 
     @Test
     void cancelRefusesAnAlreadyCancelledBooking() {
-        // Annullare due volte non deve riuscire: il chiamante riceverebbe un "annullata
-        // con successo" per un'operazione che non ha cambiato nulla.
+        // Cancelling twice must not succeed: the caller would get a "cancelled
+        // successfully" for an operation that changed nothing.
         Room a = room(10L, RoomStatus.FREE);
         Booking p = booking(5L, a, user(1L), BookingStatus.CANCELLED);
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
@@ -327,8 +327,8 @@ class BookingServiceUnitTest {
 
     @Test
     void cancelRefusesAnAdministrativeBlock() {
-        // I blocchi e le manutenzioni sono roba da admin: si annullano dall'endpoint
-        // admin dedicato, non da DELETE /api/bookings/{id}.
+        // Blocks and maintenance are admin business: they are cancelled through the
+        // dedicated admin endpoint, not through DELETE /api/bookings/{id}.
         Room a = room(10L, RoomStatus.BLOCKED);
         Booking p = booking(5L, a, user(1L), BookingStatus.BLOCKED);
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
@@ -339,21 +339,21 @@ class BookingServiceUnitTest {
 
     @Test
     void theRuleOnTheStatusAppliesToAdminsToo() {
-        // La regola e' sullo stato, non sul ruolo: per annullare comunque una
-        // prenotazione gia' annullata l'admin ha annullaPrenotazioneAsAdmin.
+        // The rule is about the status, not the role: to cancel an already cancelled
+        // booking anyway, an admin has cancelBookingAsAdmin.
         Room a = room(10L, RoomStatus.FREE);
         Booking p = booking(5L, a, user(1L), BookingStatus.CANCELLED);
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
 
-        // isAdmin=true e non false: prima era false, quindi a respingere era il controllo
-        // di PROPRIETA', non la regola di stato che il test dice di verificare. Con i
-        // booleani le due cose erano indistinguibili e il test passava lo stesso; con le
-        // eccezioni tipizzate la differenza si vede, e il test ora prova cio' che dichiara.
+        // isAdmin=true and not false: it used to be false, so what rejected the call was the
+        // OWNERSHIP check, not the status rule the test claims to verify. With booleans the
+        // two were indistinguishable and the test passed anyway; with typed exceptions the
+        // difference shows, and the test now proves what it says it does.
         assertThatThrownBy(() -> service.cancelBooking(5L, 2L, true))
                 .isInstanceOf(DomainConflictException.class);
     }
 
-    // ==================== updatePrenotazione ====================
+    // ==================== updateBooking ====================
 
     @Test
     void updateReportsAMissingBooking() {
@@ -363,9 +363,9 @@ class BookingServiceUnitTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
-    // Rimosso: "utente inesistente" non e' piu' un caso che questo servizio possa
-    // distinguere. Non consulta la tabella utenti dalla separazione di auth-service, e a
-    // garantire l'esistenza e' il token firmato, entro la sua scadenza.
+    // Removed: "no such user" is no longer a case this service can tell apart. It has not
+    // consulted the users table since auth-service was split off, and existence is
+    // guaranteed by the signed token, within its expiry.
 
     @Test
     void updateRefusesAnUnrelatedUser() {
@@ -447,7 +447,7 @@ class BookingServiceUnitTest {
         assertThat(service.updateBooking(5L, 10L, null, 2L, true, startTime, endTime, "x")).isNotNull();
     }
 
-    // ==================== getStatoAula ====================
+    // ==================== getRoomStatus ====================
 
     @Test
     void roomStatusIsFreeWithNoActiveBookings() {
@@ -478,7 +478,7 @@ class BookingServiceUnitTest {
 
     @Test
     void maintenanceWinsOverBlocked() {
-        // priorita' dichiarata dal service: MAINTENANCE > BLOCKED > BOOKED
+        // the precedence the service declares: MAINTENANCE > BLOCKED > BOOKED
         Room a = room(10L, RoomStatus.MAINTENANCE);
         when(bookingRepository.findActiveBookings(anyLong(), any()))
                 .thenReturn(List.of(

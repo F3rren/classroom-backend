@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 /**
  * Bean usato da @PreAuthorize sugli endpoint di lettura delle prenotazioni.
  * I test HTTP coprono proprietario e estraneo; qui si aggiungono i due guard
- * (principal assente, prenotazione inesistente) non producibili via richiesta.
+ * (no principal, no such booking) that cannot be produced through a request.
  */
 class BookingAuthorizationServiceUnitTest {
 
@@ -46,7 +46,7 @@ class BookingAuthorizationServiceUnitTest {
 
     @Test
     void allowsWhenBookingDoesNotExistSoTheControllerCanReturn404() {
-        // scelta deliberata: non si maschera un 404 con un 403
+        // a deliberate choice: a 404 is not masked with a 403
         when(bookingService.getBookingById(5L)).thenReturn(null);
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();
@@ -73,7 +73,7 @@ class BookingAuthorizationServiceUnitTest {
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin"))).isTrue();
     }
 
-    /** L'istantanea del proprietario, ora costruita a mano: la tabella utenti non e' piu' qui. */
+    /** The owner's snapshot, built by hand now: the users table is not here any more. */
     private static BookingOwner snapshotOf(Long id, String username, String name) {
         return new BookingOwner(id, username, name);
     }

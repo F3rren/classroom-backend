@@ -6,8 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Entità Corso - Basata su analisi frontend
- * Campi utilizzati: id, nome, docente, descrizione
+ * A course a booking can be attached to.
+ *
+ * It is optional on a booking: admin blocks and maintenance have none.
  */
 @Data
 @AllArgsConstructor

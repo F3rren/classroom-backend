@@ -25,10 +25,10 @@ import static org.mockito.Mockito.verify;
 /**
  * La pubblicazione dell'evento di cancellazione.
  *
- * Il test centrale e' quello sull'intestazione: e' cio' che permette di leggere in fila la
- * richiesta HTTP che ha annullato la prenotazione e la notifica creata dopo, su un altro
- * servizio e un altro thread. Senza, la correlazione si ferma al confine del servizio -
- * che e' esattamente il punto in cui inizia a servire.
+ * The central test is the one on the header: it is what lets you read in sequence the HTTP
+ * request that cancelled the booking and the notification created afterwards, on another
+ * service and another thread. Without it, correlation stops at the service boundary - which
+ * is exactly where it starts being useful.
  */
 class EventPublisherUnitTest {
 
@@ -43,7 +43,7 @@ class EventPublisherUnitTest {
         RequestContextHolder.resetRequestAttributes();
     }
 
-    /** Applica al messaggio il post-processore che il pubblicatore ha passato. */
+    /** Applies to the message the post-processor the publisher handed over. */
     private MessageProperties producedHeaders() {
         ArgumentCaptor<MessagePostProcessor> processore = ArgumentCaptor.forClass(MessagePostProcessor.class);
         verify(rabbitTemplate).convertAndSend(
@@ -70,9 +70,9 @@ class EventPublisherUnitTest {
 
     @Test
     void stillCarriesAnIdOutsideOfARequest() {
-        // Un evento puo' nascere anche fuori da una richiesta HTTP. Meglio un
-        // identificativo scollegato che nessuno: senza, la riga di log del consumatore
-        // resterebbe senza chiave e non si potrebbe nemmeno raggrupparla con se stessa.
+        // An event can also be born outside an HTTP request. A disconnected id beats none:
+        // without one the consumer's log line would have no key at all, and could not even
+        // be grouped with itself.
         eventPublisher.publishCancellation(event);
 
         assertThat((String) producedHeaders().getHeader(RequestCorrelationFilter.HEADER))
@@ -81,8 +81,8 @@ class EventPublisherUnitTest {
 
     @Test
     void anUnreachableBrokerDoesNotFailTheCancellation() {
-        // La cancellazione della prenotazione e' gia' avvenuta quando si arriva qui: far
-        // fallire tutto perche' la notifica non parte sarebbe peggio del danno.
+        // The booking has already been cancelled by the time we get here: failing the whole
+        // thing because the notification did not go out would be worse than the damage.
         doThrow(new AmqpException("broker giu'"))
                 .when(rabbitTemplate).convertAndSend(any(String.class), any(String.class),
                         any(Object.class), any(MessagePostProcessor.class));

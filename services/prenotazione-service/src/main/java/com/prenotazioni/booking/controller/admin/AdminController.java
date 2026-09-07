@@ -253,7 +253,7 @@ public class AdminController {
         }
 
         try {
-            // Il nome dell'admin arriva dal token: chiederlo ad auth-service significherebbe
+            // The admin's name comes from the token: asking auth-service for it would mean
             // a network call just to compose the text of a notification.
             String adminName = principal.name() != null ? principal.name() : "Amministratore";
             String bookingDate = booking.getStartTime().toLocalDate().toString();

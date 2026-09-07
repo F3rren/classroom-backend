@@ -32,19 +32,20 @@ import static org.mockito.Mockito.when;
  * Unit test (niente contesto Spring) di PrenotazioneController.
  *
  * Copre i rami NON raggiungibili via HTTP dai test di integrazione:
- *  - i tre catch di DataIntegrityViolationException: su H2 il vincolo anti-sovrapposizione
- *    "EXCLUDE USING gist" non esiste (e' solo su Postgres, e i test usano ddl-auto=create-drop,
- *    quindi lo schema nasce dalle entity), percio' quell'eccezione non puo' mai scattare via HTTP;
- *  - i rami di parsing e di range delle date, che stanno sotto la soglia di Bean Validation.
+ *  - the three DataIntegrityViolationException catches: on H2 the anti-overlap constraint
+ *    "EXCLUDE USING gist" does not exist (it is Postgres-only, and the tests use
+ *    ddl-auto=create-drop, so the schema comes from the entities), which means that
+ *    exception can never fire over HTTP;
+ *  - the date parsing and range branches, which sit below Bean Validation's threshold.
  *
- * Vive in com.prenotazioni.controller e non nella root come gli altri test, perche' il
- * costruttore del controller e' package-private.
+ * It lives in this package and not in the root like the other tests, because the
+ * controller's constructor is package-private.
  */
-// I tre test annullaReturns404/403/409 sono stati rimossi con i rami che verificavano:
-// il controller non ricostruisce piu' il motivo di un fallimento per scegliere lo status.
-// Quei casi sono ora coperti da PrenotazioneServiceUnitTest, che verifica quale eccezione
-// venga lanciata, e da GlobalExceptionHandlerUnitTest, che verifica in quale status si
-// traduca. Prima erano un solo test perche' erano un solo blocco di codice.
+// The three cancelReturns404/403/409 tests went with the branches they covered: the
+// controller no longer reconstructs the reason for a failure in order to choose the status.
+// Those cases are now covered by BookingServiceUnitTest, which checks which exception is
+// thrown, and by GlobalExceptionHandlerUnitTest, which checks what status it turns into.
+// They used to be a single test because they were a single block of code.
 class BookingControllerUnitTest {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -62,7 +63,7 @@ class BookingControllerUnitTest {
         admin = new AppPrincipal(2L, "admin@test.it", "m.rossi", "Mario Rossi", "admin");
     }
 
-    // ---------- helper ----------
+    // ---------- helpers ----------
 
     private BookingRequest request(String startTime, String endTime) {
         BookingRequest r = new BookingRequest();
@@ -99,7 +100,7 @@ class BookingControllerUnitTest {
         return ((ApiEnvelope<Object>) resp.getBody()).getError();
     }
 
-    // ==================== prenotaAula ====================
+    // ==================== bookRoom ====================
 
     @Test
     void bookRoomRejectsAnUnparsableStartDate() {
@@ -138,9 +139,9 @@ class BookingControllerUnitTest {
 
     @Test
     void bookRoomLetsTheConflictPropagate() {
-        // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
-        // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
-        // non la intercetti, che e' il comportamento corretto dopo la conversione.
+        // The controller no longer translates: the exception's type already carries the
+        // cause and GlobalExceptionHandler decides the status once. What is checked here is
+        // that the controller does not intercept it, which is the correct behaviour.
         when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BOOKING_CONFLICT", "busy", "L'aula non e' disponibile."));
 
         assertThatThrownBy(() -> controller.bookRoom(validRequest(), user))
@@ -209,9 +210,9 @@ class BookingControllerUnitTest {
 
     @Test
     void updateLetsTheConflictPropagate() {
-        // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
-        // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
-        // non la intercetti, che e' il comportamento corretto dopo la conversione.
+        // The controller no longer translates: the exception's type already carries the
+        // cause and GlobalExceptionHandler decides the status once. What is checked here is
+        // that the controller does not intercept it, which is the correct behaviour.
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "busy", "L'aula non e' disponibile."));
 
         assertThatThrownBy(() -> controller.editBooking(5L, validRequest(), user))
@@ -239,7 +240,7 @@ class BookingControllerUnitTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
-    // ==================== bloccaAula ====================
+    // ==================== blockRoom ====================
 
     @Test
     void blockRejectsAnUnparsableStartDate() {
@@ -268,9 +269,9 @@ class BookingControllerUnitTest {
 
     @Test
     void blockLetsTheConflictPropagate() {
-        // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
-        // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
-        // non la intercetti, che e' il comportamento corretto dopo la conversione.
+        // The controller no longer translates: the exception's type already carries the
+        // cause and GlobalExceptionHandler decides the status once. What is checked here is
+        // that the controller does not intercept it, which is the correct behaviour.
         when(service.blockRoom(anyLong(), any(), any(), any(), anyString())).thenThrow(new BookingConflictException("BLOCK_CONFLICT", "busy", "L'aula non e' disponibile."));
 
         assertThatThrownBy(() -> controller.blockRoom(validRequest(), admin))
@@ -302,12 +303,12 @@ class BookingControllerUnitTest {
 
     @Test
     void anAdminOnSomeoneElsesAlreadyCancelledBookingGetsTheConflictNotAForbidden() {
-        // Il test nasceva per proteggere da un 403 fuorviante: il controller riderivava
-        // la regola di proprieta' e, se sbagliava l'ordine dei controlli, un admin che
-        // annullava una prenotazione altrui gia' annullata si vedeva dire "puoi annullare
-        // solo le tue". Ora quella duplicazione non esiste: e' il service a decidere, e
-        // lancia il conflitto sullo stato. Qui resta a fissare che il controller non
-        // reintroduca una propria interpretazione.
+        // This test was born to guard against a misleading 403: the controller re-derived
+        // the ownership rule and, if it got the order of the checks wrong, an admin
+        // cancelling somebody else's already cancelled booking was told "you can only cancel
+        // your own". That duplication is gone: the service decides, and throws the conflict
+        // on the status. This stays to pin down that the controller does not reintroduce an
+        // interpretation of its own.
         when(service.cancelBooking(7L, 2L, true))
                 .thenThrow(new DomainConflictException("INVALID_STATE", "gia' annullata",
                         "Questa prenotazione non puo' essere annullata nello stato attuale."));
@@ -326,7 +327,7 @@ class BookingControllerUnitTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
-    /** L'istantanea del proprietario, ora costruita a mano: la tabella utenti non e' piu' qui. */
+    /** The owner's snapshot, built by hand now: the users table is not here any more. */
     private static BookingOwner snapshotOf(Long id, String username, String name) {
         return new BookingOwner(id, username, name);
     }

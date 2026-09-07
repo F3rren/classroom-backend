@@ -28,18 +28,18 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * AulaService contiene lo stesso blocco "dettagli aula" clonato tre volte
- * (getAllRoomsWithDetails, getRoomWithDetails e il privato getRoomsDetailsFromList).
- * Tutti e tre erano gia' invocati da RoomQueryTest, ma la sua fixture non crea nessuna
- * prenotazione: percio' ogni ramo per-prenotazione (occupata adesso, bloccata, in
- * manutenzione, imminente, elenco prenotazioni) non veniva mai eseguito.
+ * RoomService holds the same "room details" block cloned three times
+ * (getAllRoomsWithDetails, getRoomWithDetails and the private getRoomsDetailsFromList).
+ * All three were already invoked by RoomQueryTest, but its fixture creates no bookings at
+ * all: so every per-booking branch (busy now, blocked, under maintenance, imminent, the
+ * booking list) was never executed.
  *
- * Questa classe fornisce la fixture mancante. Le prenotazioni sono inserite via
- * repository e non via HTTP, perche' il controller rifiuta le date nel passato e qui
- * servono prenotazioni che attraversano ADESSO.
+ * This class supplies the missing fixture. The bookings are inserted through the repository
+ * and not over HTTP, because the controller refuses dates in the past and what is needed
+ * here are bookings that straddle RIGHT NOW.
  *
- * Ogni aula copre un solo scenario: i blocchi fanno break sulla prima prenotazione
- * sovrapposta, quindi mettere piu' casi sulla stessa aula ne nasconderebbe alcuni.
+ * Each room covers exactly one scenario: the blocks break on the first overlapping booking,
+ * so putting several cases on the same room would hide some of them.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -66,7 +66,7 @@ class RoomDetailsWithBookingsTest {
         bookingRepository.deleteAll();
         roomRepository.deleteAll();
 
-        // Il nome finisce dentro currentBooking, quindi conta che sia valorizzato.
+        // The name ends up inside currentBooking, so it matters that it is filled in.
         BookingOwner user = new BookingOwner(1L, "dettagli", "Mario Rossi");
 
         LocalDateTime now = LocalDateTime.now();
@@ -80,8 +80,8 @@ class RoomDetailsWithBookingsTest {
         maintenanceRoomId = saveRoom("Aula Manutenzione", 2, 20, false);
         book(maintenanceRoomId, user, BookingStatus.MAINTENANCE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
 
-        // Aula virtuale con prenotazione IMMINENTE (entro 2 ore, ma non ancora iniziata):
-        // copre il secondo ramo e il lato virtuale del terzo clone.
+        // A virtual room with an IMMINENT booking (within 2 hours, but not yet started):
+        // covers the second branch and the virtual side of the third clone.
         upcomingRoomId = saveRoom("Aula Virtuale Imminente", 0, 50, true);
         book(upcomingRoomId, user, BookingStatus.BOOKED, now.plusMinutes(30), now.plusMinutes(90), null);
 
@@ -179,13 +179,13 @@ class RoomDetailsWithBookingsTest {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> imminente = byName(rooms, "Aula Virtuale Imminente");
 
-        // non e' occupata adesso, ma inizia entro 2 ore -> comunque "booked"
+        // not busy right now, but starting within 2 hours -> "booked" all the same
         assertThat(imminente.get("status")).isEqualTo("booked");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> booking = (Map<String, Object>) imminente.get("booking");
         assertThat(booking).isNotNull();
-        // descrizione null -> il fallback "Lezione"
+        // a null description -> the "Lezione" fallback
         assertThat(booking.get("purpose")).isEqualTo("Lezione");
     }
 
@@ -274,7 +274,7 @@ class RoomDetailsWithBookingsTest {
         assertThat(byName(rooms, "Aula Virtuale Imminente").get("status")).isEqualTo("booked");
     }
 
-    // ==================== stato aula (PrenotazioneService.getStatoAula) ====================
+    // ==================== room status (BookingService.getRoomStatus) ====================
 
     @Test
     void roomStatusReflectsTheActiveBookingKind() throws Exception {
@@ -282,7 +282,7 @@ class RoomDetailsWithBookingsTest {
         assertThat(statusOf(blockedRoomId)).isEqualTo("BLOCKED");
         assertThat(statusOf(maintenanceRoomId)).isEqualTo("MAINTENANCE");
         assertThat(statusOf(freeRoomId)).isEqualTo("FREE");
-        // la prenotazione imminente non e' ancora attiva: l'aula risulta libera adesso
+        // the imminent booking is not active yet: the room comes out free right now
         assertThat(statusOf(upcomingRoomId)).isEqualTo("FREE");
     }
 

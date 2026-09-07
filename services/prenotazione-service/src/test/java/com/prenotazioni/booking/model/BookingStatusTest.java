@@ -7,10 +7,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Contratto esterno dell'enum. Questi test non sono cosmetici: il frontend compilato
- * confronta le stringhe minuscole esatte ("cancelled", "blocked", "booked", "free")
- * e la colonna DB ha un CHECK constraint sugli stessi valori. Se qualcuno rinominasse le
- * costanti o togliesse @JsonValue, il JSON diventerebbe maiuscolo e romperebbe entrambi:
+ * The enum's external contract. These tests are not cosmetic: a client compares the exact
+ * lowercase strings ("cancelled", "blocked", "booked", "free") and the database column has a
+ * CHECK constraint on the same values. If somebody renamed the constants or removed
+ * @JsonValue, the JSON would turn uppercase and break both:
  * qui si blocca quel comportamento.
  */
 class BookingStatusTest {

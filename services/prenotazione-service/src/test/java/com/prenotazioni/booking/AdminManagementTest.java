@@ -33,11 +33,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
 /**
- * Copre gli endpoint admin finora senza test: gestione aule (GET/PUT/DELETE su
- * /api/admin/rooms), eliminazione utente e gestione prenotazioni lato admin.
+ * Covers the admin endpoints that had no test until now: room management (GET/PUT/DELETE on
+ * /api/admin/rooms) and booking management from the admin side.
  *
- * Per ogni operazione distruttiva il test non si ferma allo status code ma verifica
- * l'effetto reale sul database, ed esiste sempre la controprova che un utente non
+ * For every destructive operation the test does not stop at the status code but checks the
+ * real effect on the database, and there is always the counter-test that a user who is not
  * admin riceve 403 sullo stesso endpoint.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -54,9 +54,9 @@ class AdminManagementTest {
     private BookingRepository bookingRepository;
 
     /**
-     * La notifica non e' piu' una riga scritta in questo processo ma una chiamata a
-     * notifica-service. Il test conserva il proprio intento verificando che la chiamata
-     * parta: e' il confine giusto da controllare da qui, e non richiede che l'altro
+     * The notification is no longer a row written in this process but a call to
+     * notification-service. The test keeps its intent by checking that the call goes out:
+     * that is the right boundary to check from here, and it does not require the other
      * servizio sia in esecuzione.
      */
     @MockBean
@@ -68,7 +68,7 @@ class AdminManagementTest {
     private Long regularUserId;
     private Long bookingId;
 
-    /** Gli id non arrivano piu' da un insert: li sceglie il test e li firma nel token. */
+    /** The ids no longer come from an insert: the test picks them and signs them into the token. */
     private static final Long ID_ADMIN = 1L;
     private static final Long REGULAR_USER_ID = 2L;
 
@@ -77,8 +77,8 @@ class AdminManagementTest {
         bookingRepository.deleteAll();
         roomRepository.deleteAll();
 
-        // Nessun utente da creare: la tabella utenti appartiene ad auth-service e i token
-        // sono firmati in locale con lo stesso segreto (vedi TestJwt).
+        // No user to create: the users table belongs to auth-service, and the tokens are
+        // signed locally with the same secret (see TestJwt).
         regularUserId = REGULAR_USER_ID;
 
         Room room = new Room();
@@ -125,7 +125,7 @@ class AdminManagementTest {
         return (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
     }
 
-    // ==================== Gestione aule ====================
+    // ==================== room management ====================
 
     @Test
     void theAdminListsTheRooms() throws Exception {
@@ -166,7 +166,7 @@ class AdminManagementTest {
 
     @Test
     void updatingARoomRejectsAnInvalidBody() {
-        // capienza negativa viola @Positive su AulaRequest
+        // a negative capacity violates @Positive on RoomRequest
         Map<String, Object> body = Map.of("name", "X", "capacity", -5, "floor", 1);
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, body);
 
@@ -220,7 +220,7 @@ class AdminManagementTest {
         assertThat(data.get("adminAction")).isEqualTo(true);
         assertThat(data.get("reason")).isEqualTo("Aula richiesta per un esame");
 
-        // la prenotazione risulta annullata e il proprietario riceve una notifica
+        // the booking comes out cancelled and the owner gets a notification
         Booking dopo = bookingRepository.findById(bookingId).orElseThrow();
         assertThat(dopo.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         verify(eventPublisher).publishCancellation(any(BookingCancelledEvent.class));
@@ -228,10 +228,10 @@ class AdminManagementTest {
 
     @Test
     void anOverlongReasonIsRejectedInsteadOfSilentlyLosingTheNotification() throws Exception {
-        // Il motivo finisce concatenato dentro Notifica.messaggio, che e' varchar(1000).
-        // Senza un limite, il salvataggio della notifica esplode e AdminController inghiotte
-        // l'eccezione ("non blocchiamo l'operazione se la notifica fallisce"): la prenotazione
-        // risulta annullata ma il proprietario non viene MAI avvisato, in silenzio.
+        // The reason ends up concatenated into Notification.message, which is varchar(1000).
+        // Without a limit the notification save blows up and AdminController swallows the
+        // exception ("a failed notification does not hold up the operation"): the booking
+        // comes out cancelled but the owner is NEVER told, silently.
         String motivoEnorme = "x".repeat(1500);
 
         ResponseEntity<String> resp = exchange(
@@ -239,7 +239,7 @@ class AdminManagementTest {
                 Map.of("reason", motivoEnorme));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        // e la prenotazione NON deve essere stata annullata da una richiesta rifiutata
+        // and the booking must NOT have been cancelled by a request that was refused
         assertThat(bookingRepository.findById(bookingId).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.BOOKED);
     }
@@ -253,13 +253,13 @@ class AdminManagementTest {
                 Map.of("reason", motivoLungoMaValido));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        // la notifica deve esistere davvero, non essere persa da un catch silenzioso
+        // the notification has to really exist, not be lost to a silent catch
         verify(eventPublisher).publishCancellation(any(BookingCancelledEvent.class));
     }
 
     @Test
     void adminForceDeleteWorksWithoutBody() {
-        // il corpo con il motivo e' opzionale: senza, si usa un motivo di default
+        // the body carrying the reason is optional: without it a default reason is used
         ResponseEntity<String> resp = exchange(
                 "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin, null);
 
@@ -274,7 +274,7 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    // ==================== Controprova: nessun accesso senza ruolo admin ====================
+    // ==================== counter-test: no access without the admin role ====================
 
     @Test
     void nonAdminIsForbiddenOnEveryAdminEndpoint() {
@@ -285,8 +285,8 @@ class AdminManagementTest {
                 new Chiamata("/api/admin/rooms/" + roomId, HttpMethod.DELETE),
                 new Chiamata("/api/admin/bookings", HttpMethod.GET),
                 new Chiamata("/api/admin/bookings/" + bookingId, HttpMethod.DELETE),
-                // /api/admin/users/{id} non e' piu' servito da questo servizio:
-                // la gestione utenti e' passata ad auth-service.
+                // /api/admin/users/{id} is no longer served by this service: user
+                // management moved to auth-service.
         };
 
         for (Chiamata c : chiamate) {
@@ -296,7 +296,7 @@ class AdminManagementTest {
                     .isEqualTo(HttpStatus.FORBIDDEN);
         }
 
-        // e nulla e' stato modificato
+        // and nothing was changed
         assertThat(roomRepository.existsById(roomId)).isTrue();
     }
 
@@ -308,9 +308,9 @@ class AdminManagementTest {
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms", HttpMethod.POST, tokenAdmin, body);
 
-        // 409 e non piu' 400: un nome gia' preso non e' una richiesta malformata, e il
-        // chiamante non la risolve correggendo la sintassi. Il codice dice ora quale dei
-        // tanti motivi di fallimento e' stato, invece del generico ROOM_CREATION_FAILED.
+        // 409 and no longer 400: a name already taken is not a malformed request, and the
+        // caller does not fix it by correcting the syntax. The code now says which of the
+        // many failure reasons it was, instead of a generic ROOM_CREATION_FAILED.
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NAME_TAKEN");
     }
@@ -332,8 +332,8 @@ class AdminManagementTest {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        // ROOM_NOT_FOUND e non ROOM_UPDATE_FAILED: lo stato era gia' 404, ma il codice
-        // diceva "aggiornamento fallito" senza dire perche'. Ora nomina la causa.
+        // ROOM_NOT_FOUND and not ROOM_UPDATE_FAILED: the status was already 404, but the
+        // code said "update failed" without saying why. It now names the cause.
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ROOM_NOT_FOUND");
     }
 

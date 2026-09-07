@@ -8,9 +8,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Contratto esterno di StatoAula.
  *
- * Questi due test stavano dentro RuoloTest, che ne copriva due enum diversi. La
- * modularizzazione ha separato i due casi: Ruolo e' comune a tutti i servizi e vive in
- * shared, StatoAula appartiene al dominio delle aule e resta qui.
+ * These two tests used to live inside RoleTest, which covered two different enums. The
+ * modularisation separated the cases: Role is common to every service and lives in shared,
+ * RoomStatus belongs to the room domain and stays here.
  */
 class RoomStatusTest {
 
@@ -18,7 +18,7 @@ class RoomStatusTest {
 
     @Test
     void roomStatusKeepsItsOwnLowercaseVocabulary() {
-        // room_status_check: 4 valori, diversi da quelli della prenotazione
+        // room_status_check: 4 values, different from the booking's
         assertThat(java.util.Arrays.stream(RoomStatus.values()).map(RoomStatus::getValue))
                 .containsExactlyInAnyOrder("free", "busy", "blocked", "maintenance");
     }

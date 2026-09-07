@@ -36,25 +36,24 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * L'unica classe di test che gira su PostgreSQL reale, per coprire cio' che H2 non
- * sa esprimere e che quindi nessun altro test verifica davvero:
+ * The only test class that runs against a real PostgreSQL, to cover what H2 cannot express
+ * and which therefore no other test really checks:
  *
- *  - il vincolo di esclusione prenotazioni_no_overlap (EXCLUDE USING gist), che e'
- *    la protezione contro la doppia prenotazione concorrente;
- *  - i tre CHECK constraint su ruolo e stati;
- *  - il fatto che le migrazioni Flyway girino per davvero su un database vuoto, e
- *    che le entity corrispondano allo schema che producono (ddl-auto=validate).
+ *  - the exclusion constraint bookings_no_overlap (EXCLUDE USING gist), which is the
+ *    protection against concurrent double booking;
+ *  - the CHECK constraints on the statuses;
+ *  - the fact that the Flyway migrations really do run on an empty database, and that the
+ *    entities match the schema they produce (ddl-auto=validate).
  *
- * Fino a qui questi comportamenti erano coperti solo da unit test che MOCCANO la
- * DataIntegrityViolationException: provano la reazione dell'applicazione, non che
- * il vincolo esista.
+ * Until this class existed, those behaviours were covered only by unit tests that MOCK the
+ * DataIntegrityViolationException: they prove how the application reacts, not that the
+ * constraint exists.
  *
- * Le altre 9 classi di integrazione restano su H2 e non vengono toccate: sono
- * veloci e le loro fixture dipendono da uno schema ricreato a ogni classe.
+ * The other integration classes stay on H2 and are left alone: they are fast, and their
+ * fixtures rely on a schema recreated for every class.
  *
- * Senza Docker la classe viene SALTATA, non fallita (disabledWithoutDocker): la
- * condizione di JUnit gira prima di SpringExtension, quindi il contesto non viene
- * nemmeno costruito.
+ * Without Docker this class is SKIPPED, not failed (disabledWithoutDocker): the JUnit
+ * condition runs before SpringExtension, so the context is not even built.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -62,24 +61,24 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PostgresSchemaConstraintsTest {
 
     /**
-     * Tag esplicito: il default di PostgreSQLContainer e' 9.6.12, troppo vecchio.
-     * btree_gist e' incluso nell'immagine ufficiale e l'utente del container e'
-     * superuser, quindi il CREATE EXTENSION della V1 funziona senza aggiustamenti.
+     * An explicit tag: PostgreSQLContainer defaults to 9.6.12, which is far too old.
+     * btree_gist ships with the official image and the container user is a superuser, so
+     * V1's CREATE EXTENSION works with no adjustment.
      */
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
                     .withDatabaseName("prenotazione_aule_test")
-                    // Allinea il fuso del server a quello della JVM: le colonne sono
-                    // "timestamp" senza fuso e le query usano CURRENT_TIMESTAMP.
+                    // Line the server's time zone up with the JVM's: the columns are
+                    // "timestamp" without a zone and the queries use CURRENT_TIMESTAMP.
                     .withEnv("TZ", TimeZone.getDefault().getID())
                     .withCommand("postgres", "-c", "fsync=off", "-c", "synchronous_commit=off")
                     .withStartupTimeout(Duration.ofMinutes(3));
 
     /**
-     * Method reference e non POSTGRES.getJdbcUrl(): il valore viene risolto al
-     * refresh del contesto, quindi non dipende dall'ordine con cui JUnit registra
-     * l'estensione di Testcontainers e quella di Spring.
+     * A method reference and not POSTGRES.getJdbcUrl(): the value is resolved when the
+     * context refreshes, so it does not depend on the order in which JUnit registers the
+     * Testcontainers extension and Spring's.
      */
     @DynamicPropertySource
     static void datasourceDalContainer(DynamicPropertyRegistry registry) {
@@ -95,9 +94,9 @@ class PostgresSchemaConstraintsTest {
     @Autowired private Environment env;
 
     /**
-     * Base temporale senza nanosecondi e lontana da adesso: PostgreSQL tronca i
-     * timestamp al microsecondo, e una base con nanosecondi renderebbe fragili i
-     * confronti. Mai usare LocalDateTime.now() nudo in questa classe.
+     * A time base with no nanoseconds, far from now: PostgreSQL truncates timestamps to the
+     * microsecond, and a base carrying nanoseconds would make the comparisons brittle. Never
+     * use a bare LocalDateTime.now() in this class.
      */
     private static final LocalDateTime BASE = LocalDate.now().plusDays(7).atTime(10, 0);
 
@@ -106,15 +105,15 @@ class PostgresSchemaConstraintsTest {
 
     @BeforeEach
     void setUp() {
-        // Qui lo schema e' creato una volta da Flyway e non viene mai ricreato,
-        // quindi l'ordine di cancellazione deve rispettare le foreign key.
+        // Here the schema is created once by Flyway and never recreated, so the deletion
+        // order has to respect the foreign keys.
         bookingRepository.deleteAll();
         courseRepository.deleteAll();
         roomRepository.deleteAll();
 
-        // L'utente non esiste piu' in questo database: la prenotazione conserva solo
-        // la sua istantanea. L'id e' un valore qualunque, perche' nessuna chiave esterna
-        // lo vincola piu' - ed e' esattamente cio' che la V4 ha reso possibile.
+        // The user no longer exists in this database: the booking keeps only its snapshot
+        // of them. The id is an arbitrary value, because no foreign key constrains it any
+        // more - which is exactly what V4 made possible.
         user = new BookingOwner(42L, "pg-user", "Utente Postgres");
 
         room = newRoom("Aula Postgres");
@@ -130,7 +129,7 @@ class PostgresSchemaConstraintsTest {
         return roomRepository.save(a);
     }
 
-    /** saveAndFlush e non save: altrimenti l'INSERT puo' essere rinviato oltre l'assert. */
+    /** saveAndFlush and not save: otherwise the INSERT can be deferred past the assert. */
     private Booking save(Room onRoom, LocalDateTime startTime, LocalDateTime endTime, BookingStatus status) {
         Booking p = new Booking();
         p.setRoom(onRoom);
@@ -142,20 +141,20 @@ class PostgresSchemaConstraintsTest {
         return bookingRepository.saveAndFlush(p);
     }
 
-    // ==================== 1. le migrazioni sono state applicate davvero ====================
+    // ==================== 1. the migrations really were applied ====================
 
     @Test
     void flywayAppliedEveryMigrationWithoutBaselining() {
         List<String> versioni = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
                 String.class);
-        // V3 e V5 cedono notifiche e utenti ai servizi dedicati, V4 denormalizza il
-        // proprietario della prenotazione. Se una mancasse, lo schema qui sarebbe
-        // quello del monolite e i test sotto proverebbero il sistema sbagliato.
+        // V3 and V5 hand notifications and users over to their own services, V4
+        // denormalises the booking's owner. If one were missing, the schema here would be
+        // the monolith's and the tests below would be exercising the wrong system.
         assertThat(versioni).containsExactly("1", "2", "3", "4", "5");
 
-        // Nessuna riga BASELINE: e' questo che prova che la V1 e' stata ESEGUITA
-        // e non solo marcata come gia' applicata, saltando il vincolo di esclusione.
+        // No BASELINE row: that is what proves V1 was EXECUTED and not merely marked as
+        // already applied, which would have skipped the exclusion constraint.
         Integer baseline = jdbc.queryForObject(
                 "SELECT count(*) FROM flyway_schema_history WHERE type = 'BASELINE'", Integer.class);
         assertThat(baseline).isZero();
@@ -163,9 +162,9 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void hibernateValidatesTheSchemaFlywayProduced() {
-        // L'assert reale e' strutturale: se le entity divergessero dalle migrazioni,
-        // il contesto non si avvierebbe e tutta la classe andrebbe in errore. Questo
-        // test rende esplicita una garanzia che altrimenti resterebbe invisibile.
+        // The real assertion is structural: if the entities drifted from the migrations the
+        // context would not start and the whole class would error out. This test makes
+        // explicit a guarantee that would otherwise stay invisible.
         assertThat(env.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
     }
 
@@ -180,20 +179,20 @@ class PostgresSchemaConstraintsTest {
                         + "WHERE c.contype IN ('c','x') AND t.relname IN ('utenti','aule','prenotazioni')",
                 String.class);
         assertThat(vincoli).containsExactlyInAnyOrder(
-                // utente_ruolo_check non compare piu': vive nel database di auth-service,
-                // insieme alla tabella che vincola. Lo verifica un test omologo la'.
+                // user_role_check is no longer here: it lives in auth-service's database,
+                // alongside the table it constrains. A twin test over there checks it.
                 "bookings_no_overlap", "room_status_check", "booking_status_check");
     }
 
     @Test
     void theDatasourcePointsAtTheContainerAndNotTheLocalDatabase() {
-        // Se .env riuscisse a scavalcare @DynamicPropertySource,
-        // questi test girerebbero sul database di sviluppo. Meglio accorgersene qui.
+        // If .env could override @DynamicPropertySource, these tests would run against the
+        // development database. Better to find that out here.
         assertThat(env.getProperty("spring.datasource.url"))
                 .contains(String.valueOf(POSTGRES.getFirstMappedPort()));
     }
 
-    // ==================== 2. il vincolo di esclusione ====================
+    // ==================== 2. the exclusion constraint ====================
 
     @Test
     void twoOverlappingBookingsForTheSameRoomAreRejectedByTheDatabase() {
@@ -208,11 +207,11 @@ class PostgresSchemaConstraintsTest {
     void backToBackBookingsAreAllowed() {
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
-        // tsrange e' semiaperto: [10,12) e [12,14) non si sovrappongono.
+        // tsrange is half-open: [10,12) and [12,14) do not overlap.
         assertThatCode(() -> save(room, BASE.plusHours(2), BASE.plusHours(4), BookingStatus.BOOKED))
                 .doesNotThrowAnyException();
 
-        // e il predicato applicativo concorda
+        // and the application predicate agrees
         assertThat(bookingRepository.findConflictingBookings(
                 room.getId(), BASE.plusHours(2), BASE.plusHours(4))).hasSize(1);
     }
@@ -221,9 +220,9 @@ class PostgresSchemaConstraintsTest {
     void aCancelledBookingDoesNotBlockTheSameInterval() {
         save(room, BASE, BASE.plusHours(2), BookingStatus.CANCELLED);
 
-        // Prova indirettamente anche che il converter scrive "cancelled" minuscolo:
-        // il vincolo filtra con WHERE stato <> 'annullata', quindi se il converter
-        // scrivesse il nome della costante questo inserimento verrebbe rifiutato.
+        // It also proves indirectly that the converter writes "cancelled" in lowercase:
+        // the constraint filters with WHERE status <> 'cancelled', so if the converter wrote
+        // the constant's name instead, this insert would be refused.
         assertThatCode(() -> save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED))
                 .doesNotThrowAnyException();
     }
@@ -238,8 +237,8 @@ class PostgresSchemaConstraintsTest {
     }
 
     /**
-     * Il predicato applicativo (findConflictingBookings) e quello del vincolo DB
-     * devono concordare. Riferimento: [BASE, BASE+120min).
+     * The application predicate (findConflictingBookings) and the database constraint have to
+     * agree. Reference interval: [BASE, BASE+120min).
      */
     @ParameterizedTest(name = "offset [{0},{1}) minuti -> conflitto atteso: {2}")
     @CsvSource({
@@ -280,10 +279,10 @@ class PostgresSchemaConstraintsTest {
     void aZeroLengthInterval_theDatabaseAllowsItButTheApplicationDoesNot() {
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
-        // Divergenza reale e documentata: tsrange(t,t) e' vuoto e non si sovrappone
-        // mai, quindi il vincolo DB accetta. Il predicato applicativo invece segnala
-        // conflitto. E' raggiungibile via HTTP: il controller rifiuta solo fine < inizio,
-        // non fine == inizio. A fermarlo e' quindi solo il livello applicativo.
+        // A real, documented divergence: tsrange(t,t) is empty and never overlaps anything,
+        // so the database constraint accepts it. The application predicate reports a
+        // conflict instead. It is reachable over HTTP: the controller refuses only
+        // end < start, not end == start. So only the application layer stops it.
         assertThat(bookingRepository.findConflictingBookings(
                 room.getId(), BASE.plusHours(1), BASE.plusHours(1))).isNotEmpty();
 
@@ -291,11 +290,11 @@ class PostgresSchemaConstraintsTest {
                 .doesNotThrowAnyException();
     }
 
-    // ==================== 3. i CHECK constraint ====================
-    // Inserimenti raw: gli enum non possono produrre valori fuori dominio.
+    // ==================== 3. the CHECK constraints ====================
+    // Raw inserts: the enums cannot produce a value outside the domain.
 
-    // Il CHECK sul ruolo e' verificato in auth-service, che possiede la tabella utenti:
-    // vedi VincoliUtentiTest. Qui la tabella non esiste piu' (migrazione V5).
+    // The CHECK on the role is verified in auth-service, which owns the users table: see
+    // UserConstraintsTest. The table no longer exists here (migration V5).
 
     @Test
     void theCheckRejectsARoomStatusOutsideTheDomain() {
@@ -308,7 +307,7 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void theCheckRejectsABookingStatusOutsideTheDomain() {
-        // Intervallo lontano, cosi' e' il CHECK a scattare e non il vincolo di esclusione.
+        // A far-off interval, so it is the CHECK that trips and not the exclusion constraint.
         assertThatThrownBy(() -> jdbc.update(
                 "INSERT INTO prenotazioni (aula_id, utente_id, inizio, fine, stato, data_creazione) "
                         + "VALUES (?, ?, ?, ?, 'pippo', ?)",
@@ -320,8 +319,8 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void everyEnumValueIsAcceptedByTheChecks() {
-        // L'inverso dei tre test sopra, ed e' quello che intercetta la regressione
-        // realistica: aggiungere una costante a un enum e dimenticare la migrazione.
+        // The inverse of the three tests above, and the one that catches the realistic
+        // regression: adding a constant to an enum and forgetting the migration.
 
         for (RoomStatus s : RoomStatus.values()) {
             assertThatCode(() -> jdbc.update(

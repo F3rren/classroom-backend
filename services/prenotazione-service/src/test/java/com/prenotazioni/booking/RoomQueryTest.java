@@ -23,11 +23,11 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Copre gli endpoint di lettura di /api/rooms finora senza test: /capienza, /detailed,
+ * Covers the read endpoints of /api/rooms that had no test until now: /capacity, /detailed,
  * /details, /stats, /virtual, /virtual/detailed, /physical/detailed e /{id}/detailed.
  *
- * Il dataset ha volutamente 2 aule fisiche e 1 virtuale con capienze diverse, cosi' i
- * filtri e le statistiche producono numeri distinguibili invece che tutti uguali a zero.
+ * The dataset deliberately has 2 physical rooms and 1 virtual one with different capacities,
+ * so the filters and the statistics produce distinguishable numbers instead of all zeroes.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
