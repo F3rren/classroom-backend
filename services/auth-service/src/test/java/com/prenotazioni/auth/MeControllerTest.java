@@ -91,7 +91,7 @@ class MeControllerTest {
     // ==================== MeController ====================
 
     @Test
-    void restituisceIlProprioProfiloSenzaLaPassword() throws Exception {
+    void returnsTheOwnProfileWithoutThePassword() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/me", HttpMethod.GET, new HttpEntity<>(bearer(tokenOwner)), String.class);
 
@@ -106,7 +106,7 @@ class MeControllerTest {
     }
 
     @Test
-    void senzaTokenRisponde401() {
+    void answers401WithoutAToken() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/me", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 

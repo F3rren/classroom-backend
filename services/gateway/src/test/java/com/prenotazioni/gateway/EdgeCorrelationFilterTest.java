@@ -32,7 +32,7 @@ class EdgeCorrelationFilterTest {
     private WebTestClient client;
 
     @Test
-    void coniaUnIdentificativoQuandoIlChiamanteNonNeManda() {
+    void mintsAnIdWhenTheCallerSendsNone() {
         client.get().uri("/api/rooms")
                 .exchange()
                 .expectHeader().value(EdgeCorrelationFilter.INTESTAZIONE, id ->
@@ -44,7 +44,7 @@ class EdgeCorrelationFilterTest {
     }
 
     @Test
-    void rispettaLIdentificativoRicevuto() {
+    void keepsTheIdItReceived() {
         // Il punto dell'intero meccanismo: se un giorno davanti al gateway ci fosse un proxy
         // o un frontend che gia' traccia le chiamate, sovrascrivere il suo id romperebbe
         // proprio la catena che questo filtro esiste per tenere insieme.
@@ -57,7 +57,7 @@ class EdgeCorrelationFilterTest {
     }
 
     @Test
-    void sopravviveAUnPercorsoSenzaRotta() {
+    void survivesAPathWithNoRoute() {
         // Trovato dal vivo: su un percorso che non corrisponde a nessuna rotta il 404 nasce
         // nella mappatura, PRIMA che la catena dei GlobalFilter parta. Il filtro non gira e
         // senza il ripiego in GatewayErrorHandler l'id del chiamante andava perso proprio
@@ -72,7 +72,7 @@ class EdgeCorrelationFilterTest {
     }
 
     @Test
-    void nonDuplicaLIntestazioneQuandoLaRimandaAncheIlServizioAValle() {
+    void doesNotDuplicateTheHeaderWhenTheDownstreamServiceEchoesItBack() {
         // Trovato dal vivo: scrivere l'intestazione prima di inoltrare non basta, perche' il
         // gateway UNISCE le intestazioni della risposta a valle alle proprie e il client se
         // la ritrovava due volte. Il rimedio e' scriverla in beforeCommit, dopo la fusione.

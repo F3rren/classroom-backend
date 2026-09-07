@@ -125,7 +125,7 @@ class BookingControllerTest {
     }
 
     @Test
-    void ilProprietarioPuoLeggereLaPropriaPrenotazione() {
+    void theOwnerCanReadTheirOwnBooking() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/bookings/" + ownerBookingId,
                 HttpMethod.GET,
@@ -137,7 +137,7 @@ class BookingControllerTest {
     }
 
     @Test
-    void passwordIsNeverSerializedInAnyPrenotazioneResponse() {
+    void passwordIsNeverSerializedInAnyBookingResponse() {
         ResponseEntity<String> ownerView = rest.exchange(
                 "/api/bookings/" + ownerBookingId,
                 HttpMethod.GET,
@@ -174,7 +174,7 @@ class BookingControllerTest {
     // /api/auth/login: da qui quell'endpoint risponde 404.
 
     @Test
-    void prenotaSuccessResponseShapeIsLocked() throws Exception {
+    void theBookingSuccessResponseShapeIsLocked() throws Exception {
         HttpHeaders headers = bearer(tokenOwner);
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         Map<String, Object> body = Map.of(
@@ -222,7 +222,7 @@ class BookingControllerTest {
     // ==================== Annullamento: regressione doppio annullamento ====================
 
     @Test
-    void ilProprietarioPuoAnnullareLaPropriaPrenotazione() {
+    void theOwnerCanCancelTheirOwnBooking() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/bookings/" + ownerBookingId, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
@@ -233,7 +233,7 @@ class BookingControllerTest {
     }
 
     @Test
-    void annullareDueVolteVieneRifiutatoInveceCheRiuscireInSilenzio() throws Exception {
+    void cancellingTwiceIsRejectedInsteadOfSilentlySucceeding() throws Exception {
         rest.exchange("/api/bookings/" + ownerBookingId, HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
@@ -259,7 +259,7 @@ class BookingControllerTest {
     }
 
     @Test
-    void annullareUnaPrenotazioneInesistenteRisponde404() {
+    void cancellingAMissingBookingAnswers404() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/bookings/999999", HttpMethod.DELETE,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);

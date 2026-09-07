@@ -52,7 +52,7 @@ class CallerAddressTest {
     }
 
     @Test
-    void unIndirizzoDichiaratoDalClientNonArrivaAiServizi() {
+    void anAddressDeclaredByTheClientNeverReachesTheServices() {
         // LA prova. Se questo cade, il limite sui tentativi di login si aggira mandando un
         // X-Forwarded-For diverso a ogni richiesta, e nessun altro controllo se ne accorge.
         HttpHeaders inoltrate = inoltrate("9.9.9.9", "203.0.113.7");
@@ -63,7 +63,7 @@ class CallerAddressTest {
     }
 
     @Test
-    void nemmenoUnaCatenaInventataSopravvive() {
+    void notEvenAnInventedChainSurvives() {
         // Chi vuole aggirare il limite non manda un indirizzo solo: ne manda una catena,
         // sperando che il primo valore vinca. Vale la stessa regola.
         HttpHeaders inoltrate = inoltrate("9.9.9.9, 8.8.8.8, 7.7.7.7", "203.0.113.7");
@@ -72,7 +72,7 @@ class CallerAddressTest {
     }
 
     @Test
-    void lIndirizzoRealeViaggiaComunque() {
+    void theRealAddressTravelsAnyway() {
         // L'altra meta' del requisito: scartare quello dichiarato non deve voler dire non
         // mandarne nessuno. Senza intestazione i servizi vedrebbero tutti lo stesso
         // indirizzo - quello del gateway - e chiunque potrebbe esaurire il contatore di un
@@ -83,7 +83,7 @@ class CallerAddressTest {
     }
 
     @Test
-    void chiamantiDiversiRestanoDistinti() {
+    void differentCallersStayDistinct() {
         // Se collassassero sullo stesso valore, il limitatore conterebbe tutti insieme e
         // un solo attaccante basterebbe a bloccare il login di chiunque altro.
         assertThat(inoltrate(null, "203.0.113.7").getFirst(INTESTAZIONE))
@@ -91,7 +91,7 @@ class CallerAddressTest {
     }
 
     @Test
-    void laConfigurazioneCheReggeTuttoQuestoEEsplicita() {
+    void theConfigurationHoldingAllThisUpIsExplicit() {
         // Ridondante rispetto ai test sopra, e tenuto apposta: se un aggiornamento cambiasse
         // il default di for-append, questo dice in una riga QUALE riga di configurazione
         // rimettere, invece di lasciare quattro asserzioni rosse da interpretare.

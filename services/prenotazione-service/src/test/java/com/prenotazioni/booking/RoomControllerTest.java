@@ -77,7 +77,7 @@ class RoomControllerTest {
 
 
     @Test
-    void lElencoDelleAuleTornaUnaListaTipizzata() throws Exception {
+    void theRoomListReturnsATypedList() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
@@ -89,7 +89,7 @@ class RoomControllerTest {
     }
 
     @Test
-    void lAulaPerIdPortaICampiDenormalizzati() throws Exception {
+    void theRoomByIdCarriesTheDenormalisedFields() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/" + roomId, HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
@@ -101,7 +101,7 @@ class RoomControllerTest {
     }
 
     @Test
-    void unAulaInesistenteRisponde404() {
+    void aMissingRoomAnswers404() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/999999", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
@@ -109,7 +109,7 @@ class RoomControllerTest {
     }
 
     @Test
-    void ilDettaglioDiUnAulaNonEAvvoltoNellaBusta() throws Exception {
+    void theRoomDetailIsNotWrappedInTheEnvelope() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/" + roomId + "/details", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
@@ -120,7 +120,7 @@ class RoomControllerTest {
     }
 
     @Test
-    void leAulePerPianoIncludonoIlCampoPiano() throws Exception {
+    void roomsByFloorIncludeTheFloorField() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/floor/3", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
@@ -131,7 +131,7 @@ class RoomControllerTest {
     }
 
     @Test
-    void leAuleFisicheIncludonoIlCampoTipo() throws Exception {
+    void physicalRoomsIncludeTheTypeField() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/physical", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
 
@@ -142,7 +142,7 @@ class RoomControllerTest {
     }
 
     @Test
-    void gliEndpointDelleAuleSenzaTokenRispondono401() {
+    void theRoomEndpointsAnswer401WithoutAToken() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 

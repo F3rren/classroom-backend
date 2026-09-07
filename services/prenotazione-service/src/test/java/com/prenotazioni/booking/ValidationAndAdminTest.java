@@ -71,7 +71,7 @@ class ValidationAndAdminTest {
     // ==================== AulaRequest ====================
 
     @Test
-    void createRoomWithNegativeCapienzaIsRejected() throws Exception {
+    void createRoomWithANegativeCapacityIsRejected() throws Exception {
         Map<String, Object> body = Map.of("name", "Aula X", "floor", 1, "capacity", -5);
 
         ResponseEntity<String> resp = rest.exchange(
@@ -105,7 +105,7 @@ class ValidationAndAdminTest {
     // ==================== PrenotazioneRequest ====================
 
     @Test
-    void bloccaAulaWithMissingAulaIdIsRejectedByBeanValidation() throws Exception {
+    void blockRoomWithAMissingRoomIdIsRejectedByBeanValidation() throws Exception {
         Map<String, Object> body = Map.of(
                 "startTime", LocalDateTime.now().plusDays(1).toString(),
                 "endTime", LocalDateTime.now().plusDays(1).plusHours(1).toString());
@@ -128,7 +128,7 @@ class ValidationAndAdminTest {
     // ==================== Filtro di sicurezza: 401/403 ricchi anche senza dispatch al controller ====================
 
     @Test
-    void unEndpointProtettoSenzaTokenTornaUn401ConCorpoJson() throws Exception {
+    void aProtectedEndpointWithoutATokenReturns401WithAJsonBody() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 

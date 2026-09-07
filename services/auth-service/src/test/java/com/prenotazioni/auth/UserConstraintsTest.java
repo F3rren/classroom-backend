@@ -66,7 +66,7 @@ class UserConstraintsTest {
     }
 
     @Test
-    void laMigrazioneHaCreatoLaTabellaEIlVincolo() {
+    void theMigrationCreatedTheTableAndTheConstraint() {
         List<String> vincoli = jdbc.queryForList(
                 "SELECT con.conname FROM pg_constraint con JOIN pg_class rel ON rel.oid = con.conrelid "
                         + "WHERE rel.relname = 'utenti' AND con.contype = 'c'", String.class);
@@ -75,7 +75,7 @@ class UserConstraintsTest {
     }
 
     @Test
-    void ilCheckRifiutaUnRuoloFuoriDominio() {
+    void theCheckRejectsARoleOutsideTheDomain() {
         // Inserimento grezzo e non via entita': l'enum non potrebbe produrre questo valore,
         // quindi il vincolo va provato scavalcando il livello applicativo.
         assertThatThrownBy(() -> inserisci("superuser", "SUPERUSER"))
@@ -84,7 +84,7 @@ class UserConstraintsTest {
     }
 
     @Test
-    void ilCheckRifiutaAncheLaVersioneMaiuscolaDiUnRuoloValido() {
+    void theCheckAlsoRejectsTheUppercaseFormOfAValidRole() {
         // Il converter scrive minuscolo: se qualcuno bypassasse il converter, il database
         // deve accorgersene invece di accettare due grafie dello stesso ruolo.
         assertThatThrownBy(() -> inserisci("admin-maiuscolo", "ADMIN"))
@@ -92,7 +92,7 @@ class UserConstraintsTest {
     }
 
     @Test
-    void ogniValoreDellEnumEAmmessoDalVincolo() {
+    void everyEnumValueIsAcceptedByTheConstraint() {
         for (Role r : Role.values()) {
             assertThatCode(() -> inserisci("utente-" + r.name().toLowerCase(), r.getValue()))
                     .as("il valore '%s' dell'enum Ruolo deve essere accettato dal CHECK", r.getValue())

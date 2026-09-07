@@ -57,7 +57,7 @@ class EventPublisherUnitTest {
     }
 
     @Test
-    void portaLIdentificativoDellaRichiestaCheHaCausatoLEvento() {
+    void carriesTheIdOfTheRequestThatCausedTheEvent() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(RequestCorrelationFilter.ATTRIBUTO, "REQ_DALGATEWAY");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
@@ -69,7 +69,7 @@ class EventPublisherUnitTest {
     }
 
     @Test
-    void portaComunqueUnIdentificativoFuoriDaUnaRichiesta() {
+    void stillCarriesAnIdOutsideOfARequest() {
         // Un evento puo' nascere anche fuori da una richiesta HTTP. Meglio un
         // identificativo scollegato che nessuno: senza, la riga di log del consumatore
         // resterebbe senza chiave e non si potrebbe nemmeno raggrupparla con se stessa.
@@ -80,7 +80,7 @@ class EventPublisherUnitTest {
     }
 
     @Test
-    void unBrokerIrraggiungibileNonFaFallireLaCancellazione() {
+    void anUnreachableBrokerDoesNotFailTheCancellation() {
         // La cancellazione della prenotazione e' gia' avvenuta quando si arriva qui: far
         // fallire tutto perche' la notifica non parte sarebbe peggio del danno.
         doThrow(new AmqpException("broker giu'"))

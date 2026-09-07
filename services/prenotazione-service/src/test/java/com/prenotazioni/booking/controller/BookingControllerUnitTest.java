@@ -102,7 +102,7 @@ class BookingControllerUnitTest {
     // ==================== prenotaAula ====================
 
     @Test
-    void prenotaAulaRejectsUnparsableStartDate() {
+    void bookRoomRejectsAnUnparsableStartDate() {
         ResponseEntity<?> resp = controller.bookRoom(request("non-una-data", "2030-01-01T12:00:00"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -110,7 +110,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void prenotaAulaRejectsUnparsableEndDate() {
+    void bookRoomRejectsAnUnparsableEndDate() {
         ResponseEntity<?> resp = controller.bookRoom(request("2030-01-01T10:00:00", "non-una-data"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -118,7 +118,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void prenotaAulaRejectsEndBeforeStart() {
+    void bookRoomRejectsAnEndBeforeTheStart() {
         ResponseEntity<?> resp = controller.bookRoom(
                 request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user);
 
@@ -127,7 +127,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void prenotaAulaRejectsDateInThePast() {
+    void bookRoomRejectsADateInThePast() {
         LocalDateTime passato = LocalDateTime.now().minusDays(2).withNano(0);
         ResponseEntity<?> resp = controller.bookRoom(
                 request(passato.format(ISO), passato.plusHours(1).format(ISO)), user);
@@ -137,7 +137,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void prenotaAulaLasciaSalireIlConflitto() {
+    void bookRoomLetsTheConflictPropagate() {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
@@ -148,7 +148,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void prenotaAulaTranslatesDbConstraintIntoBookingConflict() {
+    void bookRoomTranslatesADbConstraintIntoABookingConflict() {
         when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
@@ -159,7 +159,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void prenotaAulaReturns201OnSuccess() {
+    void bookRoomReturns201OnSuccess() {
         when(service.bookRoom(anyLong(), any(), any(), any(), any(), anyString()))
                 .thenReturn(fakeBooking());
 
@@ -171,7 +171,7 @@ class BookingControllerUnitTest {
     // ==================== modificaPrenotazione (PUT) ====================
 
     @Test
-    void modificaRejectsUnparsableStartDate() {
+    void updateRejectsAnUnparsableStartDate() {
         ResponseEntity<?> resp = controller.editBooking(
                 5L, request("boom", "2030-01-01T12:00:00"), user);
 
@@ -180,7 +180,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void modificaRejectsUnparsableEndDate() {
+    void updateRejectsAnUnparsableEndDate() {
         ResponseEntity<?> resp = controller.editBooking(
                 5L, request("2030-01-01T10:00:00", "boom"), user);
 
@@ -189,7 +189,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void modificaRejectsEndBeforeStart() {
+    void updateRejectsAnEndBeforeTheStart() {
         ResponseEntity<?> resp = controller.editBooking(
                 5L, request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user);
 
@@ -198,7 +198,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void modificaRejectsDateInThePast() {
+    void updateRejectsADateInThePast() {
         LocalDateTime passato = LocalDateTime.now().minusDays(2).withNano(0);
         ResponseEntity<?> resp = controller.editBooking(
                 5L, request(passato.format(ISO), passato.plusHours(1).format(ISO)), user);
@@ -208,7 +208,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void modificaLasciaSalireIlConflitto() {
+    void updateLetsTheConflictPropagate() {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
@@ -219,7 +219,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void modificaTranslatesDbConstraintIntoUpdateConflict() {
+    void updateTranslatesADbConstraintIntoAnUpdateConflict() {
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
@@ -230,7 +230,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void modificaReturns200OnSuccess() {
+    void updateReturns200OnSuccess() {
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenReturn(fakeBooking());
 
@@ -242,7 +242,7 @@ class BookingControllerUnitTest {
     // ==================== bloccaAula ====================
 
     @Test
-    void bloccaRejectsUnparsableStartDate() {
+    void blockRejectsAnUnparsableStartDate() {
         ResponseEntity<?> resp = controller.blockRoom(request("boom", "2030-01-01T12:00:00"), admin);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -250,7 +250,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void bloccaRejectsUnparsableEndDate() {
+    void blockRejectsAnUnparsableEndDate() {
         ResponseEntity<?> resp = controller.blockRoom(request("2030-01-01T10:00:00", "boom"), admin);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -258,7 +258,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void bloccaRejectsEndBeforeStart() {
+    void blockRejectsAnEndBeforeTheStart() {
         ResponseEntity<?> resp = controller.blockRoom(
                 request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), admin);
 
@@ -267,7 +267,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void bloccaLasciaSalireIlConflitto() {
+    void blockLetsTheConflictPropagate() {
         // Il controller non traduce piu': il tipo dell'eccezione porta gia' la causa e
         // GlobalExceptionHandler decide lo status una volta sola. Qui si verifica che
         // non la intercetti, che e' il comportamento corretto dopo la conversione.
@@ -278,7 +278,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void bloccaTranslatesDbConstraintIntoBlockConflict() {
+    void blockTranslatesADbConstraintIntoABlockConflict() {
         when(service.blockRoom(anyLong(), any(), any(), any(), anyString()))
                 .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
@@ -289,7 +289,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void bloccaReturns201OnSuccess() {
+    void blockReturns201OnSuccess() {
         when(service.blockRoom(anyLong(), any(), any(), any(), anyString()))
                 .thenReturn(fakeBooking());
 
@@ -301,7 +301,7 @@ class BookingControllerUnitTest {
     // ==================== annullaPrenotazione (DELETE) ====================
 
     @Test
-    void unAdminSuUnaPrenotazioneAltruiGiaAnnullataOttieneIlConflittoNonUnDivieto() {
+    void anAdminOnSomeoneElsesAlreadyCancelledBookingGetsTheConflictNotAForbidden() {
         // Il test nasceva per proteggere da un 403 fuorviante: il controller riderivava
         // la regola di proprieta' e, se sbagliava l'ordine dei controlli, un admin che
         // annullava una prenotazione altrui gia' annullata si vedeva dire "puoi annullare
@@ -317,7 +317,7 @@ class BookingControllerUnitTest {
     }
 
     @Test
-    void annullaReturns200ForOwner() {
+    void cancelReturns200ForTheOwner() {
         when(service.getBookingById(7L)).thenReturn(fakeBooking());
         when(service.cancelBooking(7L, 1L, false)).thenReturn(true);
 

@@ -92,7 +92,7 @@ class AdminUsersTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void listaUtentiNonEsponeLePassword() throws Exception {
+    void theUserListNeverExposesPasswords() throws Exception {
         ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.GET, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -103,7 +103,7 @@ class AdminUsersTest {
     }
 
     @Test
-    void registrazioneConEmailGiaUsataVieneRifiutata() throws Exception {
+    void registeringWithAnAlreadyUsedEmailIsRejected() throws Exception {
         Map<String, String> body = Map.of("username", "nuovo", "name", "Nuovo",
                 "email", "normale@test.it", "password", "password-lunga", "role", "user");
 
@@ -114,7 +114,7 @@ class AdminUsersTest {
     }
 
     @Test
-    void registrazioneConUsernameGiaUsatoVieneRifiutata() throws Exception {
+    void registeringWithAnAlreadyUsedUsernameIsRejected() throws Exception {
         Map<String, String> body = Map.of("username", "normale", "name", "Nuovo",
                 "email", "un-altra@test.it", "password", "password-lunga", "role", "user");
 
@@ -124,7 +124,7 @@ class AdminUsersTest {
     }
 
     @Test
-    void aggiornamentoDiUnUtenteInesistenteRisponde404() {
+    void updatingAMissingUserAnswers404() {
         Map<String, String> body = Map.of("username", "x", "name", "X", "email", "x@test.it");
 
         ResponseEntity<String> resp = chiama("/api/admin/users/999999", HttpMethod.PUT, body);
@@ -133,14 +133,14 @@ class AdminUsersTest {
     }
 
     @Test
-    void cancellazioneDiUnUtenteInesistenteRisponde404() {
+    void deletingAMissingUserAnswers404() {
         ResponseEntity<String> resp = chiama("/api/admin/users/999999", HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
-    void seIServiziAValleNonRispondonoLUtenteNonVieneCancellato() {
+    void theUserIsNotDeletedWhenTheDownstreamServicesDoNotAnswer() {
         // In questo test non esistono ne' prenotazione-service ne' notifica-service: le chiamate
         // falliscono, e l'utente deve restare. E' la garanzia che sostituisce la chiave
         // esterna persa con la separazione.

@@ -57,7 +57,7 @@ class RouteTableTest {
     }
 
     @Test
-    void gliUtentiAmministrativiVannoAlServizioUtenti() {
+    void theAdminUserPathsGoToTheUserService() {
         // LA regressione da tenere chiusa: questa rotta e' dichiarata PRIMA di quella
         // generica su /api/admin/**, ed e' l'ordine a farla vincere.
         assertThat(firstRouteMatching("/api/admin/users")).isEqualTo("authentication");
@@ -65,13 +65,13 @@ class RouteTableTest {
     }
 
     @Test
-    void ilRestoDiAdminVaAlServizioPrenotazioni() {
+    void theRestOfAdminGoesToTheBookingService() {
         assertThat(firstRouteMatching("/api/admin/rooms")).isEqualTo("application");
         assertThat(firstRouteMatching("/api/admin/bookings")).isEqualTo("application");
     }
 
     @Test
-    void soloLOrdineDecideChiRiceveGliUtentiAmministrativi() {
+    void onlyTheOrderDecidesWhoReceivesTheAdminUserPaths() {
         // Senza questo, i due test sopra potrebbero passare per costruzione: se
         // /api/admin/users corrispondesse a una rotta sola, l'ordine non conterebbe e non
         // ci sarebbe niente da tenere fermo. Qui si pretende che ENTRAMBE lo accettino,
@@ -87,14 +87,14 @@ class RouteTableTest {
     }
 
     @Test
-    void leDueRotteAdminPuntanoAServiziDiversi() {
+    void theTwoAdminRoutesPointToDifferentServices() {
         // Se puntassero allo stesso, l'ordine non conterebbe e questi test non
         // proverebbero niente: e' cio' che rende significativi i due sopra.
         assertThat(destinazioneDi("authentication")).isNotEqualTo(destinazioneDi("application"));
     }
 
     @Test
-    void leRotteInterneRestanoFuoriDallaPortata() {
+    void theInternalRoutesStayOutOfReach() {
         // Sono chiamate da altri servizi, non dal browser: esporle darebbe a chiunque abbia
         // un token da admin la possibilita' di fabbricare notifiche arbitrarie.
         assertThat(firstRouteMatching("/api/notifications/internal/user/1")).isEqualTo("notifications-internal-blocked");
@@ -102,7 +102,7 @@ class RouteTableTest {
     }
 
     @Test
-    void ogniPercorsoPubblicoTrovaUnaRotta() {
+    void everyPublicPathFindsARoute() {
         // Un percorso senza rotta non da' un errore di configurazione: da' un 404 a chi
         // chiama, ed e' il modo in cui un endpoint nuovo resta invisibile dopo essere stato
         // scritto e messo in produzione.
@@ -116,7 +116,7 @@ class RouteTableTest {
     }
 
     @Test
-    void unPercorsoInventatoNonTrovaRotte() {
+    void anInventedPathFindsNoRoute() {
         assertThat(firstRouteMatching("/percorso/che/non/esiste")).isNull();
     }
 }

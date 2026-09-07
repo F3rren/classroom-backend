@@ -78,7 +78,7 @@ class NotificationEndpointsTest {
     }
 
     @Test
-    void nonLetteReturnsOnlyUnreadOfCaller() {
+    void unreadReturnsOnlyTheCallersUnreadNotifications() {
         ResponseEntity<Notification[]> resp = rest.exchange(
                 "/api/notifications/unread", HttpMethod.GET,
                 new HttpEntity<>(bearerHeaders(tokenOwner)), Notification[].class);
@@ -102,7 +102,7 @@ class NotificationEndpointsTest {
     }
 
     @Test
-    void countNonLetteIsZeroAfterMarkAllRead() throws Exception {
+    void theUnreadCountIsZeroAfterMarkAllRead() throws Exception {
         exchange("/api/notifications/mark-all-read", HttpMethod.PUT, tokenOwner);
 
         ResponseEntity<String> resp = exchange("/api/notifications/unread-count", HttpMethod.GET, tokenOwner);
@@ -151,7 +151,7 @@ class NotificationEndpointsTest {
     }
 
     @Test
-    void notificaEndpointsRequireAuthentication() {
+    void theNotificationEndpointsRequireAuthentication() {
         for (String url : new String[]{"/api/notifications/unread", "/api/notifications/unread-count"}) {
             ResponseEntity<String> resp = rest.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, String.class);
             assertThat(resp.getStatusCode())

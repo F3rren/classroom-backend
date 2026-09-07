@@ -76,14 +76,14 @@ class AuthServiceUnitTest {
     // ==================== login ====================
 
     @Test
-    void loginTornaNullSeLEmailNonEsiste() {
+    void loginReturnsNullWhenTheEmailDoesNotExist() {
         when(userRepository.findByEmail("assente@test.it")).thenReturn(null);
 
         assertThat(service.login("assente@test.it", "qualsiasi")).isNull();
     }
 
     @Test
-    void loginTornaNullSeLaPasswordNonCorrisponde() {
+    void loginReturnsNullWhenThePasswordDoesNotMatch() {
         when(userRepository.findByEmail("u@test.it")).thenReturn(user(1L, "u@test.it"));
         when(passwordEncoder.matches("sbagliata", "hash")).thenReturn(false);
 
@@ -93,7 +93,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    void loginRiuscitoRegistraLUltimoAccesso() {
+    void aSuccessfulLoginRecordsTheLastLogin() {
         User u = user(1L, "u@test.it");
         u.setLastLogin(null);
         when(userRepository.findByEmail("u@test.it")).thenReturn(u);
@@ -109,7 +109,7 @@ class AuthServiceUnitTest {
     // ==================== register ====================
 
     @Test
-    void registerSegnalaEmailGiaRegistrata() {
+    void registerReportsAnAlreadyRegisteredEmail() {
         when(userRepository.findByEmail("gia@test.it")).thenReturn(user(1L, "gia@test.it"));
 
         assertThatThrownBy(() -> service.register(creation("gia@test.it", "nuovo")))
@@ -118,7 +118,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    void registerSegnalaUsernameGiaRegistrato() {
+    void registerReportsAnAlreadyRegisteredUsername() {
         when(userRepository.findByEmail("nuova@test.it")).thenReturn(null);
         when(userRepository.findByUsername("occupato")).thenReturn(user(2L, "altro@test.it"));
 
@@ -158,7 +158,7 @@ class AuthServiceUnitTest {
     // ==================== updateUtente ====================
 
     @Test
-    void updateSegnalaUtenteInesistente() {
+    void updateReportsAMissingUser() {
         when(userRepository.findById(9L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateUser(9L, modifica("x@test.it", "x", "")))
@@ -166,7 +166,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    void updateSegnalaEmailDiUnAltroUtente() {
+    void updateReportsAnEmailBelongingToAnotherUser() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, "mia@test.it")));
         when(userRepository.findByEmail("altrui@test.it")).thenReturn(user(2L, "altrui@test.it"));
 
@@ -176,7 +176,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    void updateSegnalaUsernameDiUnAltroUtente() {
+    void updateReportsAUsernameBelongingToAnotherUser() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, "mia@test.it")));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(user(1L, "mia@test.it"));
         when(userRepository.findByUsername("altrui")).thenReturn(user(2L, "altro@test.it"));
@@ -200,7 +200,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    void laModificaRicifraLaPasswordSeIndicata() {
+    void theUpdateRehashesThePasswordWhenOneIsGiven() {
         User existing = user(1L, "mia@test.it");
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);

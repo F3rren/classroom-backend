@@ -18,7 +18,7 @@ class LoginAttemptLimiterUnitTest {
     }
 
     @Test
-    void lasciaPassareFinoAlLimite() {
+    void letsAttemptsThroughUpToTheLimit() {
         LoginAttemptLimiter l = attemptLimiter(3, 60_000, 1000);
 
         assertThat(l.tooManyAttempts("a")).isFalse();
@@ -28,7 +28,7 @@ class LoginAttemptLimiterUnitTest {
     }
 
     @Test
-    void ogniChiaveHaIlSuoContatore() {
+    void everyKeyHasItsOwnCounter() {
         // Se i contatori non fossero separati, un solo attaccante basterebbe a bloccare
         // il login di tutti gli altri.
         LoginAttemptLimiter l = attemptLimiter(1, 60_000, 1000);
@@ -39,7 +39,7 @@ class LoginAttemptLimiterUnitTest {
     }
 
     @Test
-    void laFinestraSiRiapre() {
+    void theWindowReopens() {
         // Finestra negativa e non zero: con zero due chiamate nello stesso millisecondo
         // danno differenza 0, che non supera la soglia, e il test dipenderebbe
         // dall'orologio. Con -1 la condizione e' vera per costruzione.
@@ -50,7 +50,7 @@ class LoginAttemptLimiterUnitTest {
     }
 
     @Test
-    void laPuliziaTogliLeChiaviScadute() {
+    void theCleanupRemovesExpiredKeys() {
         // LA regressione da tenere chiusa. Prima nessuna chiave usciva mai, e la parte
         // email della chiave la sceglie chi chiama: la memoria cresceva su richiesta.
         LoginAttemptLimiter l = attemptLimiter(5, 1000, 1000);
@@ -66,7 +66,7 @@ class LoginAttemptLimiterUnitTest {
     }
 
     @Test
-    void laPuliziaRisparmiaLeChiaviAncoraDentroLaFinestra() {
+    void theCleanupSparesKeysStillInsideTheWindow() {
         // Ripulire troppo sarebbe l'errore opposto: azzererebbe i contatori di chi sta
         // attaccando adesso, cioe' proprio quelli che servono.
         LoginAttemptLimiter l = attemptLimiter(5, 600_000, 1000);
@@ -78,7 +78,7 @@ class LoginAttemptLimiterUnitTest {
     }
 
     @Test
-    void alTettoSiRipuliscePrimaDiRinunciare() {
+    void atTheCapItCleansUpBeforeGivingUp() {
         // Il tetto non deve scattare finche' c'e' roba scaduta da buttare: prima si libera,
         // e solo se dopo la pulizia si e' ancora al limite si smette di registrare.
         // Stessa ragione: una finestra di 1 ms sarebbe scaduta o no a seconda di quanto
@@ -96,7 +96,7 @@ class LoginAttemptLimiterUnitTest {
     }
 
     @Test
-    void alTettoLeChiaviGiaNoteRestanoLimitate() {
+    void atTheCapAlreadyKnownKeysStayLimited() {
         // Il fallimento e' aperto solo per le chiavi NUOVE: chi sta gia' attaccando
         // continua a essere contato, altrimenti riempire la mappa sarebbe il modo per
         // disattivare il limitatore.

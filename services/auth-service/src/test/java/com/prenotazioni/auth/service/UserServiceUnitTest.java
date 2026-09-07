@@ -44,7 +44,7 @@ class UserServiceUnitTest {
     }
 
     @Test
-    void cancellaLUtenteQuandoLaCascataERiuscita() {
+    void deletesTheUserWhenTheCascadeSucceeded() {
         when(userDataClient.deleteDataOf(7L)).thenReturn(List.of());
 
         service().deleteById(7L);
@@ -53,7 +53,7 @@ class UserServiceUnitTest {
     }
 
     @Test
-    void nonCancellaLUtenteSeQualcosaERimastoIndietro() {
+    void doesNotDeleteTheUserWhenSomethingWasLeftBehind() {
         // L'invariante. Se cadesse, un fallimento a valle lascerebbe prenotazioni e notifiche
         // senza un utente a cui ricondurle, e ripetere l'operazione non servirebbe piu' a
         // niente: non ci sarebbe nessuno da cui ripartire.
@@ -66,7 +66,7 @@ class UserServiceUnitTest {
     }
 
     @Test
-    void lErroreDiceCosaERimastoIndietro() {
+    void theErrorSaysWhatWasLeftBehind() {
         // "Qualcosa e' fallito" non basta a chi deve decidere se ripetere: il messaggio deve
         // nominare i dati rimasti, altrimenti l'unico modo di saperlo e' leggere i log di
         // tre servizi diversi.
@@ -79,7 +79,7 @@ class UserServiceUnitTest {
     }
 
     @Test
-    void lErroreInvitaARipetere() {
+    void theErrorInvitesARetry() {
         // Il messaggio per l'utente e il codice sono cio' che distingue "e' rotto" da
         // "riprova". Sono due azioni diverse, e con un 500 generico la seconda non veniva
         // in mente: l'operazione restava a meta' perche' nessuno la ripeteva.
@@ -93,7 +93,7 @@ class UserServiceUnitTest {
     }
 
     @Test
-    void laCascataVienePrimaDellaCancellazione() {
+    void theCascadeRunsBeforeTheDeletion() {
         // L'ordine, non solo l'esito: i dati a valle si tentano SEMPRE, anche quando poi
         // andra' tutto bene. Se un giorno qualcuno invertisse le due righe, gli altri test
         // continuerebbero a passare mentre l'invariante sarebbe gia' persa.

@@ -34,7 +34,7 @@ class ErrorResponsesGatewayTest {
     private WebTestClient client;
 
     @Test
-    void unServizioIrraggiungibileDa503ENonPiu500() {
+    void anUnreachableServiceGives503AndNoLonger500() {
         // 503 e non 500: il servizio non risponde, ma il problema e' temporaneo e riprovare
         // ha senso. Prima erano indistinguibili, ed entrambi 500.
         client.get().uri("/api/rooms")
@@ -49,7 +49,7 @@ class ErrorResponsesGatewayTest {
     }
 
     @Test
-    void unPercorsoSconosciutoDa404NellaFormaGiusta() {
+    void anUnknownPathGives404InTheRightShape() {
         client.get().uri("/api/inventato")
                 .exchange()
                 .expectStatus().isNotFound()
@@ -60,7 +60,7 @@ class ErrorResponsesGatewayTest {
     }
 
     @Test
-    void laRispostaHaEsattamenteLeChiaviDellEnvelopeDeiServizi() {
+    void theResponseHasExactlyTheServiceEnvelopeKeys() {
         // Il vincolo vero di questo file. Le chiavi sono sette in ApiEnvelope, ma "data"
         // e' omesso quando nullo (@JsonInclude NON_NULL), quindi un errore ne espone sei.
         client.get().uri("/api/inventato")
@@ -80,7 +80,7 @@ class ErrorResponsesGatewayTest {
     }
 
     @Test
-    void ilTimestampUsaIlFormatoDeiServiziENonLIsoDiSpring() {
+    void theTimestampUsesTheServiceFormatAndNotSpringsIso() {
         // yyyy-MM-dd HH:mm:ss, lo stesso di util.Timestamps. Prima era ISO con offset,
         // quindi due formati diversi nella stessa API a seconda di chi rispondeva.
         client.get().uri("/api/inventato")
@@ -91,7 +91,7 @@ class ErrorResponsesGatewayTest {
     }
 
     @Test
-    void ilMessaggioPerLUtenteNonEsponeDettagliInterni() {
+    void theUserMessageExposesNoInternalDetail() {
         // Nessun nome di classe, nessun indirizzo, nessuno stack: cio' che serve a chi
         // indaga sta nei log insieme al sessionId, non nella risposta.
         client.get().uri("/api/rooms")

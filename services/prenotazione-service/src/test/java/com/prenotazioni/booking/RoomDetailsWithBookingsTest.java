@@ -137,7 +137,7 @@ class RoomDetailsWithBookingsTest {
     // ==================== clone 1: /api/rooms/detailed ====================
 
     @Test
-    void ilDettaglioSegnalaLAulaOccupataAdesso() throws Exception {
+    void theDetailReportsTheRoomBusyRightNow() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> occupata = byName(rooms, "Aula Occupata");
 
@@ -152,7 +152,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioSegnalaLAulaBloccataConIDatiDelBlocco() throws Exception {
+    void theDetailReportsABlockedRoomWithTheBlockData() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> bloccata = byName(rooms, "Aula Bloccata");
 
@@ -166,7 +166,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioTrattaLaManutenzioneComeBlocco() throws Exception {
+    void theDetailTreatsMaintenanceAsABlock() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> manutenzione = byName(rooms, "Aula Manutenzione");
 
@@ -175,7 +175,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioSegnalaUnaPrenotazioneEntroDueOre() throws Exception {
+    void theDetailFlagsABookingStartingWithinTwoHours() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> imminente = byName(rooms, "Aula Virtuale Imminente");
 
@@ -190,7 +190,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioLasciaLiberaUnAulaSenzaPrenotazioni() throws Exception {
+    void theDetailLeavesARoomWithNoBookingsFree() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
         Map<String, Object> libera = byName(rooms, "Aula Libera");
 
@@ -200,7 +200,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioIncludeLElencoDellePrenotazioni() throws Exception {
+    void theDetailIncludesTheListOfBookings() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
 
         @SuppressWarnings("unchecked")
@@ -216,7 +216,7 @@ class RoomDetailsWithBookingsTest {
     // ==================== clone 2: /api/rooms/{id}/detailed ====================
 
     @Test
-    void ilDettaglioDiUnaSolaAulaRiportaLaPrenotazioneInCorso() throws Exception {
+    void theSingleRoomDetailReportsTheBookingInProgress() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + busyRoomId + "/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -230,7 +230,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioDiUnaSolaAulaRiportaIDatiDelBlocco() throws Exception {
+    void theSingleRoomDetailReportsTheBlockData() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + blockedRoomId + "/detailed");
 
         @SuppressWarnings("unchecked")
@@ -243,7 +243,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioDiUnaSolaAulaSegnalaLaPrenotazioneImminente() throws Exception {
+    void theSingleRoomDetailFlagsTheImminentBooking() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + upcomingRoomId + "/detailed");
 
         @SuppressWarnings("unchecked")
@@ -257,7 +257,7 @@ class RoomDetailsWithBookingsTest {
     // ==================== clone 3: physical/virtual detailed ====================
 
     @Test
-    void ilDettaglioFisicoPortaLoStatoSoloPerLeAuleFisiche() throws Exception {
+    void thePhysicalDetailCarriesTheStatusOnlyForPhysicalRooms() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/physical/detailed"));
 
         assertThat(rooms).hasSize(4); // le 4 aule fisiche, l'aula virtuale e' esclusa
@@ -267,7 +267,7 @@ class RoomDetailsWithBookingsTest {
     }
 
     @Test
-    void ilDettaglioVirtualePortaLoStatoSoloPerLeAuleVirtuali() throws Exception {
+    void theVirtualDetailCarriesTheStatusOnlyForVirtualRooms() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/virtual/detailed"));
 
         assertThat(rooms).hasSize(1);
@@ -277,7 +277,7 @@ class RoomDetailsWithBookingsTest {
     // ==================== stato aula (PrenotazioneService.getStatoAula) ====================
 
     @Test
-    void statoAulaReflectsTheActiveBookingKind() throws Exception {
+    void roomStatusReflectsTheActiveBookingKind() throws Exception {
         assertThat(statusOf(busyRoomId)).isEqualTo("BOOKED");
         assertThat(statusOf(blockedRoomId)).isEqualTo("BLOCKED");
         assertThat(statusOf(maintenanceRoomId)).isEqualTo("MAINTENANCE");

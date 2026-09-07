@@ -17,14 +17,14 @@ class RoomStatusTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void statoAulaKeepsItsOwnLowercaseVocabulary() {
+    void roomStatusKeepsItsOwnLowercaseVocabulary() {
         // room_status_check: 4 valori, diversi da quelli della prenotazione
         assertThat(java.util.Arrays.stream(RoomStatus.values()).map(RoomStatus::getValue))
                 .containsExactlyInAnyOrder("free", "busy", "blocked", "maintenance");
     }
 
     @Test
-    void statoAulaSerializesLowercase() throws Exception {
+    void roomStatusSerialisesLowercase() throws Exception {
         assertThat(objectMapper.writeValueAsString(RoomStatus.BUSY)).isEqualTo("\"busy\"");
         assertThat(objectMapper.writeValueAsString(RoomStatus.FREE)).isEqualTo("\"free\"");
     }

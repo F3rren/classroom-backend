@@ -40,7 +40,7 @@ class BookingAuthorizationServiceUnitTest {
     }
 
     @Test
-    void negaSeNonCEUnUtenteAutenticato() {
+    void deniesWhenThereIsNoAuthenticatedUser() {
         assertThat(auth.isOwnerOrAdmin(5L, null)).isFalse();
     }
 
@@ -53,7 +53,7 @@ class BookingAuthorizationServiceUnitTest {
     }
 
     @Test
-    void consenteAlProprietario() {
+    void allowsTheOwner() {
         when(bookingService.getBookingById(5L)).thenReturn(bookingOf(1L));
 
         assertThat(auth.isOwnerOrAdmin(5L, new AppPrincipal(1L, "u@test.it", "m.rossi", "Mario Rossi", "user"))).isTrue();

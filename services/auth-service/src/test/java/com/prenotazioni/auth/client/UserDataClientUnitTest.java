@@ -50,7 +50,7 @@ class UserDataClientUnitTest {
     }
 
     @Test
-    void quandoVaTuttoBeneNonRestaNienteIndietro() {
+    void nothingIsLeftBehindWhenAllGoesWell() {
         servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
         servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
@@ -59,7 +59,7 @@ class UserDataClientUnitTest {
     }
 
     @Test
-    void unGuastoPasseggeroVieneSuperatoRitentando() {
+    void aTransientFailureIsOvercomeByRetrying() {
         // LA ragione dei ritentativi. Un servizio che sta riavviando fallisce il primo colpo
         // e risponde al secondo: prima bastava questo a lasciare la cancellazione a meta',
         // e a farla concludere doveva essere una persona che se ne accorgeva.
@@ -72,7 +72,7 @@ class UserDataClientUnitTest {
     }
 
     @Test
-    void dopoTreTentativiSiArrende() {
+    void itGivesUpAfterThreeAttempts() {
         // I ritentativi non sono infiniti: un servizio davvero giu' non deve tenere appesa
         // la richiesta dell'amministratore.
         servizioFinto.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
@@ -83,7 +83,7 @@ class UserDataClientUnitTest {
     }
 
     @Test
-    void unRifiutoDelServizioAValleNonSiRitenta() {
+    void aRefusalFromTheDownstreamServiceIsNotRetried() {
         // Un 4xx e' una risposta, non un guasto: ripeterla darebbe lo stesso esito. Il
         // conteggio esatto e' l'unica cosa che distingue questo caso dal precedente -
         // l'esito e' identico, il comportamento no.
@@ -96,7 +96,7 @@ class UserDataClientUnitTest {
     }
 
     @Test
-    void ilSecondoServizioVieneTentatoAncheSeIlPrimoFallisce() {
+    void theSecondServiceIsCalledEvenWhenTheFirstFails() {
         // Fermarsi al primo errore lascerebbe piu' roba indietro senza dire di piu' a chi
         // legge il messaggio: entrambi vanno tentati, e l'errore li nomina entrambi.
         servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
@@ -111,7 +111,7 @@ class UserDataClientUnitTest {
     }
 
     @Test
-    void ogniChiamataPortaLIdentificativoDiCorrelazione() {
+    void everyCallCarriesTheCorrelationId() {
         // Senza, un'operazione che attraversa tre servizi finisce nei log sotto tre chiavi
         // diverse: la correlazione funzionerebbe ovunque tranne dove serve.
         servizioFinto.expect(requestTo(URI_NOTIFICATIONS))

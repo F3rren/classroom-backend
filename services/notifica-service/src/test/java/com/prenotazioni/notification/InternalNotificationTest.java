@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Non c'e' un test sull'assenza totale di token: TestRestTemplate usa HttpURLConnection,
  * che di fronte a un 401 tenta di ritentare la richiesta e fallisce con un errore di I/O
  * invece di riportare lo stato. Il caso resta coperto da
- * NotificaEndpointsTest.notificaEndpointsRequireAuthentication, che esercita la stessa
+ * NotificaEndpointsTest.theNotificationEndpointsRequireAuthentication, che esercita la stessa
  * catena di sicurezza condivisa; qui si verifica cio' che e' specifico di queste rotte,
  * cioe' che non basta un token qualunque ma serve il ruolo admin.
  */

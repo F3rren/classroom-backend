@@ -54,7 +54,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
-    void unaViolazioneDiVincoloInCreazioneNonVieneNascosta() {
+    void aConstraintViolationOnCreateIsNotSwallowed() {
         when(roomRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new DataIntegrityViolationException("aule_nome_key"));
@@ -65,7 +65,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
-    void unGuastoDelDatabaseInCreazioneNonDiventaUnErroreDellUtente() {
+    void aDatabaseFailureOnCreateDoesNotBecomeAUserError() {
         when(roomRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
                 .thenThrow(new IllegalStateException("connessione persa"));
@@ -77,7 +77,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
-    void unNomeGiaUsatoDiventaUnConflittoDiDominio() {
+    void anAlreadyUsedNameBecomesADomainConflict() {
         // Prima era un null, che il controller presentava come 400. Ora e' un tipo, e
         // il gestore globale lo traduce in 409 con un codice che nomina la causa.
         when(roomRepository.existsByNameIgnoreCase("Aula Magna")).thenReturn(true);
@@ -88,7 +88,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
-    void unaViolazioneDiVincoloInAggiornamentoNonVieneNascosta() {
+    void aConstraintViolationOnUpdateIsNotSwallowed() {
         Room existing = new Room();
         existing.setId(1L);
         existing.setName("Aula A");
@@ -102,7 +102,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
-    void unaCancellazioneImpeditaDaUnVincoloNonSiTravesteDaAulaInesistente() {
+    void aDeleteBlockedByAConstraintDoesNotDisguiseItselfAsAMissingRoom() {
         Room existing = new Room();
         existing.setId(1L);
         when(roomRepository.existsById(1L)).thenReturn(true);
@@ -117,7 +117,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
-    void cancellareUnAulaInesistenteDiceCheNonEsiste() {
+    void deletingAMissingRoomSaysItDoesNotExist() {
         // Prima tornava false, indistinguibile da "cancellazione fallita". Ora e' un 404
         // che nomina la risorsa, e "cancellazione fallita" e' un caso diverso e separato.
         when(roomRepository.existsById(99L)).thenReturn(false);

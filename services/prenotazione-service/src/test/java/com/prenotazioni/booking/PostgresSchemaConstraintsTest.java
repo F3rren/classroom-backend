@@ -145,7 +145,7 @@ class PostgresSchemaConstraintsTest {
     // ==================== 1. le migrazioni sono state applicate davvero ====================
 
     @Test
-    void flywayHaApplicatoTutteLeMigrazioniSenzaBaseline() {
+    void flywayAppliedEveryMigrationWithoutBaselining() {
         List<String> versioni = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
                 String.class);
@@ -162,7 +162,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void hibernateValidaLoSchemaProdottoDaFlyway() {
+    void hibernateValidatesTheSchemaFlywayProduced() {
         // L'assert reale e' strutturale: se le entity divergessero dalle migrazioni,
         // il contesto non si avvierebbe e tutta la classe andrebbe in errore. Questo
         // test rende esplicita una garanzia che altrimenti resterebbe invisibile.
@@ -170,7 +170,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void estensioneEVincoliSonoPresentiNelCatalogo() {
+    void theExtensionAndTheConstraintsArePresentInTheCatalogue() {
         Integer gist = jdbc.queryForObject(
                 "SELECT count(*) FROM pg_extension WHERE extname = 'btree_gist'", Integer.class);
         assertThat(gist).isEqualTo(1);
@@ -186,7 +186,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void ilDatasourcePuntaAlContainerENonAlDatabaseLocale() {
+    void theDatasourcePointsAtTheContainerAndNotTheLocalDatabase() {
         // Se .env riuscisse a scavalcare @DynamicPropertySource,
         // questi test girerebbero sul database di sviluppo. Meglio accorgersene qui.
         assertThat(env.getProperty("spring.datasource.url"))
@@ -196,7 +196,7 @@ class PostgresSchemaConstraintsTest {
     // ==================== 2. il vincolo di esclusione ====================
 
     @Test
-    void duePrenotazioniSovrappostePerLaStessaAulaSonoRifiutateDalDatabase() {
+    void twoOverlappingBookingsForTheSameRoomAreRejectedByTheDatabase() {
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
         assertThatThrownBy(() -> save(room, BASE.plusHours(1), BASE.plusHours(3), BookingStatus.BOOKED))
@@ -205,7 +205,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void prenotazioniConsecutiveSonoAmmesse() {
+    void backToBackBookingsAreAllowed() {
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
         // tsrange e' semiaperto: [10,12) e [12,14) non si sovrappongono.
@@ -218,7 +218,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void unaPrenotazioneAnnullataNonBloccaLoStessoIntervallo() {
+    void aCancelledBookingDoesNotBlockTheSameInterval() {
         save(room, BASE, BASE.plusHours(2), BookingStatus.CANCELLED);
 
         // Prova indirettamente anche che il converter scrive "cancelled" minuscolo:
@@ -229,7 +229,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void loStessoIntervalloSuAuleDiverseEAmmesso() {
+    void theSameIntervalOnDifferentRoomsIsAllowed() {
         Room altra = newRoom("Aula Postgres 2");
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
@@ -277,7 +277,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void intervalloDiDurataZero_ilDatabaseLoAmmetteMaLApplicazioneNo() {
+    void aZeroLengthInterval_theDatabaseAllowsItButTheApplicationDoesNot() {
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
         // Divergenza reale e documentata: tsrange(t,t) e' vuoto e non si sovrappone
@@ -298,7 +298,7 @@ class PostgresSchemaConstraintsTest {
     // vedi VincoliUtentiTest. Qui la tabella non esiste piu' (migrazione V5).
 
     @Test
-    void ilCheckRifiutaUnoStatoAulaFuoriDominio() {
+    void theCheckRejectsARoomStatusOutsideTheDomain() {
         assertThatThrownBy(() -> jdbc.update(
                 "INSERT INTO aule (nome, capienza, piano, is_virtual, stato) "
                         + "VALUES ('Aula Rotta', 10, 1, false, 'distrutta')"))
@@ -307,7 +307,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void ilCheckRifiutaUnoStatoPrenotazioneFuoriDominio() {
+    void theCheckRejectsABookingStatusOutsideTheDomain() {
         // Intervallo lontano, cosi' e' il CHECK a scattare e non il vincolo di esclusione.
         assertThatThrownBy(() -> jdbc.update(
                 "INSERT INTO prenotazioni (aula_id, utente_id, inizio, fine, stato, data_creazione) "
@@ -319,7 +319,7 @@ class PostgresSchemaConstraintsTest {
     }
 
     @Test
-    void tuttiIValoriDegliEnumSonoAmmessiDaiCheck() {
+    void everyEnumValueIsAcceptedByTheChecks() {
         // L'inverso dei tre test sopra, ed e' quello che intercetta la regressione
         // realistica: aggiungere una costante a un enum e dimenticare la migrazione.
 

@@ -104,7 +104,7 @@ class NotificationOwnershipTest {
     }
 
     @Test
-    void countNonLetteReflectsUnreadNotifications() throws Exception {
+    void theUnreadCountReflectsTheUnreadNotifications() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/notifications/unread-count", HttpMethod.GET,
                 new HttpEntity<>(bearer(tokenOwner)), String.class);

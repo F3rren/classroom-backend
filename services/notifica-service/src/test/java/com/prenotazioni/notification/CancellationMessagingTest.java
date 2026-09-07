@@ -96,7 +96,7 @@ class CancellationMessagingTest {
     }
 
     @Test
-    void unEventoPubblicatoDiventaUnaNotifica() {
+    void aPublishedEventBecomesANotification() {
         pubblica(new BookingCancelledEvent(
                 7L, 42L, "Aula Magna", "Mario Rossi", "2026-12-25", "14:30", "16:30", "Sessione d'esame"));
 
@@ -116,7 +116,7 @@ class CancellationMessagingTest {
     }
 
     @Test
-    void ilMessaggioSopravviveAlConsumatoreSpento() throws Exception {
+    void theMessageSurvivesAStoppedConsumer() throws Exception {
         // E' LA ragione per cui questa coda esiste, quindi va provata davvero fermando il
         // consumatore, non solo pubblicando e sperando. Con la vecchia chiamata REST questo
         // messaggio sarebbe andato perso; qui deve aspettare in coda.
@@ -145,7 +145,7 @@ class CancellationMessagingTest {
     }
 
     @Test
-    void unEventoSenzaDestinatarioVieneScartatoSenzaBloccareLaCoda() {
+    void anEventWithNoRecipientIsDiscardedWithoutBlockingTheQueue() {
         // Un messaggio irreparabile non deve essere rimesso in coda all'infinito: girerebbe
         // per sempre occupando il consumatore e bloccando quelli buoni dietro di se'.
         pubblica(new BookingCancelledEvent(

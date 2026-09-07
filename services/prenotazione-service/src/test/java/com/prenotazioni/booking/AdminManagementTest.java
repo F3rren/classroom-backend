@@ -128,7 +128,7 @@ class AdminManagementTest {
     // ==================== Gestione aule ====================
 
     @Test
-    void lAdminElencaLeAule() throws Exception {
+    void theAdminListsTheRooms() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/rooms", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -136,7 +136,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void lAdminLeggeUnAulaAvvoltaNellaChiaveRoom() throws Exception {
+    void theAdminReadsARoomWrappedInTheRoomKey() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -144,7 +144,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void lAdminSuUnAulaInesistenteRiceve404() throws Exception {
+    void theAdminGets404OnAMissingRoom() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -165,7 +165,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void laModificaDiUnAulaRifiutaUnCorpoNonValido() {
+    void updatingARoomRejectsAnInvalidBody() {
         // capienza negativa viola @Positive su AulaRequest
         Map<String, Object> body = Map.of("name", "X", "capacity", -5, "floor", 1);
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, body);
@@ -194,7 +194,7 @@ class AdminManagementTest {
     // ==================== Gestione prenotazioni ====================
 
     @Test
-    void lAdminElencaTutteLePrenotazioniConLeStatistiche() throws Exception {
+    void theAdminListsEveryBookingWithTheStatistics() throws Exception {
         ResponseEntity<String> resp = exchange("/api/admin/bookings", HttpMethod.GET, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -245,7 +245,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void unMotivoEntroIlLimiteAvvisaComunqueIlProprietario() {
+    void aReasonWithinTheLimitStillNotifiesTheOwner() {
         String motivoLungoMaValido = "y".repeat(400);
 
         ResponseEntity<String> resp = exchange(
@@ -316,7 +316,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void laModificaConUnIdNonValidoVieneRifiutata() throws Exception {
+    void updatingWithAnInvalidIdIsRejected() throws Exception {
         Map<String, Object> body = Map.of("name", "Qualsiasi", "capacity", 10, "floor", 1);
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, body);
@@ -326,7 +326,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void laModificaDiUnAulaInesistenteRisponde404() throws Exception {
+    void updatingAMissingRoomAnswers404() throws Exception {
         Map<String, Object> body = Map.of("name", "Inesistente", "capacity", 10, "floor", 1);
 
         ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, body);
@@ -338,7 +338,7 @@ class AdminManagementTest {
     }
 
     @Test
-    void gliEndpointAdminRichiedonoAutenticazione() {
+    void theAdminEndpointsRequireAuthentication() {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/admin/rooms", HttpMethod.GET, HttpEntity.EMPTY, String.class);
 

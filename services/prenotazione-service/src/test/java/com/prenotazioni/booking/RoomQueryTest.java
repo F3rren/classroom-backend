@@ -82,7 +82,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void laCapienzaFiltraLeAuleSopraLaSoglia() throws Exception {
+    void theCapacityFilterKeepsOnlyRoomsAboveTheThreshold() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=50");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -94,7 +94,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void laCapienzaSenzaRisultatiTornaUnSuggerimento() throws Exception {
+    void aCapacityWithNoMatchesReturnsASuggestion() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=999");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -105,7 +105,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void unaCapienzaOltreIlMassimoVieneRifiutata() throws Exception {
+    void aCapacityBeyondTheMaximumIsRejected() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=1001");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -113,7 +113,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void unaCapienzaNegativaVieneRifiutata() throws Exception {
+    void aNegativeCapacityIsRejected() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/capacity?minCapacity=-1");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -132,20 +132,20 @@ class RoomQueryTest {
     }
 
     @Test
-    void leVariantiDettagliateTornanoGliStessiConteggi() throws Exception {
+    void theDetailedVariantsReturnTheSameCounts() throws Exception {
         assertThat(dataOf(get("/api/rooms/detailed")).get("totalRooms")).isEqualTo(3);
         assertThat(dataOf(get("/api/rooms/physical/detailed")).get("totalRooms")).isEqualTo(2);
         assertThat(dataOf(get("/api/rooms/virtual/detailed")).get("totalRooms")).isEqualTo(1);
     }
 
     @Test
-    void ilDettaglioFisicoEEtichettatoComeFisico() throws Exception {
+    void thePhysicalDetailIsLabelledAsPhysical() throws Exception {
         assertThat(dataOf(get("/api/rooms/physical/detailed"))).containsEntry("type", "physical");
         assertThat(dataOf(get("/api/rooms/virtual/detailed"))).containsEntry("type", "virtual");
     }
 
     @Test
-    void leStatisticheSeparanoAuleFisicheEVirtuali() throws Exception {
+    void theStatisticsSeparatePhysicalAndVirtualRooms() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/stats");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -161,7 +161,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void ilDettaglioPerIdEAvvoltoNellaChiaveRoom() throws Exception {
+    void theDetailByIdIsWrappedInTheRoomKey() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/" + largePhysicalRoomId + "/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -170,7 +170,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void ilDettaglioDiUnAulaInesistenteRisponde404() throws Exception {
+    void theDetailOfAMissingRoomAnswers404() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/999999/detailed");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -178,7 +178,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void ilDettaglioDiTutteLeAuleNonEAvvoltoNellaBusta() throws Exception {
+    void theDetailOfEveryRoomIsNotWrappedInTheEnvelope() throws Exception {
         ResponseEntity<String> resp = get("/api/rooms/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -188,7 +188,7 @@ class RoomQueryTest {
     }
 
     @Test
-    void gliEndpointDiInterrogazioneAuleRichiedonoAutenticazione() {
+    void theRoomQueryEndpointsRequireAuthentication() {
         for (String url : new String[]{
                 "/api/rooms/stats", "/api/rooms/virtual", "/api/rooms/detailed",
                 "/api/rooms/capacity?minCapacity=1"}) {

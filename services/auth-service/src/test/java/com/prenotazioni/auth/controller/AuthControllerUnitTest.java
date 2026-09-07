@@ -128,7 +128,7 @@ class AuthControllerUnitTest {
     // ==================== validazione ====================
 
     @Test
-    void rifiutaUnaEmailMancante() {
+    void rejectsAMissingEmail() {
         ResponseEntity<?> resp = controller.login(credenziali(null, "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -136,7 +136,7 @@ class AuthControllerUnitTest {
     }
 
     @Test
-    void rifiutaUnaEmailMalformata() {
+    void rejectsAMalformedEmail() {
         ResponseEntity<?> resp = controller.login(credenziali("non-una-email", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -144,7 +144,7 @@ class AuthControllerUnitTest {
     }
 
     @Test
-    void rifiutaUnaPasswordMancante() {
+    void rejectsAMissingPassword() {
         ResponseEntity<?> resp = controller.login(credenziali("u@test.it", ""), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -152,7 +152,7 @@ class AuthControllerUnitTest {
     }
 
     @Test
-    void rifiutaUnaPasswordTroppoCorta() {
+    void rejectsATooShortPassword() {
         ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "ab"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -160,7 +160,7 @@ class AuthControllerUnitTest {
     }
 
     @Test
-    void rifiutaCredenzialiSbagliate() {
+    void rejectsWrongCredentials() {
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
@@ -194,7 +194,7 @@ class AuthControllerUnitTest {
     }
 
     @Test
-    void risponde500SeIlTokenGeneratoEVuoto() {
+    void returns500WhenTheGeneratedTokenIsEmpty() {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("   ");
 
@@ -205,7 +205,7 @@ class AuthControllerUnitTest {
     }
 
     @Test
-    void risponde500SeLaGenerazioneDelTokenFallisce() {
+    void returns500WhenTokenGenerationFails() {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenThrow(new IllegalStateException("chiave assente"));
 

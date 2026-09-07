@@ -36,7 +36,7 @@ class RoutingTest {
     private WebTestClient client;
 
     @Test
-    void leRotteInterneNonSonoRaggiungibiliDallEsterno() {
+    void theInternalRoutesAreNotReachableFromOutside() {
         // 404 e non 5xx: la richiesta non e' nemmeno partita verso notifica-service.
         // E' il controllo piu' importante del file: quelle rotte creano notifiche
         // arbitrarie e devono restare una conversazione fra servizi.
@@ -50,7 +50,7 @@ class RoutingTest {
     }
 
     @Test
-    void lePathPubblicheDelleNotificheVengonoInstradate() {
+    void thePublicNotificationPathsAreRouted() {
         // 5xx: il gateway ha deciso di inoltrare e non ha trovato nessuno in ascolto.
         // E' la prova che la rotta e' stata riconosciuta.
         client.get().uri("/api/notifications")
@@ -59,7 +59,7 @@ class RoutingTest {
     }
 
     @Test
-    void leRottePrincipaliDellApplicazioneVengonoInstradate() {
+    void theMainApplicationRoutesAreRouted() {
         for (String path : new String[]{"/api/rooms", "/api/bookings", "/api/me", "/api/admin/users"}) {
             client.get().uri(path)
                     .exchange()
@@ -68,7 +68,7 @@ class RoutingTest {
     }
 
     @Test
-    void ilLoginVieneInstradatoComeIlResto() {
+    void loginIsRoutedLikeTheRest() {
         // Rotta pubblica, ma per il gateway non e' un caso speciale: non valida token,
         // quindi non deve distinguere fra rotte protette e no.
         client.post().uri("/api/auth/login")
@@ -77,7 +77,7 @@ class RoutingTest {
     }
 
     @Test
-    void unPercorsoSconosciutoRestaFuori() {
+    void anUnknownPathStaysOut() {
         client.get().uri("/api/inventato")
                 .exchange()
                 .expectStatus().isNotFound();

@@ -39,7 +39,7 @@ class FirstAdminBootstrapUnitTest {
     }
 
     @Test
-    void nonToccaNienteSeCiSonoGiaDegliUtenti() {
+    void touchesNothingWhenUsersAlreadyExist() {
         // LA garanzia. Se questo test cadesse, la classe smetterebbe di essere un aiuto
         // all'avvio e diventerebbe una scorciatoia per ottenere privilegi da amministratore
         // su un sistema in uso. Le credenziali passate qui sono deliberatamente valide:
@@ -52,7 +52,7 @@ class FirstAdminBootstrapUnitTest {
     }
 
     @Test
-    void creaLAmministratoreSuUnDatabaseVuoto() {
+    void createsTheAdministratorOnAnEmptyDatabase() {
         when(userRepository.count()).thenReturn(0L);
         User created = new User();
         created.setId(1L);
@@ -69,7 +69,7 @@ class FirstAdminBootstrapUnitTest {
     }
 
     @Test
-    void nonFaNienteSenzaCredenziali() {
+    void doesNothingWithoutCredentials() {
         // Il caso normale per chi non usa il meccanismo: database vuoto, variabili non
         // valorizzate. Deve essere un non-evento, non un avvio fallito.
         when(userRepository.count()).thenReturn(0L);
@@ -80,7 +80,7 @@ class FirstAdminBootstrapUnitTest {
     }
 
     @Test
-    void unaSolaDelleDueNonBasta() {
+    void oneOfTheTwoAloneIsNotEnough() {
         // Mezza configurazione e' piu' probabile di nessuna configurazione - si valorizza
         // l'email e ci si dimentica la password - e non deve produrre un amministratore
         // con una password vuota.

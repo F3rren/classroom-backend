@@ -40,20 +40,20 @@ class BookingStatusTest {
     }
 
     @Test
-    void unValoreSconosciutoVieneRifiutato() {
+    void anUnknownValueIsRejected() {
         assertThatThrownBy(() -> BookingStatus.from("inventato"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void onlyPrenotataIsConsideredActive() {
+    void onlyBookedIsConsideredActive() {
         assertThat(BookingStatus.BOOKED.isActive()).isTrue();
         assertThat(BookingStatus.CANCELLED.isActive()).isFalse();
         assertThat(BookingStatus.BLOCKED.isActive()).isFalse();
     }
 
     @Test
-    void gliInterventiDellAdminSonoBloccoEManutenzione() {
+    void theAdminInterventionsAreBlockAndMaintenance() {
         assertThat(BookingStatus.BLOCKED.isAdminIntervention()).isTrue();
         assertThat(BookingStatus.MAINTENANCE.isAdminIntervention()).isTrue();
         assertThat(BookingStatus.BOOKED.isAdminIntervention()).isFalse();

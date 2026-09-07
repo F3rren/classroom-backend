@@ -100,7 +100,7 @@ class AuthValidationTest {
 
 
     @Test
-    void emailNonValidaVieneRifiutataDallaValidazione() throws Exception {
+    void anInvalidEmailIsRejectedByValidation() throws Exception {
         Map<String, Object> body = Map.of(
                 "username", "nuovoutente",
                 "email", "non-e-una-email",
@@ -118,7 +118,7 @@ class AuthValidationTest {
     }
 
     @Test
-    void passwordTroppoCortaVieneRifiutata() throws Exception {
+    void aTooShortPasswordIsRejected() throws Exception {
         Map<String, Object> body = Map.of(
                 "username", "nuovoutente2",
                 "email", "nuovoutente2@validation.test",
@@ -134,7 +134,7 @@ class AuthValidationTest {
     }
 
     @Test
-    void adminRegisterWithInvalidRuoloIsRejected() throws Exception {
+    void adminRegisterWithAnInvalidRoleIsRejected() throws Exception {
         Map<String, Object> body = Map.of(
                 "username", "nuovoutente3",
                 "email", "nuovoutente3@validation.test",
@@ -150,7 +150,7 @@ class AuthValidationTest {
     }
 
     @Test
-    void datiValidiCreanoLUtente() throws Exception {
+    void validDataCreatesTheUser() throws Exception {
         Map<String, Object> body = Map.of(
                 "username", "nuovoutente4",
                 "email", "nuovoutente4@validation.test",
@@ -177,7 +177,7 @@ class AuthValidationTest {
     }
 
     @Test
-    void emailVuotaRestituisceIlCodiceStoricoMissingEmail() throws Exception {
+    void anEmptyEmailReturnsTheHistoricMissingEmailCode() throws Exception {
         Map<String, Object> body = Map.of("email", "", "password", "irrilevante");
 
         ResponseEntity<String> resp = rest.exchange(
@@ -192,7 +192,7 @@ class AuthValidationTest {
     }
 
     @Test
-    void passwordVuotaRestituisceIlCodiceStoricoMissingPassword() throws Exception {
+    void anEmptyPasswordReturnsTheHistoricMissingPasswordCode() throws Exception {
         Map<String, Object> body = Map.of("email", "admin@validation.test", "password", "");
 
         ResponseEntity<String> resp = rest.exchange(
@@ -205,7 +205,7 @@ class AuthValidationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void laFormaDellaRispostaDiLoginEBloccata() throws Exception {
+    void theShapeOfTheLoginResponseIsLocked() throws Exception {
         // Test di contratto: il frontend legge queste chiavi esatte. Serve a impedire che
         // un refactor le rinomini o ne aggiunga in silenzio. Stava nel modulo applicativo,
         // che pero' non serve piu' /api/auth/login.
@@ -229,7 +229,7 @@ class AuthValidationTest {
     }
 
     @Test
-    void aggiornareUnUtenteConPasswordVuotaNonNeCambiaLaPassword() {
+    void updatingAUserWithAnEmptyPasswordLeavesThePasswordUnchanged() {
         // Una stringa vuota significa "non toccare la password", non "impostala a vuoto".
         // Se questa distinzione si rompesse, un admin che rinomina un utente lo lascerebbe
         // senza credenziali funzionanti, e il sintomo comparirebbe solo al login successivo.

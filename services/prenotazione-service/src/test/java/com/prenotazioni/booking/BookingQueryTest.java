@@ -101,7 +101,7 @@ class BookingQueryTest {
 
 
     @Test
-    void miePrenotazioniTornaSoloLeProprieSenzaBusta() throws Exception {
+    void mineReturnsOnlyOwnBookingsWithoutAnEnvelope() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/mine");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -112,7 +112,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void miePrenotazioniEscludeLeAnnullate() throws Exception {
+    void mineExcludesCancelledBookings() throws Exception {
         Booking p = bookingRepository.findById(bookingId).orElseThrow();
         p.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(p);
@@ -122,7 +122,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void lePrenotazioniFutureIncludonoIlTotale() throws Exception {
+    void futureBookingsIncludeTheTotal() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/future");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -132,7 +132,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void lePrenotazioniFutureNonEspongonoIDatiDelProprietario() {
+    void futureBookingsDoNotExposeTheOwnersData() {
         // La lista e' visibile a qualunque utente autenticato: il proprietario va
         // ridotto a id/username/nome, mai email o ruolo (sanitizeOwnerForListing).
         ResponseEntity<String> resp = get("/api/bookings/future");
@@ -142,7 +142,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void ilDettaglioCompletoTornaLaListaTipizzata() throws Exception {
+    void theFullDetailReturnsTheTypedList() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/all-details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -152,7 +152,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void prenotazioneDetailsByIdReturnsDettagli() throws Exception {
+    void bookingDetailsByIdReturnsTheDetails() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/" + bookingId + "/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -162,7 +162,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void laDisponibilitaSegnalaLiberaUnaFasciaLibera() throws Exception {
+    void availabilityReportsFreeForAFreeSlot() throws Exception {
         String libero = startTime.plusDays(5).format(ISO);
         String freeEnd = startTime.plusDays(5).plusHours(1).format(ISO);
 
@@ -177,7 +177,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void laDisponibilitaSegnalaOccupataUnaFasciaPrenotata() throws Exception {
+    void availabilityReportsBusyForABookedSlot() throws Exception {
         ResponseEntity<String> resp = get(
                 "/api/bookings/availability?roomId=" + roomId
                         + "&start=" + startTime.format(ISO) + "&end=" + endTime.format(ISO));
@@ -189,7 +189,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void laDisponibilitaConUnaDataMalformataRisponde400() throws Exception {
+    void availabilityWithAMalformedDateAnswers400() throws Exception {
         ResponseEntity<String> resp = get(
                 "/api/bookings/availability?roomId=" + roomId + "&start=non-una-data&end=nemmeno");
 
@@ -204,7 +204,7 @@ class BookingQueryTest {
      * "/stato-aula/{aulaId}"; questi due test difendono la separazione.
      */
     @Test
-    void statoAulaReturnsRoomStatusPayload() throws Exception {
+    void roomStatusReturnsTheRoomStatusPayload() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/room-status/" + roomId);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -214,7 +214,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void ilFiltroPerStatoTornaSoloLePrenotazioniCorrispondenti() throws Exception {
+    void theStatusFilterReturnsOnlyMatchingBookings() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/status/booked");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -225,7 +225,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void prenotazioniByStatoWithNoMatchReturnsEmptyList() throws Exception {
+    void bookingsByStatusWithNoMatchReturnsAnEmptyList() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/status/cancelled");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -233,7 +233,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void gliEndpointDiInterrogazioneRichiedonoAutenticazione() {
+    void theQueryEndpointsRequireAuthentication() {
         for (String url : new String[]{
                 "/api/bookings/mine",
                 "/api/bookings/future",
@@ -252,7 +252,7 @@ class BookingQueryTest {
 
 
     @Test
-    void unaPrenotazioneInesistenteRispondeNellaFormaComune() throws Exception {
+    void aMissingBookingAnswersInTheCommonShape() throws Exception {
         // Questi endpoint rispondevano {"error":"Prenotazione non trovata"}: una forma
         // tutta loro, senza "success" ne' "userMessage", con "error" che conteneva una
         // frase invece di un codice. Nessun test lo copriva, ed e' il motivo per cui la
@@ -268,7 +268,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void ancheIDettagliDiUnaPrenotazioneInesistenteUsanoLaFormaComune() throws Exception {
+    void theDetailsOfAMissingBookingAlsoUseTheCommonShape() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/999999/details");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -276,7 +276,7 @@ class BookingQueryTest {
     }
 
     @Test
-    void unoStatoInesistenteRispondeNellaFormaComuneEDiceQualiSonoAmmessi() throws Exception {
+    void anUnknownStatusAnswersInTheCommonShapeAndSaysWhichAreAllowed() throws Exception {
         ResponseEntity<String> resp = get("/api/bookings/status/inventato");
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
