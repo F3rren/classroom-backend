@@ -24,7 +24,7 @@ import org.springframework.context.annotation.Configuration;
 public class EventTopologyConfig {
 
     @Bean
-    TopicExchange exchangeEventi() {
+    TopicExchange eventsExchange() {
         // durable: sopravvive al riavvio del broker, come la coda dall'altra parte.
         return new TopicExchange(EventTopology.EXCHANGE, true, false);
     }

@@ -1,38 +1,33 @@
 package com.prenotazioni.notification.controller;
 
 import com.prenotazioni.dto.MessageResponse;
-import com.prenotazioni.notification.dto.BookingCancellationRequest;
-import com.prenotazioni.notification.model.Notification;
 import com.prenotazioni.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Gli endpoint che questo servizio espone ad ALTRI servizi, non al frontend.
+ * The endpoints this service exposes to OTHER SERVICES, not to the frontend.
  *
- * Prima erano chiamate a metodo dentro lo stesso processo: AdminController invocava
- * NotificaService dopo aver cancellato una prenotazione, e UtenteService cancellava le
- * notifiche di un utente eliminato. Adesso sono confini di rete.
+ * They used to be method calls inside the same process: AdminController invoked
+ * NotificationService after cancelling a booking, and UserService deleted the notifications
+ * of a removed user. Now they are network boundaries.
  *
- * Non c'e' un meccanismo di autenticazione nuovo: il chiamante inoltra il token JWT
- * dell'amministratore che ha avviato l'operazione, e questo servizio lo verifica da solo
- * come qualunque altra richiesta. Entrambe le operazioni sono per definizione azioni
- * amministrative, quindi hasRole('ADMIN') e' il controllo corretto e non un ripiego.
+ * There is no new authentication mechanism: the caller forwards the JWT of the administrator
+ * who started the operation, and this service verifies it on its own like any other request.
+ * Both operations are administrative actions by definition, so hasRole('ADMIN') is the
+ * correct check and not a fallback.
  */
 @RestController
 @RequestMapping("/api/notifications/internal")
-@Tag(name = "Notifiche (interne)", description = "Chiamate da altri servizi, non dal frontend")
+@Tag(name = "Notifications (internal)", description = "Called by other services, not by the frontend")
 public class InternalNotificationController {
 
     private static final Logger logger = LoggerFactory.getLogger(InternalNotificationController.class);
@@ -43,28 +38,29 @@ public class InternalNotificationController {
         this.notificationService = notificationService;
     }
 
-    // L'endpoint POST /cancellazione-prenotazione non esiste piu': quella notifica arriva
-    // ora come messaggio sulla coda, gestito da CancellationListener. Una chiamata REST
-    // andava persa se questo servizio era spento, un messaggio in coda lo aspetta.
+    // The POST /booking-cancellation endpoint is gone: that notification now arrives as a
+    // message on the queue, handled by CancellationListener. A REST call was lost if this
+    // service was down; a queued message waits for it.
     //
-    // Questo endpoint di cancellazione dati resta invece sincrono, ed e' voluto: chi lo
-    // chiama (auth-service) deve sapere se e' riuscito, perche' se fallisce non cancella
-    // l'utente. Con una coda quella garanzia si perderebbe.
+    // This data-deletion endpoint stays synchronous on purpose: its caller (auth-service)
+    // has to know whether it succeeded, because if it fails it does not delete the user.
+    // A queue would give that guarantee away.
 
     /**
-     * Cancella tutte le notifiche di un utente eliminato.
+     * Deletes every notification of a deleted user.
      *
-     * Prima faceva parte della stessa transazione che eliminava utente e prenotazioni;
-     * ora e' una chiamata separata, quindi l'operazione complessiva non e' piu' atomica.
-     * Se questa fallisce restano notifiche orfane: e' il costo della separazione, e verra'
-     * affrontato con un evento quando ci sara' un broker.
+     * This used to be part of the same transaction that removed the user and their bookings;
+     * now it is a separate call, so the operation as a whole is no longer atomic. If it
+     * fails, orphan notifications are left behind: that is the cost of the split, and it
+     * will be addressed with an event once there is a broker.
      */
     @DeleteMapping("/user/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Elimina tutte le notifiche di un utente")
+    @Operation(summary = "Delete every notification of a user")
     public ResponseEntity<MessageResponse> deleteUserNotifications(@PathVariable("userId") Long userId) {
-        logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", userId);
+        logger.info("Deleting every notification of userId={}", userId);
         notificationService.deleteAllByUser(userId);
-        return ResponseEntity.ok(new MessageResponse("Notifiche dell'utente eliminate"));
+        // The caller is a service, not a person: this message is read in a log, so English.
+        return ResponseEntity.ok(new MessageResponse("User notifications deleted"));
     }
 }

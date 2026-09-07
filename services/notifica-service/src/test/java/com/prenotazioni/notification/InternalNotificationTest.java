@@ -21,25 +21,25 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Gli endpoint che altri servizi chiamano.
+ * The endpoints other services call.
  *
- * Prima erano invocazioni di metodo dentro lo stesso processo, coperte di riflesso dai test
- * di AdminManagementTest. Diventate rete, sono il punto piu' fragile della separazione e
- * meritano test propri: un cambio di forma del corpo JSON qui non fa fallire alcuna
- * compilazione, si manifesterebbe solo come notifiche che smettono di arrivare.
+ * They used to be method calls inside the same process, covered indirectly by
+ * AdminManagementTest. Now that they are network, they are the most fragile point of the
+ * split and deserve tests of their own: a change in the shape of the JSON body here fails no
+ * compilation, it would show up only as notifications that stop arriving.
  *
- * Non c'e' un test sull'assenza totale di token: TestRestTemplate usa HttpURLConnection,
- * che di fronte a un 401 tenta di ritentare la richiesta e fallisce con un errore di I/O
- * invece di riportare lo stato. Il caso resta coperto da
- * NotificaEndpointsTest.theNotificationEndpointsRequireAuthentication, che esercita la stessa
- * catena di sicurezza condivisa; qui si verifica cio' che e' specifico di queste rotte,
- * cioe' che non basta un token qualunque ma serve il ruolo admin.
+ * There is no test for a completely absent token: TestRestTemplate uses HttpURLConnection,
+ * which on a 401 tries to retry the request and fails with an I/O error instead of reporting
+ * the status. That case stays covered by
+ * NotificationEndpointsTest.theNotificationEndpointsRequireAuthentication, which exercises
+ * the same shared security chain; what is checked here is what is specific to these routes,
+ * namely that any old token is not enough and the admin role is required.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-// I tre test sulla notifica di cancellazione sono spariti da qui insieme all'endpoint
-// REST che verificavano: quella notifica arriva ora come messaggio, ed e'
-// MessaggisticaCancellazioniTest a coprirla, contro un broker vero.
+// The three tests on the cancellation notification left with the REST endpoint they
+// covered: that notification arrives as a message now, and CancellationMessagingTest covers
+// it against a real broker.
 class InternalNotificationTest {
 
     private static final Long DESTINATARIO = 42L;
@@ -62,7 +62,7 @@ class InternalNotificationTest {
     }
 
     private Map<String, Object> corpoCancellazione() {
-        // HashMap e non Map.of: adminNome e motivo possono essere null, come nel client
+        // HashMap and not Map.of: adminName and reason can be null, as in the client
         Map<String, Object> body = new HashMap<>();
         body.put("userId", DESTINATARIO);
         body.put("prenotazioneId", 99L);

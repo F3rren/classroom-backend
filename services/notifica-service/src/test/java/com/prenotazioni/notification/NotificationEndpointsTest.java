@@ -19,11 +19,11 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Copre gli endpoint notifiche finora senza test: /non-lette, /mark-all-read e
+ * Covers the notification endpoints that had no test until now: /unread, /mark-all-read and
  * DELETE /read.
  *
- * Ogni test verifica anche l'isolamento fra utenti: le operazioni "di massa"
- * (segna tutte come lette, elimina le lette) non devono toccare le notifiche altrui.
+ * Every test also checks isolation between users: the "bulk" operations (mark all as read,
+ * delete the read ones) must never touch somebody else's notifications.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -35,8 +35,8 @@ class NotificationEndpointsTest {
     @Autowired
     private NotificationRepository notificationRepository;
 
-    // Identificativi arbitrari: questo servizio non possiede la tabella utenti e non
-    // verifica che esistano. E' proprio il punto della separazione.
+    // Arbitrary ids: this service does not own the users table and does not check that they
+    // exist. That is precisely the point of the split.
     private static final Long OWNER_ID = 1L;
     private static final Long OTHER_ID = 2L;
 
@@ -48,17 +48,17 @@ class NotificationEndpointsTest {
     void setUp() {
         notificationRepository.deleteAll();
 
-        // owner: 2 non lette + 1 gia' letta
+        // owner: 2 unread + 1 already read
         notificationRepository.save(new Notification(OWNER_ID, "Prima", "Messaggio 1", "INFO"));
         notificationRepository.save(new Notification(OWNER_ID, "Seconda", "Messaggio 2", "INFO"));
         Notification read = new Notification(OWNER_ID, "Terza", "Gia' letta", "INFO");
         read.setRead(true);
         readNotificationId = notificationRepository.save(read).getId();
 
-        // other: 1 non letta, che non deve mai essere toccata dalle operazioni di owner
+        // other: 1 unread, which owner's operations must never touch
         notificationRepository.save(new Notification(OTHER_ID, "Altrui", "Non toccare", "INFO"));
 
-        // Token firmati direttamente: niente utente da creare, niente login da chiamare.
+        // Tokens signed directly: no user to create, no login to call.
         tokenOwner = TestJwt.forUser(OWNER_ID, "notif-owner@test.it");
         tokenOther = TestJwt.forUser(OTHER_ID, "notif-other@test.it");
     }
@@ -84,7 +84,7 @@ class NotificationEndpointsTest {
                 new HttpEntity<>(bearerHeaders(tokenOwner)), Notification[].class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        // 2 non lette di owner: quella gia' letta e quella di other sono escluse
+        // owner's 2 unread: the already-read one and other's are excluded
         assertThat(resp.getBody()).hasSize(2);
     }
 
@@ -97,7 +97,7 @@ class NotificationEndpointsTest {
                 .isEqualTo("Tutte le notifiche sono state segnate come lette");
 
         assertThat(countUnread(OWNER_ID)).isZero();
-        // la notifica dell'altro utente resta non letta
+        // the other user's notification stays unread
         assertThat(countUnread(OTHER_ID)).isEqualTo(1);
     }
 
@@ -116,7 +116,7 @@ class NotificationEndpointsTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(TestJson.asMap(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
 
-        // sparisce solo quella gia' letta; le 2 non lette restano
+        // only the already-read one disappears; the 2 unread stay
         assertThat(notificationRepository.existsById(readNotificationId)).isFalse();
         assertThat(countUnread(OWNER_ID)).isEqualTo(2);
     }
@@ -131,7 +131,7 @@ class NotificationEndpointsTest {
                 .count();
         assertThat(rimasteDiOwner).isZero();
 
-        // l'inbox dell'altro utente e' intatta
+        // the other user's inbox is untouched
         long rimasteDiOther = notificationRepository.findAll().stream()
                 .filter(n -> n.getUserId().equals(OTHER_ID))
                 .count();

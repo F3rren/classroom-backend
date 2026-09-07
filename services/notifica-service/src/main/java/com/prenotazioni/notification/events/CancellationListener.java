@@ -11,17 +11,16 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Trasforma in notifica un evento di cancellazione arrivato dal servizio prenotazioni.
+ * Turns a cancellation event from the booking service into a notification.
  *
- * Prima era un endpoint REST che quel servizio chiamava direttamente. La differenza pratica
- * e' che adesso questo servizio puo' essere spento senza che nulla vada perso: i messaggi
- * restano in coda e vengono consumati al riavvio.
+ * This used to be a REST endpoint that service called directly. The practical difference is
+ * that this service can now be switched off without anything being lost: the messages stay
+ * on the queue and are consumed at restart.
  *
- * SULLE ECCEZIONI: un errore qui fa rimettere il messaggio in coda, e se l'errore e'
- * permanente il messaggio ricomincia da capo all'infinito, occupando il consumatore. Per
- * questo si distinguono due casi: un messaggio malformato viene scartato e loggato, perche'
- * riprovarlo non lo aggiustera' mai; un errore di scrittura sul database viene propagato,
- * perche' quello si', al prossimo tentativo puo' andare a buon fine.
+ * ON EXCEPTIONS: an error here puts the message back on the queue, and if the error is
+ * permanent the message starts over forever, tying up the consumer. So two cases are kept
+ * apart: a malformed message is discarded and logged, because retrying will never fix it;
+ * a database write failure is propagated, because that one really can succeed next time.
  */
 @Component
 public class CancellationListener {
@@ -38,21 +37,21 @@ public class CancellationListener {
     public void onCancellation(
             BookingCancelledEvent event,
             @Header(name = RequestCorrelationFilter.HEADER, required = false) String requestId) {
-        // Rimesso in MDC per la durata del trattamento: e' cio' che permette di leggere in
-        // fila la richiesta HTTP che ha annullato la prenotazione e la notifica creata qui,
-        // che avviene su un altro servizio, un altro thread e qualche istante dopo.
-        // required = false perche' un messaggio pubblicato prima di questa modifica, o da
-        // un'altra versione, deve continuare a essere consumato.
+        // Put back into the MDC for the duration of the handling: this is what lets you read
+        // in sequence the HTTP request that cancelled the booking and the notification created
+        // here, which happens on another service, another thread and a moment later.
+        // required = false because a message published before this change, or by another
+        // version, has to keep being consumed.
         RequestCorrelationFilter.applyToMdc(requestId);
         try {
             if (event == null || event.userId() == null) {
-                // Scartato di proposito: senza destinatario la notifica non ha a chi andare, e
-                // rimetterlo in coda lo farebbe girare per sempre.
-                logger.error("Evento di cancellazione scartato perche' privo di destinatario: {}", event);
+                // Discarded on purpose: with no recipient the notification has nobody to go
+                // to, and requeueing it would make it spin forever.
+                logger.error("Cancellation event discarded: it carries no recipient: {}", event);
                 return;
             }
 
-            logger.debug("Evento di cancellazione ricevuto per utenteId={}, prenotazioneId={}",
+            logger.debug("Cancellation event received for userId={}, bookingId={}",
                     event.userId(), event.bookingId());
 
             notificationService.createBookingCancelledNotification(
@@ -65,7 +64,7 @@ public class CancellationListener {
                     event.endTime(),
                     event.reason());
 
-            logger.info("Notifica di cancellazione creata da evento per utenteId={}", event.userId());
+            logger.info("Cancellation notification created from event for userId={}", event.userId());
         } finally {
             RequestCorrelationFilter.clearMdc();
         }

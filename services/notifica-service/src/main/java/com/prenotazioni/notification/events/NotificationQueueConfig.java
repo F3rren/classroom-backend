@@ -15,16 +15,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Il lato "chi consuma" della topologia.
+ * The consumer side of the topology.
  *
- * La coda la dichiara questo servizio, perche' e' sua: chi pubblica non deve sapere chi
- * ascolta. L'exchange e' dichiarato da entrambi, ed e' corretto - dichiararlo e'
- * idempotente, e serve a poter avviare i due servizi in qualunque ordine senza che il primo
- * fallisca perche' l'altro non e' ancora passato.
+ * The queue is declared by this service, because it is its own: a publisher has no business
+ * knowing who listens. The exchange is declared by both, and that is correct - declaring it
+ * is idempotent, and it lets the two services start in either order without the first one
+ * failing because the other has not been through yet.
  *
- * La coda e' DURABLE e i messaggi sono persistenti per default con questo converter: e'
- * l'unica ragione per cui questa coda esiste. Una coda non durevole perderebbe i messaggi
- * al riavvio del broker, cioe' proprio nel momento in cui servirebbe.
+ * The queue is DURABLE and messages are persistent by default with this converter: that is
+ * the only reason this queue exists at all. A non-durable queue would lose its messages when
+ * the broker restarts, which is precisely the moment it would be needed.
  */
 @Configuration
 public class NotificationQueueConfig {
@@ -35,14 +35,14 @@ public class NotificationQueueConfig {
     }
 
     @Bean
-    TopicExchange exchangeEventi() {
+    TopicExchange eventsExchange() {
         return new TopicExchange(EventTopology.EXCHANGE, true, false);
     }
 
     @Bean
-    Binding bindingCancellazioni(Queue cancellationQueue, TopicExchange exchangeEventi) {
+    Binding cancellationBinding(Queue cancellationQueue, TopicExchange eventsExchange) {
         return BindingBuilder.bind(cancellationQueue)
-                .to(exchangeEventi)
+                .to(eventsExchange)
                 .with(EventTopology.ROUTING_KEY_CANCELLATION);
     }
 
@@ -51,40 +51,40 @@ public class NotificationQueueConfig {
         return new Jackson2JsonMessageConverter();
     }
 
-    // ==================== recupero dei messaggi non trattabili ====================
+    // ==================== recovery of messages that cannot be handled ====================
 
     @Bean
-    Queue codaErrori() {
+    Queue errorQueue() {
         return new Queue(EventTopology.CANCELLATION_ERROR_QUEUE, true);
     }
 
     @Bean
-    DirectExchange exchangeErrori() {
-        return new DirectExchange(EventTopology.EXCHANGE_ERRORI, true, false);
+    DirectExchange errorExchange() {
+        return new DirectExchange(EventTopology.ERROR_EXCHANGE, true, false);
     }
 
     @Bean
-    Binding bindingErrori(Queue codaErrori, DirectExchange exchangeErrori) {
-        return BindingBuilder.bind(codaErrori)
-                .to(exchangeErrori)
-                .with(EventTopology.ROUTING_KEY_ERRORI);
+    Binding errorBinding(Queue errorQueue, DirectExchange errorExchange) {
+        return BindingBuilder.bind(errorQueue)
+                .to(errorExchange)
+                .with(EventTopology.ROUTING_KEY_CANCELLATION_FAILED);
     }
 
     /**
-     * Dove va a finire un messaggio dopo che i tentativi si sono esauriti.
+     * Where a message ends up once its attempts are exhausted.
      *
-     * Senza questo bean il comportamento predefinito dopo i tentativi sarebbe scartarlo e
-     * basta: nessun ciclo infinito, ma anche nessuna traccia di cosa non e' riuscito.
-     * RepublishMessageRecoverer lo ripubblica sulla coda degli errori insieme allo stack
-     * trace del guasto, quindi resta li' da guardare e, se serve, da rimettere in circolo.
+     * Without this bean the default behaviour after the retries would be to drop it and
+     * nothing more: no infinite loop, but also no trace of what failed.
+     * RepublishMessageRecoverer republishes it onto the error queue together with the stack
+     * trace of the failure, so it stays there to be looked at and, if needed, put back into
+     * circulation.
      *
-     * Il messaggio viene poi confermato: e' questo che chiude il ciclo di riconsegna
-     * infinito descritto nel reperto 04.
+     * The message is then acknowledged: that is what closes the endless redelivery loop.
      */
     @Bean
-    MessageRecoverer recuperoMessaggiFalliti(RabbitTemplate rabbitTemplate) {
+    MessageRecoverer failedMessageRecoverer(RabbitTemplate rabbitTemplate) {
         return new RepublishMessageRecoverer(rabbitTemplate,
-                EventTopology.EXCHANGE_ERRORI,
-                EventTopology.ROUTING_KEY_ERRORI);
+                EventTopology.ERROR_EXCHANGE,
+                EventTopology.ROUTING_KEY_CANCELLATION_FAILED);
     }
 }

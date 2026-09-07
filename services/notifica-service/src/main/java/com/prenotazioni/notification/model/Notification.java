@@ -11,16 +11,16 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * Una notifica destinata a un utente.
+ * A notification addressed to a user.
  *
- * L'utente e' un semplice identificativo e non piu' una @ManyToOne: questo servizio non
- * possiede la tabella utenti e non puo' avere una chiave esterna verso un altro database.
- * La conseguenza da conoscere e' che nulla impedisce piu' a livello di database una
- * notifica per un utente inesistente; e' responsabilita' applicativa.
+ * The user is a plain identifier and no longer a @ManyToOne: this service does not own the
+ * users table and cannot hold a foreign key into another database. The consequence worth
+ * knowing is that nothing at the database level prevents a notification for a user who does
+ * not exist any more; that is now the application's responsibility.
  *
- * I campi nomeStanza, adminNome, prenotazioneId e dataPrenotazione erano gia' denormalizzati
- * prima della separazione: la notifica nasce autosufficiente, ed e' il motivo per cui questo
- * dominio si stacca senza dover chiamare nessuno per rendere le proprie risposte.
+ * The roomName, adminName, bookingId and bookingDate fields were already denormalised before
+ * the split: a notification is born self-sufficient, and that is exactly why this domain
+ * could be detached without having to call anybody to render its own answers.
  */
 @Entity
 @Table(name = "notifications")
@@ -52,7 +52,7 @@ public class Notification {
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
-    // Dati aggiuntivi per le notifiche di prenotazione
+    // Extra data carried by booking notifications
     @Column(name = "booking_id")
     private Long bookingId;
 

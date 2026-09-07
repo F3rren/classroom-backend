@@ -19,14 +19,14 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Chi vede e chi puo' modificare una notifica.
+ * Who sees a notification, and who may change it.
  *
- * Questi cinque casi stavano in MeAndNotificaControllerTest nel monolite, insieme a due
- * test su /api/me. Erano nello stesso file perche' condividevano la fixture di utenti e
- * il login; separati i domini, quella ragione e' scomparsa e restano due cose distinte:
- * il profilo appartiene al dominio utenti, l'isolamento delle notifiche a questo servizio.
+ * These five cases lived in MeAndNotificationControllerTest back in the monolith, together
+ * with two tests on /api/me. They shared a file because they shared the user fixture and the
+ * login; with the domains split, that reason is gone and two distinct things remain: the
+ * profile belongs to the user domain, notification isolation to this service.
  *
- * I token sono firmati da TestJwt: qui non esiste una tabella utenti, e non serve.
+ * The tokens are signed by TestJwt: there is no users table here, and none is needed.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -115,9 +115,9 @@ class NotificationOwnershipTest {
 
     @Test
     void aTokenSignedWithAnotherSecretIsRejected() {
-        // Prova diretta del meccanismo su cui poggia l'intera separazione: questo servizio
-        // accetta un token solo se la firma torna col segreto condiviso, senza consultare
-        // nessuno. Un token altrimenti ben formato ma firmato altrove non passa.
+        // A direct test of the mechanism the whole split rests on: this service accepts a
+        // token only if the signature checks out against the shared secret, without asking
+        // anybody. An otherwise well-formed token signed elsewhere does not get through.
         String tokenFasullo = tokenOwner.substring(0, tokenOwner.lastIndexOf('.')) + ".firmaSbagliata";
 
         ResponseEntity<String> resp = rest.exchange(

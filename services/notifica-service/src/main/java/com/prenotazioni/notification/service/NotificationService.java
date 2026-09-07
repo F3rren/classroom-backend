@@ -19,6 +19,9 @@ public class NotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
 
+    /** The type stored on the notification, and what a client filters on. */
+    private static final String TYPE_CANCELLATION = "cancellation";
+
     private final NotificationRepository notificationRepository;
 
     NotificationService(NotificationRepository notificationRepository) {
@@ -26,28 +29,28 @@ public class NotificationService {
     }
 
     public List<Notification> getNotificationsByUser(Long userId) {
-        logger.debug("INIZIO - Recupero notifiche per utente ID: {}", userId);
+        logger.debug("START - fetching notifications for user ID: {}", userId);
         List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        logger.debug("FINE - Recuperate {} notifiche per utente ID: {}", notifications.size(), userId);
+        logger.debug("END - fetched {} notifications for user ID: {}", notifications.size(), userId);
         return notifications;
     }
 
     public List<Notification> getUnreadNotificationsByUser(Long userId) {
-        logger.debug("INIZIO - Recupero notifiche non lette per utente ID: {}", userId);
+        logger.debug("START - fetching unread notifications for user ID: {}", userId);
         List<Notification> notifications = notificationRepository.findByUserIdAndReadFalseOrderByCreatedAtDesc(userId);
-        logger.debug("FINE - Recuperate {} notifiche non lette per utente ID: {}", notifications.size(), userId);
+        logger.debug("END - fetched {} unread notifications for user ID: {}", notifications.size(), userId);
         return notifications;
     }
 
     public Long getUnreadNotificationCount(Long userId) {
-        logger.debug("INIZIO - Conteggio notifiche non lette per utente ID: {}", userId);
+        logger.debug("START - counting unread notifications for user ID: {}", userId);
         Long count = notificationRepository.countByUserIdAndReadFalse(userId);
-        logger.debug("FINE - Trovate {} notifiche non lette per utente ID: {}", count, userId);
+        logger.debug("END - found {} unread notifications for user ID: {}", count, userId);
         return count;
     }
 
     public Notification createNotification(Long userId, String type, String title, String message) {
-        logger.debug("INIZIO - Creazione notifica per utente ID: {}, Tipo: {}, Titolo: {}", userId, type, title);
+        logger.debug("START - creating notification for user ID: {}, type: {}, title: {}", userId, type, title);
         Notification notification = new Notification();
         notification.setUserId(userId);
         notification.setType(type);
@@ -55,16 +58,22 @@ public class NotificationService {
         notification.setMessage(message);
         notification.setCreatedAt(LocalDateTime.now());
         notification.setRead(false);
-        
+
         Notification savedNotification = notificationRepository.save(notification);
-        logger.debug("FINE - Notifica creata con successo con ID: {}", savedNotification.getId());
+        logger.debug("END - notification created with ID: {}", savedNotification.getId());
         return savedNotification;
     }
 
-    public Notification createBookingCancelledNotification(Long userId, Long bookingId, 
+    /**
+     * The notification a user receives when a booking of theirs is cancelled.
+     *
+     * The title and the message stay Italian: they are the one thing here that a person
+     * reads, straight out of the frontend.
+     */
+    public Notification createBookingCancelledNotification(Long userId, Long bookingId,
             String roomName, String adminName, String bookingDate, String startTime, String endTime, String reason) {
-        
-        logger.debug("INIZIO - Creazione notifica di cancellazione per utente ID: {}, Prenotazione ID: {}", userId, bookingId);
+
+        logger.debug("START - creating cancellation notification for user ID: {}, booking ID: {}", userId, bookingId);
 
         String title = "Cancellazione Prenotazione: " + roomName;
         String message;
@@ -83,107 +92,107 @@ public class NotificationService {
                 roomName, bookingDate, startTime, endTime
             );
         }
-        
-        Notification notification = createNotification(userId, "cancellazione", title, message);
 
-        // Queste quattro colonne esistevano gia' sull'entita' ma NESSUNO le valorizzava:
-        // erano permanentemente null da prima della separazione in servizi. Sono le uniche
-        // che permettono al frontend di collegare la notifica alla prenotazione senza
-        // interpretare il testo del messaggio, quindi vanno riempite.
+        Notification notification = createNotification(userId, TYPE_CANCELLATION, title, message);
+
+        // These four columns already existed on the entity but NOBODY was filling them in:
+        // they had been permanently null since before the split into services. They are the
+        // only thing letting the frontend tie the notification back to the booking without
+        // parsing the message text, so they get filled.
         notification.setBookingId(bookingId);
         notification.setRoomName(roomName);
         notification.setAdminName(adminName);
-        notification.setBookingDate(componiIstante(bookingDate, startTime));
+        notification.setBookingDate(toInstant(bookingDate, startTime));
         notification = notificationRepository.save(notification);
-        logger.debug("FINE - Notifica di cancellazione creata con ID: {}", notification.getId());
+        logger.debug("END - cancellation notification created with ID: {}", notification.getId());
         return notification;
     }
 
     public Optional<Notification> getNotificationById(Long notificationId) {
-        logger.debug("INIZIO - Recupero notifica per ID: {}", notificationId);
+        logger.debug("START - fetching notification by ID: {}", notificationId);
         Optional<Notification> notification = notificationRepository.findById(notificationId);
         if (notification.isPresent()) {
-            logger.debug("FINE - Notifica trovata con ID: {}", notificationId);
+            logger.debug("END - notification found with ID: {}", notificationId);
         } else {
-            logger.warn("FINE - Notifica non trovata con ID: {}", notificationId);
+            logger.warn("END - no notification found with ID: {}", notificationId);
         }
         return notification;
     }
 
     public Optional<Notification> markAsRead(Long notificationId, Long userId) {
-        logger.debug("INIZIO - Tentativo di segnare notifica ID: {} come letta per utente ID: {}", notificationId, userId);
+        logger.debug("START - marking notification ID: {} as read for user ID: {}", notificationId, userId);
         Optional<Notification> notificationOpt = notificationRepository.findById(notificationId);
-        
+
         if (notificationOpt.isPresent()) {
             Notification notification = notificationOpt.get();
-            // Verifica che la notifica appartenga all'utente corretto
+            // The notification has to belong to the user asking.
             if (notification.getUserId().equals(userId)) {
                 notification.setRead(true);
                 Notification updatedNotification = notificationRepository.save(notification);
-                logger.debug("FINE - Notifica ID: {} segnata come letta.", notificationId);
+                logger.debug("END - notification ID: {} marked as read.", notificationId);
                 return Optional.of(updatedNotification);
             } else {
-                logger.warn("FINE - Tentativo fallito. L'utente ID: {} non è autorizzato a modificare la notifica ID: {}", userId, notificationId);
-                return Optional.empty(); // Utente non autorizzato
+                logger.warn("END - refused. User ID: {} is not allowed to change notification ID: {}", userId, notificationId);
+                return Optional.empty(); // not the owner
             }
         }
-        
-        logger.warn("FINE - Tentativo fallito. Notifica ID: {} non trovata.", notificationId);
-        return Optional.empty(); // Notifica non trovata
+
+        logger.warn("END - refused. Notification ID: {} not found.", notificationId);
+        return Optional.empty(); // no such notification
     }
 
     @Transactional
     public void markAllAsRead(Long userId) {
-        logger.debug("INIZIO - Segna tutte le notifiche come lette per utente ID: {}", userId);
+        logger.debug("START - marking every notification as read for user ID: {}", userId);
         notificationRepository.markAllAsRead(userId);
-        logger.debug("FINE - Tutte le notifiche per utente ID: {} sono state segnate come lette.", userId);
+        logger.debug("END - every notification for user ID: {} has been marked as read.", userId);
     }
 
     @Transactional
     public void deleteNotification(Long notificationId) {
-        logger.debug("INIZIO - Eliminazione notifica ID: {}", notificationId);
+        logger.debug("START - deleting notification ID: {}", notificationId);
         notificationRepository.deleteById(notificationId);
-        logger.debug("FINE - Eliminazione completata per notifica ID: {}", notificationId);
+        logger.debug("END - deletion complete for notification ID: {}", notificationId);
     }
 
     @Transactional
     public void deleteReadNotifications(Long userId) {
-        logger.debug("INIZIO - Eliminazione notifiche lette per utente ID: {}", userId);
+        logger.debug("START - deleting read notifications for user ID: {}", userId);
         notificationRepository.deleteByUserIdAndReadTrue(userId);
-        logger.debug("FINE - Eliminazione notifiche lette completata per utente ID: {}", userId);
+        logger.debug("END - read notifications deleted for user ID: {}", userId);
     }
 
     /**
-     * Elimina tutte le notifiche di un utente, chiamato quando l'utente viene eliminato.
+     * Deletes every notification of a user, called when that user is deleted.
      *
-     * Prima era una riga dentro la transazione di UtenteService, che cancellava notifiche,
-     * prenotazioni e utente insieme. Ora e' un'operazione a se': se fallisce, l'utente puo'
-     * risultare eliminato mentre le sue notifiche restano.
+     * This used to be one line inside UserService's transaction, which removed notifications,
+     * bookings and the user together. Now it is an operation of its own: if it fails, the
+     * user can end up deleted while their notifications stay behind.
      */
     @Transactional
     public void deleteAllByUser(Long userId) {
-        logger.info("Eliminazione di tutte le notifiche dell'utenteId={}", userId);
+        logger.info("Deleting every notification of userId={}", userId);
         notificationRepository.deleteByUserId(userId);
     }
 
     /**
-     * Ricompone data e ora in un istante. Restituisce null invece di sollevare se il
-     * formato non e' quello atteso: una notifica con un campo in meno resta utile, una
-     * cancellazione che fallisce per un timestamp malformato no.
+     * Recomposes a date and a time of day into an instant. Returns null rather than throwing
+     * when the format is not the expected one: a notification missing one field is still
+     * useful, a cancellation that fails over a malformed timestamp is not.
      */
-    private static LocalDateTime componiIstante(String data, String now) {
-        // I due null di questo metodo NON sono un segnale d'errore che attraversa un
-        // confine: e' un helper privato di parsing, e null significa "non interpretabile",
-        // che e' l'unico significato possibile. Convertirli in eccezioni farebbe fallire
-        // la creazione di una notifica per una data malformata, quando la notifica ha
-        // ancora senso senza quel campo.
-        if (data == null || now == null) {
+    private static LocalDateTime toInstant(String date, String time) {
+        // The two nulls in this method are NOT an error signal crossing a boundary: this is a
+        // private parsing helper, and null means "not interpretable", which is the only
+        // meaning available. Turning them into exceptions would fail the creation of a
+        // notification over a malformed date, when the notification still makes sense
+        // without that field.
+        if (date == null || time == null) {
             return null;
         }
         try {
-            return LocalDate.parse(data).atTime(LocalTime.parse(now));
+            return LocalDate.parse(date).atTime(LocalTime.parse(time));
         } catch (DateTimeParseException e) {
-            logger.warn("Data prenotazione non interpretabile: data={} ora={}", data, now);
+            logger.warn("Booking date not interpretable: date={} time={}", date, time);
             return null;
         }
     }

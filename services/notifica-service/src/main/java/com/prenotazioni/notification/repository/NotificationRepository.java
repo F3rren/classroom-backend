@@ -7,43 +7,43 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 
-// NOTA: le @Query sono stringhe, non le verifica il compilatore. Passando da
-// @ManyToOne Utente a una colonna utenteId, il codice compilava ancora ma le tre
-// query qui sotto riferivano un attributo inesistente, e il contesto Spring non
-// partiva piu'. E' il tipo di rottura che solo l'esecuzione dei test rivela.
+// NOTE: @Query holds strings, and the compiler does not check them. When the
+// @ManyToOne User became a plain userId column, the code still compiled but the three
+// queries below referred to an attribute that no longer existed, and the Spring context
+// stopped starting. It is the kind of break only running the tests reveals.
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     
     /**
-     * Trova tutte le notifiche di un utente ordinate per data creazione (più recenti prima)
+     * Every notification of a user, newest first.
      */
     List<Notification> findByUserIdOrderByCreatedAtDesc(Long userId);
     
     /**
-     * Trova solo le notifiche non lette di un utente
+     * Only the unread notifications of a user.
      */
     List<Notification> findByUserIdAndReadFalseOrderByCreatedAtDesc(Long userId);
     
     /**
-     * Conta le notifiche non lette di un utente
+     * Counts the unread notifications of a user.
      */
     Long countByUserIdAndReadFalse(Long userId);
     
     /**
-     * Elimina tutte le notifiche lette di un utente
+     * Deletes every read notification of a user.
      */
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.userId = :userId AND n.read = true")
     void deleteByUserIdAndReadTrue(@Param("userId") Long userId);
     
     /**
-     * Elimina tutte le notifiche di un utente (per eliminazione utente)
+     * Deletes every notification of a user, for when the user itself is deleted.
      */
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.userId = :userId")
     void deleteByUserId(@Param("userId") Long userId);
     
     /**
-     * Segna tutte le notifiche di un utente come lette
+     * Marks every notification of a user as read.
      */
     @Modifying
     @Query("UPDATE Notification n SET n.read = true WHERE n.userId = :userId AND n.read = false")

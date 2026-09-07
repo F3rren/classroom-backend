@@ -5,15 +5,15 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
- * Servizio notifiche.
+ * The notification service.
  *
- * Il componentScan risale a com.prenotazioni perche' i bean condivisi (JwtVerifier,
- * JwtAuthFilter, SecurityConfig, i due handler di errore) vivono nel modulo shared sotto
- * quel package: senza, questo servizio partirebbe senza filtro JWT e ogni endpoint
- * risulterebbe raggiungibile senza token.
+ * The componentScan reaches up to com.prenotazioni because the shared beans (JwtVerifier,
+ * JwtAuthFilter, SecurityConfig, the two error handlers) live in the shared module under
+ * that package: without it this service would start with no JWT filter, and every endpoint
+ * would be reachable without a token.
  *
- * Le entita' e i repository restano confinati al package di questo servizio, cosi' non
- * puo' accidentalmente mappare tabelle che non possiede.
+ * Entities and repositories stay confined to this service's own package, so it cannot
+ * accidentally map tables it does not own.
  */
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.prenotazioni.notification", "com.prenotazioni.config", "com.prenotazioni.security", "com.prenotazioni.exception"})

@@ -41,9 +41,9 @@ public final class EventTopology {
      * un 406 e il servizio non partirebbe. Recuperare dal lato applicativo evita del tutto
      * quel problema, e non chiede di cancellare code a mano prima di un aggiornamento.
      */
-    public static final String EXCHANGE_ERRORI = "prenotazioni.eventi.errori";
+    public static final String ERROR_EXCHANGE = "prenotazioni.eventi.errori";
 
-    public static final String ROUTING_KEY_ERRORI = "prenotazione.cancellata.fallita";
+    public static final String ROUTING_KEY_CANCELLATION_FAILED = "prenotazione.cancellata.fallita";
 
     public static final String CANCELLATION_ERROR_QUEUE = "notifiche.prenotazione-cancellata.errori";
 
