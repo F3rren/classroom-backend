@@ -50,22 +50,22 @@ jobs:
       # break: not by being broken openly, but by being followed halfway.
       - name: No module with two configuration formats
         run: |
-          doppi=0
-          for cartella in $(find . -path '*/src/*/resources' -type d -not -path '*/target/*'); do
-            for properties in "$cartella"/application*.properties; do
+          duplicates=0
+          for dir in $(find . -path '*/src/*/resources' -type d -not -path '*/target/*'); do
+            for properties in "$dir"/application*.properties; do
               [ -f "$properties" ] || continue
-              senza="${properties%.properties}"
-              for yaml in "$senza.yml" "$senza.yaml"; do
+              base="${properties%.properties}"
+              for yaml in "$base.yml" "$base.yaml"; do
                 if [ -f "$yaml" ]; then
-                  echo "::error::$properties e $yaml convivono: Spring li carica entrambi e"
-                  echo "  .properties vince. Il .yml risulta ignorato senza alcun segnale."
-                  doppi=$((doppi + 1))
+                  echo "::error::$properties and $yaml live side by side: Spring loads both, and"
+                  echo "  .properties wins. The .yml ends up ignored with no signal at all."
+                  duplicates=$((duplicates + 1))
                 fi
               done
             done
           done
-          if [ "$doppi" -gt 0 ]; then exit 1; fi
-          echo "OK: nessun modulo dichiara la stessa configurazione in due formati."
+          if [ "$duplicates" -gt 0 ]; then exit 1; fi
+          echo "OK: no module declares the same configuration in two formats."
 
       # verify and not test: it is the phase where the JaCoCo gate runs, applied per module.
       # No secrets to inject: .env is imported as "optional:" and does not exist on the
@@ -79,52 +79,52 @@ jobs:
         run: |
           # The classes that depend on Docker are found by reading the sources, not from a
           # list: a list goes stale, and that has already happened once.
-          controllate=0
-          problemi=0
+          checked=0
+          problems=0
 
           # Neither a list nor a fixed depth: "*/src/test" went stale the moment the
           # services moved under services/, and "*/*/src/test" would go stale at the next
           # restructuring. The module is derived by cutting the fixed part of the path, which
           # does not depend on how deeply it is nested.
-          for sorgente in $(grep -rl "@Testcontainers" --include=*.java --exclude-dir=target . | sed 's|^\./||'); do
-            modulo="${sorgente%%/src/test/*}"
-            classe="$(basename "$sorgente" .java)"
-            pacchetto="$(sed -n 's/^package \(.*\);/\1/p' "$sorgente" | head -1)"
-            report="$modulo/target/surefire-reports/TEST-$pacchetto.$classe.xml"
+          for src in $(grep -rl "@Testcontainers" --include=*.java --exclude-dir=target . | sed 's|^\./||'); do
+            module="${src%%/src/test/*}"
+            class_name="$(basename "$src" .java)"
+            package_name="$(sed -n 's/^package \(.*\);/\1/p' "$src" | head -1)"
+            report="$module/target/surefire-reports/TEST-$package_name.$class_name.xml"
 
             if [ ! -f "$report" ]; then
-              echo "::error::$classe non ha prodotto un report: non e' stata eseguita."
-              echo "  Atteso in $report"
-              echo "  Se la classe e' stata rinominata in *IT, surefire non la raccoglie piu'."
-              problemi=$((problemi + 1))
+              echo "::error::$class_name produced no report: it did not run."
+              echo "  Expected at $report"
+              echo "  If the class was renamed to *IT, surefire no longer picks it up."
+              problems=$((problems + 1))
               continue
             fi
             if ! grep -q 'skipped="0"' "$report"; then
-              echo "::error::$classe e' stata saltata: Testcontainers non ha raggiunto Docker."
+              echo "::error::$class_name was skipped: Testcontainers did not reach Docker."
               grep -oE 'tests="[0-9]+"|skipped="[0-9]+"' "$report" | head -2
-              problemi=$((problemi + 1))
+              problems=$((problems + 1))
               continue
             fi
             if grep -q 'tests="0"' "$report"; then
-              echo "::error::$classe non contiene test."
-              problemi=$((problemi + 1))
+              echo "::error::$class_name contains no tests."
+              problems=$((problems + 1))
               continue
             fi
-            echo "  ok: $modulo/$classe"
-            controllate=$((controllate + 1))
+            echo "  ok: $module/$class_name"
+            checked=$((checked + 1))
           done
 
           # A discovery that finds nothing would pass in silence, which is the same defect
           # in disguise once more: if the grep stopped finding the classes, this step would
           # say "all good" without having looked at anything.
-          if [ "$controllate" -eq 0 ] && [ "$problemi" -eq 0 ]; then
-            echo "::error::Nessuna classe @Testcontainers trovata: la ricerca non funziona piu'."
+          if [ "$checked" -eq 0 ] && [ "$problems" -eq 0 ]; then
+            echo "::error::No @Testcontainers class found: the search no longer works."
             exit 1
           fi
-          if [ "$problemi" -gt 0 ]; then
+          if [ "$problems" -gt 0 ]; then
             exit 1
           fi
-          echo "OK: $controllate classi eseguite contro servizi reali in container."
+          echo "OK: $checked classes ran against real services in containers."
 
       - name: Coverage report
         if: always()

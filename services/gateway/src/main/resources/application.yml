@@ -12,8 +12,8 @@
 #     17104  notification-service
 #     17105  auth-service       (users, token issuing)
 #
-# 8080 is deliberately avoided: it is too common and ends up colliding with
-# altri progetti sulla stessa macchina.
+# 8080 is deliberately avoided: it is too common and ends up colliding with other
+# projects on the same machine.
 #
 # Every port stays overridable from an environment variable, with no code to touch.
 # ============================================================================
@@ -30,13 +30,14 @@ spring:
       # CORS lives here because the gateway is what talks to the browser: the services
       # behind it receive only server-to-server requests. Each keeps its own configuration
       # all the same, which is what you need when querying it directly in development.
-      # WHICH address reaches the services as the caller's address.
+      #
+      # x-forwarded.for-append below decides WHICH address reaches the services as the
+      # caller's address.
       #
       # The default is to APPEND to an existing X-Forwarded-For rather than replace it.
       # Since ForwardedHeaderFilter downstream reads the FIRST value, that default lets the
       # caller choose their own apparent address: sending "X-Forwarded-For: 9.9.9.9" makes
-      # "9.9.9.9,<real address>" arrive, and what gets read is
-      # come 9.9.9.9.
+      # "9.9.9.9,<real address>" arrive, and what gets read is 9.9.9.9.
       #
       # This is not theoretical: auth-service rate-limits login attempts on a key that
       # starts with that address. With the default, changing it on every request sidesteps
@@ -46,7 +47,7 @@ spring:
       # THIS LINE AND "server.forward-headers-strategy=framework" IN THE THREE SERVICES
       # THEY HOLD EACH OTHER UP: there the header is trusted, here it is made trustworthy.
       # Removing one without knowing about the other reopens the hole in silence.
-      # Fissata da IndirizzoDelChiamanteTest.
+      # Pinned down by CallerAddressTest.
       #
       # If one day there were a real proxy in front of the gateway, this choice would have
       # to be revisited: there the incoming header would be legitimate and should be kept,

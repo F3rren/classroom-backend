@@ -1,5 +1,5 @@
-# I target locali non devono finire nel contesto di build: sono grandi e vengono
-# comunque ricostruiti dentro l'immagine.
+# The local target directories must not reach the build context: they are large, and
+# they get rebuilt inside the image anyway.
 **/target/
 .git/
 logs/

@@ -55,29 +55,29 @@ logs/
 *.log
 
 # ============================================
-# CONFIGURAZIONI SENSIBILI (IMPORTANTE!)
+# SENSITIVE CONFIGURATION (IMPORTANT!)
 # ============================================
-# Variabili d'ambiente dello stack compose: contiene JWT_SECRET e le password dei
-# servizi. Docker Compose legge questo file da solo, quindi e' comodissimo - ed e'
-# esattamente per questo che va tenuto fuori da git. Il modello versionato e' .env.example.
+# The compose stack's environment variables: this file holds JWT_SECRET and the services'
+# passwords. Docker Compose reads it on its own, which is very convenient - and is exactly
+# why it has to stay out of git. The versioned template is .env.example.
 .env
 .env.local
 
-# File di configurazione ambiente-specifici.
-# Le regole generiche restano come rete di sicurezza per copie sparse fuori dal progetto.
+# Environment-specific configuration files.
+# The generic rules stay as a safety net for stray copies outside the project.
 **/application-local.properties
 **/application-dev.properties
 **/application-prod.properties
 
-# ...ma i due profili versionati del progetto vanno committati: contengono SOLO
-# valori non sensibili (url, porte, livelli di log, origini CORS). I segreti restano
-# in .env, ignorato qui sopra.
-# Senza queste due negazioni i file verrebbero ignorati in silenzio: nessun errore,
-# semplicemente non finirebbero mai in un commit e la produzione partirebbe da un
-# jar che non li contiene.
-# Le negazioni sono deliberatamente generiche (**/ invece del percorso esatto): con la
-# struttura multi-modulo il percorso e' passato da src/ ad app/src/, e cambiera' ancora
-# quando i servizi verranno separati. Ancorarle al percorso le farebbe scadere in silenzio.
+# ...but the project's two versioned profiles have to be committed: they hold ONLY
+# non-sensitive values (urls, ports, log levels, CORS origins). The secrets stay in
+# .env, ignored just above.
+# Without these two negations the files would be ignored in silence: no error, they
+# simply would never reach a commit, and production would start from a jar that does
+# not contain them.
+# The negations are deliberately generic (**/ rather than the exact path): with the
+# multi-module layout the path went from src/ to app/src/, and it will change again when
+# the services are separated. Anchoring them to the path would make them expire silently.
 !**/src/main/resources/application-dev.properties
 !**/src/main/resources/application-prod.properties
 

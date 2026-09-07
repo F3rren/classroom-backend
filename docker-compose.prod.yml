@@ -27,40 +27,40 @@ services:
 
   db-users:
     environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
 
   db-bookings:
     environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
 
   db-notifications:
     environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
 
   broker:
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?in produzione la password del broker va dichiarata, non lasciata a guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
 
   auth-service:
     environment:
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
 
   booking-service:
     environment:
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
-      RABBITMQ_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in produzione la password del broker va dichiarata, non lasciata a guest}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
       # No fallback here either: localhost origins in production are not a useful default,
       # they are a door left open onto an origin that does not exist.
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in produzione le origini ammesse vanno dichiarate}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in production the allowed origins have to be declared}
 
   notification-service:
     environment:
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
-      RABBITMQ_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in produzione la password del broker va dichiarata, non lasciata a guest}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
 
   gateway:
     environment:
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in produzione le origini ammesse vanno dichiarate}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in production the allowed origins have to be declared}
