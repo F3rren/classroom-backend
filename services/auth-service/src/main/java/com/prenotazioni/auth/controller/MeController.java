@@ -32,24 +32,25 @@ public class MeController {
         this.userRepository = userRepository;
     }
 
-    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
+    /** The same id the error handler will see, not a different one. */
     private String generateSessionId() {
         return RequestCorrelationFilter.current();
     }
 
     @GetMapping
-    @Operation(summary = "Profilo dell'utente autenticato")
+    @Operation(summary = "Profile of the authenticated user")
     public ResponseEntity<ApiEnvelope<UserSummaryDto>> getMe(Authentication authentication) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO getMe - Richiesta informazioni profilo utente");
+        logger.debug("START getMe - profile information requested");
 
-        // Se la richiesta e' arrivata qui, Spring Security ha gia' garantito un principal valido
-        // (rifiuti a livello di filtro sono gestiti da ApiAuthenticationEntryPoint, prima del dispatch).
+        // If the request got this far, Spring Security has already guaranteed a valid
+        // principal (filter-level refusals are handled by ApiAuthenticationEntryPoint,
+        // before the dispatch)..
         String email = authentication.getName().trim().toLowerCase();
 
         User user = userRepository.findByEmail(email);
         if (user == null) {
-            logger.warn("getMe - nessun utente in database per {}", LogSanitizer.maskEmail(email));
+            logger.warn("getMe - no user in the database for {}", LogSanitizer.maskEmail(email));
             return new ResponseEntity<>(
                     ApiEnvelope.error("USER_NOT_FOUND", "Utente not found",
                             "Nessun utente trovato con le tue credenziali. Effettua nuovamente il login.", sessionId),
@@ -57,7 +58,7 @@ public class MeController {
             );
         }
 
-        logger.debug("FINE getMe - Profilo utente recuperato con successo | ID: {} | Email: {}", user.getId(), email);
+        logger.debug("END getMe - profile fetched | ID: {} | email: {}", user.getId(), email);
 
         return new ResponseEntity<>(
                 ApiEnvelope.success("Profilo utente recuperato con successo", UserSummaryDto.forProfile(user), sessionId),

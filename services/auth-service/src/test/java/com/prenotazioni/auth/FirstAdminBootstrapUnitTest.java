@@ -18,12 +18,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Il runner che crea il primo amministratore.
+ * The runner that creates the first administrator.
  *
- * E' codice che fabbrica un utente con privilegi massimi, quindi la garanzia che lo rende
- * accettabile - agisce ESCLUSIVAMENTE a tabella vuota - non basta scriverla in un commento:
- * va tenuta ferma da un test che fallirebbe se qualcuno la allentasse. Il primo caso qui
- * sotto e' quello, e vale piu' degli altri messi insieme.
+ * This is code that manufactures a user with maximum privileges, so the guarantee that makes
+ * it acceptable - it acts ONLY on an empty table - is not enough to write in a comment: it
+ * has to be held still by a test that would fail if somebody loosened it. The first case
+ * below is that test, and it is worth more than the others put together.
  */
 @ExtendWith(MockitoExtension.class)
 class FirstAdminBootstrapUnitTest {
@@ -40,10 +40,9 @@ class FirstAdminBootstrapUnitTest {
 
     @Test
     void touchesNothingWhenUsersAlreadyExist() {
-        // LA garanzia. Se questo test cadesse, la classe smetterebbe di essere un aiuto
-        // all'avvio e diventerebbe una scorciatoia per ottenere privilegi da amministratore
-        // su un sistema in uso. Le credenziali passate qui sono deliberatamente valide:
-        // il punto e' che non vengano usate comunque.
+        // THE guarantee. If this test fell, the class would stop being a help at startup and
+        // become a shortcut to administrator privileges on a system in use. The credentials
+        // passed here are deliberately valid: the point is that they are not used anyway.
         when(userRepository.count()).thenReturn(7L);
 
         runner("nuovo@admin.it", "unaPasswordValida1!").run(null);
@@ -63,15 +62,16 @@ class FirstAdminBootstrapUnitTest {
         ArgumentCaptor<CreateUserRequest> request = ArgumentCaptor.forClass(CreateUserRequest.class);
         verify(authService).register(request.capture());
         assertThat(request.getValue().getEmail()).isEqualTo("primo@admin.it");
-        // Il ruolo e' minuscolo: e' il valore dell'enum Ruolo, non il nome della costante.
-        // Sbagliarlo creerebbe un utente normale e il nodo resterebbe stretto, senza errori.
+        // The role is lowercase: it is the value of the Role enum, not the constant's name.
+        // Getting it wrong would create an ordinary user and leave the knot tied, with no
+        // error to show for it.
         assertThat(request.getValue().getRole()).isEqualTo("admin");
     }
 
     @Test
     void doesNothingWithoutCredentials() {
-        // Il caso normale per chi non usa il meccanismo: database vuoto, variabili non
-        // valorizzate. Deve essere un non-evento, non un avvio fallito.
+        // The normal case for anyone not using the mechanism: empty database, variables
+        // unset. It has to be a non-event, not a failed startup.
         when(userRepository.count()).thenReturn(0L);
 
         runner("", "").run(null);
@@ -81,9 +81,8 @@ class FirstAdminBootstrapUnitTest {
 
     @Test
     void oneOfTheTwoAloneIsNotEnough() {
-        // Mezza configurazione e' piu' probabile di nessuna configurazione - si valorizza
-        // l'email e ci si dimentica la password - e non deve produrre un amministratore
-        // con una password vuota.
+        // Half a configuration is more likely than none - you set the email and forget the
+        // password - and it must not produce an administrator with an empty password.
         when(userRepository.count()).thenReturn(0L);
 
         runner("primo@admin.it", "").run(null);

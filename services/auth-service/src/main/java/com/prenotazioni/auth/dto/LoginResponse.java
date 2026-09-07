@@ -5,9 +5,9 @@ import lombok.Getter;
 import com.prenotazioni.util.Timestamps;
 
 /**
- * Risposta di successo del login. Il token compare sia al livello radice ("token")
- * sia dentro "data" - duplicazione intenzionale del comportamento gia' esistente,
- * mantenuta per compatibilita' con il frontend attuale.
+ * A successful login response. The token appears both at the root ("token") and inside
+ * "data" - a deliberate duplication of the behaviour that was already there, kept for
+ * compatibility with the current frontend.
  */
 @Getter
 public class LoginResponse {

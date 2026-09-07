@@ -13,34 +13,34 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 /**
- * Cancella cio' che appartiene a un utente ma vive in altri servizi.
+ * Deletes what belongs to a user but lives in other services.
  *
- * Finche' tutto stava in un database, UtenteService cancellava notifiche, prenotazioni e
- * utente dentro una sola transazione, e le chiavi esterne garantivano che non restasse
- * nulla di orfano. Adesso quelle righe stanno in due database che questo servizio non
- * puo' toccare, quindi la cancellazione diventa una sequenza di chiamate:
+ * While everything sat in one database, UserService deleted notifications, bookings and the
+ * user inside a single transaction, and the foreign keys guaranteed nothing was left
+ * orphaned. Those rows now live in two databases this service cannot touch, so the deletion
+ * becomes a sequence of calls:
  *
- *   - NON e' atomica. Se una fallisce, l'utente puo' sparire lasciando dietro le sue
- *     prenotazioni. La finestra non e' teorica.
- *   - Per questo ogni fallimento e' loggato come ERROR e non come warning: richiede una
- *     bonifica, non una consolazione.
- *   - L'ordine e' voluto: prima i dati dipendenti, poi l'utente. Al contrario, un errore
- *     dopo aver rimosso l'utente lascerebbe righe di cui non si sa piu' a chi appartengano.
+ *   - it is NOT atomic. If one fails, the user can disappear leaving their bookings behind.
+ *     The window is not theoretical.
+ *   - that is why every failure is logged as ERROR and not as a warning: it needs cleaning
+ *     up, not consoling.
+ *   - the order is deliberate: dependent data first, the user last. The other way round, an
+ *     error after removing the user would leave rows whose owner nobody can name any more.
  *
- * Il token dell'admin che ha chiesto la cancellazione viene inoltrato cosi' com'e': i
- * servizi a valle lo verificano da soli e pretendono il ruolo ADMIN, quindi non esiste una
- * corsia privilegiata fra servizi da proteggere separatamente.
+ * The token of the admin who asked for the deletion is forwarded as it is: the downstream
+ * services verify it themselves and require the ADMIN role, so there is no privileged
+ * service-to-service lane to protect separately.
  */
 @Component
 public class UserDataClient {
 
     private static final Logger logger = LoggerFactory.getLogger(UserDataClient.class);
 
-    /** Tre tentativi: il primo, piu' due per i guasti che durano meno di un secondo. */
-    private static final int TENTATIVI = 3;
+    /** Three attempts: the first, plus two for failures that last less than a second. */
+    private static final int ATTEMPTS = 3;
 
-    /** Cresce a ogni giro (0.2s, 0.4s): un servizio che riavvia non torna in un istante. */
-    private static final long ATTESA_INIZIALE_MS = 200;
+    /** Grows each round (0.2s, 0.4s): a restarting service does not come back instantly. */
+    private static final long INITIAL_BACKOFF_MS = 200;
 
     private final RestClient notifications;
     private final RestClient bookings;
@@ -56,17 +56,17 @@ public class UserDataClient {
     }
 
     /**
-     * Cancella i dati dell'utente negli altri servizi.
+     * Deletes the user's data in the other services.
      *
-     * @return i nomi dei dati che NON si e' riusciti a cancellare, vuoto se e' andato tutto.
-     *         Un booleano non bastava: chi chiama deve poter dire nel messaggio d'errore
-     *         cosa e' rimasto indietro, altrimenti l'unica informazione e' "qualcosa e'
-     *         fallito" e chi ripete non sa cosa aspettarsi.
+     * @return the names of the data that could NOT be deleted, empty if everything went
+     *         through. A boolean was not enough: the caller has to be able to say in the
+     *         error message what was left behind, otherwise the only information is
+     *         "something failed" and whoever retries does not know what to expect.
      */
     public List<String> deleteDataOf(Long userId) {
         List<String> failed = new ArrayList<>();
-        // Entrambe le chiamate vengono tentate anche se la prima fallisce: fermarsi
-        // lascerebbe piu' roba indietro senza dire di piu' a chi legge l'errore.
+        // Both calls are attempted even if the first fails: stopping would leave more behind
+        // without telling the reader of the error anything more.
         if (!delete(notifications, "/api/notifications/internal/user/{id}", userId, "notifications")) {
             failed.add("notifications");
         }
@@ -77,64 +77,65 @@ public class UserDataClient {
     }
 
     /**
-     * Un DELETE con qualche tentativo, perche' la maggior parte dei guasti qui e' passeggera.
+     * A DELETE with a few attempts, because most failures here are transient.
      *
-     * Un servizio che sta riavviando, una connessione rifiutata per un istante, un 5xx
-     * momentaneo: al primo colpo falliscono, al secondo spesso no. Senza tentativi ognuno di
-     * questi lasciava l'operazione a meta' e la sua conclusione dipendeva da un essere umano
-     * che se ne accorgesse e la ripetesse.
+     * A service that is restarting, a connection refused for an instant, a momentary 5xx:
+     * they fail on the first try and often not on the second. Without retries each of these
+     * left the operation half done, and its completion depended on a human noticing and
+     * repeating it.
      *
-     * NON si ritenta su un 4xx: e' il servizio a valle che rifiuta la richiesta, e ripeterla
-     * darebbe lo stesso esito ritardando solo la risposta. La distinzione conta: ritentare
-     * cio' che non puo' riuscire e' il modo per trasformare un errore chiaro in un timeout.
+     * It does NOT retry on a 4xx: there the downstream service is refusing the request, and
+     * repeating it would give the same outcome while only delaying the answer. The
+     * distinction matters: retrying what cannot succeed is how a clear error turns into a
+     * timeout.
      *
-     * I DELETE sono idempotenti, quindi un tentativo che era in realta' riuscito ma la cui
-     * risposta si e' persa non fa danni al giro successivo.
+     * DELETEs are idempotent, so an attempt that actually succeeded but whose response was
+     * lost does no damage on the next round.
      */
     private boolean delete(RestClient client, String uri, Long userId, String what) {
-        Exception ultima = null;
-        for (int attempt = 1; attempt <= TENTATIVI; attempt++) {
+        Exception last = null;
+        for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {
             try {
                 client.delete()
                         .uri(uri, userId)
                         .header(HttpHeaders.AUTHORIZATION, currentAuthorization())
-                        // Senza questa riga la catena di correlazione si spezza proprio qui:
-                        // i servizi a valle non ricevono l'identificativo, se ne generano uno
-                        // nuovo, e un'operazione che attraversa tre servizi finisce nei log
-                        // sotto tre chiavi diverse. Cioe' la correlazione funzionerebbe
-                        // ovunque tranne dove serve.
+                        // Without this line the correlation chain breaks exactly here: the
+                        // downstream services do not receive the id, generate a new one, and
+                        // an operation crossing three services ends up in the logs under
+                        // three different keys. That is, correlation would work everywhere
+                        // except where it is needed.
                         .header(RequestCorrelationFilter.HEADER, RequestCorrelationFilter.current())
                         .retrieve()
                         .toBodilessEntity();
                 if (attempt > 1) {
-                    logger.info("{} dell'utenteId={} eliminate al tentativo {}", what, userId, attempt);
+                    logger.info("{} of userId={} deleted on attempt {}", what, userId, attempt);
                 }
                 return true;
             } catch (HttpClientErrorException e) {
-                logger.error("{} dell'utenteId={}: il servizio a valle ha rifiutato la richiesta "
-                        + "({}). Non si ritenta: ripetere darebbe lo stesso esito.",
+                logger.error("{} of userId={}: the downstream service refused the request "
+                        + "({}). Not retrying: repeating it would give the same outcome.",
                         what, userId, e.getStatusCode());
                 return false;
             } catch (Exception e) {
-                ultima = e;
-                if (attempt < TENTATIVI) {
-                    attendi(ATTESA_INIZIALE_MS * attempt);
+                last = e;
+                if (attempt < ATTEMPTS) {
+                    waitFor(INITIAL_BACKOFF_MS * attempt);
                 }
             }
         }
-        logger.error("{} dell'utenteId={} non eliminate dopo {} tentativi: l'utente NON viene "
-                + "rimosso, cosi' quelle righe hanno ancora un proprietario e l'operazione "
-                + "resta ripetibile. Causa: {}",
-                what, userId, TENTATIVI, ultima != null ? ultima.getMessage() : "sconosciuta");
+        logger.error("{} of userId={} not deleted after {} attempts: the user is NOT removed, "
+                + "so those rows still have an owner and the operation stays repeatable. "
+                + "Cause: {}",
+                what, userId, ATTEMPTS, last != null ? last.getMessage() : "unknown");
         return false;
     }
 
-    private void attendi(long millisecondi) {
+    private void waitFor(long millis) {
         try {
-            Thread.sleep(millisecondi);
+            Thread.sleep(millis);
         } catch (InterruptedException e) {
-            // Rimettere il flag e smettere di ritentare: chi ha interrotto il thread vuole
-            // che si fermi, non che dorma di nuovo.
+            // Restore the flag and stop retrying: whoever interrupted the thread wants it to
+            // stop, not to sleep again.
             Thread.currentThread().interrupt();
         }
     }

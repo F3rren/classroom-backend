@@ -12,22 +12,22 @@ import lombok.ToString;
 import java.time.LocalDateTime;
 
 /**
- * Entità Utente - Basata su analisi frontend
- * Campi utilizzati dal frontend:
- * - id, username, nome, email, ruolo, dataRegistrazione, ultimoAccesso
+ * A user of the system.
  *
- * IMPORTANTE: ruolo DEVE essere in minuscolo ('admin' o 'user')
- * Frontend controlla: user?.ruolo === "admin"
+ * THE ROLE IS STORED LOWERCASE ('admin' or 'user'), and that is not cosmetic: the column has
+ * a CHECK constraint admitting exactly those two values, and the JSON carries the same
+ * strings, so a client comparing role === "admin" keeps working. Role.JpaConverter is what
+ * holds both ends to it.
  */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @Table(name = "users")
-// Quando Utente e' referenziato come relazione LAZY (es. Notifica.utente), Hibernate lo
-// carica come subclasse proxy che aggiunge un getter pubblico "hibernateLazyInitializer";
-// senza questa esclusione Jackson prova a serializzarlo e fallisce con
-// InvalidDefinitionException (nessun serializzatore per ByteBuddyInterceptor).
+// When a User is referenced as a LAZY relation, Hibernate loads it as a proxy subclass that
+// adds a public "hibernateLazyInitializer" getter; without this exclusion Jackson tries to
+// serialise it and fails with InvalidDefinitionException (no serialiser for
+// ByteBuddyInterceptor).
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
     
@@ -50,7 +50,7 @@ public class User {
     private String password;
     
     @Column(nullable = false, length = 20)
-    // Persistito minuscolo dal converter di Ruolo (CHECK constraint utente_ruolo_check)
+    // Stored lowercase by Role's converter (CHECK constraint user_role_check)
     private Role role;
     
     @Column(name = "registered_at", nullable = false, updatable = false)
@@ -64,8 +64,8 @@ public class User {
         if (registeredAt == null) {
             registeredAt = LocalDateTime.now();
         }
-        // Nessuna normalizzazione del case: la conversione da stringa passa da
-        // Ruolo.da(), che accetta qualunque case e restituisce sempre la costante giusta.
+        // No case normalisation here: conversion from a string goes through Role.from(),
+        // which accepts any case and always returns the right constant.
         if (role == null) {
             role = Role.USER;
         }

@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Il limitatore dei tentativi di login.
+ * The login attempt limiter.
  *
- * Il test che conta e' quello sulla pulizia: la classe e' nata perche' la mappa non veniva
- * mai svuotata, e senza un test che lo fissi il difetto puo' rientrare senza che nessuno
- * se ne accorga - non produce errori, produce solo memoria che non torna indietro.
+ * The test that matters is the one on the cleanup: this class exists because the map was
+ * never emptied, and without a test pinning that down the defect can come back unnoticed -
+ * it produces no errors, only memory that never comes back.
  */
 class LoginAttemptLimiterUnitTest {
 
@@ -29,8 +29,8 @@ class LoginAttemptLimiterUnitTest {
 
     @Test
     void everyKeyHasItsOwnCounter() {
-        // Se i contatori non fossero separati, un solo attaccante basterebbe a bloccare
-        // il login di tutti gli altri.
+        // If the counters were not separate, a single attacker would be enough to block
+        // everybody else's login.
         LoginAttemptLimiter l = attemptLimiter(1, 60_000, 1000);
 
         l.tooManyAttempts("primo");
@@ -40,9 +40,9 @@ class LoginAttemptLimiterUnitTest {
 
     @Test
     void theWindowReopens() {
-        // Finestra negativa e non zero: con zero due chiamate nello stesso millisecondo
-        // danno differenza 0, che non supera la soglia, e il test dipenderebbe
-        // dall'orologio. Con -1 la condizione e' vera per costruzione.
+        // A negative window and not zero: with zero, two calls in the same millisecond give
+        // a difference of 0, which does not exceed the threshold, and the test would depend
+        // on the clock. With -1 the condition is true by construction.
         LoginAttemptLimiter l = attemptLimiter(1, -1, 1000);
 
         l.tooManyAttempts("a");
@@ -51,8 +51,8 @@ class LoginAttemptLimiterUnitTest {
 
     @Test
     void theCleanupRemovesExpiredKeys() {
-        // LA regressione da tenere chiusa. Prima nessuna chiave usciva mai, e la parte
-        // email della chiave la sceglie chi chiama: la memoria cresceva su richiesta.
+        // THE regression to keep closed. No key ever left before, and the email half of the
+        // key is chosen by the caller: memory grew on request.
         LoginAttemptLimiter l = attemptLimiter(5, 1000, 1000);
 
         for (int i = 0; i < 200; i++) {
@@ -67,8 +67,8 @@ class LoginAttemptLimiterUnitTest {
 
     @Test
     void theCleanupSparesKeysStillInsideTheWindow() {
-        // Ripulire troppo sarebbe l'errore opposto: azzererebbe i contatori di chi sta
-        // attaccando adesso, cioe' proprio quelli che servono.
+        // Cleaning too much would be the opposite mistake: it would reset the counters of
+        // whoever is attacking right now, which are precisely the ones needed.
         LoginAttemptLimiter l = attemptLimiter(5, 600_000, 1000);
 
         l.tooManyAttempts("ancora-viva@esempio.it");
@@ -79,10 +79,10 @@ class LoginAttemptLimiterUnitTest {
 
     @Test
     void atTheCapItCleansUpBeforeGivingUp() {
-        // Il tetto non deve scattare finche' c'e' roba scaduta da buttare: prima si libera,
-        // e solo se dopo la pulizia si e' ancora al limite si smette di registrare.
-        // Stessa ragione: una finestra di 1 ms sarebbe scaduta o no a seconda di quanto
-        // in fretta gira il ciclo. Negativa, sono scadute per costruzione.
+        // The cap must not trip while there is expired material to throw away: free it
+        // first, and only stop recording if the cleanup still leaves you at the limit.
+        // Same reason as above: a 1 ms window would be expired or not depending on how fast
+        // the loop runs. Negative, they are expired by construction.
         LoginAttemptLimiter l = attemptLimiter(5, -1, 50);
 
         for (int i = 0; i < 50; i++) {
@@ -97,20 +97,19 @@ class LoginAttemptLimiterUnitTest {
 
     @Test
     void atTheCapAlreadyKnownKeysStayLimited() {
-        // Il fallimento e' aperto solo per le chiavi NUOVE: chi sta gia' attaccando
-        // continua a essere contato, altrimenti riempire la mappa sarebbe il modo per
-        // disattivare il limitatore.
+        // Failing open applies only to NEW keys: whoever is already attacking keeps being
+        // counted, otherwise filling the map would be the way to switch the limiter off.
         LoginAttemptLimiter l = attemptLimiter(1, 600_000, 2);
 
         l.tooManyAttempts("nota");
         assertThat(l.tooManyAttempts("nota")).isTrue();
 
         l.tooManyAttempts("seconda");
-        // il tetto e' pieno e niente e' scaduto: la terza chiave non viene registrata
+        // the cap is full and nothing has expired: the third key is not recorded
         assertThat(l.tooManyAttempts("terza")).isFalse();
         assertThat(l.trackedKeys()).isEqualTo(2);
 
-        // ma quella nota continua a essere limitata
+        // but the one already known keeps being limited
         assertThat(l.tooManyAttempts("nota")).isTrue();
     }
 }

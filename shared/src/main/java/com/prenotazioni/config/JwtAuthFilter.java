@@ -58,7 +58,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String email = jwtVerifier.getEmailFromToken(token);
             Long id = jwtVerifier.getUserIdFromToken(token);
             String role = jwtVerifier.getRoleFromToken(token);
-            String name = jwtVerifier.getNomeFromToken(token);
+            String name = jwtVerifier.getNameFromToken(token);
             String username = jwtVerifier.getUsernameFromToken(token);
 
             AppPrincipal principal = new AppPrincipal(id, email, username, name, role);
@@ -69,9 +69,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // sara' la policy di sicurezza a negare l'accesso.
             List<GrantedAuthority> authorities;
             try {
-                Role ruoloTipizzato = Role.da(role);
-                authorities = ruoloTipizzato != null
-                        ? List.of(new SimpleGrantedAuthority(ruoloTipizzato.toAuthority()))
+                Role typedRole = Role.from(role);
+                authorities = typedRole != null
+                        ? List.of(new SimpleGrantedAuthority(typedRole.toAuthority()))
                         : List.of();
             } catch (IllegalArgumentException e) {
                 logger.warn("JWT Filter - ruolo non riconosciuto nel token, nessuna authority assegnata");

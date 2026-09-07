@@ -95,7 +95,7 @@ services:
       # per chi non lo vuole, invece di obbligare a dichiarare le variabili in .env.
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
-      BOOTSTRAP_ADMIN_NOME: ${BOOTSTRAP_ADMIN_NOME:-Amministratore}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Amministratore}
 
   prenotazione-service:
     build:

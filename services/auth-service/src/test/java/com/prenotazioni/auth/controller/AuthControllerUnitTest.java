@@ -22,15 +22,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit test di AuthController.
+ * Unit tests for AuthController.
  *
- * Il rate limiter e' protezione anti brute-force ma non era coperto: nei test HTTP
- * application-test.properties alza max-attempts a 1000 proprio per non farlo scattare,
- * e non si puo' abbassare li' senza mandare in 429 le altre classi (la mappa dei
- * tentativi e' static e surefire riusa la JVM fra i contesti).
+ * The rate limiter is anti brute-force protection but was not covered: in the HTTP tests
+ * application-test.properties raises max-attempts to 1000 precisely so it does not trip,
+ * and it cannot be lowered there without sending the other classes into 429.
  *
- * Coperti anche i rami di errore interno del login, che via HTTP richiederebbero di
- * rompere il service o il generatore di token.
+ * The internal-error branches of the login are covered too, which over HTTP would require
+ * breaking the service or the token generator.
  */
 class AuthControllerUnitTest {
 
@@ -45,10 +44,10 @@ class AuthControllerUnitTest {
     void setUp() {
         authService = mock(AuthService.class);
         jwtService = mock(JwtService.class);
-        // Il limitatore e' un componente a se': si costruisce con i suoi parametri invece
-        // di iniettarli per riflessione, e ogni test ne ha uno pulito. Prima il contatore
-        // era static e andava azzerato a mano fra un caso e l'altro, perche' surefire
-        // riusa la JVM fra i contesti.
+        // The limiter is a component of its own: it is built with its parameters instead of
+        // having them injected by reflection, and every test gets a clean one. The counter
+        // used to be static and had to be cleared by hand between cases, because surefire
+        // reuses the JVM across contexts.
         attemptLimiter = new LoginAttemptLimiter(100, 60_000L, 1000);
         controller = new AuthController(authService, jwtService, attemptLimiter);
 
@@ -87,11 +86,11 @@ class AuthControllerUnitTest {
                 new LoginAttemptLimiter(1, 60_000L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
-        // primo tentativo: consuma la quota e fallisce per credenziali errate
+        // first attempt: uses up the quota and fails on wrong credentials
         ResponseEntity<?> primo = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
         assertThat(primo.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        // secondo tentativo: oltre soglia
+        // second attempt: over the threshold
         ResponseEntity<?> second = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
         assertThat(second.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(errorCode(second)).isEqualTo("TOO_MANY_ATTEMPTS");
@@ -99,8 +98,8 @@ class AuthControllerUnitTest {
 
     @Test
     void countersResetAfterTheWindowExpires() {
-        // finestra negativa: ogni chiamata risulta fuori finestra, quindi il contatore
-        // riparte. Ora e' un parametro del costruttore invece di un campo da forzare.
+        // A negative window: every call lands outside it, so the counter starts over. It is
+        // a constructor parameter now, instead of a field to force by reflection.
         controller = new AuthController(authService, jwtService,
                 new LoginAttemptLimiter(1, -1L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
@@ -108,7 +107,7 @@ class AuthControllerUnitTest {
         controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
         ResponseEntity<?> second = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
 
-        // niente 429: la finestra e' scaduta e il contatore e' stato azzerato
+        // no 429: the window has expired and the counter was reset
         assertThat(second.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
@@ -125,7 +124,7 @@ class AuthControllerUnitTest {
         assertThat(altro.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
-    // ==================== validazione ====================
+    // ==================== validation ====================
 
     @Test
     void rejectsAMissingEmail() {
@@ -169,7 +168,7 @@ class AuthControllerUnitTest {
         assertThat(errorCode(resp)).isEqualTo("INVALID_CREDENTIALS");
     }
 
-    // ==================== errori interni ====================
+    // ==================== internal errors ====================
 
     @Test
     void returns500WhenTheServiceBlowsUp() {
@@ -225,7 +224,7 @@ class AuthControllerUnitTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         LoginResponse body = (LoginResponse) resp.getBody();
         assertThat(body.getToken()).isEqualTo("token-valido");
-        // il token e' duplicato anche dentro "data", shape storica attesa dal frontend
+        // the token is duplicated inside "data" too, the historic shape the frontend expects
         assertThat(body.getData().getToken()).isEqualTo("token-valido");
         assertThat(body.isSuccess()).isTrue();
     }

@@ -25,8 +25,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * I test HTTP fanno sempre login con credenziali corrette e registrano sempre utenti nuovi:
- * i rami di rifiuto di AuthService restavano quindi scoperti. Qui si coprono direttamente.
+ * The HTTP tests always log in with correct credentials and always register new users, so
+ * AuthService's rejection branches were left uncovered. They are covered directly here.
  */
 class AuthServiceUnitTest {
 
@@ -88,7 +88,7 @@ class AuthServiceUnitTest {
         when(passwordEncoder.matches("sbagliata", "hash")).thenReturn(false);
 
         assertThat(service.login("u@test.it", "sbagliata")).isNull();
-        // un login fallito non deve aggiornare l'ultimo accesso
+        // a failed login must not update the last login timestamp
         verify(userRepository, never()).save(any());
     }
 
@@ -141,7 +141,7 @@ class AuthServiceUnitTest {
         User created = service.register(creation("nuova@test.it", "nuovo"));
 
         assertThat(created).isNotNull();
-        // la password non deve mai essere salvata in chiaro
+        // the password must never be stored in the clear
         assertThat(created.getPassword()).isEqualTo("hash-calcolato");
         assertThat(created.getRegisteredAt()).isNotNull();
     }
@@ -155,7 +155,7 @@ class AuthServiceUnitTest {
         assertThat(service.getAllUsers()).hasSize(2);
     }
 
-    // ==================== updateUtente ====================
+    // ==================== updateUser ====================
 
     @Test
     void updateReportsAMissingUser() {

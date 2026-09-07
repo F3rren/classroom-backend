@@ -19,15 +19,17 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
- * Le chiamate che cancellano i dati dell'utente negli altri servizi.
+ * The calls that delete a user's data in the other services.
  *
- * Il punto di questi test e' contare le richieste che partono davvero, non solo l'esito: la
- * differenza fra "ritenta" e "non ritenta" e' invisibile guardando il valore di ritorno, ed
- * e' esattamente cio' che decide se un guasto passeggero lascia l'operazione a meta'.
+ * The point of these tests is to count the requests that actually go out, not just the
+ * outcome: the difference between "retries" and "does not retry" is invisible in the return
+ * value, and it is exactly what decides whether a transient failure leaves the operation
+ * half done.
  *
- * La distinzione da tenere ferma: si ritenta su un guasto di trasporto o un 5xx, perche' al
- * secondo colpo spesso funziona; NON si ritenta su un 4xx, perche' e' il servizio a valle che
- * rifiuta e ripetere darebbe lo stesso esito ritardando solo la risposta.
+ * The distinction to hold still: it retries on a transport failure or a 5xx, because the
+ * second attempt often works; it does NOT retry on a 4xx, because there the downstream
+ * service is refusing, and repeating would give the same outcome while only delaying the
+ * answer.
  */
 class UserDataClientUnitTest {
 
@@ -44,8 +46,8 @@ class UserDataClientUnitTest {
     void setUp() {
         builder = RestClient.builder();
         servizioFinto = MockRestServiceServer.bindTo(builder).build();
-        // La richiesta corrente serve solo a inoltrare l'intestazione Authorization: qui non
-        // c'e' una richiesta HTTP in corso, e un mock che risponde null va benissimo.
+        // The current request is only there to forward the Authorization header: there is no
+        // HTTP request in flight here, and a mock answering null is perfectly fine.
         client = new UserDataClient(builder, NOTIFICATIONS, BOOKINGS, mock(HttpServletRequest.class));
     }
 
@@ -60,9 +62,9 @@ class UserDataClientUnitTest {
 
     @Test
     void aTransientFailureIsOvercomeByRetrying() {
-        // LA ragione dei ritentativi. Un servizio che sta riavviando fallisce il primo colpo
-        // e risponde al secondo: prima bastava questo a lasciare la cancellazione a meta',
-        // e a farla concludere doveva essere una persona che se ne accorgeva.
+        // THE reason for the retries. A restarting service fails the first attempt and
+        // answers the second: that alone used to be enough to leave the deletion half done,
+        // and finishing it depended on a person noticing.
         servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
         servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
         servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
@@ -73,8 +75,8 @@ class UserDataClientUnitTest {
 
     @Test
     void itGivesUpAfterThreeAttempts() {
-        // I ritentativi non sono infiniti: un servizio davvero giu' non deve tenere appesa
-        // la richiesta dell'amministratore.
+        // The retries are not endless: a service that really is down must not leave the
+        // administrator's request hanging.
         servizioFinto.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
         servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
@@ -84,9 +86,9 @@ class UserDataClientUnitTest {
 
     @Test
     void aRefusalFromTheDownstreamServiceIsNotRetried() {
-        // Un 4xx e' una risposta, non un guasto: ripeterla darebbe lo stesso esito. Il
-        // conteggio esatto e' l'unica cosa che distingue questo caso dal precedente -
-        // l'esito e' identico, il comportamento no.
+        // A 4xx is an answer, not a failure: repeating it would give the same outcome. The
+        // exact count is the only thing telling this case from the previous one - the
+        // outcome is identical, the behaviour is not.
         servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
         servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
@@ -97,8 +99,8 @@ class UserDataClientUnitTest {
 
     @Test
     void theSecondServiceIsCalledEvenWhenTheFirstFails() {
-        // Fermarsi al primo errore lascerebbe piu' roba indietro senza dire di piu' a chi
-        // legge il messaggio: entrambi vanno tentati, e l'errore li nomina entrambi.
+        // Stopping at the first error would leave more behind without telling the reader of
+        // the message any more: both are attempted, and the error names both.
         servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
         servizioFinto.expect(ExpectedCount.once(), requestTo(URI_BOOKINGS))
@@ -112,8 +114,8 @@ class UserDataClientUnitTest {
 
     @Test
     void everyCallCarriesTheCorrelationId() {
-        // Senza, un'operazione che attraversa tre servizi finisce nei log sotto tre chiavi
-        // diverse: la correlazione funzionerebbe ovunque tranne dove serve.
+        // Without it, an operation crossing three services ends up in the logs under three
+        // different keys: correlation would work everywhere except where it is needed.
         servizioFinto.expect(requestTo(URI_NOTIFICATIONS))
                 .andExpect(method(org.springframework.http.HttpMethod.DELETE))
                 .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers

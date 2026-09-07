@@ -3,7 +3,7 @@ package com.prenotazioni.auth.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
-/** Contenuto di "data" nella risposta di login: token, riepilogo utente, metadati sessione. */
+/** The contents of "data" in the login response: token, user summary, session metadata. */
 @Getter
 @Schema(description = "Contenuto di \"data\" nella risposta di login")
 public class LoginPayload {

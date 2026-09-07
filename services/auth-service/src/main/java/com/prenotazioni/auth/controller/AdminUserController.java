@@ -27,23 +27,23 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Amministrazione degli utenti.
+ * User administration.
  *
- * Questi endpoint stavano in AdminController insieme a quelli su aule e prenotazioni: un
- * solo controller che iniettava cinque servizi di tre domini diversi. Il percorso resta
- * /api/admin/... perche' e' cio' che il frontend chiama, ma ora e' il gateway a decidere
- * quale servizio lo serve.
+ * These endpoints used to sit in AdminController together with those for rooms and
+ * bookings: a single controller injecting five services from three different domains. The
+ * path stays /api/admin/... because that is what the frontend calls, but it is now the
+ * gateway that decides which service serves it.
  *
- * hasRole('ADMIN') funziona qui esattamente come prima: il ruolo arriva dal token, quindi
- * non serve interrogare nulla per autorizzare.
+ * hasRole('ADMIN') works here exactly as before: the role comes from the token, so nothing
+ * has to be queried in order to authorise.
  */
 @RestController
-// Prefisso proprio, non condiviso con prenotazione-service. Prima entrambi i servizi
-// esponevano /api/admin e il gateway li separava elencando i percorsi esatti di questo:
-// un elenco copiato da qui, che nessuno teneva allineato. Aggiungere un endpoint lo
-// avrebbe fatto finire in silenzio all'altro servizio, con un 404 senza spiegazione.
+// A prefix of its own, not shared with booking-service. Both services used to expose
+// /api/admin and the gateway told them apart by listing this one's exact paths: a list
+// copied from here that nobody kept in step. Adding an endpoint would have sent it silently
+// to the other service, with a 404 and no explanation.
 @RequestMapping("/api/admin/users")
-@Tag(name = "Amministrazione utenti")
+@Tag(name = "User administration")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
 
@@ -57,7 +57,7 @@ public class AdminUserController {
         this.userService = userService;
     }
 
-    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
+    /** The same id the error handler will see, not a different one. */
     private String generateSessionId() {
         return RequestCorrelationFilter.current();
     }
@@ -71,14 +71,14 @@ public class AdminUserController {
     }
 
     @PostMapping
-    @Operation(summary = "Crea un nuovo utente (solo admin)")
+    @Operation(summary = "Create a new user (admin only)")
     public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("register - creazione utente da admin | {} | ruolo={}", LogSanitizer.maskEmail(request.getEmail()), request.getRole());
+        logger.debug("register - user created by an admin | {} | role={}", LogSanitizer.maskEmail(request.getEmail()), request.getRole());
 
         User user = authService.register(request);
 
-        logger.info("Utente creato da admin - utenteId={} ruolo={}", user.getId(), user.getRole());
+        logger.info("User created by an admin - userId={} role={}", user.getId(), user.getRole());
 
         return new ResponseEntity<>(
             createSuccessResponse("Utente registrato con successo dall'amministratore", new UserRegisterAck(user), sessionId),
@@ -87,17 +87,17 @@ public class AdminUserController {
     }
 
     @GetMapping
-    @Operation(summary = "Elenca tutti gli utenti (solo admin)")
+    @Operation(summary = "List every user (admin only)")
     public ResponseEntity<ApiEnvelope<UserListPayload>> getAllUsers() {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO getAllUsers - Richiesta lista completa utenti");
+        logger.debug("START getAllUsers - full user list requested");
 
         List<User> users = authService.getAllUsers();
         List<UserSummaryDto> safeUsers = users.stream()
             .map(UserSummaryDto::forAdminListing)
             .collect(Collectors.toList());
 
-        logger.debug("FINE getAllUsers - Utenti recuperati con successo, totale: {}", users.size());
+        logger.debug("END getAllUsers - users fetched, total: {}", users.size());
         return new ResponseEntity<>(
             createSuccessResponse("Lista utenti recuperata con successo", new UserListPayload(safeUsers), sessionId),
             HttpStatus.OK
@@ -105,13 +105,13 @@ public class AdminUserController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Modifica un utente esistente (solo admin)")
+    @Operation(summary = "Update an existing user (admin only)")
     public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(@PathVariable("id") Long id, @Valid @RequestBody UpdateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("updateUtente - utenteId={} ruolo={}", id, request.getRole());
+        logger.debug("updateUser - userId={} role={}", id, request.getRole());
 
         if (id == null || id <= 0) {
-            logger.warn("FINE updateUtente - ID utente non valido: {}", id);
+            logger.warn("END updateUser - invalid user ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_USER_ID", "Invalid user id",
                                   "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
@@ -129,13 +129,13 @@ public class AdminUserController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Elimina un utente e i suoi dati (solo admin)")
+    @Operation(summary = "Delete a user and their data (admin only)")
     public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUser(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO deleteUtente - ID Utente: {}", id);
+        logger.debug("START deleteUser - user ID: {}", id);
 
         if (id == null || id <= 0) {
-            logger.warn("FINE deleteUtente - ID utente non valido: {}", id);
+            logger.warn("END deleteUser - invalid user ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_USER_ID", "Invalid user id",
                                   "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
@@ -144,7 +144,7 @@ public class AdminUserController {
         }
 
         if (userService.findById(id) == null) {
-            logger.warn("FINE deleteUtente - Utente non trovato - ID: {}", id);
+            logger.warn("END deleteUser - user not found - ID: {}", id);
             return new ResponseEntity<>(
                 createErrorResponse("USER_NOT_FOUND", "Utente not found or not deletable",
                                   String.format("L'utente con ID %d non esiste o non può essere eliminato.", id), sessionId),
@@ -152,16 +152,17 @@ public class AdminUserController {
             );
         }
 
-        // Elimina in cascata notifiche e prenotazioni dell'utente prima dell'utente stesso
-        // (in un'unica transazione, cosi' non si rischia di lasciare righe orfane o un FK violation non gestito)
+        // Cascades through the user's notifications and bookings before the user itself.
+        // See UserService.deleteById: the cascade is no longer atomic, and the order is what
+        // keeps the operation repeatable when part of it fails.
         userService.deleteById(id);
 
-        logger.debug("FINE deleteUtente - Utente eliminato con successo - ID: {}", id);
+        logger.debug("END deleteUser - user deleted - ID: {}", id);
         return new ResponseEntity<>(
             createSuccessResponse("Utente eliminato con successo", new DeletedUserResponse(id), sessionId),
             HttpStatus.OK
         );
     }
 
-    // ==================== ROOM MANAGEMENT ENDPOINTS ====================
+    // ==================== room management endpoints ====================
 }

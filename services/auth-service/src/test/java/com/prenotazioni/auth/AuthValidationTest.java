@@ -23,17 +23,17 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Validazione di registrazione e login.
+ * Validation of registration and login.
  *
- * Questi test stavano in ValidationAndAdminTest, nel modulo applicativo, insieme alla
- * validazione di aule e prenotazioni. Con la separazione hanno seguito gli endpoint che
- * verificano: /api/admin/users e /api/auth/login appartengono a questo servizio, e da
- * app rispondono 404.
+ * These tests used to live in ValidationAndAdminTest, in the application module, alongside
+ * the validation of rooms and bookings. With the split they followed the endpoints they
+ * check: /api/admin/users and /api/auth/login belong to this service, and answer 404 from
+ * the application module.
  *
- * I due test sui codici "legacy" del login sono i piu' importanti del file: i controlli su
- * email e password vuote sono manuali e girano DOPO il rate limiter, quindi restituiscono
- * codici propri invece del VALIDATION_ERROR di Bean Validation. Vedi il javadoc di
- * LoginRequest per il perche' quell'ordine non va cambiato.
+ * The two tests on the login's "legacy" codes are the most important in the file: the checks
+ * on empty email and password are manual and run AFTER the rate limiter, so they return
+ * codes of their own instead of Bean Validation's VALIDATION_ERROR. See the javadoc of
+ * LoginRequest for why that order must not be changed.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -185,9 +185,9 @@ class AuthValidationTest {
                 new HttpEntity<>(body, jsonHeaders()), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        // Deve restituire ESATTAMENTE il codice legacy, non il generico VALIDATION_ERROR:
-        // conferma che @Valid non e' stato aggiunto al login (altrimenti l'ordine con
-        // il rate limiter cambierebbe).
+        // It has to return EXACTLY the legacy code, not the generic VALIDATION_ERROR: that
+        // confirms @Valid was not added to the login (which would change the order with
+        // respect to the rate limiter).
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("MISSING_EMAIL");
     }
 
@@ -206,9 +206,9 @@ class AuthValidationTest {
     @Test
     @SuppressWarnings("unchecked")
     void theShapeOfTheLoginResponseIsLocked() throws Exception {
-        // Test di contratto: il frontend legge queste chiavi esatte. Serve a impedire che
-        // un refactor le rinomini o ne aggiunga in silenzio. Stava nel modulo applicativo,
-        // che pero' non serve piu' /api/auth/login.
+        // A contract test: the frontend reads these exact keys. It is here to stop a
+        // refactor renaming them or adding some in silence. It used to live in the
+        // application module, which no longer serves /api/auth/login.
         ResponseEntity<String> resp = rest.postForEntity(
                 "/api/auth/login",
                 Map.of("email", "user@validation.test", "password", "user-password"),
@@ -230,9 +230,9 @@ class AuthValidationTest {
 
     @Test
     void updatingAUserWithAnEmptyPasswordLeavesThePasswordUnchanged() {
-        // Una stringa vuota significa "non toccare la password", non "impostala a vuoto".
-        // Se questa distinzione si rompesse, un admin che rinomina un utente lo lascerebbe
-        // senza credenziali funzionanti, e il sintomo comparirebbe solo al login successivo.
+        // An empty string means "leave the password alone", not "set it to empty". If that
+        // distinction broke, an admin renaming a user would leave them with no working
+        // credentials, and the symptom would only surface at their next login.
         Long id = userRepository.findByEmail("user@validation.test").getId();
 
         Map<String, Object> body = Map.of(
@@ -248,7 +248,7 @@ class AuthValidationTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        // la prova: la vecchia password deve ancora funzionare
+        // the proof: the old password still has to work
         assertThat(login("user@validation.test", "user-password")).isNotBlank();
     }
 }

@@ -40,8 +40,8 @@ public class AuthController {
 
     private final JwtService jwtService;
 
-    // Il conteggio dei tentativi sta in LoginAttemptLimiter e non piu' qui: era un
-    // campo static dentro il controller, e la mappa non veniva mai svuotata.
+    // The attempt counting lives in LoginAttemptLimiter and no longer here: it used to be a
+    // static field inside the controller, and the map was never emptied.
     private final LoginAttemptLimiter attemptLimiter;
 
     AuthController(AuthService authService, JwtService jwtService, LoginAttemptLimiter attemptLimiter) {
@@ -51,35 +51,29 @@ public class AuthController {
     }
 
 
-    // ==================== UTILITY METHODS ====================
+    // ==================== utility methods ====================
     
     /**
-     * L'identificativo della richiesta in corso, non uno nuovo: e' lo stesso che
-     * GlobalExceptionHandler mettera' nella risposta e nel log dello stack trace.
-     * Prima erano due valori scorrelati e una richiesta fallita compariva nei log
-     * sotto due id diversi, uno per il controller e uno per il gestore.
+     * The id of the request in flight, not a new one: it is the same one
+     * GlobalExceptionHandler will put in the response and in the stack trace log.
+     * They used to be two unrelated values, and a failed request appeared in the logs under
+     * two different ids, one from the controller and one from the handler.
      */
     private String generateSessionId() {
         return RequestCorrelationFilter.current();
     }
     
-    /**
-     * Formatta timestamp in modo consistente
-     */
+    /** Formats a timestamp the same way everywhere. */
     private String formatTimestamp(LocalDateTime timestamp) {
         return Timestamps.format(timestamp);
     }
     
-    /**
-     * Crea una risposta di errore standardizzata
-     */
+    /** Builds an error response in the shape every endpoint uses. */
     private ApiEnvelope<Void> createErrorResponse(String errorCode, String message, String userMessage, String sessionId) {
         return ApiEnvelope.error(errorCode, message, userMessage, sessionId);
     }
 
-    /**
-     * Valida il formato dell'email con controlli base
-     */
+    /** Checks the shape of an email address, with basic checks only. */
     private boolean isValidEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             return false;
@@ -87,7 +81,7 @@ public class AuthController {
         
         String trimmedEmail = email.trim();
         
-        // Controlli base più permissivi
+        // Deliberately permissive: this is a shape check, not an address validator.
         return trimmedEmail.contains("@") && 
                trimmedEmail.contains(".") && 
                trimmedEmail.indexOf("@") > 0 && 
@@ -95,21 +89,21 @@ public class AuthController {
                trimmedEmail.lastIndexOf(".") < trimmedEmail.length() - 1;
     }
     
-    // ==================== AUTHENTICATION ENDPOINTS ====================
+    // ==================== authentication endpoints ====================
 
     @PostMapping("/login")
-    @Operation(summary = "Login utente")
+    @Operation(summary = "User login")
     @SecurityRequirements
     @ApiResponse(responseCode = "200", description = "Login effettuato con successo",
             content = @Content(schema = @Schema(implementation = LoginResponse.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO login - Tentativo di accesso");
+        logger.debug("START login - access attempt");
 
         try {
-            // Validazione input - email
+            // Input validation - email
             if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-                logger.warn("FINE login - Email mancante");
+                logger.warn("END login - email missing");
                 return new ResponseEntity<>(
                     createErrorResponse("MISSING_EMAIL",
                                       "Missing email",
@@ -122,15 +116,17 @@ public class AuthController {
             String email = request.getEmail().trim().toLowerCase();
             String maskedEmail = LogSanitizer.maskEmail(email);
 
-            // Rate limiting anti brute-force, per IP + email
-            // getRemoteAddr() e' l'indirizzo di chi ha aperto la connessione. Dietro il
-            // gateway sarebbe SEMPRE il gateway, e la meta' IP della chiave diventerebbe
-            // costante: chiunque potrebbe cosi' esaurire il contatore di un indirizzo altrui
-            // e tenerlo fuori dal proprio account. server.forward-headers-strategy=framework,
-            // in application.properties, e' cio' che rende questa riga di nuovo vera.
+            // Anti brute-force rate limiting, keyed on IP + email.
+            // getRemoteAddr() is the address of whoever opened the connection. Behind the
+            // gateway that would ALWAYS be the gateway, and the IP half of the key would
+            // become a constant: anybody could then exhaust the counter of somebody else's
+            // address and lock them out of their own account.
+            // server.forward-headers-strategy=framework, in application.properties, is what
+            // makes this line true again - and CallerAddressTest in the gateway is what
+            // stops the header itself from becoming attacker-controlled.
             String rateLimitKey = httpRequest.getRemoteAddr() + "|" + email;
             if (attemptLimiter.tooManyAttempts(rateLimitKey)) {
-                logger.warn("FINE login - Troppi tentativi di login per: {}", maskedEmail);
+                logger.warn("END login - too many attempts for: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("TOO_MANY_ATTEMPTS",
                                       "Too many login attempts",
@@ -140,9 +136,9 @@ public class AuthController {
                 );
             }
 
-            // Validazione formato email
+            // Email shape validation
             if (!isValidEmail(email)) {
-                logger.warn("FINE login - Formato email non valido: {}", maskedEmail);
+                logger.warn("END login - invalid email format: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("INVALID_EMAIL_FORMAT", 
                                       "Invalid email format", 
@@ -152,9 +148,9 @@ public class AuthController {
                 );
             }
             
-            // Validazione input - password
+            // Input validation - password
             if (request.getPassword() == null || request.getPassword().isEmpty()) {
-                logger.warn("FINE login - Password mancante per email: {}", maskedEmail);
+                logger.warn("END login - password missing for email: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("MISSING_PASSWORD", 
                                       "Missing password", 
@@ -164,9 +160,9 @@ public class AuthController {
                 );
             }
             
-            // Validazione lunghezza password (sicurezza base)
+            // Password length check (basic hardening)
             if (request.getPassword().length() < 3) {
-                logger.warn("FINE login - Password troppo corta per email: {}", maskedEmail);
+                logger.warn("END login - password too short for email: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("PASSWORD_TOO_SHORT", 
                                       "Password too short", 
@@ -176,12 +172,12 @@ public class AuthController {
                 );
             }
             
-            // Tentativo di login
+            // The login attempt itself
             User user;
             try {
                 user = authService.login(email, request.getPassword());
             } catch (Exception e) {
-                logger.error("FINE login - Errore critico durante autenticazione per email: {} | Errore: {}", maskedEmail, e.getMessage(), e);
+                logger.error("END login - critical failure during authentication for email: {} | error: {}", maskedEmail, e.getMessage(), e);
                 return new ResponseEntity<>(
                     createErrorResponse("AUTHENTICATION_ERROR", 
                                       "Authentication failed unexpectedly", 
@@ -191,9 +187,9 @@ public class AuthController {
                 );
             }
             
-            // Controllo credenziali
+            // Credential check
             if (user == null) {
-                logger.warn("FINE login - Credenziali non valide per email: {}", maskedEmail);
+                logger.warn("END login - invalid credentials for email: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("INVALID_CREDENTIALS", 
                                       "Invalid credentials", 
@@ -203,9 +199,9 @@ public class AuthController {
                 );
             }
             
-            // Controllo integrità dati utente
+            // Sanity check on the stored user
             if (user.getId() == null) {
-                logger.error("FINE login - Utente trovato ma con dati corrotti: {}", maskedEmail);
+                logger.error("END login - user found but its stored data is inconsistent: {}", maskedEmail);
                 return new ResponseEntity<>(
                     createErrorResponse("USER_DATA_CORRUPTION", 
                                       "Utente record is inconsistent", 
@@ -215,12 +211,12 @@ public class AuthController {
                 );
             }
             
-            // Generazione token JWT
+            // JWT generation
             String token;
             try {
                 token = jwtService.generateToken(user);
                 if (token == null || token.trim().isEmpty()) {
-                    logger.error("FINE login - Token generato è null o vuoto per utente ID: {}", user.getId());
+                    logger.error("END login - the generated token is null or empty for user ID: {}", user.getId());
                     return new ResponseEntity<>(
                         createErrorResponse("TOKEN_GENERATION_FAILED", 
                                           "Token generation failed", 
@@ -230,7 +226,7 @@ public class AuthController {
                     );
                 }
             } catch (Exception e) {
-                logger.error("FINE login - Errore critico durante generazione token per utente ID: {} | Errore: {}", user.getId(), e.getMessage(), e);
+                logger.error("END login - critical failure generating the token for user ID: {} | error: {}", user.getId(), e.getMessage(), e);
                 return new ResponseEntity<>(
                     createErrorResponse("TOKEN_GENERATION_ERROR", 
                                       "Token generation failed", 
@@ -240,20 +236,20 @@ public class AuthController {
                 );
             }
             
-            logger.debug("FINE login - Login effettuato con successo | Utente ID: {} | Username: {} | Ruolo: {}", user.getId(), 
+            logger.debug("END login - login succeeded | user ID: {} | username: {} | role: {}", user.getId(), 
                        user.getUsername() != null ? user.getUsername() : "N/A",
                        user.getRole() != null ? user.getRole().getValue() : "USER");
             
-            // Preparazione dati di risposta (senza informazioni sensibili)
+            // Building the response payload, with nothing sensitive in it
             LoginPayload authData = new LoginPayload(token, UserSummaryDto.basic(user), formatTimestamp(LocalDateTime.now()));
 
-            // Response compatibile con il frontend esistente (token duplicato a livello radice)
+            // Shape kept for the existing frontend: the token is duplicated at the root
             LoginResponse response = new LoginResponse("Login effettuato con successo", token, authData, sessionId);
             
             return new ResponseEntity<>(response, HttpStatus.OK);
             
         } catch (Exception e) {
-            logger.error("FINE login - Errore critico non gestito: {}", e.getMessage(), e);
+            logger.error("END login - unhandled critical failure: {}", e.getMessage(), e);
             return new ResponseEntity<>(
                 createErrorResponse("INTERNAL_ERROR", 
                                   "Unhandled internal error", 

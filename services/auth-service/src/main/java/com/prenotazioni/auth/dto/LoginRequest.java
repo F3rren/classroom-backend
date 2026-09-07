@@ -5,19 +5,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * Richiesta di login.
+ * A login request.
  *
- * ATTENZIONE: le @NotBlank qui sotto NON vengono applicate a runtime. AuthController.login
- * non annota il parametro con @Valid, quindi Bean Validation non gira affatto su questo DTO:
- * email e password vuote sono respinte dai controlli manuali dentro il controller.
+ * CAREFUL: the @NotBlank annotations below are NOT applied at runtime. AuthController.login
+ * does not annotate the parameter with @Valid, so Bean Validation never runs on this DTO:
+ * empty emails and passwords are rejected by the manual checks inside the controller.
  *
- * E' voluto e non va "sistemato" aggiungendo @Valid. Quei controlli devono girare DOPO il
- * rate limiter: Bean Validation li anticiperebbe, e un attaccante potrebbe far fallire la
- * validazione all'infinito senza mai consumare un tentativo dal rate limiter.
+ * That is deliberate and must not be "fixed" by adding @Valid. Those checks have to run
+ * AFTER the rate limiter: Bean Validation would come first, and an attacker could fail
+ * validation forever without ever consuming an attempt from the limiter.
  *
- * Le annotazioni restano perche' springdoc le legge per generare lo schema OpenAPI:
- * verificato su /v3/api-docs, senza di esse LoginRequest.required perderebbe entrambi
- * i campi e la documentazione li mostrerebbe come facoltativi.
+ * The annotations stay because springdoc reads them to generate the OpenAPI schema: checked
+ * on /v3/api-docs, without them LoginRequest.required would lose both fields and the
+ * documentation would show them as optional.
  */
 @Data
 @Schema(description = "Credenziali di accesso")

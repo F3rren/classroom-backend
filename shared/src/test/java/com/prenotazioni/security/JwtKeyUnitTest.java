@@ -28,12 +28,12 @@ class JwtKeyUnitTest {
     void accettaUnSegretoInBase64Standard() {
         // E' la forma che produce "openssl rand -base64", cioe' quella che chiunque
         // segua la documentazione si ritrova incollata nel file.
-        assertThat(JwtKey.da(STANDARD)).isNotNull();
+        assertThat(JwtKey.from(STANDARD)).isNotNull();
     }
 
     @Test
     void accettaUnSegretoInBase64Url() {
-        assertThat(JwtKey.da(URL_SAFE)).isNotNull();
+        assertThat(JwtKey.from(URL_SAFE)).isNotNull();
     }
 
     @Test
@@ -41,29 +41,29 @@ class JwtKeyUnitTest {
         // E' il punto che conta davvero: chi firma e chi verifica possono avere il segreto
         // scritto nelle due forme, e devono comunque ottenere la stessa chiave. Se questa
         // asserzione cadesse, i token risulterebbero non validi senza alcun errore chiaro.
-        SecretKey daStandard = JwtKey.da(STANDARD);
-        SecretKey daUrl = JwtKey.da(URL_SAFE);
+        SecretKey fromStandard = JwtKey.from(STANDARD);
+        SecretKey fromUrlSafe = JwtKey.from(URL_SAFE);
 
-        assertThat(daStandard.getEncoded()).isEqualTo(daUrl.getEncoded());
+        assertThat(fromStandard.getEncoded()).isEqualTo(fromUrlSafe.getEncoded());
     }
 
     @Test
     void ignoraGliSpaziAiBordi() {
         // Un segreto incollato a mano si porta dietro spazi o un a capo piu' spesso di
         // quanto si creda, e il messaggio d'errore non aiuterebbe a capirlo.
-        assertThat(JwtKey.da("  " + STANDARD + "  ").getEncoded())
-                .isEqualTo(JwtKey.da(STANDARD).getEncoded());
+        assertThat(JwtKey.from("  " + STANDARD + "  ").getEncoded())
+                .isEqualTo(JwtKey.from(STANDARD).getEncoded());
     }
 
     @Test
     void unSegretoMancanteDiceCosaImpostare() {
         // Senza questo, un segreto assente arriva come NullPointerException dentro jjwt,
         // che non dice a nessuno quale variabile manchi.
-        assertThatThrownBy(() -> JwtKey.da(null))
+        assertThatThrownBy(() -> JwtKey.from(null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("JWT_SECRET");
 
-        assertThatThrownBy(() -> JwtKey.da("   "))
+        assertThatThrownBy(() -> JwtKey.from("   "))
                 .isInstanceOf(IllegalStateException.class);
     }
 }

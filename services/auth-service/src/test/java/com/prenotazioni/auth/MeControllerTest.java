@@ -23,11 +23,11 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Il profilo dell'utente autenticato.
+ * The profile of the authenticated user.
  *
- * Conteneva anche cinque test sulle notifiche, spostati in NotificaOwnershipTest dentro
- * notifica-service: stavano insieme solo perche' condividevano la fixture di utenti e il
- * login, non perche' verificassero la stessa cosa.
+ * It also held five tests on notifications, moved to NotificationOwnershipTest inside
+ * notification-service: they sat together only because they shared the user fixture and the
+ * login, not because they checked the same thing.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")

@@ -15,8 +15,8 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    // Emette i token e basta: la verifica vive in shared/JwtVerifier, perche' la fanno
-    // tutti i servizi mentre firmare tocca solo a chi possiede la tabella utenti.
+    // It issues tokens and nothing else: verification lives in shared/JwtVerifier, because
+    // every service verifies while only the owner of the users table signs.
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
     @Value("${jwt.secret}")
@@ -28,15 +28,15 @@ public class JwtService {
 
     @PostConstruct
     public void init() {
-        this.key = JwtKey.da(secret);
+        this.key = JwtKey.from(secret);
     }
 
     public String generateToken(User user) {
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("id", user.getId())
-                // Serve a prenotazione-service per salvare il nome di chi prenota senza
-                // interrogare il servizio utenti: vedi JwtVerifier.getNomeFromToken.
+                // booking-service needs this to store the name of whoever booked without
+                // querying the user service: see JwtVerifier.getNameFromToken.
                 .claim("name", user.getName())
                 .claim("username", user.getUsername())
                 .claim("role", user.getRole() != null ? user.getRole().getValue() : null)

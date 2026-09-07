@@ -25,17 +25,16 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Amministrazione degli utenti dopo la separazione.
+ * User administration after the split.
  *
- * Questi casi stavano in AdminManagementTest, nel modulo applicativo, che li verificava
- * insieme ad aule e prenotazioni. Sono seguiti gli endpoint.
+ * These cases used to live in AdminManagementTest, in the application module, which checked
+ * them alongside rooms and bookings. They followed their endpoints.
  *
- * Il test sulla cancellazione e' il piu' importante: prima era una transazione unica con
- * chiavi esterne, ora e' una sequenza di chiamate di rete che puo' fallire a meta'. Qui i
- * servizi a valle non esistono, quindi ogni cancellazione fallisce - ed e' proprio la
- * condizione che serve verificare, perche' dimostra che l'utente NON viene rimosso quando
- * i suoi dati altrove non lo sono. Se fosse il contrario, resterebbero righe orfane di cui
- * nessuno saprebbe piu' il proprietario.
+ * The deletion test is the most important one: this used to be a single transaction with
+ * foreign keys, and is now a sequence of network calls that can fail halfway. The downstream
+ * services do not exist here, so every deletion fails - and that is exactly the condition
+ * worth checking, because it shows the user is NOT removed while their data elsewhere still
+ * is. The other way round would leave orphan rows whose owner nobody could name.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -141,9 +140,9 @@ class AdminUsersTest {
 
     @Test
     void theUserIsNotDeletedWhenTheDownstreamServicesDoNotAnswer() {
-        // In questo test non esistono ne' prenotazione-service ne' notifica-service: le chiamate
-        // falliscono, e l'utente deve restare. E' la garanzia che sostituisce la chiave
-        // esterna persa con la separazione.
+        // Neither booking-service nor notification-service exists in this test: the calls
+        // fail, and the user has to stay. This is the guarantee that replaces the foreign
+        // key lost in the split.
         ResponseEntity<String> resp = chiama("/api/admin/users/" + regularUserId, HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isNotEqualTo(HttpStatus.OK);

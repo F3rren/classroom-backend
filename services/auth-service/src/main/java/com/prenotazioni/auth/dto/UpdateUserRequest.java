@@ -9,8 +9,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Richiesta di modifica di un utente esistente da parte di un admin (PUT /api/admin/users/{id}).
- * La password e' opzionale: se vuota/assente, AuthService.updateUtente mantiene quella esistente.
+ * A request from an admin to update an existing user (PUT /api/admin/users/{id}).
+ * The password is optional: when empty or absent, AuthService.updateUser keeps the
+ * existing one.
  */
 @Data
 @Schema(description = "Dati per modificare un utente esistente (solo amministratori)")

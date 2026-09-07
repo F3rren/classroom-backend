@@ -33,7 +33,7 @@ public final class JwtKey {
     private JwtKey() {
     }
 
-    public static SecretKey da(String secret) {
+    public static SecretKey from(String secret) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
                     "jwt.secret non configurato: impostare JWT_SECRET nell'ambiente o in .env");

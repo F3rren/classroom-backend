@@ -22,18 +22,18 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Il vincolo di dominio sul ruolo, su PostgreSQL vero.
+ * The domain constraint on the role, against a real PostgreSQL.
  *
- * Stava in PostgresSchemaConstraintsTest, nel modulo applicativo, insieme ai vincoli su
- * aule e prenotazioni. Ha seguito la tabella che vincola: dopo la migrazione V5 quella
- * tabella nel database di app non esiste piu'.
+ * It used to live in PostgresSchemaConstraintsTest, in the application module, alongside the
+ * constraints on rooms and bookings. It followed the table it constrains: after migration V5
+ * that table no longer exists in the application database.
  *
- * Perche' non basta H2: un CHECK constraint e' proprio cio' che H2 non applica allo stesso
- * modo, quindi un test su H2 passerebbe anche con il vincolo assente.
+ * Why H2 is not enough: a CHECK constraint is precisely what H2 does not apply the same way,
+ * so a test on H2 would pass even with the constraint missing.
  *
- * Il secondo test e' il piu' utile dei due: cicla i valori dell'enum e pretende che il
- * database li accetti tutti. E' cio' che intercetta la regressione realistica, cioe'
- * aggiungere una costante a Ruolo e dimenticare la migrazione corrispondente.
+ * The second test is the more useful of the two: it loops over the enum values and demands
+ * that the database accept every one. That is what catches the realistic regression, namely
+ * adding a constant to Role and forgetting the matching migration.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
@@ -49,8 +49,8 @@ class UserConstraintsTest {
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
-        // Method reference e non chiamata diretta: se la classe fosse disabilitata per
-        // assenza di Docker, invocare qui getJdbcUrl() farebbe fallire invece di saltare.
+        // A method reference and not a direct call: if the class were disabled for lack of
+        // Docker, calling getJdbcUrl() here would fail instead of skipping.
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
@@ -76,8 +76,8 @@ class UserConstraintsTest {
 
     @Test
     void theCheckRejectsARoleOutsideTheDomain() {
-        // Inserimento grezzo e non via entita': l'enum non potrebbe produrre questo valore,
-        // quindi il vincolo va provato scavalcando il livello applicativo.
+        // A raw insert and not one through the entity: the enum could not produce this
+        // value, so the constraint has to be tested by stepping around the application.
         assertThatThrownBy(() -> inserisci("superuser", "SUPERUSER"))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("user_role_check");
@@ -85,8 +85,8 @@ class UserConstraintsTest {
 
     @Test
     void theCheckAlsoRejectsTheUppercaseFormOfAValidRole() {
-        // Il converter scrive minuscolo: se qualcuno bypassasse il converter, il database
-        // deve accorgersene invece di accettare due grafie dello stesso ruolo.
+        // The converter writes lowercase: if somebody bypassed it, the database has to
+        // notice rather than accept two spellings of the same role.
         assertThatThrownBy(() -> inserisci("admin-maiuscolo", "ADMIN"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }

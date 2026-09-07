@@ -37,7 +37,7 @@ public enum Role {
     }
 
     @JsonCreator
-    public static Role da(String value) {
+    public static Role from(String value) {
         if (value == null) {
             return null;
         }
@@ -68,7 +68,7 @@ public enum Role {
 
         @Override
         public Role convertToEntityAttribute(String value) {
-            return da(value);
+            return from(value);
         }
     }
 }

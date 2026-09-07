@@ -42,7 +42,7 @@ public class JwtVerifier {
     public void init() {
         // Il segreto e' codificato in BASE64URL, non sono byte grezzi: decodificarlo
         // diversamente produrrebbe una chiave diversa e ogni token verrebbe rifiutato.
-        this.key = JwtKey.da(secret);
+        this.key = JwtKey.from(secret);
     }
 
     public boolean validateToken(String token) {
@@ -84,7 +84,7 @@ public class JwtVerifier {
         return extractClaim(token, claims -> claims.get("username", String.class));
     }
 
-    public String getNomeFromToken(String token) {
+    public String getNameFromToken(String token) {
         return extractClaim(token, claims -> claims.get("name", String.class));
     }
 

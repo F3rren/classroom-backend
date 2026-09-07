@@ -41,10 +41,10 @@ class RoleTest {
 
     @Test
     void parsingIsCaseInsensitive() {
-        assertThat(Role.da("ADMIN")).isEqualTo(Role.ADMIN);
-        assertThat(Role.da(" Admin ")).isEqualTo(Role.ADMIN);
-        assertThat(Role.da(null)).isNull();
-        assertThatThrownBy(() -> Role.da("superuser")).isInstanceOf(IllegalArgumentException.class);
+        assertThat(Role.from("ADMIN")).isEqualTo(Role.ADMIN);
+        assertThat(Role.from(" Admin ")).isEqualTo(Role.ADMIN);
+        assertThat(Role.from(null)).isNull();
+        assertThatThrownBy(() -> Role.from("superuser")).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

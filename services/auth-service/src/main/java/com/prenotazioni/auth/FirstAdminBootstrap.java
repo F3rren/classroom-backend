@@ -13,24 +13,23 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 /**
- * Crea il primo amministratore su un database utenti vuoto.
+ * Creates the first administrator on an empty users database.
  *
- * Esiste per sciogliere un nodo: AdminUtentiController e' annotato @PreAuthorize
- * hasRole('ADMIN') a livello di classe, quindi anche /api/admin/users lo richiede. Su un
- * database appena creato serve un token da amministratore per creare il primo
- * amministratore, e l'unica via d'uscita era una INSERT scritta a mano - da rifare a ogni
- * ambiente nuovo, e con l'hash della password calcolato fuori.
+ * It exists to undo a knot: AdminUserController is annotated @PreAuthorize hasRole('ADMIN')
+ * at class level, so /api/admin/users requires it too. On a freshly created database you
+ * need an administrator token to create the first administrator, and the only way out was a
+ * hand-written INSERT - to be redone in every new environment, with the password hash
+ * computed somewhere else.
  *
- * LA CONDIZIONE CHE RENDE QUESTA CLASSE INNOCUA e' una sola, e va tenuta stretta: agisce
- * esclusivamente a tabella VUOTA. Non promuove nessuno, non aggiorna nessuno, non tocca
- * alcun utente esistente. A database popolato esce prima di guardare qualunque altra cosa.
- * Se un giorno qualcuno aggiungesse un ramo che scrive su una tabella non vuota, questo
- * smetterebbe di essere un aiuto all'avvio e diventerebbe una scorciatoia per ottenere
- * privilegi da amministratore.
+ * THE ONE CONDITION THAT MAKES THIS CLASS HARMLESS, and it must be held tightly: it acts
+ * only on an EMPTY table. It promotes nobody, updates nobody, touches no existing user. On a
+ * populated database it returns before looking at anything else. If somebody one day added a
+ * branch that writes to a non-empty table, this would stop being a help at startup and
+ * become a shortcut to administrator privileges.
  *
- * Passa da AuthService.register e non dal repository: cosi' la password attraversa lo
- * stesso PasswordEncoder e gli stessi controlli di ogni altro utente, e non esiste una
- * seconda strada per crearne uno che possa divergere dalla prima.
+ * It goes through AuthService.register and not through the repository: that way the password
+ * passes the same PasswordEncoder and the same checks as any other user, and there is no
+ * second way of creating one that could drift from the first.
  */
 @Component
 public class FirstAdminBootstrap implements ApplicationRunner {
@@ -47,7 +46,7 @@ public class FirstAdminBootstrap implements ApplicationRunner {
                     AuthService authService,
                     @Value("${BOOTSTRAP_ADMIN_EMAIL:}") String email,
                     @Value("${BOOTSTRAP_ADMIN_PASSWORD:}") String password,
-                    @Value("${BOOTSTRAP_ADMIN_NOME:Amministratore}") String name) {
+                    @Value("${BOOTSTRAP_ADMIN_NAME:Amministratore}") String name) {
         this.userRepository = userRepository;
         this.authService = authService;
         this.email = email;
@@ -62,13 +61,13 @@ public class FirstAdminBootstrap implements ApplicationRunner {
         }
 
         if (email.isBlank() || password.isBlank()) {
-            // A WARN e non in silenzio: un database utenti vuoto e un servizio che parte
-            // senza dire niente e' esattamente il modo in cui questo problema si
-            // ripresenta, e la prossima persona ci ritrova davanti senza indizi.
-            logger.warn("Nessun utente nel database e nessun amministratore iniziale da creare. "
-                    + "Valorizzare BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD in .env e "
-                    + "riavviare, oppure inserire il primo amministratore a mano: senza, "
-                    + "/api/admin/users non e' raggiungibile perche' richiede un token da admin.");
+            // At WARN and not in silence: an empty users database plus a service that starts
+            // saying nothing is exactly how this problem comes back, and the next person
+            // ends up in front of it with no clue.
+            logger.warn("No users in the database and no initial administrator to create. "
+                    + "Set BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD in .env and "
+                    + "restart, or insert the first administrator by hand: without one, "
+                    + "/api/admin/users is unreachable because it requires an admin token.");
             return;
         }
 
@@ -80,8 +79,8 @@ public class FirstAdminBootstrap implements ApplicationRunner {
         request.setRole("admin");
 
         User created = authService.register(request);
-        logger.info("Primo amministratore creato su database vuoto - utenteId={} email={}. "
-                + "Cambiare la password al primo accesso e svuotare BOOTSTRAP_ADMIN_PASSWORD in .env.",
+        logger.info("First administrator created on an empty database - userId={} email={}. "
+                + "Change the password on first login and clear BOOTSTRAP_ADMIN_PASSWORD in .env.",
                 created.getId(), LogSanitizer.maskEmail(email));
     }
 }

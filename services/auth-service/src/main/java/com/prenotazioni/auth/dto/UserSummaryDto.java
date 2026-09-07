@@ -8,10 +8,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
 /**
- * Rappresentazione pubblica di un Utente (mai la password), riusata da GET /api/me,
- * GET /api/admin/users e dall'oggetto "user" annidato nella risposta di login.
- * dataRegistrazione/ultimoAccesso sono omessi (non null) quando non impostati,
- * cosi' la risposta di login (che oggi non li include) resta identica.
+ * The public view of a User (never the password), reused by GET /api/me,
+ * GET /api/admin/users and the nested "user" object in the login response.
+ *
+ * registeredAt and lastLogin are omitted rather than null when unset, so the login response
+ * - which does not include them today - stays byte for byte the same.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
@@ -43,10 +44,10 @@ public class UserSummaryDto {
         return dto;
     }
 
-    /** Usato da GET /api/me: ultimoAccesso non impostato "e' adesso", dataRegistrazione mancante e' omessa. */
+    /** Used by GET /api/me: an unset lastLogin means "just now", a missing registeredAt is omitted. */
     public static UserSummaryDto forProfile(User user) {
         UserSummaryDto dto = basic(user);
-        // Timestamps.format restituisce null su input null: il ternario qui sarebbe ridondante
+        // Timestamps.format returns null on null input, so a ternary here would be redundant
         dto.registeredAt = Timestamps.format(user.getRegisteredAt());
         dto.lastLogin = user.getLastLogin() != null
                 ? Timestamps.format(user.getLastLogin())
@@ -54,7 +55,7 @@ public class UserSummaryDto {
         return dto;
     }
 
-    /** Usato da GET /api/admin/users: sia dataRegistrazione che ultimoAccesso mancanti diventano "" (mai omessi). */
+    /** Used by GET /api/admin/users: a missing registeredAt or lastLogin becomes "" (never omitted). */
     public static UserSummaryDto forAdminListing(User user) {
         UserSummaryDto dto = basic(user);
         dto.registeredAt = user.getRegisteredAt() != null

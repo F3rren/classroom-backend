@@ -8,28 +8,27 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Contatore dei tentativi di login falliti, a finestra fissa e in memoria.
+ * Counter of failed login attempts, fixed-window and in memory.
  *
- * Prima viveva dentro AuthController come campo static, e aveva due difetti che si
- * tenevano per mano.
+ * It used to live inside AuthController as a static field, and had two defects that held
+ * hands with each other.
  *
- * IL PRIMO, ed e' il motivo per cui questa classe esiste: la mappa non veniva MAI
- * svuotata. Una sola scrittura, computeIfAbsent, e nessuna rimozione: ogni coppia mai
- * vista restava dentro per sempre, e la parte email della chiave la sceglie chi chiama.
- * La crescita quindi non dipendeva dal numero di utenti veri ma da quante stringhe
- * diverse qualcuno decideva di inviare a un endpoint pubblico.
+ * THE FIRST, and the reason this class exists: the map was NEVER emptied. A single write,
+ * computeIfAbsent, and no removal: every pair ever seen stayed in forever, and the email
+ * half of the key is chosen by the caller. Growth therefore did not depend on the number of
+ * real users but on how many different strings somebody decided to send to a public
+ * endpoint.
  *
- * IL SECONDO era lo static in se': i test dovevano azzerare la mappa a mano fra un caso
- * e l'altro perche' surefire riusa la JVM, e il profilo di test alzava max-attempts a
- * 1000 per non far scattare il limite nelle altre classi. Un componente normale, uno per
- * contesto, toglie il problema invece di aggirarlo.
+ * THE SECOND was the static itself: the tests had to clear the map by hand between cases
+ * because surefire reuses the JVM, and the test profile raised max-attempts to 1000 so the
+ * limit would not trip in the other classes. An ordinary component, one per context, removes
+ * the problem instead of working around it.
  *
- * SUL FALLIRE APERTO. Se la pulizia non basta - cioe' se ci sono davvero decine di
- * migliaia di chiavi ancora dentro la finestra - questa classe smette di registrare
- * chiavi nuove invece di continuare a crescere. E' una scelta deliberata: un limitatore
- * e' una difesa migliore, non l'unica, e restare in piedi senza limitare vale piu' che
- * cadere per esaurimento di memoria portandosi dietro anche i login legittimi. Le chiavi
- * gia' note continuano a essere limitate.
+ * ON FAILING OPEN. If the cleanup is not enough - that is, if there really are tens of
+ * thousands of keys still inside the window - this class stops recording new keys instead of
+ * carrying on growing. That is deliberate: a rate limiter is a better defence, not the only
+ * one, and staying up without limiting is worth more than falling over on memory exhaustion
+ * and taking the legitimate logins down too. Keys already known keep being limited.
  */
 @Component
 public class LoginAttemptLimiter {
@@ -38,86 +37,86 @@ public class LoginAttemptLimiter {
 
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
 
-    private final int massimoTentativi;
+    private final int maxAttempts;
     private final long windowMs;
-    private final int tettoChiavi;
+    private final int maxKeys;
 
-    /** Per non ripetere lo stesso avviso a ogni richiesta quando la mappa e' piena. */
-    private volatile long ultimoAvviso;
+    /** So the same warning is not repeated on every request while the map is full. */
+    private volatile long lastWarning;
 
     public LoginAttemptLimiter(
-            @Value("${auth.rate-limit.max-attempts:5}") int massimoTentativi,
+            @Value("${auth.rate-limit.max-attempts:5}") int maxAttempts,
             @Value("${auth.rate-limit.window-ms:60000}") long windowMs,
-            @Value("${auth.rate-limit.max-entries:50000}") int tettoChiavi) {
-        this.massimoTentativi = massimoTentativi;
+            @Value("${auth.rate-limit.max-entries:50000}") int maxKeys) {
+        this.maxAttempts = maxAttempts;
         this.windowMs = windowMs;
-        this.tettoChiavi = tettoChiavi;
+        this.maxKeys = maxKeys;
     }
 
-    /** Registra un tentativo e dice se la chiave ha superato il limite. */
+    /** Records an attempt and says whether the key has gone over the limit. */
     public boolean tooManyAttempts(String key) {
-        long adesso = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
 
         Window window = windows.get(key);
         if (window == null) {
-            if (windows.size() >= tettoChiavi) {
-                purgeExpired(adesso);
+            if (windows.size() >= maxKeys) {
+                purgeExpired(now);
             }
-            if (windows.size() >= tettoChiavi) {
-                avvisaSaltuariamente(adesso);
+            if (windows.size() >= maxKeys) {
+                warnOccasionally(now);
                 return false;
             }
-            window = windows.computeIfAbsent(key, k -> new Window(adesso));
+            window = windows.computeIfAbsent(key, k -> new Window(now));
         }
 
         synchronized (window) {
-            if (adesso - window.startTime > windowMs) {
-                window.startTime = adesso;
-                window.tentativi = 0;
+            if (now - window.startTime > windowMs) {
+                window.startTime = now;
+                window.attempts = 0;
             }
-            window.tentativi++;
-            return window.tentativi > massimoTentativi;
+            window.attempts++;
+            return window.attempts > maxAttempts;
         }
     }
 
     /**
-     * Toglie le chiavi la cui finestra e' finita: da quel momento non contano piu' nulla,
-     * e tenerle in giro sarebbe solo memoria occupata.
+     * Removes the keys whose window has closed: from that moment they count for nothing, and
+     * keeping them around would be memory and nothing else.
      *
-     * Visibile ai test di proposito: la pulizia e' la ragione d'essere della classe, e va
-     * potuta verificare senza aspettare che accada da sola.
+     * Visible to the tests on purpose: the cleanup is this class's reason to exist, and it
+     * has to be checkable without waiting for it to happen on its own.
      */
-    void purgeExpired(long adesso) {
-        int prima = windows.size();
-        windows.entrySet().removeIf(voce -> {
-            Window f = voce.getValue();
-            synchronized (f) {
-                return adesso - f.startTime > windowMs;
+    void purgeExpired(long now) {
+        int before = windows.size();
+        windows.entrySet().removeIf(entry -> {
+            Window w = entry.getValue();
+            synchronized (w) {
+                return now - w.startTime > windowMs;
             }
         });
-        int rimosse = prima - windows.size();
-        if (rimosse > 0) {
-            logger.debug("Limitatore login: rimosse {} chiavi scadute, ne restano {}", rimosse, windows.size());
+        int removed = before - windows.size();
+        if (removed > 0) {
+            logger.debug("Login limiter: removed {} expired keys, {} left", removed, windows.size());
         }
     }
 
-    /** Quante chiavi sono in memoria adesso. Serve ai test e a un'eventuale metrica. */
+    /** How many keys are in memory right now. Used by the tests, and by a metric one day. */
     int trackedKeys() {
         return windows.size();
     }
 
-    private void avvisaSaltuariamente(long adesso) {
-        if (adesso - ultimoAvviso > 60_000) {
-            ultimoAvviso = adesso;
-            logger.warn("Limitatore login al tetto di {} chiavi: i tentativi da chiavi nuove non "
-                    + "vengono piu' contati finche' la finestra non si libera. Se non rientra, "
-                    + "e' un attacco distribuito e serve una difesa a monte del servizio.", tettoChiavi);
+    private void warnOccasionally(long now) {
+        if (now - lastWarning > 60_000) {
+            lastWarning = now;
+            logger.warn("Login limiter at its cap of {} keys: attempts from new keys are no longer "
+                    + "counted until the window frees up. If it does not come back down, this is a "
+                    + "distributed attack and needs a defence upstream of the service.", maxKeys);
         }
     }
 
     private static final class Window {
         long startTime;
-        int tentativi;
+        int attempts;
 
         Window(long startTime) {
             this.startTime = startTime;
