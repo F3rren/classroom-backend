@@ -84,8 +84,8 @@ class AdminUsersTest {
         return h;
     }
 
-    private ResponseEntity<String> call(String url, HttpMethod metodo, Object body) {
-        return rest.exchange(url, metodo, new HttpEntity<>(body, headers()), String.class);
+    private ResponseEntity<String> call(String url, HttpMethod method, Object body) {
+        return rest.exchange(url, method, new HttpEntity<>(body, headers()), String.class);
     }
 
 
@@ -147,7 +147,7 @@ class AdminUsersTest {
 
         assertThat(resp.getStatusCode()).isNotEqualTo(HttpStatus.OK);
         assertThat(userRepository.findById(regularUserId))
-                .as("l'utente non deve sparire se le sue prenotazioni non sono state cancellate")
+                .as("the user must not disappear when their bookings were not deleted")
                 .isPresent();
     }
 }

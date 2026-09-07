@@ -39,7 +39,7 @@ class JwtVerifierUnitTest {
     }
 
     @Test
-    void leggeIlRuoloAdminDalClaim() {
+    void itReadsTheAdminRoleFromTheClaim() {
         String token = TestJwt.forAdmin(1L, "admin@example.it");
 
         assertThat(verifier.getRoleFromToken(token)).isEqualTo("admin");
@@ -66,7 +66,7 @@ class JwtVerifierUnitTest {
     }
 
     @Test
-    void rifiutaUnTokenScaduto() {
+    void itRejectsAnExpiredToken() {
         assertThat(verifier.validateToken(TestJwt.expired(7L, "mario@example.it"))).isFalse();
     }
 

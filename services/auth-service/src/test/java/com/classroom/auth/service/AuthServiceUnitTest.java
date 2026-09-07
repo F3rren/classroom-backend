@@ -99,9 +99,9 @@ class AuthServiceUnitTest {
         when(userRepository.findByEmail("u@test.it")).thenReturn(u);
         when(passwordEncoder.matches("giusta", "hash")).thenReturn(true);
 
-        User loggato = service.login("u@test.it", "giusta");
+        User loggedIn = service.login("u@test.it", "giusta");
 
-        assertThat(loggato).isSameAs(u);
+        assertThat(loggedIn).isSameAs(u);
         assertThat(u.getLastLogin()).isNotNull();
         verify(userRepository).save(u);
     }
@@ -132,8 +132,8 @@ class AuthServiceUnitTest {
         when(userRepository.findByEmail(anyString())).thenReturn(null);
         when(userRepository.findByUsername(anyString())).thenReturn(null);
         when(passwordEncoder.encode("password123")).thenReturn("hash-calcolato");
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
-            User u = inv.getArgument(0);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
             u.setId(5L);
             return u;
         });
@@ -191,7 +191,7 @@ class AuthServiceUnitTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);
         when(userRepository.findByUsername("mio")).thenReturn(existing);
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.updateUser(1L, updateRequest("mia@test.it", "mio", "   "));
 
@@ -206,7 +206,7 @@ class AuthServiceUnitTest {
         when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);
         when(userRepository.findByUsername("mio")).thenReturn(existing);
         when(passwordEncoder.encode("nuova-password")).thenReturn("nuovo-hash");
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.updateUser(1L, updateRequest("mia@test.it", "mio", "nuova-password"));
 
@@ -223,7 +223,7 @@ class AuthServiceUnitTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);
         when(userRepository.findByUsername("mio")).thenReturn(existing);
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.updateUser(1L, request);
 

@@ -58,12 +58,12 @@ class RoomQueryTest {
         token = TestJwt.forUser(1L, "roomquery@test.it", "Room Query");
     }
 
-    private Long saveRoom(String name, int floor, int capacity, boolean virtuale) {
+    private Long saveRoom(String name, int floor, int capacity, boolean virtual) {
         Room a = new Room();
         a.setName(name);
         a.setFloor(floor);
         a.setCapacity(capacity);
-        a.setVirtual(virtuale);
+        a.setVirtual(virtual);
         a.setStatus(RoomStatus.FREE);
         return roomRepository.save(a).getId();
     }
@@ -122,13 +122,13 @@ class RoomQueryTest {
 
     @Test
     void virtualRoomsAreTaggedAndSeparatedFromPhysical() throws Exception {
-        Map<String, Object> virtuali = dataOf(get("/api/rooms/virtual"));
-        assertThat(virtuali).containsEntry("type", "virtual");
-        assertThat(virtuali.get("totalRooms")).isEqualTo(1);
+        Map<String, Object> virtualRooms = dataOf(get("/api/rooms/virtual"));
+        assertThat(virtualRooms).containsEntry("type", "virtual");
+        assertThat(virtualRooms.get("totalRooms")).isEqualTo(1);
 
-        Map<String, Object> fisiche = dataOf(get("/api/rooms/physical"));
-        assertThat(fisiche).containsEntry("type", "physical");
-        assertThat(fisiche.get("totalRooms")).isEqualTo(2);
+        Map<String, Object> physicalRooms = dataOf(get("/api/rooms/physical"));
+        assertThat(physicalRooms).containsEntry("type", "physical");
+        assertThat(physicalRooms.get("totalRooms")).isEqualTo(2);
     }
 
     @Test
@@ -194,7 +194,7 @@ class RoomQueryTest {
                 "/api/rooms/capacity?minCapacity=1"}) {
             ResponseEntity<String> resp = rest.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, String.class);
             assertThat(resp.getStatusCode())
-                    .as("endpoint %s senza token", url)
+                    .as("endpoint %s with no token", url)
                     .isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }

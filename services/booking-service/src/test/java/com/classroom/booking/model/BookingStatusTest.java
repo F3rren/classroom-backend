@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * The enum's external contract. These tests are not cosmetic: a client compares the exact
  * lowercase strings ("cancelled", "blocked", "booked", "free") and the database column has a
  * CHECK constraint on the same values. If somebody renamed the constants or removed
- * @JsonValue, the JSON would turn uppercase and break both:
- * qui si blocca quel comportamento.
+ * @JsonValue, the JSON would turn uppercase and break both. These tests pin that
+ * behaviour down.
  */
 class BookingStatusTest {
 

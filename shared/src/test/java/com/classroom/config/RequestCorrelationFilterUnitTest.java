@@ -23,13 +23,13 @@ class RequestCorrelationFilterUnitTest {
     private final RequestCorrelationFilter filter = new RequestCorrelationFilter();
 
     @AfterEach
-    void pulisci() {
+    void clean() {
         RequestContextHolder.resetRequestAttributes();
         MDC.clear();
     }
 
     @Test
-    void riusaLIdentificativoRicevutoDaChiamaChiama() throws Exception {
+    void itReusesTheIdReceivedFromTheCaller() throws Exception {
         // This is the point of the whole class in a system of several services: the gateway
         // mints the id and the downstream services inherit it. If a new one were generated
         // here, a round trip between the gateway and the booking service could never be
@@ -45,7 +45,7 @@ class RequestCorrelationFilterUnitTest {
     }
 
     @Test
-    void neGeneraUnoQuandoLIntestazioneManca() throws Exception {
+    void itMintsOneWhenTheHeaderIsMissing() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -59,35 +59,35 @@ class RequestCorrelationFilterUnitTest {
     }
 
     @Test
-    void controllerEGestoreDegliErroriLeggonoLoStessoValore() throws Exception {
+    void theControllerAndTheErrorHandlerReadTheSameValue() throws Exception {
         // The regression this class was born to close: two calls to current() inside the
         // same request have to give the same value. They used to be two different
         // generateSessionId() calls, and a failed request appeared in the logs twice, under
         // two keys, with no way to connect them.
         MockHttpServletRequest request = new MockHttpServletRequest();
-        String[] letture = new String[2];
+        String[] reads = new String[2];
 
-        FilterChain dentroLaRichiesta = (req, res) -> {
+        FilterChain insideTheRequest = (req, res) -> {
             RequestContextHolder.setRequestAttributes(
                     new ServletRequestAttributes((MockHttpServletRequest) req));
-            letture[0] = RequestCorrelationFilter.current();   // il controller
-            letture[1] = RequestCorrelationFilter.current();   // il gestore degli errori
+            reads[0] = RequestCorrelationFilter.current();   // the controller
+            reads[1] = RequestCorrelationFilter.current();   // the error handler
         };
 
-        filter.doFilter(request, new MockHttpServletResponse(), dentroLaRichiesta);
+        filter.doFilter(request, new MockHttpServletResponse(), insideTheRequest);
 
-        assertThat(letture[0]).isNotBlank().isEqualTo(letture[1]);
+        assertThat(reads[0]).isNotBlank().isEqualTo(reads[1]);
     }
 
     @Test
-    void ripiegaFuoriDaUnaRichiestaHttp() {
+    void itFallsBackOutsideAnHttpRequest() {
         // A message consumer or a scheduled job has no request. A disconnected id beats a
         // null that ends up in the response printed as the string "null".
         assertThat(RequestCorrelationFilter.current()).isNotBlank();
     }
 
     @Test
-    void applicaAMdcUsaLIdentificativoRicevuto() {
+    void applyToMdcUsesTheReceivedId() {
         // The half of the chain that does not go through HTTP: an AMQP listener runs on a
         // thread of its own, outside any request, and without this the notification created
         // from an event would appear in the logs disconnected from the cancellation that
@@ -98,7 +98,7 @@ class RequestCorrelationFilterUnitTest {
     }
 
     @Test
-    void applicaAMdcRipiegaSuUnoGeneratoSeManca() {
+    void applyToMdcFallsBackToAGeneratedOneWhenNoneArrives() {
         // A message published before the header existed has to keep being consumed: absent
         // is not an error, and "null" in the logs would be worse.
         RequestCorrelationFilter.applyToMdc(null);
@@ -109,7 +109,7 @@ class RequestCorrelationFilterUnitTest {
     }
 
     @Test
-    void svuotaMdcTogliLIdentificativo() {
+    void clearMdcRemovesTheId() {
         RequestCorrelationFilter.applyToMdc("REQ_QUALCOSA");
         RequestCorrelationFilter.clearMdc();
 
@@ -117,7 +117,7 @@ class RequestCorrelationFilterUnitTest {
     }
 
     @Test
-    void svuotaMdcAlTermine() throws Exception {
+    void clearMdcRunsAtTheEndOfTheRequest() throws Exception {
         // Threads are reused: an MDC left uncleared would make this request's id show up in
         // the next request's log lines, which is worse than not having one at all.
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());

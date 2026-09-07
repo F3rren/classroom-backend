@@ -13,8 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class LoginAttemptLimiterUnitTest {
 
-    private LoginAttemptLimiter attemptLimiter(int massimo, long windowMs, int tetto) {
-        return new LoginAttemptLimiter(massimo, windowMs, tetto);
+    private LoginAttemptLimiter attemptLimiter(int maxAttempts, long windowMs, int cap) {
+        return new LoginAttemptLimiter(maxAttempts, windowMs, cap);
     }
 
     @Test

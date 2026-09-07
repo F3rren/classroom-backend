@@ -159,9 +159,9 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(dataOf(resp).get("name")).isEqualTo("Aula Rinominata");
 
-        Room ricaricata = roomRepository.findById(roomId).orElseThrow();
-        assertThat(ricaricata.getName()).isEqualTo("Aula Rinominata");
-        assertThat(ricaricata.getCapacity()).isEqualTo(42);
+        Room reloaded = roomRepository.findById(roomId).orElseThrow();
+        assertThat(reloaded.getName()).isEqualTo("Aula Rinominata");
+        assertThat(reloaded.getCapacity()).isEqualTo(42);
     }
 
     @Test
@@ -175,7 +175,7 @@ class AdminManagementTest {
 
     @Test
     void adminDeletesRoomAndItDisappears() {
-        bookingRepository.deleteAll(); // l'aula ha una prenotazione collegata
+        bookingRepository.deleteAll(); // the room has a booking attached to it
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.DELETE, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -197,10 +197,10 @@ class AdminManagementTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = dataOf(resp);
-        assertThat(data.keySet()).containsExactlyInAnyOrder("bookings", "statistiche");
+        assertThat(data.keySet()).containsExactlyInAnyOrder("bookings", "stats");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> stats = (Map<String, Object>) data.get("statistiche");
+        Map<String, Object> stats = (Map<String, Object>) data.get("stats");
         assertThat(stats.keySet()).containsExactlyInAnyOrder("total", "active", "cancelled");
         assertThat(stats.get("total")).isEqualTo(1);
         assertThat(stats.get("active")).isEqualTo(1);
@@ -219,8 +219,8 @@ class AdminManagementTest {
         assertThat(data.get("reason")).isEqualTo("Aula richiesta per un esame");
 
         // the booking comes out cancelled and the owner gets a notification
-        Booking dopo = bookingRepository.findById(bookingId).orElseThrow();
-        assertThat(dopo.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+        Booking after = bookingRepository.findById(bookingId).orElseThrow();
+        assertThat(after.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         verify(eventPublisher).publishCancellation(any(BookingCancelledEvent.class));
     }
 
@@ -276,21 +276,21 @@ class AdminManagementTest {
 
     @Test
     void nonAdminIsForbiddenOnEveryAdminEndpoint() {
-        record Chiamata(String url, HttpMethod method) {}
-        Chiamata[] chiamate = {
-                new Chiamata("/api/admin/rooms", HttpMethod.GET),
-                new Chiamata("/api/admin/rooms/" + roomId, HttpMethod.GET),
-                new Chiamata("/api/admin/rooms/" + roomId, HttpMethod.DELETE),
-                new Chiamata("/api/admin/bookings", HttpMethod.GET),
-                new Chiamata("/api/admin/bookings/" + bookingId, HttpMethod.DELETE),
+        record Call(String url, HttpMethod method) {}
+        Call[] calls = {
+                new Call("/api/admin/rooms", HttpMethod.GET),
+                new Call("/api/admin/rooms/" + roomId, HttpMethod.GET),
+                new Call("/api/admin/rooms/" + roomId, HttpMethod.DELETE),
+                new Call("/api/admin/bookings", HttpMethod.GET),
+                new Call("/api/admin/bookings/" + bookingId, HttpMethod.DELETE),
                 // /api/admin/users/{id} is no longer served by this service: user
                 // management moved to auth-service.
         };
 
-        for (Chiamata c : chiamate) {
+        for (Call c : calls) {
             ResponseEntity<String> resp = exchange(c.url(), c.method(), tokenUser, null);
             assertThat(resp.getStatusCode())
-                    .as("%s %s con token non-admin", c.method(), c.url())
+                    .as("%s %s with a non-admin token", c.method(), c.url())
                     .isEqualTo(HttpStatus.FORBIDDEN);
         }
 

@@ -176,11 +176,11 @@ class PostgresSchemaConstraintsTest {
                 "SELECT count(*) FROM pg_extension WHERE extname = 'btree_gist'", Integer.class);
         assertThat(gist).isEqualTo(1);
 
-        List<String> vincoli = jdbc.queryForList(
+        List<String> constraints = jdbc.queryForList(
                 "SELECT conname FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid "
                         + "WHERE c.contype IN ('c','x') AND t.relname IN ('rooms','bookings')",
                 String.class);
-        assertThat(vincoli).containsExactlyInAnyOrder(
+        assertThat(constraints).containsExactlyInAnyOrder(
                 // user_role_check is no longer here: it lives in auth-service's database,
                 // alongside the table it constrains. A twin test over there checks it.
                 "bookings_no_overlap", "room_status_check", "booking_status_check");
@@ -231,10 +231,10 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void theSameIntervalOnDifferentRoomsIsAllowed() {
-        Room altra = newRoom("Aula Postgres 2");
+        Room otherRoom = newRoom("Aula Postgres 2");
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
-        assertThatCode(() -> save(altra, BASE, BASE.plusHours(2), BookingStatus.BOOKED))
+        assertThatCode(() -> save(otherRoom, BASE, BASE.plusHours(2), BookingStatus.BOOKED))
                 .doesNotThrowAnyException();
     }
 
@@ -242,37 +242,37 @@ class PostgresSchemaConstraintsTest {
      * The application predicate (findConflictingBookings) and the database constraint have to
      * agree. Reference interval: [BASE, BASE+120min).
      */
-    @ParameterizedTest(name = "offset [{0},{1}) minuti -> conflitto atteso: {2}")
+    @ParameterizedTest(name = "offset [{0},{1}) minutes -> conflict expected: {2}")
     @CsvSource({
-            "0,   120, true",   // identico
-            "30,  90,  true",   // contenuto
-            "-60, 180, true",   // contenitore
-            "-60, 60,  true",   // sovrapposto a sinistra
-            "60,  180, true",   // sovrapposto a destra
-            "-120, 0,  false",  // adiacente prima
-            "120, 240, false",  // adiacente dopo
-            "-240,-120,false",  // staccato prima
-            "240, 360, false"   // staccato dopo
+            "0,   120, true",   // identical
+            "30,  90,  true",   // contained
+            "-60, 180, true",   // containing
+            "-60, 60,  true",   // overlapping on the left
+            "60,  180, true",   // overlapping on the right
+            "-120, 0,  false",  // adjacent, before
+            "120, 240, false",  // adjacent, after
+            "-240,-120,false",  // apart, before
+            "240, 360, false"   // apart, after
     })
-    void predicatoApplicativoEVincoloDbConcordano(long daMin, long aMin, boolean expectedConflict) {
+    void theApplicationPredicateAndTheDatabaseConstraintAgree(long fromMin, long toMin, boolean expectedConflict) {
         save(room, BASE, BASE.plusHours(2), BookingStatus.BOOKED);
 
-        LocalDateTime startTime = BASE.plusMinutes(daMin);
-        LocalDateTime endTime = BASE.plusMinutes(aMin);
+        LocalDateTime startTime = BASE.plusMinutes(fromMin);
+        LocalDateTime endTime = BASE.plusMinutes(toMin);
 
         boolean applicationConflict =
                 !bookingRepository.findConflictingBookings(room.getId(), startTime, endTime).isEmpty();
         assertThat(applicationConflict)
-                .as("predicato applicativo per [%d,%d)", daMin, aMin)
+                .as("the application predicate on [%d,%d)", fromMin, toMin)
                 .isEqualTo(expectedConflict);
 
         if (expectedConflict) {
             assertThatThrownBy(() -> save(room, startTime, endTime, BookingStatus.BOOKED))
-                    .as("il database deve rifiutare [%d,%d)", daMin, aMin)
+                    .as("the database has to reject [%d,%d)", fromMin, toMin)
                     .isInstanceOf(DataIntegrityViolationException.class);
         } else {
             assertThatCode(() -> save(room, startTime, endTime, BookingStatus.BOOKED))
-                    .as("il database deve accettare [%d,%d)", daMin, aMin)
+                    .as("the database has to accept [%d,%d)", fromMin, toMin)
                     .doesNotThrowAnyException();
         }
     }

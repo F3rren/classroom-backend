@@ -23,7 +23,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 /**
- * La pubblicazione dell'evento di cancellazione.
+ * The publication of the cancellation event.
  *
  * The central test is the one on the header: it is what lets you read in sequence the HTTP
  * request that cancelled the booking and the notification created afterwards, on another
@@ -39,21 +39,21 @@ class EventPublisherUnitTest {
             7L, 42L, "Aula 1", "Admin", "2026-09-03", "09:00", "11:00", "maintenance");
 
     @AfterEach
-    void pulisci() {
+    void clean() {
         RequestContextHolder.resetRequestAttributes();
     }
 
     /** Applies to the message the post-processor the publisher handed over. */
     private MessageProperties producedHeaders() {
-        ArgumentCaptor<MessagePostProcessor> processore = ArgumentCaptor.forClass(MessagePostProcessor.class);
+        ArgumentCaptor<MessagePostProcessor> postProcessor = ArgumentCaptor.forClass(MessagePostProcessor.class);
         verify(rabbitTemplate).convertAndSend(
                 eq(EventTopology.EXCHANGE),
                 eq(EventTopology.ROUTING_KEY_CANCELLATION),
                 eq(event),
-                processore.capture());
+                postProcessor.capture());
 
         Message message = new Message(new byte[0], new MessageProperties());
-        return processore.getValue().postProcessMessage(message).getMessageProperties();
+        return postProcessor.getValue().postProcessMessage(message).getMessageProperties();
     }
 
     @Test

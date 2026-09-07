@@ -81,7 +81,7 @@ public class BookingService {
         logger.debug("creating a booking for room - roomId: {}, courseId: {}, userId: {}, period: {} - {}", roomId, courseId, owner.getId(), startTime, endTime);
         Booking booking = new Booking();
         booking.setRoom(room.get());
-        booking.setCourse(course.orElse(null)); // Può essere null
+        booking.setCourse(course.orElse(null)); // may be null
         booking.setUser(owner);
         booking.setStartTime(startTime);
         booking.setEndTime(endTime);
@@ -122,19 +122,19 @@ public class BookingService {
         }
         
         logger.debug("blocking room - roomId: {}, AdminId: {}, period: {} - {}", roomId, admin.getId(), startTime, endTime);
-        Booking blocco = new Booking();
-        blocco.setRoom(room.get());
-        blocco.setCourse(null); // Nessun corso per i blocchi
-        blocco.setUser(admin);
-        blocco.setStartTime(startTime);
-        blocco.setEndTime(endTime);
-        blocco.setStatus(BookingStatus.BLOCKED);
-        blocco.setDescription(reason);
-        blocco.setCreatedAt(LocalDateTime.now());
+        Booking block = new Booking();
+        block.setRoom(room.get());
+        block.setCourse(null); // a block belongs to no course
+        block.setUser(admin);
+        block.setStartTime(startTime);
+        block.setEndTime(endTime);
+        block.setStatus(BookingStatus.BLOCKED);
+        block.setDescription(reason);
+        block.setCreatedAt(LocalDateTime.now());
         
-        logger.info("room block created - id={} room='{}' adminId={} period={} - {}", blocco.getId(), room.get().getName(), admin.getId(), startTime, endTime);
+        logger.info("room block created - id={} room='{}' adminId={} period={} - {}", block.getId(), room.get().getName(), admin.getId(), startTime, endTime);
         logger.debug("END blockRoom");
-        return bookingRepository.save(blocco);
+        return bookingRepository.save(block);
     }
     
     // Is a room free over a given period?
@@ -143,7 +143,7 @@ public class BookingService {
         logger.debug("Room availability check - roomId: {}, period: {} - {}", roomId, startTime, endTime);
         List<Booking> conflicts = bookingRepository.findConflictingBookings(roomId, startTime, endTime);
         boolean available = conflicts.isEmpty();
-        logger.debug("room availability result - roomId: {}, period: {} - {}", roomId, startTime, endTime, available);
+        logger.debug("room availability result - roomId: {}, period: {} - {}, available: {}", roomId, startTime, endTime, available);
         return available;
     }
     

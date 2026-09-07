@@ -31,7 +31,7 @@ public class Booking {
     private Room room;
     
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "course_id", nullable = true) // Nullable per blocchi admin
+    @JoinColumn(name = "course_id", nullable = true) // null for an admin block
     private Course course;
     
     // A snapshot and not a relation: users live in another service.

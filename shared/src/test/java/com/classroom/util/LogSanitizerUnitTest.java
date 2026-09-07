@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LogSanitizerUnitTest {
 
     @Test
-    void mascheraLaParteLocaleEMantieneIlDominio() {
+    void itMasksTheLocalPartAndKeepsTheDomain() {
         assertThat(LogSanitizer.maskEmail("mario.rossi@example.it")).isEqualTo("m***@example.it");
     }
 

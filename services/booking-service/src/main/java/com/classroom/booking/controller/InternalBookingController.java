@@ -22,10 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
  * with ON DELETE did that, and before it a single transaction. It is a network call now,
  * and it can fail.
  *
- * The gateway closes /api/bookings/internal/** off from outside: reaching it requires
- * talk to this service directly. The protection does not stop there, though, because a
- * bypassed gateway must not be enough: an ADMIN token is still required,
- * verificato qui come su qualunque altro endpoint.
+ * The gateway closes /api/bookings/internal/** off from outside: reaching it means
+ * talking to this service directly. The protection does not stop there, though, because a
+ * bypassed gateway must not be enough: an ADMIN token is still required, checked
+ * here as on any other endpoint.
  */
 @RestController
 @RequestMapping("/api/bookings/internal")

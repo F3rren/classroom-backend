@@ -6,8 +6,8 @@ import lombok.Value;
 /** The success response when an admin blocks a room (POST /block). */
 @Value
 public class BlockAckPayload {
-    Booking blocco;
+    Booking block;
     Long roomId;
     String period;
-    Long amministratore;
+    Long adminId;
 }

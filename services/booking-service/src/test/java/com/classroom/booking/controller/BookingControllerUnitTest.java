@@ -129,9 +129,9 @@ class BookingControllerUnitTest {
 
     @Test
     void bookRoomRejectsADateInThePast() {
-        LocalDateTime passato = LocalDateTime.now().minusDays(2).withNano(0);
+        LocalDateTime past = LocalDateTime.now().minusDays(2).withNano(0);
         ResponseEntity<?> resp = controller.bookRoom(
-                request(passato.format(ISO), passato.plusHours(1).format(ISO)), user);
+                request(past.format(ISO), past.plusHours(1).format(ISO)), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("PAST_DATE");
@@ -200,9 +200,9 @@ class BookingControllerUnitTest {
 
     @Test
     void updateRejectsADateInThePast() {
-        LocalDateTime passato = LocalDateTime.now().minusDays(2).withNano(0);
+        LocalDateTime past = LocalDateTime.now().minusDays(2).withNano(0);
         ResponseEntity<?> resp = controller.updateBooking(
-                5L, request(passato.format(ISO), passato.plusHours(1).format(ISO)), user);
+                5L, request(past.format(ISO), past.plusHours(1).format(ISO)), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("PAST_DATE");

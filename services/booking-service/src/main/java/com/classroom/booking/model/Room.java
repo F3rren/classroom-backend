@@ -8,10 +8,9 @@ import lombok.NoArgsConstructor;
 
 /**
  * A room that can be booked.
- * Campi utilizzati dal frontend (normalizeRoomData):
- * - id, name, capacity, floor, isVirtual, description, status/status
- * 
- * Il frontend normalizza i dati quindi possiamo usare nomi italiani
+ *
+ * The fields the frontend reads (normalizeRoomData): id, name, capacity, floor,
+ * isVirtual, description, status.
  */
 @Data
 @AllArgsConstructor

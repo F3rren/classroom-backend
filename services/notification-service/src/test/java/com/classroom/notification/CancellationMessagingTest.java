@@ -132,14 +132,14 @@ class CancellationMessagingTest {
         // catches a notification that appeared and vanished - and costs less than half.
         await().during(Duration.ofMillis(400)).atMost(Duration.ofSeconds(2)).untilAsserted(() ->
                 assertThat(notificationRepository.findAll())
-                        .as("con il consumatore fermo la notifica non puo' esistere ancora")
+                        .as("with the consumer stopped the notification cannot exist yet")
                         .isEmpty());
 
         listenerRegistry.start();
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 assertThat(notificationRepository.findAll())
-                        .as("alla ripartenza il messaggio deve essere ancora li'")
+                        .as("on restart the message has to still be there")
                         .hasSize(1));
     }
 
@@ -157,7 +157,7 @@ class CancellationMessagingTest {
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             List<Notification> notifications = notificationRepository.findAll();
             assertThat(notifications)
-                    .as("solo l'evento valido deve produrre una notifica")
+                    .as("only the valid event may produce a notification")
                     .hasSize(1);
             assertThat(notifications.get(0).getUserId()).isEqualTo(11L);
         });

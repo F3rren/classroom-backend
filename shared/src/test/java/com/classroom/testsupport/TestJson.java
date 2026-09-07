@@ -9,7 +9,7 @@ import java.util.Map;
  * Reading the JSON out of an HTTP response in a test.
  *
  * It already existed, eleven times over: every integration test class built its own
- * ObjectMapper e ci avvolgeva intorno un `private Map&lt;String, Object&gt; asMap(String)`
+ * ObjectMapper and wrapped a `private Map&lt;String, Object&gt; asMap(String)` around it,
  * identical to the other ten. Eleven copies of the same line are eleven places to fix on the
  * day one more case has to be handled.
  *

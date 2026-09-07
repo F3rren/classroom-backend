@@ -25,19 +25,19 @@ class JwtKeyUnitTest {
             "T3VqK2Zy_2Jhc2U2NCtzdGFuZGFyZC93aXRoK3BsdXMvYW5kL3NsYXNoISE=".replace('+', '-');
 
     @Test
-    void accettaUnSegretoInBase64Standard() {
+    void itAcceptsAStandardBase64Secret() {
         // This is the form "openssl rand -base64" produces, which is what anybody following
         // the documentation ends up pasting into the file.
         assertThat(JwtKey.from(STANDARD)).isNotNull();
     }
 
     @Test
-    void accettaUnSegretoInBase64Url() {
+    void itAcceptsABase64UrlSecret() {
         assertThat(JwtKey.from(URL_SAFE)).isNotNull();
     }
 
     @Test
-    void iDueAlfabetiProduconoLaStessaChiave() {
+    void theTwoAlphabetsProduceTheSameKey() {
         // This is the point that really matters: the signer and the verifier may hold the
         // secret written in either form, and still have to derive the same key. If this
         // assertion fell, tokens would come out invalid with no clear error.
@@ -48,7 +48,7 @@ class JwtKeyUnitTest {
     }
 
     @Test
-    void ignoraGliSpaziAiBordi() {
+    void itIgnoresTheSurroundingWhitespace() {
         // A secret pasted by hand carries stray spaces or a newline more often than you
         // would think, and the error message would not help anybody work that out.
         assertThat(JwtKey.from("  " + STANDARD + "  ").getEncoded())
@@ -56,7 +56,7 @@ class JwtKeyUnitTest {
     }
 
     @Test
-    void unSegretoMancanteDiceCosaImpostare() {
+    void aMissingSecretSaysWhatToSet() {
         // Without this, a missing secret arrives as a NullPointerException inside jjwt,
         // which tells nobody which variable is missing.
         assertThatThrownBy(() -> JwtKey.from(null))

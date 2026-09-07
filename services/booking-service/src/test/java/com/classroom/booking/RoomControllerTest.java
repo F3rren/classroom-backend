@@ -127,7 +127,7 @@ class RoomControllerTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = (Map<String, Object>) TestJson.asMap(resp.getBody()).get("data");
         assertThat(data).containsEntry("floor", 3);
-        assertThat(data).doesNotContainKey("type"); // campo opzionale omesso quando non usato
+        assertThat(data).doesNotContainKey("type"); // an optional field, omitted when unused
     }
 
     @Test

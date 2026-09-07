@@ -9,5 +9,5 @@ import java.util.List;
 @Value
 public class AdminBookingsPayload {
     List<Booking> bookings;
-    BookingStats statistiche;
+    BookingStats stats;
 }

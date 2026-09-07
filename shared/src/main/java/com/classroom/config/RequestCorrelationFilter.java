@@ -72,10 +72,10 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
      * up as the string "null" inside a response.
      */
     public static String current() {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributi) {
-            Object id = attributi.getRequest().getAttribute(ATTRIBUTE);
-            if (id instanceof String stringa && !stringa.isBlank()) {
-                return stringa;
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            Object id = attributes.getRequest().getAttribute(ATTRIBUTE);
+            if (id instanceof String text && !text.isBlank()) {
+                return text;
             }
         }
         return generate();

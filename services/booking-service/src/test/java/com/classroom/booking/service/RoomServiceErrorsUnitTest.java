@@ -118,8 +118,8 @@ class RoomServiceErrorsUnitTest {
 
     @Test
     void deletingAMissingRoomSaysItDoesNotExist() {
-        // Prima tornava false, indistinguibile da "cancellazione fallita". Ora e' un 404
-        // that names the resource, and "the deletion failed" is a different, separate case.
+        // It used to return false, indistinguishable from "the deletion failed". Now
+        // it is a 404 that names the resource, and a failed deletion is a separate case.
         when(roomRepository.existsById(99L)).thenReturn(false);
 
         assertThatThrownBy(() -> service.deleteRoom(99L))

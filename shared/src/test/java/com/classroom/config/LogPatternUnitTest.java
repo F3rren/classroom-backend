@@ -33,26 +33,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LogPatternUnitTest {
 
     @Configuration
-    static class SoloContesto {
+    static class ContextOnly {
     }
 
     @AfterEach
-    void pulisci() {
+    void clean() {
         MDC.clear();
     }
 
-    /** L'encoder dell'appender su console, come Logback l'ha costruito. */
+    /** The console appender's encoder, as Logback built it. */
     private PatternLayoutEncoder configuredEncoder() {
         // The context has to start: it is Spring Boot that tells Logback to read
         // logback-spring.xml, and without it the default configuration would apply.
-        try (var context = new SpringApplicationBuilder(SoloContesto.class)
+        try (var context = new SpringApplicationBuilder(ContextOnly.class)
                 .web(WebApplicationType.NONE)
                 .run()) {
             LoggerContext logback = (LoggerContext) LoggerFactory.getILoggerFactory();
-            ch.qos.logback.classic.Logger radice = logback.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-            var appender = radice.getAppender("CONSOLE");
+            ch.qos.logback.classic.Logger rootLogger = logback.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+            var appender = rootLogger.getAppender("CONSOLE");
             assertThat(appender)
-                    .as("l'appender CONSOLE non esiste: logback-spring.xml non e' stato caricato")
+                    .as("there is no CONSOLE appender: logback-spring.xml was not loaded")
                     .isInstanceOf(ConsoleAppender.class);
             Encoder<?> encoder = ((ConsoleAppender<?>) appender).getEncoder();
             assertThat(encoder).isInstanceOf(PatternLayoutEncoder.class);
@@ -74,7 +74,7 @@ class LogPatternUnitTest {
     }
 
     @Test
-    void lIdentificativoDiRichiestaCompareNellaRiga() {
+    void theRequestIdAppearsInTheLine() {
         // THE reason this file exists. If it falls, the id goes back to sitting in the MDC
         // with nobody seeing it, and that is a failure that fails nothing: it is noticed only
         // on the day somebody needs to read the logs, which is too late.
@@ -84,31 +84,32 @@ class LogPatternUnitTest {
     }
 
     @Test
-    void unIdentificativoPiuLungoNonVieneTagliato() {
+    void aLongerIdIsNotTruncated() {
         // Found by looking at the real output, not at the file: with %-12.12X Logback
-        // LEFT, and "REQ_READABLE" came out as "EQ_READABLE". The ids minted
+        // truncates from the LEFT, and "REQ_READABLE" came out as "EQ_READABLE". The ids
+        // minted
         // here are exactly 12 characters long and never noticed, but the gateway reuses the
         // X-Request-Id it receives, which can be as long as the caller likes.
         //
         // An id silently cut short is worse than a misaligned column: two different values
-        // can come out looking identical, and somebody searching the logs finds the request
-        // sbagliata.
-        MDC.put("requestId", "REQ_MOLTO_PIU_LUNGO_DEL_SOLITO");
+        // can come out looking identical, and somebody searching the logs finds the
+        // wrong request.
+        MDC.put("requestId", "REQ_MUCH_LONGER_THAN_USUAL");
 
-        assertThat(line("qualcosa")).contains("REQ_MOLTO_PIU_LUNGO_DEL_SOLITO");
+        assertThat(line("anything")).contains("REQ_MUCH_LONGER_THAN_USUAL");
     }
 
     @Test
-    void unaRigaFuoriDaUnaRichiestaNonDiceNull() {
-        // Startup, scheduled jobs, message consumption: no request, no
-        // identificativo. Stampare "null" sarebbe peggio di un segnaposto.
-        String line = line("avvio completato");
+    void aLineOutsideARequestDoesNotSayNull() {
+        // Startup, scheduled jobs, message consumption: no request, so no id.
+        // Printing "null" would be worse than a placeholder.
+        String line = line("startup complete");
 
-        assertThat(line).doesNotContain("null").contains("avvio completato");
+        assertThat(line).doesNotContain("null").contains("startup complete");
     }
 
     @Test
-    void ilMessaggioEIlLivelloRestanoLeggibili() {
+    void theMessageAndTheLevelStayReadable() {
         // The pattern adds a column: it must not eat what was already there.
         MDC.put("requestId", "REQ_LEGGIBILE");
         String line = line("qualcosa e' successo");

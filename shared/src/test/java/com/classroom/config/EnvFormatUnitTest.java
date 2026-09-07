@@ -29,26 +29,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EnvFormatUnitTest {
 
     @TempDir
-    Path cartella;
+    Path folder;
 
     @Configuration
-    static class SoloAmbiente {
+    static class EnvironmentOnly {
         // No beans: all that is needed is a context that loads the properties. A
         // @SpringBootApplication would drag in the datasource auto-configuration and the
         // test would stop being about what it is meant to check.
     }
 
-    private ConfigurableApplicationContext startWith(String contenutoEnv) throws IOException {
-        Path env = cartella.resolve("prova.env");
-        Files.writeString(env, contenutoEnv);
-        return new SpringApplicationBuilder(SoloAmbiente.class)
+    private ConfigurableApplicationContext startWith(String envContents) throws IOException {
+        Path env = folder.resolve("prova.env");
+        Files.writeString(env, envContents);
+        return new SpringApplicationBuilder(EnvironmentOnly.class)
                 .web(WebApplicationType.NONE)
                 .properties("spring.config.import=file:" + env.toAbsolutePath() + "[.properties]")
                 .run();
     }
 
     @Test
-    void springLeggeIlFormatoDiCompose() throws IOException {
+    void springReadsTheComposeFormat() throws IOException {
         // The closing line: without this, the whole choice of keeping one single file falls.
         try (var context = startWith("JWT_SECRET=abc123\nSPRING_DATASOURCE_PASSWORD=segreta\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo("abc123");
@@ -57,15 +57,15 @@ class EnvFormatUnitTest {
     }
 
     @Test
-    void ilSegnapostoRisolveDalEnv() throws IOException {
+    void thePlaceholderResolvesFromTheEnvFile() throws IOException {
         // The names do not line up - .env says SPRING_DATASOURCE_PASSWORD, Spring wants
         // spring.datasource.password - and the automatic conversion does NOT happen: relaxed
         // binding treats uppercase-with-underscores only for real environment variables, not
         // for keys read from a file. The bridge is an explicit placeholder, and that is what
         // this test pins down.
-        Path env = cartella.resolve("prova.env");
+        Path env = folder.resolve("prova.env");
         Files.writeString(env, "JWT_SECRET=chiave-di-prova\n");
-        try (var context = new SpringApplicationBuilder(SoloAmbiente.class)
+        try (var context = new SpringApplicationBuilder(EnvironmentOnly.class)
                 .web(WebApplicationType.NONE)
                 .properties("spring.config.import=file:" + env.toAbsolutePath() + "[.properties]",
                             "jwt.secret=${JWT_SECRET}")
@@ -75,10 +75,10 @@ class EnvFormatUnitTest {
     }
 
     @Test
-    void unSegretoBase64AttraversaIntatto() throws IOException {
-        // Real secrets are base64: they contain + / = and can end in padding.
-        // Nessuno di questi ha significato speciale in un file properties, ma "nessuno di
-        // these" is a claim that has to be checked, not remembered.
+    void aBase64SecretComesThroughIntact() throws IOException {
+        // Real secrets are base64: they contain + / = and can end in padding. None of
+        // those means anything special in a properties file, but "none of these" is a
+        // claim to be checked, not remembered.
         String secret = "aB3+xY/9zQ==";
         try (var context = startWith("JWT_SECRET=" + secret + "\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo(secret);
@@ -86,7 +86,7 @@ class EnvFormatUnitTest {
     }
 
     @Test
-    void leVirgoletteFinirebberoDentroAlValore() throws IOException {
+    void theQuotesWouldEndUpInsideTheValue() throws IOException {
         // This is the real divergence between the two readers, and the reason .env.example
         // says not to use quotes: Compose strips them, Java keeps them. The test does not fix
         // it - it DOCUMENTS it, because one day somebody will quote a secret and the symptom
@@ -99,14 +99,14 @@ class EnvFormatUnitTest {
     }
 
     @Test
-    void unFileAssenteNonImpedisceLAvvio() {
+    void aMissingFileDoesNotStopTheStartup() {
         // In a container there is no .env: the values arrive as environment variables
         // already, injected by Compose. The import is "optional:" precisely for that, and
         // were it not, the four services would not start at all.
-        try (var context = new SpringApplicationBuilder(SoloAmbiente.class)
+        try (var context = new SpringApplicationBuilder(EnvironmentOnly.class)
                 .web(WebApplicationType.NONE)
                 .properties("spring.config.import=optional:file:"
-                        + cartella.resolve("inesistente.env").toAbsolutePath() + "[.properties]")
+                        + folder.resolve("inesistente.env").toAbsolutePath() + "[.properties]")
                 .run()) {
             assertThat(context.isActive()).isTrue();
         }

@@ -155,7 +155,7 @@ class NotificationEndpointsTest {
         for (String url : new String[]{"/api/notifications/unread", "/api/notifications/unread-count"}) {
             ResponseEntity<String> resp = rest.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, String.class);
             assertThat(resp.getStatusCode())
-                    .as("endpoint %s senza token", url)
+                    .as("endpoint %s with no token", url)
                     .isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }

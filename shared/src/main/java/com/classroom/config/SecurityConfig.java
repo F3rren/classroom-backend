@@ -80,7 +80,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Per le preflight requests
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // for the preflight requests
                         .requestMatchers(splitConfigList(publicPaths).toArray(new String[0]))
                         .permitAll()
                         .anyRequest().authenticated())

@@ -203,7 +203,7 @@ public class RoomService {
     // Virtual rooms, ordered by name.
     public List<Room> getVirtualRoomsOrdered() {
         logger.debug("START getVirtualRoomsOrdered - fetching the virtual rooms in order");
-        List<Room> rooms = roomRepository.findVirtualRoomsOrderByNome();
+        List<Room> rooms = roomRepository.findVirtualRoomsOrderByName();
         logger.debug("END getVirtualRoomsOrdered - virtual rooms ordered: {}", rooms.size());
         return rooms;
     }
@@ -248,7 +248,7 @@ public class RoomService {
 
         // One instant for every room. LocalDateTime.now() used to be called inside the
         // loop, so rooms in the same response could be evaluated against different moments.
-        LocalDateTime adesso = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
         // One query for all the rooms, not one per room: the listing used to cost 1+N
         // queries, and with Booking's EAGER relations a good deal more than that.
@@ -261,7 +261,7 @@ public class RoomService {
         List<RoomDetailsResponse> response = new ArrayList<>();
         for (Room room : rooms) {
             response.add(toRoomDetails(
-                    room, bookingsByRoom.getOrDefault(room.getId(), List.of()), adesso));
+                    room, bookingsByRoom.getOrDefault(room.getId(), List.of()), now));
         }
 
         logger.debug("END getRoomsDetailsFromList - finished building details for {} rooms", response.size());
@@ -279,7 +279,7 @@ public class RoomService {
      * The instant comes from the caller rather than being read here: that makes the method
      * deterministic and lets a list of rooms share one single "now".
      */
-    private RoomDetailsResponse toRoomDetails(Room room, List<Booking> bookings, LocalDateTime adesso) {
+    private RoomDetailsResponse toRoomDetails(Room room, List<Booking> bookings, LocalDateTime now) {
         RoomDetailsResponse roomDetails = new RoomDetailsResponse(
                 room.getId(), room.getName(), room.getFloor(), room.getCapacity(), room.isVirtual());
 
@@ -289,7 +289,7 @@ public class RoomService {
 
         // Is the room busy or blocked right now?
         for (Booking booking : bookings) {
-            if (booking.getStartTime().isBefore(adesso) && booking.getEndTime().isAfter(adesso)) {
+            if (booking.getStartTime().isBefore(now) && booking.getEndTime().isAfter(now)) {
                 if (booking.getStatus() == BookingStatus.BOOKED) {
                     status = RoomAvailability.BOOKED;
                     currentBooking = toCurrentBooking(booking);
@@ -307,9 +307,9 @@ public class RoomService {
 
         // If it is free now, is there a booking about to start?
         if (status == RoomAvailability.FREE) {
-            LocalDateTime noticeEnd = adesso.plusHours(NOTICE_HOURS);
+            LocalDateTime noticeEnd = now.plusHours(NOTICE_HOURS);
             for (Booking booking : bookings) {
-                if (booking.getStartTime().isAfter(adesso) && booking.getStartTime().isBefore(noticeEnd) &&
+                if (booking.getStartTime().isAfter(now) && booking.getStartTime().isBefore(noticeEnd) &&
                     booking.getStatus() == BookingStatus.BOOKED) {
                     status = RoomAvailability.BOOKED;
                     currentBooking = toCurrentBooking(booking);
@@ -346,7 +346,7 @@ public class RoomService {
                 descriptionOr(booking, DEFAULT_PURPOSE));
     }
 
-    private static String descriptionOr(Booking booking, String predefinita) {
-        return booking.getDescription() != null ? booking.getDescription() : predefinita;
+    private static String descriptionOr(Booking booking, String fallback) {
+        return booking.getDescription() != null ? booking.getDescription() : fallback;
     }
 }

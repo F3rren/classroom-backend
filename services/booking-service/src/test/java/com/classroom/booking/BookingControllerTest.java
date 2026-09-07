@@ -171,7 +171,7 @@ class BookingControllerTest {
 
 
     // The shape of the login response is checked in auth-service, which now owns
-    // /api/auth/login: da qui quell'endpoint risponde 404.
+    // /api/auth/login: from here that endpoint answers 404.
 
     @Test
     void theBookingSuccessResponseShapeIsLocked() throws Exception {

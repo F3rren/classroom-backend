@@ -24,7 +24,7 @@ public class JwtService {
 
     private SecretKey key;
 
-    private final long EXPIRATION = 1000 * 60 * 60; // 1 ora
+    private final long EXPIRATION = 1000 * 60 * 60; // 1 hour
 
     @PostConstruct
     public void init() {

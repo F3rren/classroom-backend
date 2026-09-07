@@ -24,7 +24,7 @@ class ErrorEnvelopeUnitTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void lAutenticazioneMancanteProduceUnaBusta401() throws Exception {
+    void missingAuthenticationProducesA401Envelope() throws Exception {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         new ApiAuthenticationEntryPoint().commence(

@@ -97,7 +97,7 @@ class BookingServiceUnitTest {
 
     private void saveAsGiven() {
         when(bookingRepository.save(any(Booking.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     // ==================== bookRoom ====================
@@ -146,11 +146,11 @@ class BookingServiceUnitTest {
         when(courseRepository.findById(77L)).thenReturn(Optional.of(course));
         when(bookingRepository.findActiveBookings(anyLong(), any())).thenReturn(List.of());
 
-        Booking creata = service.bookRoom(10L, 77L, user(1L), startTime, endTime, "con corso");
+        Booking created = service.bookRoom(10L, 77L, user(1L), startTime, endTime, "con corso");
 
-        assertThat(creata).isNotNull();
-        assertThat(creata.getCourse()).isSameAs(course);
-        assertThat(creata.getStatus()).isEqualTo(BookingStatus.BOOKED);
+        assertThat(created).isNotNull();
+        assertThat(created.getCourse()).isSameAs(course);
+        assertThat(created.getStatus()).isEqualTo(BookingStatus.BOOKED);
     }
 
     @Test
@@ -239,12 +239,12 @@ class BookingServiceUnitTest {
         saveAsGiven();
         when(roomRepository.findById(10L)).thenReturn(Optional.of(room(10L, RoomStatus.FREE)));
 
-        Booking blocco = service.blockRoom(10L, user(2L), startTime, endTime, "manutenzione straordinaria");
+        Booking block = service.blockRoom(10L, user(2L), startTime, endTime, "manutenzione straordinaria");
 
-        assertThat(blocco).isNotNull();
-        assertThat(blocco.getStatus()).isEqualTo(BookingStatus.BLOCKED);
-        assertThat(blocco.getCourse()).isNull();
-        assertThat(blocco.getDescription()).isEqualTo("manutenzione straordinaria");
+        assertThat(block).isNotNull();
+        assertThat(block.getStatus()).isEqualTo(BookingStatus.BLOCKED);
+        assertThat(block.getCourse()).isNull();
+        assertThat(block.getDescription()).isEqualTo("manutenzione straordinaria");
     }
 
     // ==================== cancelBooking ====================
@@ -415,23 +415,23 @@ class BookingServiceUnitTest {
 
     @Test
     void theUpdateAppliesTheNewValuesForTheOwner() {
-        Room vecchia = room(10L, RoomStatus.FREE);
-        Room nuova = room(20L, RoomStatus.FREE);
-        Booking p = booking(5L, vecchia, user(1L), BookingStatus.BOOKED);
+        Room oldRoom = room(10L, RoomStatus.FREE);
+        Room newRoom = room(20L, RoomStatus.FREE);
+        Booking p = booking(5L, oldRoom, user(1L), BookingStatus.BOOKED);
         when(bookingRepository.findById(5L)).thenReturn(Optional.of(p));
-        when(roomRepository.findById(20L)).thenReturn(Optional.of(nuova));
+        when(roomRepository.findById(20L)).thenReturn(Optional.of(newRoom));
         when(bookingRepository.findConflictingBookingsExcluding(anyLong(), any(), any(), anyLong()))
                 .thenReturn(List.of());
         saveAsGiven();
 
         LocalDateTime newStart = startTime.plusDays(3);
-        Booking aggiornata = service.updateBooking(
+        Booking updated = service.updateBooking(
                 5L, 20L, null, 1L, false, newStart, newStart.plusHours(1), "nuova descrizione");
 
-        assertThat(aggiornata).isNotNull();
-        assertThat(aggiornata.getRoom()).isSameAs(nuova);
-        assertThat(aggiornata.getStartTime()).isEqualTo(newStart);
-        assertThat(aggiornata.getDescription()).isEqualTo("nuova descrizione");
+        assertThat(updated).isNotNull();
+        assertThat(updated.getRoom()).isSameAs(newRoom);
+        assertThat(updated.getStartTime()).isEqualTo(newStart);
+        assertThat(updated.getDescription()).isEqualTo("nuova descrizione");
     }
 
     @Test

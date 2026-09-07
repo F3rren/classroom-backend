@@ -65,7 +65,7 @@ public final class TestJwt {
         return build(id, email, name, role, new Date(System.currentTimeMillis() + LIFETIME_MS));
     }
 
-    private static String build(Long id, String email, String name, String role, Date scadenza) {
+    private static String build(Long id, String email, String name, String role, Date expiry) {
         SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(TEST_SECRET));
         return Jwts.builder()
                 .subject(email)
@@ -74,7 +74,7 @@ public final class TestJwt {
                 .claim("username", name == null ? null : name.toLowerCase().replace(" ", "."))
                 .claim("role", role)
                 .issuedAt(new Date())
-                .expiration(scadenza)
+                .expiration(expiry)
                 .signWith(key)
                 .compact();
     }

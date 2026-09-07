@@ -18,7 +18,7 @@ class ApiEnvelopeUnitTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void ilSuccessoPortaIlDatoEOmetteICampiDiErrore() throws Exception {
+    void aSuccessCarriesTheDataAndOmitsTheErrorFields() throws Exception {
         ApiEnvelope<String> envelope = ApiEnvelope.success("Operazione riuscita", "payload", "S1234");
 
         assertThat(envelope.isSuccess()).isTrue();
@@ -37,12 +37,12 @@ class ApiEnvelopeUnitTest {
     void timestampUsesTheFormatTheFrontendParses() {
         ApiEnvelope<Void> envelope = ApiEnvelope.success("ok", null, "S1");
 
-        // yyyy-MM-dd HH:mm:ss, lo stesso di util.Timestamps
+        // yyyy-MM-dd HH:mm:ss, the same as util.Timestamps
         assertThat(envelope.getTimestamp()).matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}");
     }
 
     @Test
-    void unSuccessoSenzaDatoOmetteDelTuttoIlCampo() throws Exception {
+    void aSuccessWithNoDataOmitsTheFieldAltogether() throws Exception {
         JsonNode json = objectMapper.readTree(
                 objectMapper.writeValueAsString(ApiEnvelope.success("fatto", null, "S2")));
 
@@ -51,7 +51,7 @@ class ApiEnvelopeUnitTest {
     }
 
     @Test
-    void unErroreEsponeEsattamenteSeiChiavi() throws Exception {
+    void anErrorExposesExactlySixKeys() throws Exception {
         // A contract shared with the gateway. The gateway cannot reuse this class (shared
         // brings spring-boot-starter-web, which in a WebFlux application would start Tomcat),
         // so it rebuilds the envelope by hand. This test is the twin of

@@ -32,8 +32,8 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     
     // Virtual rooms, ordered by name.
     @Query("SELECT a FROM Room a WHERE a.isVirtual = true ORDER BY a.name ASC")
-    List<Room> findVirtualRoomsOrderByNome();
+    List<Room> findVirtualRoomsOrderByName();
     
-    // How many physical rooms. e virtuali
+    // How many physical, or virtual, rooms there are.
     long countByIsVirtual(boolean isVirtual);
 }

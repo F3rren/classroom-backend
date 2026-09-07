@@ -126,9 +126,8 @@ public class RoomController {
         Optional<Room> room = roomService.getRoomById(id);
         if (room.isEmpty()) {
             // It used to be {"error":"Aula non trovata"}, a shape different from the
-            // envelope used everywhere else: no "success", no "userMessage", and an "error"
-            // holding a
-            // frase invece di un codice.
+            // envelope used everywhere else: no "success", no "userMessage", and an
+            // "error" holding a sentence instead of a code.
             throw ResourceNotFoundException.forId(ResourceType.ROOM, id);
         }
 

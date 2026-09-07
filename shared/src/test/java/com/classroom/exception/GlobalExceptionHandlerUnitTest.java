@@ -31,7 +31,7 @@ class GlobalExceptionHandlerUnitTest {
 
     /** A dummy method, used only to build a valid MethodParameter. */
     @SuppressWarnings("unused")
-    private void dummyMethod(String argomento) {
+    private void dummyMethod(String argument) {
     }
 
     /**
@@ -39,7 +39,7 @@ class GlobalExceptionHandlerUnitTest {
      * otherwise rejectValue produces a global error and getFieldError() returns null. It used
      * to use RoomRequest, which lives in the application module: a local bean is enough here.
      */
-    static class OggettoConCapienza {
+    static class ObjectWithCapacity {
         private Integer capacity;
 
         public Integer getCapacity() {
@@ -65,7 +65,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void laViolazioneDiIntegritaDiventaUn409Generico() {
+    void anIntegrityViolationBecomesAGeneric409() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDataIntegrityViolation(
                 new DataIntegrityViolationException("vincolo violato"));
 
@@ -74,9 +74,9 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unaRisorsaMancanteResta404ENonDiventaErroreInterno() {
-        // A regression: without a dedicated handler, NoResourceFoundException fell through to
-        // handleGeneric e un percorso inesistente rispondeva 500 INTERNAL_ERROR.
+    void aMissingResourceStays404AndDoesNotBecomeAnInternalError() {
+        // A regression: without a dedicated handler, NoResourceFoundException fell
+        // through to handleGeneric, and an unknown path answered 500 INTERNAL_ERROR.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
                 new NoResourceFoundException(HttpMethod.GET, "/v3/api-docs"));
 
@@ -85,7 +85,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unEccezioneImprevistaDiventa500SenzaEsporreDettagli() {
+    void anUnexpectedExceptionBecomes500WithoutExposingDetails() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleGeneric(
                 new IllegalStateException("dettaglio interno che non deve uscire"));
 
@@ -96,7 +96,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void lAccessoNegatoMantieneUnMessaggioEsplicito() {
+    void accessDeniedKeepsAnExplicitMessage() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleAccessDenied(
                 new AccessDeniedException("Puoi vedere solo le tue prenotazioni."));
 
@@ -105,14 +105,14 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void laValidazioneSenzaErroriDiCampoRipiegaSuUnMessaggioGenerico() throws Exception {
+    void validationWithNoFieldErrorsFallsBackToAGenericMessage() throws Exception {
         // the firstError == null branch: a BindingResult with no field errors
-        Method metodo = getClass().getDeclaredMethod("dummyMethod", String.class);
-        MethodParameter parametro = new MethodParameter(metodo, 0);
-        BindingResult binding = new BeanPropertyBindingResult(new Object(), "oggetto");
+        Method method = getClass().getDeclaredMethod("dummyMethod", String.class);
+        MethodParameter parameter = new MethodParameter(method, 0);
+        BindingResult binding = new BeanPropertyBindingResult(new Object(), "object");
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleValidation(
-                new MethodArgumentNotValidException(parametro, binding));
+                new MethodArgumentNotValidException(parameter, binding));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(resp.getBody().getError()).isEqualTo("VALIDATION_ERROR");
@@ -121,22 +121,22 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void validationUsesTheFirstFieldErrorMessage() throws Exception {
-        Method metodo = getClass().getDeclaredMethod("dummyMethod", String.class);
-        MethodParameter parametro = new MethodParameter(metodo, 0);
+        Method method = getClass().getDeclaredMethod("dummyMethod", String.class);
+        MethodParameter parameter = new MethodParameter(method, 0);
         // the target has to have a real field: rejectValue on a field that does not exist
         // would produce a global error and getFieldError() would return null
         BeanPropertyBindingResult binding =
-                new BeanPropertyBindingResult(new OggettoConCapienza(), "oggettoConCapienza");
+                new BeanPropertyBindingResult(new ObjectWithCapacity(), "objectWithCapacity");
         binding.rejectValue("capacity", "Positive", "La capienza deve essere un numero positivo.");
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleValidation(
-                new MethodArgumentNotValidException(parametro, binding));
+                new MethodArgumentNotValidException(parameter, binding));
 
         assertThat(resp.getBody().getUserMessage()).isEqualTo("La capienza deve essere un numero positivo.");
     }
 
     @Test
-    void unaRisorsaInesistenteDiventa404ConIlSuoCodice() {
+    void aMissingResourceBecomes404WithItsOwnCode() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
                 new ResourceNotFoundException("ROOM_NOT_FOUND", "Room not found with id: 42",
                         "L'aula richiesta non esiste."));
@@ -148,7 +148,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void laScorciatoiaPerIdComponeMessaggioTecnicoEMessaggioUtente() {
+    void theByIdShortcutComposesBothTheTechnicalAndTheUserMessage() {
         ResourceNotFoundException ex = ResourceNotFoundException.forId(ResourceType.ROOM, 42L);
 
         // the technical one carries the id, useful in a log; the user's does not, because
@@ -159,7 +159,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unConflittoDiDominioDiventa409() {
+    void aDomainConflictBecomes409() {
         // 409 and not 400: a name already taken is not a malformed request, and the caller
         // does not fix it by correcting the syntax.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDomainConflict(
@@ -171,7 +171,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unConflittoDiPrenotazioneRestaGestibileComeConflittoGenerico() {
+    void aBookingConflictStaysHandleableAsAGenericConflict() {
         // BookingConflictException is a subtype: the specific handler takes precedence, but
         // if it were ever removed the case would still be covered, with the same status.
         // This test pins that relationship down.
@@ -183,7 +183,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unaRichiestaNonValidaDiventa400() {
+    void anInvalidRequestBecomes400() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleInvalidRequest(
                 new InvalidRequestException("INVALID_STATE", "Invalid status: inventato",
                         "Stato non riconosciuto."));
@@ -193,7 +193,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unIllegalArgumentRestaUn500ENonDiventaColpaDelChiamante() {
+    void anIllegalArgumentStaysA500AndDoesNotBecomeTheCallersFault() {
         // Deliberate: IllegalArgumentException signals a programming error. Mapping it to a
         // 400 would pass the server's bugs off as bad requests, and would hide exactly the
         // cases that need to be seen.
@@ -204,7 +204,7 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
-    void unPercorsoInesistenteSenzaRisorseStaticheResta404() {
+    void anUnknownPathWithNoStaticResourcesStays404() {
         // Spring picks between two different exceptions depending on whether a
         // static-resource handler exists. The one covered here is the case WITHOUT -
         // booking-service, since the SPA was removed - and it was missing: that service

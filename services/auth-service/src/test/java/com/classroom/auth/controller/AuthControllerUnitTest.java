@@ -87,8 +87,8 @@ class AuthControllerUnitTest {
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         // first attempt: uses up the quota and fails on wrong credentials
-        ResponseEntity<?> primo = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
-        assertThat(primo.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        ResponseEntity<?> first = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
         // second attempt: over the threshold
         ResponseEntity<?> second = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
@@ -120,8 +120,8 @@ class AuthControllerUnitTest {
         controller.login(credentials("primo@test.it", "password"), httpRequest);
         controller.login(credentials("primo@test.it", "password"), httpRequest); // primo utente in 429
 
-        ResponseEntity<?> altro = controller.login(credentials("secondo@test.it", "password"), httpRequest);
-        assertThat(altro.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        ResponseEntity<?> other = controller.login(credentials("secondo@test.it", "password"), httpRequest);
+        assertThat(other.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     // ==================== validation ====================
@@ -182,9 +182,9 @@ class AuthControllerUnitTest {
 
     @Test
     void returns500WhenTheUserHasNoId() {
-        User corrotto = validUser();
-        corrotto.setId(null);
-        when(authService.login(anyString(), anyString())).thenReturn(corrotto);
+        User corrupted = validUser();
+        corrupted.setId(null);
+        when(authService.login(anyString(), anyString())).thenReturn(corrupted);
 
         ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 

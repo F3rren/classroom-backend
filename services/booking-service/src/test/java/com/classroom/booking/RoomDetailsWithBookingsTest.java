@@ -90,12 +90,12 @@ class RoomDetailsWithBookingsTest {
         token = TestJwt.forUser(1L, "roomdetailswithbookingstest@test.it", "Utente Test");
     }
 
-    private Long saveRoom(String name, int floor, int capacity, boolean virtuale) {
+    private Long saveRoom(String name, int floor, int capacity, boolean virtual) {
         Room a = new Room();
         a.setName(name);
         a.setFloor(floor);
         a.setCapacity(capacity);
-        a.setVirtual(virtuale);
+        a.setVirtual(virtual);
         a.setStatus(RoomStatus.FREE);
         return roomRepository.save(a).getId();
     }
@@ -139,12 +139,12 @@ class RoomDetailsWithBookingsTest {
     @Test
     void theDetailReportsTheRoomBusyRightNow() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
-        Map<String, Object> occupata = byName(rooms, "Aula Occupata");
+        Map<String, Object> busyRoom = byName(rooms, "Aula Occupata");
 
-        assertThat(occupata.get("status")).isEqualTo("booked");
+        assertThat(busyRoom.get("status")).isEqualTo("booked");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> booking = (Map<String, Object>) occupata.get("booking");
+        Map<String, Object> booking = (Map<String, Object>) busyRoom.get("booking");
         assertThat(booking).isNotNull();
         assertThat(booking.get("user")).isEqualTo("Mario Rossi");
         assertThat(booking.get("purpose")).isEqualTo("Lezione di Analisi");
@@ -154,12 +154,12 @@ class RoomDetailsWithBookingsTest {
     @Test
     void theDetailReportsABlockedRoomWithTheBlockData() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
-        Map<String, Object> bloccata = byName(rooms, "Aula Bloccata");
+        Map<String, Object> blockedRoom = byName(rooms, "Aula Bloccata");
 
-        assertThat(bloccata.get("status")).isEqualTo("blocked");
+        assertThat(blockedRoom.get("status")).isEqualTo("blocked");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> blocked = (Map<String, Object>) bloccata.get("blocked");
+        Map<String, Object> blocked = (Map<String, Object>) blockedRoom.get("blocked");
         assertThat(blocked).isNotNull();
         assertThat(blocked.get("reason")).isEqualTo("Evento riservato");
         assertThat(blocked.get("blockedBy")).isEqualTo("admin");
@@ -168,22 +168,22 @@ class RoomDetailsWithBookingsTest {
     @Test
     void theDetailTreatsMaintenanceAsABlock() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
-        Map<String, Object> manutenzione = byName(rooms, "Aula Manutenzione");
+        Map<String, Object> maintenanceRoom = byName(rooms, "Aula Manutenzione");
 
-        assertThat(manutenzione.get("status")).isEqualTo("blocked");
-        assertThat(manutenzione.get("blocked")).isNotNull();
+        assertThat(maintenanceRoom.get("status")).isEqualTo("blocked");
+        assertThat(maintenanceRoom.get("blocked")).isNotNull();
     }
 
     @Test
     void theDetailFlagsABookingStartingWithinTwoHours() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
-        Map<String, Object> imminente = byName(rooms, "Aula Virtuale Imminente");
+        Map<String, Object> upcomingRoom = byName(rooms, "Aula Virtuale Imminente");
 
         // not busy right now, but starting within 2 hours -> "booked" all the same
-        assertThat(imminente.get("status")).isEqualTo("booked");
+        assertThat(upcomingRoom.get("status")).isEqualTo("booked");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> booking = (Map<String, Object>) imminente.get("booking");
+        Map<String, Object> booking = (Map<String, Object>) upcomingRoom.get("booking");
         assertThat(booking).isNotNull();
         // a null description -> the "Lezione" fallback
         assertThat(booking.get("purpose")).isEqualTo("Lezione");
@@ -192,11 +192,11 @@ class RoomDetailsWithBookingsTest {
     @Test
     void theDetailLeavesARoomWithNoBookingsFree() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/detailed"));
-        Map<String, Object> libera = byName(rooms, "Aula Libera");
+        Map<String, Object> freeRoom = byName(rooms, "Aula Libera");
 
-        assertThat(libera.get("status")).isEqualTo("free");
-        assertThat(libera.get("booking")).isNull();
-        assertThat(libera.get("blocked")).isNull();
+        assertThat(freeRoom.get("status")).isEqualTo("free");
+        assertThat(freeRoom.get("booking")).isNull();
+        assertThat(freeRoom.get("blocked")).isNull();
     }
 
     @Test
@@ -260,7 +260,7 @@ class RoomDetailsWithBookingsTest {
     void thePhysicalDetailCarriesTheStatusOnlyForPhysicalRooms() throws Exception {
         List<Map<String, Object>> rooms = roomsOf(get("/api/rooms/physical/detailed"));
 
-        assertThat(rooms).hasSize(4); // le 4 aule fisiche, l'aula virtuale e' esclusa
+        assertThat(rooms).hasSize(4); // the 4 physical rooms; the virtual one is left out
         assertThat(byName(rooms, "Aula Occupata").get("status")).isEqualTo("booked");
         assertThat(byName(rooms, "Aula Bloccata").get("status")).isEqualTo("blocked");
         assertThat(byName(rooms, "Aula Libera").get("status")).isEqualTo("free");

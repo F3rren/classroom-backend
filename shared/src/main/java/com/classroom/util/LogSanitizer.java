@@ -3,9 +3,9 @@ package com.classroom.util;
 /**
  * Masking of personal data before it reaches the logs.
  *
- * Log files are archived, copied and often shared for debugging: writing
- * dentro l'email in chiaro significa duplicare dati personali fuori dal database, dove
- * no longer subject to the deletion of the user. Masking still keeps the ability to
+ * Log files are archived, copied and often shared for debugging: writing the email
+ * in clear inside one duplicates personal data outside the database, where it is no
+ * longer subject to the deletion of the user. Masking still keeps the ability to
  * correlate several lines belonging to the same user during an investigation.
  *
  * The logic already existed as a private method in AuthController: it is promoted here to a

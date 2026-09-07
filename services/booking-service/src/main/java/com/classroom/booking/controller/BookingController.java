@@ -268,19 +268,19 @@ public class BookingController {
 
         logger.debug("validation passed, attempting to block the room for the period: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
 
-        Booking blocco;
+        Booking block;
         try {
-            blocco = bookingService.blockRoom(request.getRoomId(), snapshotOf(principal), startTime, endTime, request.getDescription());
+            block = bookingService.blockRoom(request.getRoomId(), snapshotOf(principal), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
             logger.warn("END blockRoom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.getRoomId());
             throw new BookingConflictException("BLOCK_CONFLICT", "Could not block the room",
                     "L'aula è appena stata occupata da un'altra richiesta per lo stesso periodo.");
         }
 
-        logger.debug("END blockRoom - room blocked - block ID: {}, roomId: {}, Admin: {}", blocco.getId(), request.getRoomId(), principal.id());
+        logger.debug("END blockRoom - room blocked - block ID: {}, roomId: {}, Admin: {}", block.getId(), request.getRoomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Aula bloccata con successo",
-                                new BlockAckPayload(blocco, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime), principal.id()),
+                                new BlockAckPayload(block, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime), principal.id()),
                                 sessionId),
             HttpStatus.CREATED
         );
