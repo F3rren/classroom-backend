@@ -6,10 +6,10 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * La documentazione OpenAPI e' servita in dev e disattivata in prod. Questo test non
- * verifica la resa grafica ma che il bean si costruisca e dichiari lo schema di sicurezza:
- * senza "bearerAuth" la Swagger UI non offre il campo per il token e diventa inutilizzabile
- * su ogni endpoint autenticato, cioe' tutti tranne il login.
+ * The OpenAPI documentation is served in dev and switched off in prod. This test does not
+ * check how it looks but that the bean builds and declares the security scheme: without
+ * "bearerAuth" the Swagger UI offers no field for the token and becomes unusable on every
+ * authenticated endpoint, which is all of them except the login.
  */
 class OpenApiConfigUnitTest {
 

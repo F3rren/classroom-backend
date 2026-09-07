@@ -37,11 +37,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        // DEBUG e non INFO: questo filtro attraversa OGNI richiesta (asset statici inclusi),
-        // quindi a INFO produceva due righe per richiesta seppellendo gli eventi utili.
+        // DEBUG and not INFO: this filter is crossed by EVERY request (static assets
+        // included), so at INFO it produced two lines per request, burying the useful events.
         logger.debug("JWT Filter - {} {}", method, path);
 
-        // Salta il filtro per le rotte pubbliche (con o senza /api prefix)
+        // Skip the filter on the public routes (with or without the /api prefix)
         if (path.startsWith("/api/auth/login") ||
             path.startsWith("/auth/login") ||
             path.startsWith("/h2-console")) {
@@ -63,10 +63,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             AppPrincipal principal = new AppPrincipal(id, email, username, name, role);
 
-            // Il prefisso "ROLE_" atteso da hasRole(...) viene da Ruolo.toAuthority(), cosi'
-            // non e' piu' ricostruito a mano qui. Un ruolo non riconosciuto non fa fallire la
-            // richiesta: si resta senza authority, esattamente come quando il claim manca, e
-            // sara' la policy di sicurezza a negare l'accesso.
+            // The "ROLE_" prefix hasRole(...) expects comes from Role.toAuthority(), so it
+            // is no longer rebuilt by hand here. An unrecognised role does not fail the
+            // request: it simply leaves it with no authority, exactly as a missing claim
+            // would, and the security policy is what denies access.
             List<GrantedAuthority> authorities;
             try {
                 Role typedRole = Role.from(role);
@@ -74,19 +74,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         ? List.of(new SimpleGrantedAuthority(typedRole.toAuthority()))
                         : List.of();
             } catch (IllegalArgumentException e) {
-                logger.warn("JWT Filter - ruolo non riconosciuto nel token, nessuna authority assegnata");
+                logger.warn("JWT filter - unrecognised role in the token, no authority granted");
                 authorities = List.of();
             }
 
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
-            logger.debug("JWT Filter - autenticato utenteId={} ruolo={}", id, role);
+            logger.debug("JWT Filter - autenticato userId={} ruolo={}", id, role);
         } else if (token != null) {
-            // Token presente ma non valido (scaduto, firma errata, manomesso): finora passava
-            // in silenzio e la richiesta arrivava non autenticata senza lasciare traccia.
+            // A token that is present but invalid (expired, wrongly signed, tampered with):
+            // until now this passed in silence and the request arrived unauthenticated
+            // without leaving a trace.
             // E' un segnale di sicurezza, quindi WARN.
-            logger.warn("JWT Filter - token non valido o scaduto su {} {}", method, path);
+            logger.warn("JWT filter - invalid or expired token on {} {}", method, path);
         }
         filterChain.doFilter(request, response);
     }

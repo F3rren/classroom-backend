@@ -4,10 +4,11 @@ import com.prenotazioni.model.Role;
 import org.springframework.security.core.AuthenticatedPrincipal;
 
 /**
- * Principal costruito dai claim gia' verificati del JWT (id, email, ruolo),
- * cosi' i controller possono leggere id/ruolo senza un round-trip al DB per richiesta.
- * getName() ritorna l'email per restare compatibile con il codice esistente che chiama
- * Authentication.getName() aspettandosi l'email dell'utente.
+ * The principal built from the JWT's already verified claims (id, email, role), so the
+ * controllers can read the id and the role without a database round trip per request.
+ *
+ * getName() returns the email, to stay compatible with existing code that calls
+ * Authentication.getName() expecting the user's email address.
  */
 public record AppPrincipal(Long id, String email, String username, String name, String role)
         implements AuthenticatedPrincipal {

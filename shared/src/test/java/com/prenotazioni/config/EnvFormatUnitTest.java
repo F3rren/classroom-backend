@@ -15,15 +15,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Il file .env e' l'unico posto dove stanno i segreti, e lo leggono in due: Docker Compose
- * per iniettarli nei container, e Spring - tramite spring.config.import - per i lanci fuori
- * dai container. Questa classe verifica che la seconda meta' di quella frase sia vera.
+ * to inject them into the containers, and Spring - through spring.config.import - for runs
+ * outside them. This class checks that the second half of that sentence is true.
  *
- * Il rischio che copre e' preciso e sgradevole: Compose e Java interpretano i valori in modo
+ * The risk it covers is precise and unpleasant: Compose and Java read the values slightly
  * leggermente diverso. Se divergessero, i due leggerebbero valori diversi DALLO STESSO FILE,
- * e il file sembrerebbe corretto guardandolo. E' un guasto peggiore di quello che il .env
- * unico e' venuto a chiudere, quindi vale la pena tenerlo fermo con dei test.
+ * and the file would look correct to the eye. That is a worse failure than the one the
+ * single .env came to close, so it is worth pinning down with tests.
  *
- * Non si legge il .env vero: contiene segreti. Si verifica il MECCANISMO su file scritti qui.
+ * The real .env is never read: it holds secrets. What is checked is the MECHANISM, against
+ * files written here.
  */
 class EnvFormatUnitTest {
 
@@ -32,9 +33,9 @@ class EnvFormatUnitTest {
 
     @Configuration
     static class SoloAmbiente {
-        // Nessun bean: serve solo un contesto che carichi le proprieta'. Un
-        // @SpringBootApplication tirerebbe dentro la configurazione automatica del
-        // datasource e il test smetterebbe di parlare di cio' che deve verificare.
+        // No beans: all that is needed is a context that loads the properties. A
+        // @SpringBootApplication would drag in the datasource auto-configuration and the
+        // test would stop being about what it is meant to check.
     }
 
     private ConfigurableApplicationContext avviaCon(String contenutoEnv) throws IOException {
@@ -48,7 +49,7 @@ class EnvFormatUnitTest {
 
     @Test
     void springLeggeIlFormatoDiCompose() throws IOException {
-        // La riga di chiusura: senza questa, l'intera scelta di tenere un solo file cade.
+        // The closing line: without this, the whole choice of keeping one single file falls.
         try (var context = avviaCon("JWT_SECRET=abc123\nSPRING_DATASOURCE_PASSWORD=segreta\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo("abc123");
             assertThat(context.getEnvironment().getProperty("SPRING_DATASOURCE_PASSWORD")).isEqualTo("segreta");
@@ -57,11 +58,11 @@ class EnvFormatUnitTest {
 
     @Test
     void ilSegnapostoRisolveDalEnv() throws IOException {
-        // I nomi non combaciano - .env dice SPRING_DATASOURCE_PASSWORD, Spring vuole
-        // spring.datasource.password - e la conversione automatica NON avviene: il relaxed
-        // binding tratta le maiuscole con underscore solo per le variabili d'ambiente vere,
-        // non per le chiavi lette da un file. Il ponte e' un segnaposto esplicito, ed e'
-        // questo che il test fissa.
+        // The names do not line up - .env says SPRING_DATASOURCE_PASSWORD, Spring wants
+        // spring.datasource.password - and the automatic conversion does NOT happen: relaxed
+        // binding treats uppercase-with-underscores only for real environment variables, not
+        // for keys read from a file. The bridge is an explicit placeholder, and that is what
+        // this test pins down.
         Path env = cartella.resolve("prova.env");
         Files.writeString(env, "JWT_SECRET=chiave-di-prova\n");
         try (var context = new SpringApplicationBuilder(SoloAmbiente.class)
@@ -75,9 +76,9 @@ class EnvFormatUnitTest {
 
     @Test
     void unSegretoBase64AttraversaIntatto() throws IOException {
-        // I segreti veri sono base64: contengono + / = e possono finire con del padding.
+        // Real secrets are base64: they contain + / = and can end in padding.
         // Nessuno di questi ha significato speciale in un file properties, ma "nessuno di
-        // questi" e' un'affermazione che va verificata, non ricordata.
+        // these" is a claim that has to be checked, not remembered.
         String secret = "aB3+xY/9zQ==";
         try (var context = avviaCon("JWT_SECRET=" + secret + "\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo(secret);
@@ -86,10 +87,10 @@ class EnvFormatUnitTest {
 
     @Test
     void leVirgoletteFinirebberoDentroAlValore() throws IOException {
-        // Questa e' la divergenza vera fra i due lettori, ed e' il motivo per cui .env.example
-        // dice di non usare virgolette: Compose le toglie, Java le tiene. Il test non la
-        // corregge - la DOCUMENTA, perche' un giorno qualcuno virgoletta un segreto e il
-        // sintomo sara' un token che non valida, senza niente che spieghi perche'.
+        // This is the real divergence between the two readers, and the reason .env.example
+        // says not to use quotes: Compose strips them, Java keeps them. The test does not fix
+        // it - it DOCUMENTS it, because one day somebody will quote a secret and the symptom
+        // will be a token that does not validate, with nothing to explain why.
         try (var context = avviaCon("JWT_SECRET=\"virgolettato\"\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET"))
                     .isEqualTo("\"virgolettato\"")
@@ -99,9 +100,9 @@ class EnvFormatUnitTest {
 
     @Test
     void unFileAssenteNonImpedisceLAvvio() {
-        // In container il .env non c'e': i valori arrivano gia' come variabili d'ambiente,
-        // iniettate da Compose. L'import e' "optional:" proprio per questo, e se cosi' non
-        // fosse i quattro servizi non partirebbero affatto.
+        // In a container there is no .env: the values arrive as environment variables
+        // already, injected by Compose. The import is "optional:" precisely for that, and
+        // were it not, the four services would not start at all.
         try (var context = new SpringApplicationBuilder(SoloAmbiente.class)
                 .web(WebApplicationType.NONE)
                 .properties("spring.config.import=optional:file:"

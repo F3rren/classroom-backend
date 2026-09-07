@@ -9,10 +9,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Contratto esterno di Ruolo.
  *
- * Il test su toAuthority() e' il piu' importante del file: le espressioni
- * @PreAuthorize("hasRole('ADMIN')") sono stringhe SpEL che il compilatore non verifica,
- * quindi se qualcuno cambiasse il nome della costante o il prefisso l'autorizzazione si
- * romperebbe in silenzio, senza alcun errore di compilazione. Qui quel legame e' fissato.
+ * The test on toAuthority() is the most important in the file: the
+ * @PreAuthorize("hasRole('ADMIN')") expressions are SpEL strings the compiler does not check,
+ * so if somebody changed the constant's name or the prefix, authorisation would break in
+ * silence, with no compilation error at all. That link is pinned down here.
  */
 class RoleTest {
 
@@ -27,7 +27,7 @@ class RoleTest {
 
     @Test
     void serializesLowercaseBecauseTheFrontendComparesWithAdmin() throws Exception {
-        // il frontend fa: user?.ruolo === "admin"
+        // a client compares: user?.role === "admin"
         assertThat(objectMapper.writeValueAsString(Role.ADMIN)).isEqualTo("\"admin\"");
         assertThat(objectMapper.writeValueAsString(Role.USER)).isEqualTo("\"user\"");
     }
@@ -49,7 +49,7 @@ class RoleTest {
 
     @Test
     void theJpaConverterWritesTheLowercaseValueOnDisk() {
-        // e' cio' che tiene la colonna dentro utente_ruolo_check
+        // this is what keeps the column inside user_role_check
         Role.JpaConverter converter = new Role.JpaConverter();
 
         assertThat(converter.convertToDatabaseColumn(Role.ADMIN)).isEqualTo("admin");

@@ -7,11 +7,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * L'involucro di quasi tutte le risposte. Il ramo di errore era gia' coperto da
- * GlobalExceptionHandlerUnitTest; qui si fissa il ramo di successo e, soprattutto,
- * l'omissione dei campi nulli: @JsonInclude(NON_NULL) riproduce il comportamento del
- * Map.of usato in origine, che non poteva contenere valori null. Se qualcuno lo
- * togliesse, le risposte guadagnerebbero campi "error": null che il frontend non si aspetta.
+ * The wrapper around almost every response. The error branch was already covered by
+ * GlobalExceptionHandlerUnitTest; what is pinned here is the success branch and, above all,
+ * the omission of null fields: @JsonInclude(NON_NULL) reproduces the behaviour of the Map.of
+ * originally used, which could not hold null values. If somebody removed it, the responses
+ * would gain "error": null fields the client does not expect.
  */
 class ApiEnvelopeUnitTest {
 
@@ -52,9 +52,9 @@ class ApiEnvelopeUnitTest {
 
     @Test
     void unErroreEsponeEsattamenteSeiChiavi() throws Exception {
-        // Contratto condiviso col gateway. Quello non puo' riusare questa classe (shared
-        // porta spring-boot-starter-web, che in un'applicazione WebFlux farebbe partire
-        // Tomcat), quindi ricostruisce l'envelope a mano. Questo test e' il gemello di
+        // A contract shared with the gateway. The gateway cannot reuse this class (shared
+        // brings spring-boot-starter-web, which in a WebFlux application would start Tomcat),
+        // so it rebuilds the envelope by hand. This test is the twin of
         // RisposteErroreTest: insieme impediscono alle due forme di divergere in silenzio.
         JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(
                 ApiEnvelope.error("CODICE", "messaggio tecnico", "messaggio per l'utente", "S1")));

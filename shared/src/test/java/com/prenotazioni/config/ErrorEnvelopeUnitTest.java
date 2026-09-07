@@ -11,12 +11,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Le due risposte che un client vede prima di qualunque controller: 401 quando manca
- * l'autenticazione, 403 quando manca il permesso.
+ * The two responses a client sees before any controller: 401 when authentication is
+ * missing, 403 when the permission is.
  *
- * Erano coperte solo di rimbalzo dai test di integrazione, che vivono nel modulo
- * applicativo. Spostate in shared restavano senza test propri, ed e' il tipo di codice
- * che merita un test diretto: il loro corpo JSON e' contratto verso il frontend, non
+ * They were covered only indirectly by the integration tests, which live in the application
+ * module. Moved into shared they were left with no tests of their own, and this is the kind
+ * of code that deserves a direct one: their JSON body is a contract towards the client, not
  * dettaglio interno.
  */
 class ErrorEnvelopeUnitTest {
@@ -37,10 +37,10 @@ class ErrorEnvelopeUnitTest {
         assertThat(body.get("success").asBoolean()).isFalse();
         assertThat(body.get("error").asText()).isEqualTo("UNAUTHORIZED");
         assertThat(body.get("userMessage").asText()).isEqualTo("Devi effettuare il login per accedere a questa funzionalità.");
-        // Il sessionId serve a correlare i log. Il prefisso non e' piu' AUTH_ perche' non
-        // e' piu' il controller a inventarselo: e' l'id della richiesta, lo stesso che vede
-        // il gestore degli errori. Fuori da una richiesta HTTP - come qui - si ripiega su
-        // uno generato, e cio' che conta e' che il campo non sia mai vuoto.
+        // The sessionId is there to correlate the logs. The prefix is no longer AUTH_
+        // because the controller no longer invents it: it is the request's id, the same one
+        // the error handler sees. Outside an HTTP request - as here - it falls back to a
+        // generated one, and what matters is that the field is never empty.
         assertThat(body.get("sessionId").asText()).isNotBlank();
     }
 

@@ -14,10 +14,11 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Rifiuto a livello di filtro (nessun token / token non valido) per rotte protette.
- * Senza questo, Spring Security scriverebbe un body 401 generico/vuoto invece del
- * JSON ricco che l'app usa ovunque, dato che questo punto e' PRIMA del dispatch al
- * controller: GlobalExceptionHandler non ha modo di intercettarlo.
+ * A refusal at filter level (no token, or an invalid one) on protected routes.
+ *
+ * Without this, Spring Security would write a generic or empty 401 body instead of the full
+ * JSON the application uses everywhere, because this point comes BEFORE the dispatch to the
+ * controller: GlobalExceptionHandler has no way of catching it.
  */
 @Component
 public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {

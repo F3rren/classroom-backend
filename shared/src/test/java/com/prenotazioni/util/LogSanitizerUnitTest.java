@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Il percorso felice di LogSanitizer e' gia' attraversato da ogni login; qui si coprono
- * i guard su input degeneri, che non e' possibile provocare via HTTP perche' Bean
- * Validation rifiuta prima le email malformate.
+ * LogSanitizer's happy path is already crossed by every login; what is covered here are the
+ * guards on degenerate input, which cannot be provoked over HTTP because Bean Validation
+ * rejects malformed emails first.
  */
 class LogSanitizerUnitTest {
 
@@ -33,7 +33,7 @@ class LogSanitizerUnitTest {
 
     @Test
     void emailStartingWithAtSignCollapsesToStars() {
-        // atIndex == 0: non c'e' parte locale da mostrare
+        // atIndex == 0: there is no local part left to show
         assertThat(LogSanitizer.maskEmail("@example.it")).isEqualTo("***");
     }
 

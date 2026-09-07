@@ -8,16 +8,15 @@ import jakarta.persistence.Converter;
 import java.util.Locale;
 
 /**
- * Ruolo applicativo di un utente, persistito minuscolo (CHECK constraint
- * utente_ruolo_check) e letto minuscolo dal frontend, che fa user?.ruolo === "admin".
+ * A user's application role, stored lowercase (CHECK constraint user_role_check) and read
+ * lowercase by a client, which compares user?.role === "admin".
  *
- * ATTENZIONE al confine con Spring Security: qui NON si tocca il formato delle
- * authority. Spring usa il prefisso e il maiuscolo ("ROLE_ADMIN"), che JwtAuthFilter
- * costruisce a partire da questo valore, e le espressioni @PreAuthorize("hasRole('ADMIN')")
- * sono stringhe SpEL che il compilatore non verifica: cambiare il valore di questo enum
- * senza aggiornarle romperebbe l'autorizzazione in modo silenzioso. Per lo stesso motivo
- * il claim "role" del JWT e AppPrincipal restano String: sono formato di trasporto,
- * non il modello di dominio.
+ * MIND the boundary with Spring Security: the format of the authorities is NOT touched here.
+ * Spring uses the prefix and uppercase ("ROLE_ADMIN"), which JwtAuthFilter builds from this
+ * value, and the @PreAuthorize("hasRole('ADMIN')") expressions are SpEL strings the compiler
+ * does not check: changing this enum's value without updating them would break authorisation
+ * silently. For the same reason the JWT's "role" claim and AppPrincipal stay Strings: they
+ * are a transport format, not the domain model.
  */
 public enum Role {
 
@@ -30,7 +29,7 @@ public enum Role {
         this.value = value;
     }
 
-    /** Valore minuscolo usato in JSON, nel database e nel claim JWT. */
+    /** The lowercase value used in JSON, in the database and in the JWT claim. */
     @JsonValue
     public String getValue() {
         return value;
@@ -52,7 +51,7 @@ public enum Role {
 
     /**
      * Nome dell'authority attesa da Spring Security (hasRole('ADMIN') cerca "ROLE_ADMIN").
-     * Centralizzato qui in modo che il prefisso non venga piu' ricostruito a mano.
+     * Centralised here so the prefix is never rebuilt by hand again.
      */
     public String toAuthority() {
         return "ROLE_" + name();

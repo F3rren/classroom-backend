@@ -6,18 +6,18 @@ import org.springframework.http.ResponseEntity;
 import java.util.Map;
 
 /**
- * Lettura del JSON nelle risposte HTTP dei test.
+ * Reading the JSON out of an HTTP response in a test.
  *
- * Esisteva gia', undici volte: ogni classe di test d'integrazione si costruiva il proprio
+ * It already existed, eleven times over: every integration test class built its own
  * ObjectMapper e ci avvolgeva intorno un `private Map&lt;String, Object&gt; asMap(String)`
- * identico agli altri dieci. Undici copie della stessa riga sono undici posti dove
- * correggere il giorno in cui serve gestire un caso in piu'.
+ * identical to the other ten. Eleven copies of the same line are eleven places to fix on the
+ * day one more case has to be handled.
  *
- * Un ObjectMapper solo, statico, va bene: e' progettato per essere condiviso ed e' sicuro
- * fra thread una volta configurato.
+ * A single static ObjectMapper is fine: it is designed to be shared and is thread-safe once
+ * configured.
  *
- * Sta qui e non in ciascun modulo perche' i tre servizi dipendono gia' dal test-jar di
- * shared - e' cosi' che usano {@link TestJwt}.
+ * It lives here rather than in each module because the three services already depend on
+ * shared's test-jar - that is how they use {@link TestJwt}.
  */
 public final class TestJson {
 
@@ -27,21 +27,21 @@ public final class TestJson {
     }
 
     /**
-     * Il JSON come mappa.
+     * The JSON as a map.
      *
-     * Rilancia come RuntimeException di proposito: in un test un JSON illeggibile non e' un
-     * caso da gestire, e' il test che deve fallire subito indicando cosa e' arrivato.
+     * It rethrows as a RuntimeException on purpose: in a test, unreadable JSON is not a case
+     * to handle - the test should fail immediately, saying what actually arrived.
      */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> asMap(String json) {
         try {
             return MAPPER.readValue(json, Map.class);
         } catch (Exception e) {
-            throw new IllegalStateException("JSON non leggibile: " + json, e);
+            throw new IllegalStateException("JSON not readable: " + json, e);
         }
     }
 
-    /** Il corpo di una risposta, gia' come mappa. */
+    /** The body of a response, already as a map. */
     public static Map<String, Object> bodyOf(ResponseEntity<String> response) {
         return asMap(response.getBody());
     }

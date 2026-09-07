@@ -2,7 +2,7 @@ package com.prenotazioni.dto;
 
 import lombok.Value;
 
-/** Risposta con un solo contatore, es. numero di notifiche non lette. */
+/** A response carrying a single count, the number of unread notifications for instance. */
 @Value
 public class CountResponse {
     long count;

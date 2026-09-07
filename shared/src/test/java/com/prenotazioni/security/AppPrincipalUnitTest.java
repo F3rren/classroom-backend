@@ -6,15 +6,15 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * AppPrincipal e' il punto in cui i claim del token diventano decisioni di autorizzazione,
- * quindi ogni servizio della futura architettura a microservizi ci passa attraverso: e' lui
- * a rendere superflua una chiamata di rete verso auth-service per sapere chi sta chiamando.
+ * AppPrincipal is the point where the token's claims become authorisation decisions, so
+ * every service passes through it: it is what makes a network call to auth-service
+ * unnecessary just to know who is calling.
  */
 class AppPrincipalUnitTest {
 
     @Test
     void getNameReturnsTheEmailBecauseCallersExpectIt() {
-        // il codice esistente chiama Authentication.getName() aspettandosi l'email
+        // existing code calls Authentication.getName() expecting the email
         AppPrincipal principal = new AppPrincipal(7L, "mario.rossi@example.it", "m.rossi", "Mario Rossi", "user");
 
         assertThat(principal.getName()).isEqualTo("mario.rossi@example.it");
@@ -32,7 +32,7 @@ class AppPrincipalUnitTest {
     void isAdminIsFalseForEveryoneElse() {
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", Role.USER.getValue()).isAdmin()).isFalse();
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", "superuser").isAdmin()).isFalse();
-        // un token senza claim di ruolo non deve promuovere nessuno ad admin
+        // a token with no role claim must not promote anybody to admin
         assertThat(new AppPrincipal(1L, "a@b.it", "m.rossi", "Mario Rossi", null).isAdmin()).isFalse();
     }
 }

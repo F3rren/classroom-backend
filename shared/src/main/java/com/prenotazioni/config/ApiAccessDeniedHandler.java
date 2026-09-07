@@ -14,9 +14,9 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Rifiuto a livello di filtro per richieste autenticate ma senza i privilegi
- * richiesti dalla regola di SecurityConfig (non da @PreAuthorize, che invece
- * viene intercettato da GlobalExceptionHandler dentro il dispatch del controller).
+ * A refusal at filter level, for requests that are authenticated but lack the privileges
+ * SecurityConfig's rule requires (not @PreAuthorize's, which is instead caught by
+ * GlobalExceptionHandler inside the controller dispatch).
  */
 @Component
 public class ApiAccessDeniedHandler implements AccessDeniedHandler {

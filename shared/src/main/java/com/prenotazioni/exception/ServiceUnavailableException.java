@@ -1,20 +1,20 @@
 package com.prenotazioni.exception;
 
 /**
- * Un servizio a valle non ha risposto, e l'operazione va ripetuta.
+ * A downstream service did not answer, and the operation needs repeating.
  *
- * Si traduce in 503 e non in 500, ed e' una distinzione che serve a chi legge la risposta:
+ * It becomes a 503 and not a 500, and that distinction is for whoever reads the response:
  * un 500 dice "e' rotto qualcosa", un 503 dice "riprova". Sono due azioni diverse.
  *
- * Il caso concreto per cui e' nata: la cancellazione di un utente cancella prima i suoi dati
- * negli altri servizi e solo dopo l'utente. Se uno di quei servizi non risponde, l'operazione
- * si ferma a meta' - e l'unica cosa che la porta a termine e' che qualcuno la ripeta. Finche'
- * quel fallimento arrivava come "errore interno del server", ripetere non era la conclusione
- * ovvia, e la meta' fatta restava li'.
+ * The concrete case it was born for: deleting a user deletes their data in the other
+ * services first and the user only afterwards. If one of those services does not answer the
+ * operation stops halfway - and the only thing that finishes it is somebody repeating it. As
+ * long as that failure arrived as "internal server error", repeating was not the obvious
+ * conclusion, and the half that was done stayed done.
  *
- * Va usata SOLO quando ripetere ha davvero senso: un servizio irraggiungibile, un timeout,
- * un 5xx a valle. Un rifiuto a valle - un 400, un 404 - non e' questo: ripetere darebbe lo
- * stesso esito e l'invito a farlo sarebbe una bugia.
+ * Use it ONLY when repeating genuinely makes sense: an unreachable service, a timeout, a 5xx
+ * downstream. A downstream refusal - a 400, a 404 - is not this: repeating would give the same
+ * outcome, and inviting somebody to do it would be a lie.
  */
 public class ServiceUnavailableException extends ApplicationException {
 

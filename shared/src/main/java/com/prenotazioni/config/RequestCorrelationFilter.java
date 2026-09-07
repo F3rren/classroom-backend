@@ -16,22 +16,22 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Un solo identificativo per richiesta, condiviso da tutti quelli che la gestiscono.
+ * One id per request, shared by everything that handles it.
  *
- * Prima ogni classe se ne generava uno per conto proprio: sette implementazioni con sei
- * prefissi diversi (ADM_, AUTH_, ME_, S, R, ERR_). La conseguenza pratica e' che una sola
- * richiesta finiva nei log con DUE identificativi distinti - quello del controller e
- * quello che GlobalExceptionHandler generava rispondendo - senza modo di collegarli. Il
- * campo che esiste per correlare i log non riusciva a farlo, che e' il peggior modo di
- * fallire per uno strumento di diagnosi: sembra funzionare.
+ * Every class used to generate its own: seven implementations with six different prefixes
+ * (ADM_, AUTH_, ME_, S, R, ERR_). The practical consequence was that a single request ended
+ * up in the logs under TWO distinct ids - the controller's, and the one
+ * GlobalExceptionHandler generated while answering - with no way to connect them. The field
+ * that exists to correlate logs could not do it, which is the worst way for a diagnostic
+ * tool to fail: it looks like it is working.
  *
- * L'identificativo viaggia anche fra i servizi. Se la richiesta arriva con l'intestazione
- * X-Request-Id la si riusa invece di generarne una nuova: cosi' un giro che attraversa
- * gateway, servizio prenotazioni e servizio notifiche si segue con una sola chiave. In un
- * sistema a piu' servizi e' l'unico modo per ricostruire cosa sia successo.
+ * The id travels between services too. If the request arrives carrying an X-Request-Id
+ * header it is reused rather than replaced: that way a round trip across the gateway, the
+ * booking service and the notification service is followed with one single key. In a system
+ * of several services that is the only way to reconstruct what happened.
  *
- * Finisce anche in MDC, quindi un pattern di log puo' stamparlo su ogni riga senza che
- * nessuno debba passarlo a mano.
+ * It also goes into the MDC, so a log pattern can print it on every line without anybody
+ * having to pass it around by hand.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
@@ -51,25 +51,25 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
 
         request.setAttribute(ATTRIBUTO, id);
         MDC.put(CHIAVE_MDC, id);
-        // Rimandato indietro: chi ha fatto la chiamata puo' citarlo in una segnalazione
-        // anche quando la risposta non ha un corpo in cui infilarlo.
+        // Sent back out: whoever made the call can quote it in a report even when the
+        // response has no body to carry it in.
         response.setHeader(HEADER, id);
 
         try {
             chain.doFilter(request, response);
         } finally {
-            // Obbligatorio: i thread sono riusati, e un MDC non ripulito farebbe comparire
-            // l'identificativo di una richiesta nei log di quella successiva.
+            // Mandatory: threads are reused, and an MDC left uncleared would make one
+            // request's id show up in the next request's log lines.
             MDC.remove(CHIAVE_MDC);
         }
     }
 
     /**
-     * L'identificativo della richiesta in corso.
+     * The id of the request in flight.
      *
-     * Il ripiego serve ai casi in cui non c'e' una richiesta HTTP: un consumatore di
-     * messaggi, un'attivita' pianificata, un test unitario. Meglio un identificativo
-     * scollegato che un null che poi compare come "null" dentro una risposta.
+     * The fallback covers the cases where there is no HTTP request at all: a message
+     * consumer, a scheduled job, a unit test. A disconnected id beats a null that then shows
+     * up as the string "null" inside a response.
      */
     public static String current() {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributi) {
@@ -82,23 +82,22 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Mette in MDC un identificativo che NON arriva da una richiesta HTTP.
+     * Puts into the MDC an id that did NOT come from an HTTP request.
      *
-     * Serve a chi consuma messaggi: un ascoltatore AMQP gira su un thread suo, fuori da
-     * qualunque richiesta, e senza questo l'evento comparirebbe nei log con un
-     * identificativo scollegato da quello dell'operazione che lo ha causato.
+     * Message consumers need this: an AMQP listener runs on a thread of its own, outside any
+     * request, and without it the event would appear in the logs under an id disconnected
+     * from the operation that caused it.
      *
-     * Un valore assente non e' un errore: un messaggio pubblicato prima che
-     * l'intestazione esistesse deve continuare a essere consumato, semplicemente con un
-     * identificativo proprio.
+     * A missing value is not an error: a message published before the header existed has to
+     * keep being consumed, simply with an id of its own.
      */
     public static void applyToMdc(String id) {
         MDC.put(CHIAVE_MDC, (id == null || id.isBlank()) ? generate() : id);
     }
 
     /**
-     * Da chiamare in un finally: i thread vengono riusati, e un MDC non ripulito farebbe
-     * comparire l'identificativo di questo messaggio nei log del successivo.
+     * To be called in a finally: threads are reused, and an MDC left uncleared would make
+     * this message's id show up in the next message's log lines.
      */
     public static void clearMdc() {
         MDC.remove(CHIAVE_MDC);

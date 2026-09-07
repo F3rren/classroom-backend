@@ -28,15 +28,15 @@ public class SecurityConfig {
     private final ApiAccessDeniedHandler apiAccessDeniedHandler;
 
     /**
-     * Percorsi raggiungibili senza token, separati da virgola.
+     * The paths reachable without a token, comma separated.
      *
-     * E' l'unica parte di questa configurazione che cambia da servizio a servizio, ed e'
-     * per questo una property invece che una lista scritta nel codice: la catena di
-     * sicurezza, la CORS e i due handler di errore sono identici ovunque, e duplicarli in
-     * ogni servizio significherebbe che prima o poi divergono.
+     * This is the only part of this configuration that differs from service to service, and
+     * that is why it is a property rather than a list written in the code: the security
+     * chain, the CORS setup and the two error handlers are identical everywhere, and
+     * duplicating them per service would mean they drift apart sooner or later.
      *
-     * Il default copre solo la documentazione OpenAPI: un servizio che non dichiara nulla
-     * resta completamente protetto, che e' il default giusto da sbagliare.
+     * The default covers only the OpenAPI documentation: a service that declares nothing
+     * stays fully protected, which is the right default to get wrong.
      */
     @Value("${prenotazioni.security.public-paths:/v3/api-docs,/v3/api-docs/**,/swagger-ui/**,/swagger-ui.html}")
     private String publicPaths;
@@ -69,11 +69,11 @@ public class SecurityConfig {
                 .collect(Collectors.toList());
     }
 
-    // NOTA: la console H2 non e' mai stata attivata in questo progetto
-    // (manca 'spring.h2.console.enabled=true', e il DB usato e' sempre Postgres).
-    // Se in futuro serve per debug locale, va aggiunta una security matcher chain
-    // dedicata SOLO per '/h2-console/**' con frameOptions rilassato, invece di
-    // disabilitare la protezione clickjacking per l'intera applicazione.
+    // NOTE: the H2 console has never been enabled in this project
+    // ('spring.h2.console.enabled=true' is absent, and the database in use is always
+    // Postgres). If it is ever wanted for local debugging, add a security matcher chain
+    // dedicated ONLY to '/h2-console/**' with frameOptions relaxed, rather than switching
+    // clickjacking protection off for the whole application.
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

@@ -14,19 +14,18 @@ import javax.crypto.SecretKey;
 import java.util.function.Function;
 
 /**
- * La meta' di sola lettura di JwtService: verifica la firma e legge i claim.
+ * The read-only half of JwtService: it verifies the signature and reads the claims.
  *
- * E' il pezzo che rende la separazione in servizi economica. Validare un token qui non
- * comporta alcun accesso al database ne' alcuna chiamata verso auth-service: basta
- * conoscere il segreto. Ogni servizio decide da solo chi sta chiamando e con quale ruolo,
- * e di conseguenza i test di ogni servizio possono firmarsi i propri token invece di
- * dover creare un utente vero.
+ * This is the piece that makes the split into services cheap. Validating a token here
+ * involves no database access and no call to auth-service: knowing the secret is enough.
+ * Every service decides for itself who is calling and with which role, and as a result every
+ * service's tests can sign their own tokens instead of having to create a real user.
  *
- * L'emissione (generateToken) resta fuori di qui, perche' richiede l'entita' Utente e
- * appartiene al solo servizio che possiede la tabella utenti.
+ * Issuing (generateToken) stays out of here, because it needs the User entity and belongs to
+ * the one service that owns the users table.
  *
- * Il rovescio della medaglia da tenere presente: il segreto e' ora condiviso fra piu'
- * processi, quindi ruotarlo richiede di riavviarli tutti insieme.
+ * The trade-off worth keeping in mind: the secret is now shared between several processes,
+ * so rotating it means restarting all of them together.
  */
 @Component
 public class JwtVerifier {
@@ -40,8 +39,8 @@ public class JwtVerifier {
 
     @PostConstruct
     public void init() {
-        // Il segreto e' codificato in BASE64URL, non sono byte grezzi: decodificarlo
-        // diversamente produrrebbe una chiave diversa e ogni token verrebbe rifiutato.
+        // The secret is BASE64URL-encoded, not raw bytes: decoding it any other way would
+        // produce a different key and every token would be refused.
         this.key = JwtKey.from(secret);
     }
 
@@ -72,13 +71,13 @@ public class JwtVerifier {
     }
 
     /**
-     * Il nome visualizzato dell'utente.
+     * The user's display name.
      *
-     * Sta nel token per una ragione precisa: e' l'unico dato dell'utente che serve ai
-     * servizi a valle (finisce nel campo "user" dei dettagli aula), e portarlo qui evita
-     * a prenotazione-service una chiamata di rete verso auth-service a ogni prenotazione.
-     * Un token emesso prima di questa modifica non ha il claim: torna null, e chi lo usa
-     * deve gestirlo invece di dare per scontato che ci sia.
+     * It sits in the token for a precise reason: it is the only piece of user data the
+     * downstream services need (it ends up in the "user" field of the room details), and
+     * carrying it here saves booking-service a network call to auth-service on every booking.
+     * A token issued before this change has no such claim: it comes back null, and callers
+     * have to handle that rather than assume it is there.
      */
     public String getUsernameFromToken(String token) {
         return extractClaim(token, claims -> claims.get("username", String.class));

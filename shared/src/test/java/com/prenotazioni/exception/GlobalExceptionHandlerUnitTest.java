@@ -20,24 +20,24 @@ import java.lang.reflect.Method;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Gli handler di conflitto e di errore interno non sono raggiungibili dai test HTTP:
- * su H2 il vincolo anti-sovrapposizione non esiste, quindi nessuna richiesta puo'
- * produrre una DataIntegrityViolationException o una BookingConflictException.
- * Qui l'handler viene istanziato direttamente.
+ * The conflict and internal-error handlers are unreachable from the HTTP tests: on H2 the
+ * anti-overlap constraint does not exist, so no request can produce a
+ * DataIntegrityViolationException or a BookingConflictException. Here the handler is
+ * instantiated directly.
  */
 class GlobalExceptionHandlerUnitTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
-    /** Metodo fittizio usato solo per costruire un MethodParameter valido. */
+    /** A dummy method, used only to build a valid MethodParameter. */
     @SuppressWarnings("unused")
     private void metodoDiComodo(String argomento) {
     }
 
     /**
-     * BeanPropertyBindingResult richiede che il campo respinto esista davvero sul target,
-     * altrimenti rejectValue produce un errore globale e getFieldError() torna null.
-     * Prima si usava AulaRequest, che vive nel modulo applicativo: qui basta un bean locale.
+     * BeanPropertyBindingResult requires the rejected field to really exist on the target,
+     * otherwise rejectValue produces a global error and getFieldError() returns null. It used
+     * to use RoomRequest, which lives in the application module: a local bean is enough here.
      */
     static class OggettoConCapienza {
         private Integer capacity;
@@ -75,7 +75,7 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void unaRisorsaMancanteResta404ENonDiventaErroreInterno() {
-        // Regressione: senza un handler dedicato, NoResourceFoundException finiva in
+        // A regression: without a dedicated handler, NoResourceFoundException fell through to
         // handleGeneric e un percorso inesistente rispondeva 500 INTERNAL_ERROR.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
                 new NoResourceFoundException(HttpMethod.GET, "/v3/api-docs"));
@@ -91,7 +91,7 @@ class GlobalExceptionHandlerUnitTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(resp.getBody().getError()).isEqualTo("INTERNAL_ERROR");
-        // il messaggio tecnico non deve finire nella risposta
+        // the technical message must not reach the response
         assertThat(resp.getBody().getUserMessage()).doesNotContain("dettaglio interno");
     }
 
@@ -106,7 +106,7 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void laValidazioneSenzaErroriDiCampoRipiegaSuUnMessaggioGenerico() throws Exception {
-        // ramo firstError == null: un BindingResult senza errori di campo
+        // the firstError == null branch: a BindingResult with no field errors
         Method metodo = getClass().getDeclaredMethod("metodoDiComodo", String.class);
         MethodParameter parametro = new MethodParameter(metodo, 0);
         BindingResult binding = new BeanPropertyBindingResult(new Object(), "oggetto");
@@ -123,8 +123,8 @@ class GlobalExceptionHandlerUnitTest {
     void validationUsesTheFirstFieldErrorMessage() throws Exception {
         Method metodo = getClass().getDeclaredMethod("metodoDiComodo", String.class);
         MethodParameter parametro = new MethodParameter(metodo, 0);
-        // il target deve avere un campo vero: rejectValue su un campo inesistente
-        // produrrebbe un errore globale e getFieldError() tornerebbe null
+        // the target has to have a real field: rejectValue on a field that does not exist
+        // would produce a global error and getFieldError() would return null
         BeanPropertyBindingResult binding =
                 new BeanPropertyBindingResult(new OggettoConCapienza(), "oggettoConCapienza");
         binding.rejectValue("capacity", "Positive", "La capienza deve essere un numero positivo.");
@@ -151,7 +151,8 @@ class GlobalExceptionHandlerUnitTest {
     void laScorciatoiaPerIdComponeMessaggioTecnicoEMessaggioUtente() {
         ResourceNotFoundException ex = ResourceNotFoundException.forId(ResourceType.ROOM, 42L);
 
-        // il tecnico porta l'id, utile nei log; quello per l'utente no, perche' non gli serve
+        // the technical one carries the id, useful in a log; the user's does not, because
+        // they have no use for it
         assertThat(ex.getMessage()).contains("42");
         assertThat(ex.getUserMessage()).doesNotContain("42");
         assertThat(ex.getErrorCode()).isEqualTo("ROOM_NOT_FOUND");
@@ -159,8 +160,8 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void unConflittoDiDominioDiventa409() {
-        // 409 e non 400: un nome gia' in uso non e' una richiesta malformata, e il
-        // chiamante non lo risolve correggendo la sintassi.
+        // 409 and not 400: a name already taken is not a malformed request, and the caller
+        // does not fix it by correcting the syntax.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDomainConflict(
                 new DomainConflictException("ROOM_NAME_TAKEN", "Nome gia' esistente: Aula Magna",
                         "Esiste gia' un'aula con questo nome."));
@@ -171,9 +172,9 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void unConflittoDiPrenotazioneRestaGestibileComeConflittoGenerico() {
-        // BookingConflictException e' un sottotipo: il gestore specifico ha la precedenza,
-        // ma se un giorno venisse rimosso il caso resterebbe comunque coperto, con lo
-        // stesso stato. Questo test blocca quella relazione.
+        // BookingConflictException is a subtype: the specific handler takes precedence, but
+        // if it were ever removed the case would still be covered, with the same status.
+        // This test pins that relationship down.
         BookingConflictException ex = new BookingConflictException(
                 "BOOKING_CONFLICT", "Sovrapposizione", "L'aula e' gia' prenotata.");
 
@@ -193,9 +194,9 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void unIllegalArgumentRestaUn500ENonDiventaColpaDelChiamante() {
-        // Deliberato: IllegalArgumentException segnala un errore di programmazione.
-        // Mapparla a 400 farebbe passare i bug del server per richieste sbagliate, e
-        // nasconderebbe proprio i casi che vanno visti.
+        // Deliberate: IllegalArgumentException signals a programming error. Mapping it to a
+        // 400 would pass the server's bugs off as bad requests, and would hide exactly the
+        // cases that need to be seen.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleGeneric(
                 new IllegalArgumentException("argomento non valido"));
 
@@ -204,10 +205,10 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void unPercorsoInesistenteSenzaRisorseStaticheResta404() {
-        // Spring sceglie fra due eccezioni diverse a seconda che esista un gestore di
-        // risorse statiche. Quella coperta qui e' il caso SENZA - prenotazione-service,
-        // da quando la SPA e' stata rimossa - e mancava: quel servizio rispondeva 500
-        // "errore interno" a qualunque indirizzo sbagliato.
+        // Spring picks between two different exceptions depending on whether a
+        // static-resource handler exists. The one covered here is the case WITHOUT -
+        // booking-service, since the SPA was removed - and it was missing: that service
+        // answered 500 "internal error" to any wrong address.
         var response = handler.handleNoHandler(
                 new NoHandlerFoundException("GET", "/percorso/inventato", new HttpHeaders()));
 

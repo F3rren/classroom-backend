@@ -8,17 +8,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Il segreto va accettato in entrambi gli alfabeti base64.
+ * The secret has to be accepted in either base64 alphabet.
  *
- * Il caso che ha portato a questa classe: un segreto generato con il comando che la
- * documentazione stessa suggeriva, "openssl rand -base64 48", conteneva una '/' e faceva
- * morire tre servizi all'avvio con "Illegal base64url character: '/'". Su 64 caratteri
- * casuali succede circa nell'87% dei casi - funzionava solo perche' il segreto in uso era
- * capitato nel 13% fortunato.
+ * The case that led to this class: a secret generated with the very command the
+ * documentation suggested, "openssl rand -base64 48", contained a '/' and killed three
+ * services at startup with "Illegal base64url character: '/'". Over 64 random characters that
+ * happens roughly 87% of the time - it only worked because the secret in use had landed in
+ * the lucky 13%.
  */
 class JwtKeyUnitTest {
 
-    /** Stessi 48 byte nelle due codifiche: differiscono solo per '+/' contro '-_'. */
+    /** The same 48 bytes in both encodings: they differ only in '+/' versus '-_'. */
     private static final String STANDARD =
             "T3VqK2Zy/2Jhc2U2NCtzdGFuZGFyZC93aXRoK3BsdXMvYW5kL3NsYXNoISE=";
     private static final String URL_SAFE =
@@ -26,8 +26,8 @@ class JwtKeyUnitTest {
 
     @Test
     void accettaUnSegretoInBase64Standard() {
-        // E' la forma che produce "openssl rand -base64", cioe' quella che chiunque
-        // segua la documentazione si ritrova incollata nel file.
+        // This is the form "openssl rand -base64" produces, which is what anybody following
+        // the documentation ends up pasting into the file.
         assertThat(JwtKey.from(STANDARD)).isNotNull();
     }
 
@@ -38,9 +38,9 @@ class JwtKeyUnitTest {
 
     @Test
     void iDueAlfabetiProduconoLaStessaChiave() {
-        // E' il punto che conta davvero: chi firma e chi verifica possono avere il segreto
-        // scritto nelle due forme, e devono comunque ottenere la stessa chiave. Se questa
-        // asserzione cadesse, i token risulterebbero non validi senza alcun errore chiaro.
+        // This is the point that really matters: the signer and the verifier may hold the
+        // secret written in either form, and still have to derive the same key. If this
+        // assertion fell, tokens would come out invalid with no clear error.
         SecretKey fromStandard = JwtKey.from(STANDARD);
         SecretKey fromUrlSafe = JwtKey.from(URL_SAFE);
 
@@ -49,16 +49,16 @@ class JwtKeyUnitTest {
 
     @Test
     void ignoraGliSpaziAiBordi() {
-        // Un segreto incollato a mano si porta dietro spazi o un a capo piu' spesso di
-        // quanto si creda, e il messaggio d'errore non aiuterebbe a capirlo.
+        // A secret pasted by hand carries stray spaces or a newline more often than you
+        // would think, and the error message would not help anybody work that out.
         assertThat(JwtKey.from("  " + STANDARD + "  ").getEncoded())
                 .isEqualTo(JwtKey.from(STANDARD).getEncoded());
     }
 
     @Test
     void unSegretoMancanteDiceCosaImpostare() {
-        // Senza questo, un segreto assente arriva come NullPointerException dentro jjwt,
-        // che non dice a nessuno quale variabile manchi.
+        // Without this, a missing secret arrives as a NullPointerException inside jjwt,
+        // which tells nobody which variable is missing.
         assertThatThrownBy(() -> JwtKey.from(null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("JWT_SECRET");

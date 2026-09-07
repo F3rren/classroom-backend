@@ -1,45 +1,50 @@
 package com.prenotazioni.events;
 
 /**
- * I nomi con cui i servizi si trovano sul broker.
+ * The names by which the services find each other on the broker.
  *
- * Sono qui e non duplicati nei due application.properties per la stessa ragione per cui
- * l'evento e' un record condiviso: un nome di coda scritto due volte e' un nome che puo'
- * divergere, e il modo in cui si manifesterebbe e' il peggiore possibile - nessun errore,
- * il messaggio semplicemente non arriva mai a destinazione.
+ * They live here rather than duplicated across the two application.properties for the same
+ * reason the event is a shared record: a queue name written twice is a name that can drift
+ * apart, and the way that would show up is the worst possible one - no error at all, the
+ * message simply never arrives.
  *
- * Solo costanti: shared non dipende da Spring AMQP. Ogni servizio dichiara i propri bean
- * (l'exchange chi pubblica, la coda e il binding chi consuma) usando questi nomi.
+ * Constants only: shared does not depend on Spring AMQP. Each service declares its own beans
+ * (the exchange for the publisher, the queue and the binding for the consumer) using these
+ * names.
+ *
+ * The VALUES are still Italian. Renaming them is not a code change but a broker change: the
+ * old exchange and queue would stay behind, and any message still sitting in the old queue
+ * would be stranded with nobody listening. It is worth doing on an empty broker, and it is
+ * deliberately not bundled with a translation pass.
  */
 public final class EventTopology {
 
-    /** Exchange di tipo topic su cui viaggiano gli eventi delle prenotazioni. */
+    /** The topic exchange the booking events travel on. */
     public static final String EXCHANGE = "prenotazioni.eventi";
 
-    /** Chiave di routing dell'evento di cancellazione. */
+    /** The routing key of the cancellation event. */
     public static final String ROUTING_KEY_CANCELLATION = "prenotazione.cancellata";
 
     /**
-     * Coda del servizio notifiche. E' durevole: senza, un riavvio del broker perderebbe i
-     * messaggi non ancora consumati, che e' esattamente cio' che questa coda esiste per
-     * evitare.
+     * The notification service's queue. It is durable: without that, a broker restart would
+     * lose the messages not yet consumed, which is exactly what this queue exists to prevent.
      */
     public static final String CANCELLATION_QUEUE = "notifiche.prenotazione-cancellata";
 
     /**
-     * Dove finisce un messaggio che non si e' riusciti a trattare.
+     * Where a message that could not be handled ends up.
      *
-     * Senza, il comportamento predefinito di Spring AMQP rimette in coda un messaggio il
-     * cui ascoltatore solleva un'eccezione: se il salvataggio fallisce - database
-     * irraggiungibile, vincolo violato - quel messaggio rientra e riparte all'infinito,
-     * bruciando risorse e coprendo tutto il resto nei log.
+     * Without it, Spring AMQP's default behaviour requeues a message whose listener throws:
+     * if the save fails - unreachable database, violated constraint - that message comes back
+     * and starts over forever, burning resources and burying everything else in the logs.
      *
-     * Sono nomi NUOVI di proposito. Il modo canonico sarebbe dichiarare la coda esistente
-     * con x-dead-letter-exchange, ma RabbitMQ rifiuta di ridichiarare una coda durabile
-     * con argomenti diversi da quelli con cui e' nata: su un broker che ha gia' la coda -
-     * cioe' su qualunque ambiente gia' avviato una volta - la dichiarazione fallirebbe con
-     * un 406 e il servizio non partirebbe. Recuperare dal lato applicativo evita del tutto
-     * quel problema, e non chiede di cancellare code a mano prima di un aggiornamento.
+     * These are NEW names on purpose. The canonical approach would be to declare the existing
+     * queue with x-dead-letter-exchange, but RabbitMQ refuses to redeclare a durable queue
+     * with arguments different from the ones it was born with: on a broker that already has
+     * the queue - that is, on any environment ever started once - the declaration would fail
+     * with a 406 and the service would not start. Recovering on the application side avoids
+     * that problem entirely, and does not ask anybody to delete queues by hand before an
+     * upgrade.
      */
     public static final String ERROR_EXCHANGE = "prenotazioni.eventi.errori";
 

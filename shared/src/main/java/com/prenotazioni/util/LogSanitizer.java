@@ -1,15 +1,15 @@
 package com.prenotazioni.util;
 
 /**
- * Oscuramento dei dati personali prima che finiscano nei log.
+ * Masking of personal data before it reaches the logs.
  *
- * I file di log vengono archiviati, copiati e spesso condivisi per il debug: scriverci
+ * Log files are archived, copied and often shared for debugging: writing
  * dentro l'email in chiaro significa duplicare dati personali fuori dal database, dove
- * non sono piu' soggetti alla cancellazione dell'utente. Mascherare mantiene comunque
- * la possibilita' di correlare piu' righe dello stesso utente durante un'indagine.
+ * no longer subject to the deletion of the user. Masking still keeps the ability to
+ * correlate several lines belonging to the same user during an investigation.
  *
- * La logica era gia' presente come metodo privato in AuthController: qui viene promossa
- * a utility condivisa perche' gli altri controller e i service loggavano l'email in chiaro.
+ * The logic already existed as a private method in AuthController: it is promoted here to a
+ * shared utility because the other controllers and the services logged the email in clear.
  */
 public final class LogSanitizer {
 
@@ -18,9 +18,10 @@ public final class LogSanitizer {
 
     /**
      * "mario.rossi@example.it" -> "m***@example.it".
-     * Il dominio resta leggibile (utile per distinguere ambienti/tenant), la parte
-     * identificativa no. Input nullo o malformato collassa su "***" senza eccezioni:
-     * un helper di logging non deve mai poter far fallire il flusso chiamante.
+     * The domain stays readable (useful for telling environments or tenants apart), the
+     * identifying part does not. Null or malformed input collapses to "***" without
+     * throwing:
+     * a logging helper must never be able to fail the flow that called it.
      */
     public static String maskEmail(String email) {
         if (email == null || email.length() < 3) {
@@ -34,7 +35,7 @@ public final class LogSanitizer {
     }
 
     /**
-     * Maschera un identificativo non-email (es. username) mostrando solo la prima lettera.
+     * Masks a non-email identifier (a username, say) by showing only its first letter.
      */
     public static String maskUsername(String username) {
         if (username == null || username.isEmpty()) {

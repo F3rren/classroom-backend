@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Definisce un unico schema di autenticazione Bearer JWT globale, cosi' Swagger UI
- * mostra un solo pulsante "Authorize" invece di un campo header per ogni endpoint.
+ * Declares a single global Bearer JWT authentication scheme, so Swagger UI shows one
+ * "Authorize" button instead of a header field on every endpoint.
  */
 @Configuration
 @SecurityScheme(

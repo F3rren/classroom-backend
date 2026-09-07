@@ -8,66 +8,65 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 
 /**
- * Firma token di prova, senza che esista un utente ne' un servizio di autenticazione.
+ * Signs test tokens, with no user and no authentication service in sight.
  *
- * E' cio' che rende sostenibile la separazione in servizi sul fronte dei test. Prima ogni
- * classe di integrazione creava un utente vero e chiamava /api/auth/login solo per
- * ottenere un token: una dipendenza dal dominio utenti che non c'entrava nulla con cio'
- * che il test voleva verificare. Otto classi su dieci attraversavano tre o quattro domini
- * per questo motivo.
+ * This is what makes the split into services bearable on the test side. Every integration
+ * class used to create a real user and call /api/auth/login just to obtain a token: a
+ * dependency on the user domain that had nothing to do with what the test wanted to check.
+ * Eight classes out of ten crossed three or four domains for that reason alone.
  *
- * Funziona perche' la validazione e' offline: JwtVerifier controlla la firma e legge i
- * claim, senza mai consultare un database. Un token firmato qui con lo stesso segreto e'
- * indistinguibile da uno emesso da auth-service.
+ * It works because validation is offline: JwtVerifier checks the signature and reads the
+ * claims without ever consulting a database. A token signed here with the same secret is
+ * indistinguishable from one issued by auth-service.
  *
- * Vive nei sorgenti di test di shared e viene pubblicato come test-jar, cosi' gli altri
- * moduli lo usano senza che finisca nell'artefatto di produzione.
+ * It lives in shared's test sources and is published as a test-jar, so the other modules can
+ * use it without it ever reaching the production artefact.
  */
 public final class TestJwt {
 
-    /** Deve coincidere con jwt.secret dei profili di test. */
-    public static final String SEGRETO_DI_TEST = "dGVzdC1zZWNyZXQtcGVyLWktdGVzdC1kaS1pbnRlZ3JhemlvbmUtMDAxMg";
+    /** Must match the jwt.secret of the test profiles. */
+    public static final String TEST_SECRET = "dGVzdC1zZWNyZXQtcGVyLWktdGVzdC1kaS1pbnRlZ3JhemlvbmUtMDAxMg";
 
-    private static final long DURATA_MS = 1000L * 60 * 60;
+    private static final long LIFETIME_MS = 1000L * 60 * 60;
 
     private TestJwt() {
     }
 
-    /** Token per un utente qualunque. Il nome e' derivato dall'email. */
+    /** A token for an ordinary user. The name is derived from the email. */
     public static String forUser(Long id, String email) {
-        return firma(id, email, nomeDa(email), "user");
+        return sign(id, email, nameFrom(email), "user");
     }
 
-    /** Token per un utente di cui conta il nome: finisce nei dettagli aula. */
+    /** A token for a user whose name matters: it ends up in the room details. */
     public static String forUser(Long id, String email, String name) {
-        return firma(id, email, name, "user");
+        return sign(id, email, name, "user");
     }
 
-    /** Token per un amministratore. */
+    /** A token for an administrator. */
     public static String forAdmin(Long id, String email) {
-        return firma(id, email, nomeDa(email), "admin");
+        return sign(id, email, nameFrom(email), "admin");
     }
 
-    /** Token gia' scaduto, per verificare che venga rifiutato. */
-    public static String scaduto(Long id, String email) {
-        return costruisci(id, email, nomeDa(email), "user", new Date(System.currentTimeMillis() - DURATA_MS));
+    /** An already expired token, to check that it is refused. */
+    public static String expired(Long id, String email) {
+        return build(id, email, nameFrom(email), "user", new Date(System.currentTimeMillis() - LIFETIME_MS));
     }
 
-    /** Token senza il claim "name": simula un token emesso prima che venisse introdotto. */
-    public static String senzaNome(Long id, String email) {
-        return costruisci(id, email, null, "user", new Date(System.currentTimeMillis() + DURATA_MS));
+    /** A token with no "name" claim: it mimics one issued before that claim existed. */
+    public static String withoutName(Long id, String email) {
+        return build(id, email, null, "user", new Date(System.currentTimeMillis() + LIFETIME_MS));
     }
 
-    private static String nomeDa(String email) {
+    private static String nameFrom(String email) {
         return email == null ? null : email.split("@")[0];
     }
 
-    private static String firma(Long id, String email, String name, String role) {
-        return costruisci(id, email, name, role, new Date(System.currentTimeMillis() + DURATA_MS));
+    private static String sign(Long id, String email, String name, String role) {
+        return build(id, email, name, role, new Date(System.currentTimeMillis() + LIFETIME_MS));
     }
 
-    private static String costruisci(Long id, String email, String name, String role, Date scadenza) {
-        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(SEGRETO_DI_TEST));
+    private static String build(Long id, String email, String name, String role, Date scadenza) {
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(TEST_SECRET));
         return Jwts.builder()
                 .subject(email)
                 .claim("id", id)

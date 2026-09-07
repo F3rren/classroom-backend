@@ -19,15 +19,15 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Il tracciato dei log, quello davvero caricato da logback-spring.xml.
+ * The log pattern, the one logback-spring.xml actually loads.
  *
- * Non verifica il testo del file: verifica l'encoder che Logback ha costruito dopo averlo
- * letto, e ci fa passare attraverso un evento vero. E' la differenza fra "il file contiene
- * la stringa giusta" e "una riga di log mostra l'identificativo".
+ * It does not check the text of the file: it checks the encoder Logback built after reading
+ * it, and puts a real event through it. That is the difference between "the file contains the
+ * right string" and "a log line shows the id".
  *
- * Serve perche' quel campo e' stato invisibile a lungo: RequestCorrelationFilter metteva
- * l'identificativo in MDC da sempre, ma senza un tracciato che lo stampasse non compariva
- * da nessuna parte - e nessun test se ne sarebbe accorto, perche' un log mancante non fa
+ * It is needed because that field was invisible for a long time: RequestCorrelationFilter
+ * had always been putting the id into the MDC, but without a pattern to print it, it appeared
+ * nowhere - and no test would have noticed, because a missing log line does not
  * fallire niente.
  */
 class LogPatternUnitTest {
@@ -44,7 +44,7 @@ class LogPatternUnitTest {
     /** L'encoder dell'appender su console, come Logback l'ha costruito. */
     private PatternLayoutEncoder encoderConfigurato() {
         // Il contesto va avviato: e' Spring Boot a dire a Logback di leggere
-        // logback-spring.xml, e senza di lui varrebbe la configurazione predefinita.
+        // logback-spring.xml, and without it the default configuration would apply.
         try (var context = new SpringApplicationBuilder(SoloContesto.class)
                 .web(WebApplicationType.NONE)
                 .run()) {
@@ -60,7 +60,7 @@ class LogPatternUnitTest {
         }
     }
 
-    /** Rende un evento con l'encoder configurato, come farebbe una riga vera. */
+    /** Renders an event with the configured encoder, as a real line would be. */
     private String line(String message) {
         PatternLayoutEncoder encoder = encoderConfigurato();
         LoggingEvent event = new LoggingEvent();
@@ -75,9 +75,9 @@ class LogPatternUnitTest {
 
     @Test
     void lIdentificativoDiRichiestaCompareNellaRiga() {
-        // LA ragione per cui questo file esiste. Se cade, l'identificativo torna a stare in
-        // MDC senza che nessuno lo veda, ed e' un guasto che non fa fallire nulla: si nota
-        // solo il giorno in cui serve leggere i log, cioe' troppo tardi.
+        // THE reason this file exists. If it falls, the id goes back to sitting in the MDC
+        // with nobody seeing it, and that is a failure that fails nothing: it is noticed only
+        // on the day somebody needs to read the logs, which is too late.
         MDC.put("requestId", "REQ_A1B2C3D4");
 
         assertThat(line("prenotazione creata")).contains("REQ_A1B2C3D4");
@@ -85,13 +85,13 @@ class LogPatternUnitTest {
 
     @Test
     void unIdentificativoPiuLungoNonVieneTagliato() {
-        // Trovato guardando l'output vero, non il file: con %-12.12X Logback tronca DA
+        // Found by looking at the real output, not at the file: with %-12.12X Logback
         // SINISTRA, e "REQ_LEGGIBILE" usciva come "EQ_LEGGIBILE". Gli identificativi coniati
-        // qui sono di 12 caratteri esatti e non se ne accorgevano, ma il gateway riusa
-        // l'X-Request-Id che riceve, che puo' essere lungo quanto vuole chi chiama.
+        // here are exactly 12 characters long and never noticed, but the gateway reuses the
+        // X-Request-Id it receives, which can be as long as the caller likes.
         //
-        // Un identificativo tagliato in silenzio e' peggio di una colonna disallineata: due
-        // valori diversi possono comparire identici, e chi cerca nei log trova la richiesta
+        // An id silently cut short is worse than a misaligned column: two different values
+        // can come out looking identical, and somebody searching the logs finds the request
         // sbagliata.
         MDC.put("requestId", "REQ_MOLTO_PIU_LUNGO_DEL_SOLITO");
 
@@ -100,7 +100,7 @@ class LogPatternUnitTest {
 
     @Test
     void unaRigaFuoriDaUnaRichiestaNonDiceNull() {
-        // Avvio, attivita' pianificate, consumo di messaggi: nessuna richiesta, nessun
+        // Startup, scheduled jobs, message consumption: no request, no
         // identificativo. Stampare "null" sarebbe peggio di un segnaposto.
         String line = line("avvio completato");
 
@@ -109,7 +109,7 @@ class LogPatternUnitTest {
 
     @Test
     void ilMessaggioEIlLivelloRestanoLeggibili() {
-        // Il tracciato aggiunge una colonna: non deve mangiarsi cio' che c'era prima.
+        // The pattern adds a column: it must not eat what was already there.
         MDC.put("requestId", "REQ_LEGGIBILE");
         String line = line("qualcosa e' successo");
 

@@ -9,14 +9,16 @@ import com.prenotazioni.util.Timestamps;
 import java.time.LocalDateTime;
 
 /**
- * Envelope generico di risposta, riproduce esattamente lo shape gia' in uso
- * in tutti i controller (Map.of(success,error,message,userMessage,timestamp,sessionId)
- * per gli errori, Map.of(success,message,data,timestamp,sessionId) per i successi).
- * @JsonInclude(NON_NULL) fa si' che i campi non impostati siano assenti dal JSON,
- * non "null" - stesso comportamento di Map.of che non puo' contenere valori null.
- * Chiamata ApiEnvelope (non ApiResponse) per non entrare in conflitto di nome con
- * l'annotazione Swagger io.swagger.v3.oas.annotations.responses.ApiResponse, cosi'
- * entrambe si possono importare normalmente invece di doverne qualificare una inline.
+ * The generic response envelope. It reproduces exactly the shape already in use across every
+ * controller (success, error, message, userMessage, timestamp, sessionId for errors; success,
+ * message, data, timestamp, sessionId for successes).
+ *
+ * @JsonInclude(NON_NULL) means the fields left unset are absent from the JSON rather than
+ * "null" - the same behaviour as the Map.of it replaced, which could not hold null values.
+ *
+ * It is called ApiEnvelope and not ApiResponse so as not to clash by name with the Swagger
+ * annotation io.swagger.v3.oas.annotations.responses.ApiResponse: that way both can be
+ * imported normally instead of having to qualify one of them inline.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
@@ -50,11 +52,11 @@ public class ApiEnvelope<T> {
     }
 
     /**
-     * Generico su T (invece di fisso su Void) cosi' un metodo controller puo' dichiarare
-     * ResponseEntity&lt;ApiEnvelope&lt;XxxPayload&gt;&gt; invece di ResponseEntity&lt;?&gt; anche nei
-     * rami di errore - Springdoc puo' allora derivare lo schema di risposta reale invece
-     * di mostrare "object" generico (limite di ResponseEntity&lt;?&gt; con i generici cancellati
-     * a runtime). Il chiamante lascia inferire T dal contesto (es. dal return del metodo).
+     * Generic in T (rather than fixed to Void) so that a controller method can declare
+     * ResponseEntity&lt;ApiEnvelope&lt;XxxPayload&gt;&gt; instead of ResponseEntity&lt;?&gt; even on its
+     * error branches - Springdoc can then derive the real response schema instead of showing
+     * a generic "object" (a limitation of ResponseEntity&lt;?&gt; with generics erased at
+     * runtime). The caller lets T be inferred from context, typically the method's return.
      */
     public static <T> ApiEnvelope<T> error(String errorCode, String message, String userMessage, String sessionId) {
         ApiEnvelope<T> response = new ApiEnvelope<>();

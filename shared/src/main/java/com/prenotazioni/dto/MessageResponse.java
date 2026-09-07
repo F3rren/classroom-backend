@@ -2,7 +2,7 @@ package com.prenotazioni.dto;
 
 import lombok.Value;
 
-/** Risposta minimale con un solo messaggio, per operazioni di scrittura senza payload di rilievo. */
+/** A minimal response carrying one message, for writes with no payload worth returning. */
 @Value
 public class MessageResponse {
     String message;

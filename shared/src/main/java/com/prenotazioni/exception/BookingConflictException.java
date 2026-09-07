@@ -1,12 +1,12 @@
 package com.prenotazioni.exception;
 
 /**
- * Conflitto specifico delle prenotazioni: la fascia oraria e' gia' occupata.
+ * The conflict specific to bookings: the time slot is already taken.
  *
- * Resta un tipo a se' anche se non aggiunge campi a DomainConflictException, perche'
- * PrenotazioneController lo lancia esplicitamente quando traduce la violazione del vincolo
- * anti-sovrapposizione, ed e' quel nome a rendere leggibile il punto in cui accade.
- * Ereditando, non duplica piu' errorCode e userMessage.
+ * It stays a type of its own even though it adds no fields to DomainConflictException,
+ * because BookingController throws it explicitly when translating a violation of the
+ * anti-overlap constraint, and it is that name that makes the place it happens readable.
+ * By inheriting, it no longer duplicates errorCode and userMessage.
  */
 public class BookingConflictException extends DomainConflictException {
 

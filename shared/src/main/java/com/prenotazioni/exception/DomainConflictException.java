@@ -1,11 +1,11 @@
 package com.prenotazioni.exception;
 
 /**
- * L'operazione contrasta con lo stato attuale dei dati. Diventa un 409.
+ * The operation conflicts with the current state of the data. Becomes a 409.
  *
- * E' il caso del nome di aula gia' in uso, che prima era un null e che il controller
- * presentava come 400: uno stato che il chiamante non puo' correggere riformulando la
- * richiesta non e' un errore di sintassi, e 409 lo dice, 400 no.
+ * This is the case of a room name already taken, which used to be a null the controller
+ * presented as a 400: a state the caller cannot fix by rephrasing the request is not a syntax
+ * error, and 409 says so where 400 does not.
  */
 public class DomainConflictException extends ApplicationException {
 

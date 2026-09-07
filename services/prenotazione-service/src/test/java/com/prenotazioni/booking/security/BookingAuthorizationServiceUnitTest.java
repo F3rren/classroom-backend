@@ -13,8 +13,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Bean usato da @PreAuthorize sugli endpoint di lettura delle prenotazioni.
- * I test HTTP coprono proprietario e estraneo; qui si aggiungono i due guard
+ * The bean @PreAuthorize uses on the booking read endpoints.
+ *
+ * The HTTP tests cover the owner and the stranger; what is added here are the two guards
  * (no principal, no such booking) that cannot be produced through a request.
  */
 class BookingAuthorizationServiceUnitTest {

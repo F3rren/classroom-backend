@@ -16,13 +16,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Il filtro che trasforma un token in un'identita' autenticata, per ogni richiesta di
- * ogni servizio.
+ * The filter that turns a token into an authenticated identity, on every request of every
+ * service.
  *
- * Il caso piu' importante e' quello del ruolo: hasRole('ADMIN') cerca l'authority
- * "ROLE_ADMIN", e il prefisso viene da Ruolo.toAuthority(). Se quel legame si rompesse,
- * ogni endpoint amministrativo diventerebbe inaccessibile agli admin, oppure - molto
- * peggio - un ruolo non riconosciuto potrebbe finire per concedere authority indebite.
+ * The most important case is the role: hasRole('ADMIN') looks for the authority
+ * "ROLE_ADMIN", and the prefix comes from Role.toAuthority(). If that link broke, every
+ * administrative endpoint would become unreachable to admins, or - far worse - an
+ * unrecognised role could end up granting authorities it should not.
  */
 class JwtAuthFilterUnitTest {
 
@@ -31,7 +31,7 @@ class JwtAuthFilterUnitTest {
     @BeforeEach
     void setUp() {
         JwtVerifier verifier = new JwtVerifier();
-        ReflectionTestUtils.setField(verifier, "secret", TestJwt.SEGRETO_DI_TEST);
+        ReflectionTestUtils.setField(verifier, "secret", TestJwt.TEST_SECRET);
         verifier.init();
         filter = new JwtAuthFilter(verifier);
         SecurityContextHolder.clearContext();
@@ -66,7 +66,7 @@ class JwtAuthFilterUnitTest {
     void unTokenDaAdminPortaLAuthorityCheCercaPreAuthorize() throws Exception {
         Authentication auth = eseguiConHeader("Bearer " + TestJwt.forAdmin(1L, "admin@example.it"));
 
-        // hasRole('ADMIN') cerca esattamente questa stringa
+        // hasRole('ADMIN') looks for exactly this string
         assertThat(auth.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_ADMIN");
     }
 
@@ -82,10 +82,10 @@ class JwtAuthFilterUnitTest {
 
     @Test
     void anInvalidTokenLeavesTheRequestUnauthenticated() throws Exception {
-        // Non solleva e non risponde da solo: lascia proseguire la catena, e sara' la
+        // It neither throws nor answers on its own: it lets the chain continue, and it is
         // policy di sicurezza a rispondere 401 tramite ApiAuthenticationEntryPoint.
         assertThat(eseguiConHeader("Bearer token-inventato")).isNull();
-        assertThat(eseguiConHeader("Bearer " + TestJwt.scaduto(7L, "mario@example.it"))).isNull();
+        assertThat(eseguiConHeader("Bearer " + TestJwt.expired(7L, "mario@example.it"))).isNull();
     }
 
     @Test

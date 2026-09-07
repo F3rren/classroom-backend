@@ -3,21 +3,21 @@ package com.prenotazioni.events;
 /**
  * Una prenotazione e' stata cancellata da un amministratore.
  *
- * E' il contratto fra chi pubblica (il servizio prenotazioni) e chi consuma (il servizio
- * notifiche). Sta in shared di proposito: cosi' il compilatore garantisce che le due parti
- * parlino della stessa cosa, invece di affidarsi a due mappe di stringhe che possono
- * divergere senza che nulla lo segnali.
+ * The contract between the publisher (the booking service) and the consumer (the
+ * notification service). It sits in shared on purpose: that way the compiler guarantees the
+ * two sides are talking about the same thing, instead of relying on two maps of strings that
+ * can drift apart with nothing to signal it.
  *
- * I campi sono gia' formattati per essere mostrati (date e ore come stringhe) perche' la
- * notifica e' un messaggio da leggere, non un dato su cui calcolare: chi la riceve non deve
- * riformattare nulla, e il formato resta deciso da chi conosce il fuso della richiesta.
+ * The fields are already formatted for display (dates and times as strings) because a
+ * notification is a message to be read, not data to compute on: the receiver has to reformat
+ * nothing, and the format stays decided by the side that knows the request's time zone.
  *
- * E' un record, quindi immutabile: un messaggio che viaggia fra servizi non ha ragione di
- * poter essere modificato dopo essere stato costruito.
+ * It is a record, and so immutable: a message travelling between services has no reason to
+ * be modifiable after it has been built.
  *
- * COMPATIBILITA': una volta che dei messaggi sono in coda, questo tipo non puo' cambiare
- * liberamente. Aggiungere un campo va bene (chi consuma la versione vecchia lo ignora),
- * rimuoverne o rinominarne uno no: rompe i messaggi gia' pubblicati e non ancora letti.
+ * COMPATIBILITY: once there are messages on the queue, this type cannot change freely.
+ * Adding a field is fine (a consumer on the old version ignores it); removing or renaming one
+ * is not: it breaks the messages already published and not yet read.
  */
 public record BookingCancelledEvent(
         Long userId,

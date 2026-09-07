@@ -1,21 +1,21 @@
 package com.prenotazioni.exception;
 
 /**
- * Base delle eccezioni con cui il dominio segnala un esito che il chiamante deve conoscere.
+ * The base of the exceptions the domain uses to report an outcome the caller has to know.
  *
- * Esiste perche' prima quegli esiti viaggiavano come null e false: un service restituiva
- * null e il controller doveva DEDURRE il motivo, scrivendo a mano un messaggio che poteva
- * essere sbagliato. Con un tipo, il motivo viaggia insieme all'errore e GlobalExceptionHandler
- * lo traduce una volta sola, invece che ogni controller a modo suo.
+ * It exists because those outcomes used to travel as null and false: a service returned null
+ * and the controller had to INFER the reason, writing by hand a message that could be wrong.
+ * With a type, the reason travels with the error and GlobalExceptionHandler translates it
+ * once, instead of every controller doing it its own way.
  *
- * I tre campi sono quelli che l'envelope espone gia':
- *  - errorCode: codice stabile su cui il frontend puo' ramificare;
+ * The three fields are the ones the envelope already exposes:
+ *  - errorCode: a stable code a client can branch on;
  *  - getMessage(): descrizione tecnica, finisce nei log;
- *  - userMessage: la frase mostrata a chi usa l'applicazione.
+ *  - userMessage: the sentence shown to whoever is using the application. Italian.
  *
- * Astratta di proposito: e' il sottotipo a determinare lo stato HTTP, quindi lanciare
- * "un'eccezione applicativa generica" non deve essere possibile - vorrebbe dire non aver
- * deciso che genere di errore sia.
+ * Abstract on purpose: it is the subtype that determines the HTTP status, so throwing "a
+ * generic application exception" must not be possible - it would mean not having decided what
+ * kind of error this is.
  */
 public abstract class ApplicationException extends RuntimeException {
 

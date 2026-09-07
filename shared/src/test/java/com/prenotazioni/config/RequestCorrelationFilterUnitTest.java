@@ -14,9 +14,9 @@ import jakarta.servlet.FilterChain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Il filtro esiste per una ragione sola: dare a una richiesta UN identificativo, non uno
- * per ogni classe che la tocca. I test qui sotto fissano i tre comportamenti da cui
- * dipende quella garanzia; se uno si rompe l'identificativo torna a essere decorativo.
+ * The filter exists for one reason: to give a request ONE id, not one per class that touches
+ * it. The tests below pin down the three behaviours that guarantee depends on; if one breaks,
+ * the id goes back to being decorative.
  */
 class RequestCorrelationFilterUnitTest {
 
@@ -30,7 +30,7 @@ class RequestCorrelationFilterUnitTest {
 
     @Test
     void riusaLIdentificativoRicevutoDaChiamaChiama() throws Exception {
-        // Questo e' il punto dell'intera classe in un sistema a piu' servizi: il gateway
+        // This is the point of the whole class in a system of several services: the gateway
         // genera l'id, i servizi a valle lo ereditano. Se qui se ne generasse uno nuovo,
         // un giro fra gateway e servizio prenotazioni resterebbe impossibile da ricucire.
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -52,17 +52,17 @@ class RequestCorrelationFilterUnitTest {
 
         String id = (String) request.getAttribute(RequestCorrelationFilter.ATTRIBUTO);
         assertThat(id).isNotBlank();
-        // Rimandarlo indietro serve a chi apre una segnalazione: puo' citare l'id anche
-        // quando la risposta e' un 204 o un corpo che non lo contiene.
+        // Sending it back serves whoever opens a report: they can quote the id even when the
+        // response is a 204, or a body that does not carry it.
         assertThat(response.getHeader(RequestCorrelationFilter.HEADER)).isEqualTo(id);
     }
 
     @Test
     void controllerEGestoreDegliErroriLeggonoLoStessoValore() throws Exception {
-        // La regressione che questa classe e' nata per chiudere: due chiamate a corrente()
-        // dentro la stessa richiesta devono dare lo stesso valore. Prima erano due
-        // generateSessionId() diversi e una richiesta fallita compariva nei log due volte,
-        // sotto due chiavi, senza modo di collegarle.
+        // The regression this class was born to close: two calls to current() inside the
+        // same request have to give the same value. They used to be two different
+        // generateSessionId() calls, and a failed request appeared in the logs twice, under
+        // two keys, with no way to connect them.
         MockHttpServletRequest request = new MockHttpServletRequest();
         String[] letture = new String[2];
 
@@ -80,17 +80,17 @@ class RequestCorrelationFilterUnitTest {
 
     @Test
     void ripiegaFuoriDaUnaRichiestaHttp() {
-        // Un consumatore di messaggi o un'attivita' pianificata non ha una richiesta.
-        // Meglio un identificativo scollegato che un null che finisce nella risposta
-        // stampato come la stringa "null".
+        // A message consumer or a scheduled job has no request. A disconnected id beats a
+        // null that ends up in the response printed as the string "null".
         assertThat(RequestCorrelationFilter.current()).isNotBlank();
     }
 
     @Test
     void applicaAMdcUsaLIdentificativoRicevuto() {
-        // La meta' della catena che non passa da HTTP: un ascoltatore AMQP gira su un
-        // thread suo, fuori da qualunque richiesta, e senza questo la notifica creata da
-        // un evento comparirebbe nei log scollegata dalla cancellazione che l'ha causata.
+        // The half of the chain that does not go through HTTP: an AMQP listener runs on a
+        // thread of its own, outside any request, and without this the notification created
+        // from an event would appear in the logs disconnected from the cancellation that
+        // caused it.
         RequestCorrelationFilter.applyToMdc("REQ_DALLEVENTO");
 
         assertThat(MDC.get("requestId")).isEqualTo("REQ_DALLEVENTO");
@@ -98,8 +98,8 @@ class RequestCorrelationFilterUnitTest {
 
     @Test
     void applicaAMdcRipiegaSuUnoGeneratoSeManca() {
-        // Un messaggio pubblicato prima che l'intestazione esistesse deve continuare a
-        // essere consumato: assente non e' un errore, e "null" nei log sarebbe peggio.
+        // A message published before the header existed has to keep being consumed: absent
+        // is not an error, and "null" in the logs would be worse.
         RequestCorrelationFilter.applyToMdc(null);
         assertThat(MDC.get("requestId")).isNotBlank().isNotEqualTo("null");
 
@@ -117,8 +117,8 @@ class RequestCorrelationFilterUnitTest {
 
     @Test
     void svuotaMdcAlTermine() throws Exception {
-        // I thread vengono riusati: un MDC non ripulito farebbe comparire l'identificativo
-        // di questa richiesta nei log di quella successiva, che e' peggio di non averlo.
+        // Threads are reused: an MDC left uncleared would make this request's id show up in
+        // the next request's log lines, which is worse than not having one at all.
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());
 
         assertThat(MDC.get("requestId")).isNull();

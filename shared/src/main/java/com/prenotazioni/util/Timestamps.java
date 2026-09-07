@@ -4,29 +4,29 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Il formato dei timestamp esposti dalle API.
+ * The format of the timestamps the API exposes.
  *
- * Lo stesso DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss") era dichiarato, identico,
- * in cinque classi diverse: ApiEnvelope, LoginResponse, UserSummaryDto, AuthController e
- * PrenotazioneController. Il pattern fa parte del contratto verso il frontend, quindi
- * cinque copie sono cinque punti da cui puo' divergere senza che nulla lo segnali.
+ * The same DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss") was declared, identically, in
+ * five different classes: ApiEnvelope, LoginResponse, UserSummaryDto, AuthController and
+ * BookingController. The pattern is part of the contract towards the client, so five copies
+ * are five places it can drift from with nothing to signal it.
  *
- * Sta in util e non dentro ApiEnvelope perche' lo usano sia DTO sia controller: farlo
- * dipendere da un DTO specifico creerebbe un accoppiamento senza motivo.
+ * It lives in util and not inside ApiEnvelope because both DTOs and controllers use it:
+ * making it depend on one particular DTO would create a coupling with no reason behind it.
  */
 public final class Timestamps {
 
-    private static final DateTimeFormatter FORMATO_API = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter API_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private Timestamps() {
     }
 
-    /** Formatta un istante nel formato usato dalle risposte. Null in ingresso, null in uscita. */
-    public static String format(LocalDateTime istante) {
-        return istante == null ? null : istante.format(FORMATO_API);
+    /** Formats an instant the way the responses do. Null in, null out. */
+    public static String format(LocalDateTime instant) {
+        return instant == null ? null : instant.format(API_FORMAT);
     }
 
-    /** Il momento presente, gia' formattato. */
+    /** The present moment, already formatted. */
     public static String now() {
         return format(LocalDateTime.now());
     }

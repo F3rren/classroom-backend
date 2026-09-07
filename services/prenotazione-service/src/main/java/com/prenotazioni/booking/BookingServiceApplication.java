@@ -8,15 +8,15 @@ import org.springframework.context.annotation.ComponentScan;
  * The booking service: rooms, courses and bookings.
  *
  * The componentScan is explicit because this service no longer lives under
- * com.prenotazioni but under com.prenotazioni.booking, as
- * auth-service e notifica-service. Senza, i bean condivisi (JwtVerifier, JwtAuthFilter,
- * SecurityConfig, i due handler di errore, GlobalExceptionHandler) resterebbero fuori
- * out of the scan: the service would start with no JWT filter and every endpoint would
- * be reachable without a token.
+ * com.prenotazioni but under com.prenotazioni.booking, as auth-service and
+ * notification-service already did. Without it the shared beans (JwtVerifier, JwtAuthFilter,
+ * SecurityConfig, the two error handlers, GlobalExceptionHandler) would fall outside the
+ * scan: the service would start with no JWT filter and every endpoint would be reachable
+ * without a token.
  *
  * It was not needed before, but only because this service shared its root package with
- * shared - and that overlap was itself the problem: it made the boundary between the
- * due moduli invisibile al compilatore.
+ * shared - and that overlap was itself the problem: it made the boundary between the two
+ * modules invisible to the compiler.
  */
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.prenotazioni.booking", "com.prenotazioni.config",

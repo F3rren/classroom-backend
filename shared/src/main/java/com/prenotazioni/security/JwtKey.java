@@ -6,27 +6,25 @@ import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
 
 /**
- * Costruisce la chiave di firma dal segreto configurato, accettando entrambi gli alfabeti
- * base64.
+ * Builds the signing key from the configured secret, accepting either base64 alphabet.
  *
- * Esiste per un difetto reale e ricorrente: il codice decodificava in base64URL, che usa
- * '-' e '_', mentre la documentazione diceva ovunque di generare il segreto con
+ * It exists because of a real and recurring defect: the code decoded as base64URL, which uses
+ * '-' and '_', while the documentation said everywhere to generate the secret with
  *
  *     openssl rand -base64 48
  *
- * che emette base64 STANDARD, con '+' e '/'. Su 64 caratteri casuali la probabilita' di non
- * incontrare nessuno dei due e' circa il 13%: il comando documentato produceva un segreto
- * inservibile quasi nove volte su dieci, e il messaggio d'errore
- * ("Illegal base64url character: '/'") non diceva a nessuno che il problema era il modo in
- * cui il segreto era stato generato.
+ * which emits STANDARD base64, with '+' and '/'. Over 64 random characters the probability of
+ * meeting neither of those is about 13%: the documented command produced an unusable secret
+ * nearly nine times out of ten, and the error message ("Illegal base64url character: '/'")
+ * told nobody that the problem was how the secret had been generated.
  *
- * Normalizzare invece di scegliere un alfabeto e' la soluzione giusta perche' un segreto e'
- * qualcosa che una persona incolla: pretendere che sappia quale delle due varianti serva e'
- * un requisito che non si puo' far rispettare, e che fallisce in modo oscuro.
+ * Normalising rather than picking one alphabet is the right answer because a secret is
+ * something a person pastes: demanding that they know which of the two variants is wanted is
+ * a requirement you cannot enforce, and one that fails obscurely.
  *
- * DEVE stare in un punto solo: chi firma (auth-service) e chi verifica (tutti gli altri)
- * devono derivare la stessa identica chiave dallo stesso segreto. Due normalizzazioni
- * leggermente diverse produrrebbero token che nessuno riesce a validare.
+ * It MUST live in exactly one place: the signer (auth-service) and the verifiers (everybody
+ * else) have to derive the identical key from the same secret. Two slightly different
+ * normalisations would produce tokens nobody can validate.
  */
 public final class JwtKey {
 
@@ -38,8 +36,8 @@ public final class JwtKey {
             throw new IllegalStateException(
                     "jwt.secret non configurato: impostare JWT_SECRET nell'ambiente o in .env");
         }
-        // Si porta tutto su base64url, l'alfabeto che il decoder si aspetta. Un segreto
-        // gia' in base64url attraversa questa riga immutato.
+        // Everything is brought to base64url, the alphabet the decoder expects. A secret
+        // already in base64url passes through this line unchanged.
         String normalizzato = secret.trim().replace('+', '-').replace('/', '_');
         return Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(normalizzato));
     }
