@@ -1,25 +1,25 @@
-# Integrazione continua.
+# Continuous integration.
 #
-# Il motivo per cui questo file esiste: la suite ha tre livelli (unit con Mockito,
-# integrazione su H2, e due classi sui vincoli con PostgreSQL vero via Testcontainers)
-# ma il terzo gira solo se la macchina ha Docker acceso. Senza Docker quelle classi
-# vengono saltate e la build resta VERDE: e' successo davvero, e quando finalmente sono
-# state eseguite nascondevano quattro asserzioni fallite.
+# The reason this file exists: the suite has three levels (unit tests with Mockito,
+# integration on H2, and the constraint classes against a real PostgreSQL through
+# Testcontainers) but the third only runs if the machine has Docker up. Without Docker those
+# classes are skipped and the build stays GREEN: that really happened, and when they were
+# finally executed they were hiding four failed assertions.
 #
-# Sui runner ubuntu-latest Docker c'e' sempre, quindi qui i vincoli vengono verificati
-# a ogni push. Il passo "Verifica che..." trasforma lo skip silenzioso in un errore.
+# On the ubuntu-latest runners Docker is always there, so the constraints are checked here on
+# every push. The "Check that..." step turns a silent skip into an error.
 #
-# PRINCIPIO: in questo file non ci sono elenchi di moduli o di classi scritti a mano.
-# Ce n'erano, e sono scaduti: il workflow conosceva tre moduli su cinque e una sola
-# delle due classi Testcontainers. Tutto cio' che puo' essere scoperto viene scoperto,
-# cosi' aggiungere un modulo non richiede di ricordarsi di tornare qui.
+# THE PRINCIPLE: there are no hand-written lists of modules or classes in this file. There
+# were, and they went stale: the workflow knew three modules out of five and only one of the
+# two Testcontainers classes. Everything that can be discovered is discovered, so that adding
+# a module does not require remembering to come back here.
 
 name: CI
 
 on:
   push:
-    # develop e non solo main: e' il ramo su cui si lavora. Senza, questo workflow
-    # resta decorativo - com'e' stato finora, senza che nessuno se ne accorgesse.
+    # develop and not just main: it is the branch the work happens on. Without it this
+    # workflow is decorative - as it had been until now, with nobody noticing.
     branches: [main, develop]
   pull_request:
   workflow_dispatch:
@@ -27,28 +27,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 30 e non 20: i moduli sono cinque e al primo giro la cache Maven e' vuota,
-    # mentre due classi scaricano immagini Docker.
+    # 30 and not 20: there are five modules, the Maven cache is empty on the first run, and
+    # some classes pull Docker images.
     timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configura JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: temurin
           cache: maven
 
-      # Un modulo con application.properties E application.yml nella stessa cartella non
-      # da' errore: Spring li carica ENTRAMBI, e .properties vince. Chi ha appena scritto
-      # il .yml lo vede ignorato senza che niente glielo dica - e cerca il difetto nel
-      # codice, non nel file accanto.
+      # A module with both application.properties AND application.yml in the same folder
+      # raises no error: Spring loads BOTH, and .properties wins. Whoever has just written the
+      # .yml sees it ignored with nothing to tell them - and looks for the defect in the code,
+      # not in the file next door.
       #
-      # E' il modo concreto in cui la regola "properties ovunque, yml solo per le liste
-      # annidate" puo' rompersi: non violandola apertamente, ma a meta'.
-      - name: Nessun modulo con due formati di configurazione
+      # It is the concrete way the rule "properties everywhere, yml only for nested lists" can
+      # break: not by being broken openly, but by being followed halfway.
+      - name: No module with two configuration formats
         run: |
           doppi=0
           for cartella in $(find . -path '*/src/*/resources' -type d -not -path '*/target/*'); do
@@ -67,25 +67,25 @@ jobs:
           if [ "$doppi" -gt 0 ]; then exit 1; fi
           echo "OK: nessun modulo dichiara la stessa configurazione in due formati."
 
-      # verify e non test: e' la fase in cui gira il gate JaCoCo, applicato per modulo.
-      # Nessun segreto da iniettare: .env e' importato come "optional:" e sul runner
-      # non esiste, mentre i profili test/pgtest portano da soli jwt.secret, le
-      # origini CORS e il rate limit.
-      - name: Build, test e gate di copertura
+      # verify and not test: it is the phase where the JaCoCo gate runs, applied per module.
+      # No secrets to inject: .env is imported as "optional:" and does not exist on the
+      # runner, while the test and pgtest profiles bring their own jwt.secret, CORS origins
+      # and rate limit.
+      - name: Build, test and coverage gate
         run: mvn -B clean verify
 
-      # Un "BUILD SUCCESS" non basta: passerebbe anche con le classi saltate.
-      - name: Verifica che i test su servizi reali siano stati eseguiti
+      # A "BUILD SUCCESS" is not enough: it would pass with those classes skipped too.
+      - name: Check that the tests against real services actually ran
         run: |
-          # Le classi che dipendono da Docker si trovano leggendo i sorgenti, non da un
-          # elenco: un elenco scade, e questo e' gia' successo una volta.
+          # The classes that depend on Docker are found by reading the sources, not from a
+          # list: a list goes stale, and that has already happened once.
           controllate=0
           problemi=0
 
-          # Ne' un elenco ne' una profondita' fissa: "*/src/test" e' scaduto nel momento
-          # in cui i servizi sono finiti sotto services/, e "*/*/src/test" scadrebbe alla
-          # ristrutturazione successiva. Il modulo si ricava tagliando la parte fissa del
-          # percorso, che non dipende da quanto e' annidato.
+          # Neither a list nor a fixed depth: "*/src/test" went stale the moment the
+          # services moved under services/, and "*/*/src/test" would go stale at the next
+          # restructuring. The module is derived by cutting the fixed part of the path, which
+          # does not depend on how deeply it is nested.
           for sorgente in $(grep -rl "@Testcontainers" --include=*.java --exclude-dir=target . | sed 's|^\./||'); do
             modulo="${sorgente%%/src/test/*}"
             classe="$(basename "$sorgente" .java)"
@@ -114,9 +114,9 @@ jobs:
             controllate=$((controllate + 1))
           done
 
-          # Una scoperta che non trova nulla passerebbe in silenzio, che e' di nuovo
-          # lo stesso difetto travestito: se il grep smettesse di trovare le classi,
-          # questo passo direbbe "tutto bene" senza aver guardato niente.
+          # A discovery that finds nothing would pass in silence, which is the same defect
+          # in disguise once more: if the grep stopped finding the classes, this step would
+          # say "all good" without having looked at anything.
           if [ "$controllate" -eq 0 ] && [ "$problemi" -eq 0 ]; then
             echo "::error::Nessuna classe @Testcontainers trovata: la ricerca non funziona piu'."
             exit 1
@@ -126,17 +126,17 @@ jobs:
           fi
           echo "OK: $controllate classi eseguite contro servizi reali in container."
 
-      - name: Report di copertura
+      - name: Coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report
-          # Glob e non elenco, per la stessa ragione del passo qui sopra. L'aggregatore
-          # non ha target e semplicemente non corrisponde.
+          # A glob and not a list, for the same reason as the step above. The aggregator has
+          # no target directory and simply does not match.
           path: '**/target/site/jacoco/'
           if-no-files-found: warn
 
-      - name: Report dei test falliti
+      - name: Failed test reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:

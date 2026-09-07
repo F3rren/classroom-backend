@@ -1,13 +1,13 @@
 # ============================================================================
-# L'intero sistema con un comando:
+# The whole system with one command:
 #
 #     JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 #
-# Poi il frontend punta a http://localhost:17102 e nient'altro.
+# The frontend then points at http://localhost:17102 and nothing else.
 #
-# UN DATABASE PER SERVIZIO, e non uno con tre schemi: e' il punto della
-# separazione. Ogni servizio puo' raggiungere solo il proprio, quindi una query
-# che attraversa il confine non fallisce a runtime - non compila proprio.
+# ONE DATABASE PER SERVICE, rather than one with three schemas: that is the point of the
+# split. Each service can reach only its own, so a query that crosses the boundary does not
+# fail at runtime - it does not compile at all.
 # ============================================================================
 
 name: classroom
@@ -25,8 +25,8 @@ services:
     volumes:
       - data-users:/var/lib/postgresql/data
     healthcheck:
-      # I servizi partono piu' in fretta di PostgreSQL: senza questo controllo
-      # fallirebbero all'avvio con "connection refused" e andrebbero in restart loop.
+      # The services start faster than PostgreSQL: without this check they would fail at
+      # startup with "connection refused" and go into a restart loop.
       test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_users"]
       interval: 5s
       retries: 12
@@ -63,8 +63,8 @@ services:
     volumes:
       - data-broker:/var/lib/rabbitmq
     healthcheck:
-      # Stessa ragione dei database: i servizi partono prima del broker e senza
-      # questo controllo entrerebbero in restart loop al primo tentativo.
+      # Same reason as the databases: the services start before the broker, and without
+      # this check they would go into a restart loop on their first attempt.
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
       retries: 12
@@ -73,26 +73,26 @@ services:
     build:
       context: .
       args:
-        MODULO: auth-service
+        MODULE: auth-service
     depends_on:
       db-users: *attesa-db
     environment:
-      # prod contiene SOLO irrobustimento - Swagger spento, pool piu' largo, CORS
-      # senza ripiego. Senza questa riga il servizio parte lo stesso, solo meno
-      # protetto: e' voluto, cosi' dimenticarla degrada invece di rompere.
+      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
+      # Without this line the service still starts, merely less protected: that is
+      # deliberate, so that forgetting it degrades rather than breaks.
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: db-users
       DB_NAME: classroom_users
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
-      # Lo STESSO segreto per tutti: e' cio' che permette a ogni servizio di
-      # verificare da solo i token che questo firma, senza chiamarlo.
+      # The SAME secret for all of them: that is what lets every service verify on its own
+      # the tokens this one signs, without calling it.
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
       NOTIFICATION_SERVICE_URL: http://notification-service:17104
       BOOKING_SERVICE_URL: http://booking-service:17103
-      # Primo amministratore, usato SOLO se la tabella utenti e' vuota. Senza, su un
-      # database nuovo non ci sarebbe modo di crearne uno: /api/admin/users richiede
-      # gia' un token da amministratore. I default vuoti rendono il meccanismo inattivo
-      # per chi non lo vuole, invece di obbligare a dichiarare le variabili in .env.
+      # The first administrator, used ONLY if the users table is empty. Without it, on a new
+      # database there would be no way to create one: /api/admin/users already requires an
+      # administrator token. The empty defaults leave the mechanism inert for anybody who does
+      # not want it, instead of forcing the variables to be declared in .env.
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Amministratore}
@@ -101,23 +101,24 @@ services:
     build:
       context: .
       args:
-        MODULO: booking-service
+        MODULE: booking-service
     depends_on:
       broker:
         condition: service_healthy
       db-bookings: *attesa-db
     environment:
-      # prod contiene SOLO irrobustimento, come per gli altri due. Non e' piu' una
-      # necessita': la connessione sta in application.properties con i segnaposto, quindi
-      # senza questa riga il servizio parte lo stesso, solo meno protetto.
+      # prod holds hardening ONLY, as for the other two. It is no longer a necessity: the
+      # connection lives in application.properties with placeholders, so without this line the
+      # service still starts, merely less protected.
       #
-      # Prima non era cosi', ed e' costato caro: l'URL viveva solo in
-      # application-dev.properties, scritto su localhost, e con spring.profiles.default=dev
-      # un container senza questa riga partiva puntando a localhost e moriva alla prima
-      # query. Il sintomo era un 503 dal gateway, e la causa tre file piu' in la'.
+      # It was not always so, and that cost dearly: the URL lived only in
+      # application-dev.properties, written against localhost, and with
+      # spring.profiles.default=dev a container without this line started pointing at
+      # localhost and died on its first query. The symptom was a 503 from the gateway, and
+      # the cause sat three files away.
       SPRING_PROFILES_ACTIVE: prod
-      # Questo servizio e' l'unico il cui prod pretende le origini CORS senza ripiego,
-      # quindi qui vanno passate esplicitamente.
+      # This is the only service whose prod profile demands the CORS origins with no
+      # fallback, so they have to be passed explicitly here.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
       DB_HOST: db-bookings
       RABBITMQ_HOST: broker
@@ -132,15 +133,15 @@ services:
     build:
       context: .
       args:
-        MODULO: notification-service
+        MODULE: notification-service
     depends_on:
       broker:
         condition: service_healthy
       db-notifications: *attesa-db
     environment:
-      # prod contiene SOLO irrobustimento - Swagger spento, pool piu' largo, CORS
-      # senza ripiego. Senza questa riga il servizio parte lo stesso, solo meno
-      # protetto: e' voluto, cosi' dimenticarla degrada invece di rompere.
+      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
+      # Without this line the service still starts, merely less protected: that is
+      # deliberate, so that forgetting it degrades rather than breaks.
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: db-notifications
       RABBITMQ_HOST: broker
@@ -154,10 +155,10 @@ services:
     build:
       context: .
       args:
-        MODULO: gateway
-    # L'unica porta pubblicata. Gli altri servizi si parlano sulla rete interna
-    # di compose e non sono raggiungibili da fuori: le rotte /interne/ restano
-    # cosi' irraggiungibili dall'esterno per costruzione, non solo per regola.
+        MODULE: gateway
+    # The only published port. The other services talk to each other on compose's internal
+    # network and are not reachable from outside: the /internal/ routes are therefore
+    # unreachable from outside by construction, and not merely by rule.
     ports:
       - "17102:17102"
     depends_on:

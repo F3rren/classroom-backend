@@ -7,32 +7,33 @@
         <groupId>com.classroom</groupId>
         <artifactId>classroom-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <!-- Il default sarebbe ../pom.xml, che da services/<modulo>/ non esiste. -->
+        <!-- The default would be ../pom.xml, which does not exist from services/<module>/. -->
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>gateway</artifactId>
     <name>Gateway</name>
-    <description>Punto di ingresso unico: il frontend conosce un solo indirizzo</description>
+    <description>The single entry point: the frontend knows one address</description>
 
     <!--
-        Perche' esiste: dalla separazione di notification-service il frontend dovrebbe conoscere
-        due indirizzi, e diventerebbero tre con auth-service. La topologia interna non e'
-        affare del client, ed e' proprio l'accoppiamento che la separazione doveva togliere.
+        Why it exists: once notification-service was split off, the frontend would have had
+        to know two addresses, and three once auth-service followed. The internal topology is
+        not the client's business, and that coupling is exactly what the split was meant to
+        remove.
 
-        NON valida i token: instrada e basta. Ogni servizio verifica il JWT da se' con
-        JwtVerifier, quindi resta sicuro anche se raggiunto direttamente. Mettere la
-        validazione qui creerebbe un secondo posto dove sbagliarla e servizi interni che
-        si fidano ciecamente di chi li chiama.
+        It does NOT validate tokens: it routes, and nothing else. Every service verifies the
+        JWT itself with JwtVerifier, so each stays secure even when reached directly. Putting
+        the validation here would create a second place to get it wrong, and internal services
+        that trust their callers blindly.
 
-        Spring Cloud Gateway e' reattivo (WebFlux): questo modulo NON dipende da shared,
-        che porta spring-boot-starter-web e in un'applicazione WebFlux farebbe partire
-        Tomcat al posto di Netty.
+        Spring Cloud Gateway is reactive (WebFlux): this module does NOT depend on shared,
+        which brings spring-boot-starter-web and in a WebFlux application would start Tomcat
+        instead of Netty.
     -->
     <properties>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
-        <!-- Vedi il commento sul plugin JaCoCo: qui il denominatore e' troppo piccolo
-             perche' una percentuale voglia dire qualcosa. -->
+        <!-- See the comment on the JaCoCo plugin: here the denominator is too small for a
+             percentage to mean anything. -->
         <jacoco.line.minimum>0.00</jacoco.line.minimum>
     </properties>
 
@@ -79,11 +80,11 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <configuration>
                     <!--
-                        Il gateway e' quasi interamente configurazione dichiarativa: le rotte
-                        vivono in application.yml, non in codice Java. Le uniche righe
-                        eseguibili sono la classe main, esclusa qui sotto. Con un denominatore
-                        cosi' piccolo la percentuale non dice nulla, quindi il gate scende:
-                        cio' che conta e' il test sull'instradamento, non il rapporto.
+                        The gateway is almost entirely declarative configuration: the routes
+                        live in application.yml, not in Java. The only executable lines are the
+                        main class, excluded below. With a denominator that small a percentage
+                        says nothing, so the gate comes down: what matters is the routing test,
+                        not the ratio.
                     -->
                     <excludes>
                         <exclude>com/classroom/gateway/GatewayApplication.class</exclude>

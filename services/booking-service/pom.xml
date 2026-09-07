@@ -7,13 +7,13 @@
         <groupId>com.classroom</groupId>
         <artifactId>classroom-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <!-- Il default sarebbe ../pom.xml, che da services/<modulo>/ non esiste. -->
+        <!-- The default would be ../pom.xml, which does not exist from services/<module>/. -->
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>booking-service</artifactId>
     <name>BookingService</name>
-    <description>Applicazione: aule, prenotazioni, utenti e notifiche (ancora un solo deployable)</description>
+    <description>The booking service: rooms, bookings and courses</description>
 
     <dependencies>
         <dependency>
@@ -22,9 +22,9 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- TestJwt: firma token di prova con lo stesso segreto, cosi' i test di questo
-             servizio non hanno bisogno che auth-service giri. E' la conseguenza pratica
-             del fatto che la validazione JWT sia offline. -->
+        <!-- TestJwt: signs test tokens with the same secret, so this service's tests do
+             not need auth-service running. It is the practical consequence of JWT
+             validation being offline. -->
         <dependency>
             <groupId>com.classroom</groupId>
             <artifactId>shared</artifactId>
@@ -50,9 +50,9 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- Migrazioni versionate dello schema. Prima lo schema reale era quello
-             generato da ddl-auto=update e i file .sql del progetto non venivano
-             mai eseguiti, con la conseguenza che i vincoli di dominio mancavano. -->
+        <!-- Versioned schema migrations. The real schema used to be the one ddl-auto=update
+             generated, and the project's .sql files were never executed, with the
+             consequence that the domain constraints were simply absent. -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -67,8 +67,8 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- Messaggistica: la notifica di cancellazione viaggia su coda invece che via
-             REST, cosi' sopravvive a notification-service spento. Versione gestita da Boot. -->
+        <!-- Messaging: the cancellation notification travels on a queue rather than over
+             REST, so it survives notification-service being down. Version managed by Boot. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
@@ -123,15 +123,16 @@
             <scope>test</scope>
         </dependency>
         <!--
-            Testcontainers: una sola classe di test gira su PostgreSQL reale, per coprire
-            cio' che H2 non sa esprimere (EXCLUDE USING gist, CHECK constraint, migrazioni
-            Flyway). Le altre 9 classi di integrazione restano su H2, veloci.
+            Testcontainers: one test class runs against a real PostgreSQL, to cover what H2
+            cannot express (EXCLUDE USING gist, CHECK constraints, the Flyway migrations).
+            The other integration classes stay on H2, and stay fast.
 
-            Nessun <version>: la 1.19.8 e' gia' gestita da spring-boot-dependencies.
+            No <version>: 1.19.8 is already managed by spring-boot-dependencies.
 
-            junit:junit (JUnit 4) arriva transitivo e NON va escluso: PostgreSQLContainer
-            eredita da una gerarchia che implementa org.junit.rules.TestRule, quindi serve
-            a compile-time anche se i test sono tutti su JUnit 5.
+            junit:junit (JUnit 4) arrives transitively and must NOT be excluded:
+            PostgreSQLContainer inherits from a hierarchy implementing
+            org.junit.rules.TestRule, so it is needed at compile time even though every test
+            is on JUnit 5.
         -->
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -144,10 +145,9 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Il broker nei test e' un container vero e NON e' opzionale: la classe che lo usa
-             deve FALLIRE se Docker manca, non essere saltata. Un test sulla messaggistica
-             che si auto-disabilita non prova nulla, ed e' gia' costato quattro asserzioni
-             nascoste altrove in questo progetto. -->
+        <!-- The broker in the tests is a real container: the class that uses it has to
+             be exercised for real. A messaging test that disables itself proves nothing,
+             and that has already cost four hidden assertions elsewhere in this project. -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>rabbitmq</artifactId>
@@ -162,8 +162,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <!-- L'aggregatore disattiva il plugin per non far fallire
-                         "spring-boot:run -pl booking-service -am": qui va riacceso. -->
+                    <!-- The aggregator switches the plugin off so that
+                         "spring-boot:run -pl booking-service -am" does not fail: here it is
+                         switched back on. -->
                     <skip>false</skip>
                 </configuration>
             </plugin>
@@ -176,10 +177,10 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <configuration>
                     <excludes>
-                        <!-- Solo la classe @SpringBootApplication: il main() non e' testabile
-                             in modo significativo. Volutamente NON si escludono i dto: quelle
-                             righe sono gia' quasi tutte coperte (Jackson invoca i getter
-                             serializzando), quindi escluderle abbasserebbe la percentuale. -->
+                        <!-- Only the @SpringBootApplication class: main() is not meaningfully
+                             testable. The DTOs are deliberately NOT excluded: those lines are
+                             already almost entirely covered (Jackson calls the getters while
+                             serialising), so excluding them would lower the percentage. -->
                         <exclude>com/classroom/booking/BookingServiceApplication.class</exclude>
                     </excludes>
                 </configuration>

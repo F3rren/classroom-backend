@@ -7,7 +7,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Classroom (aggregator)</name>
-    <description>Aggregatore dei moduli: shared e applicazione</description>
+    <description>The module aggregator: shared and the four services</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -17,10 +17,11 @@
     </parent>
 
     <!--
-        Primo passo della scomposizione in microservizi: la struttura diventa multi-modulo
-        ma il deployable resta uno solo (app). Serve a rendere i confini verificabili dal
-        compilatore prima di introdurre la rete: se un modulo compila dichiarando dipendenze
-        solo verso shared, il confine e' reale; se non compila, era immaginario.
+        The first step of breaking the monolith into services: the layout became
+        multi-module while the deployable stayed single. It was there to make the boundaries
+        checkable by the compiler before introducing the network: if a module compiles while
+        declaring dependencies only on shared, the boundary is real; if it does not compile,
+        it was imaginary.
     -->
     <modules>
         <module>shared</module>
@@ -32,24 +33,25 @@
 
     <properties>
         <java.version>17</java.version>
-        <!-- Non gestita da spring-boot-starter-parent: va fissata esplicitamente -->
+        <!-- Not managed by spring-boot-starter-parent: it has to be pinned explicitly -->
         <jacoco.version>0.8.12</jacoco.version>
         <lombok.version>1.18.40</lombok.version>
         <jjwt.version>0.12.3</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
-        <!-- Soglia del gate di copertura. I moduli possono sovrascriverla: il denominatore
-             cambia da modulo a modulo, quindi una soglia unica non e' automaticamente sensata.
+        <!-- The coverage gate's threshold. Modules may override it: the denominator changes from
+             module to module, so one single threshold is not automatically sensible.
 
-             SENZA DOCKER QUESTO GATE FALLISCE, ed e' corretto che lo faccia. Le classi
-             @Testcontainers si saltano da sole quando Docker non c'e' (skipped, non errore),
-             ma il codice che coprivano resta scoperto: notification-service scende a 0.67 perche'
-             MessaggisticaCancellazioniTest e' l'unica a esercitare la topologia AMQP. Il gate
-             certifica che il codice sia provato, e non puo' certificare cio' che non ha girato.
+             WITHOUT DOCKER THIS GATE FAILS, and it is right that it should. The
+             @Testcontainers classes skip themselves when Docker is absent (skipped, not an
+             error), but the code they covered stays uncovered: notification-service drops to
+             0.67 because CancellationMessagingTest is the only thing exercising the AMQP
+             topology. The gate certifies that the code has been tested, and it cannot certify
+             what never ran.
 
-             Il messaggio di Maven pero' dice solo "Coverage checks have not been met", senza
-             nominare Docker: chi ci finisce sopra cerca test mancanti che non mancano. Per il
-             ciclo di sviluppo senza Docker si usa "mvn test", che passa; "mvn verify" richiede
-             Docker acceso. E' scritto anche nel README. -->
+             Maven's message, though, says only "Coverage checks have not been met", without
+             naming Docker: whoever lands on it goes looking for missing tests that are not
+             missing. For the development cycle without Docker use "mvn test", which passes;
+             "mvn verify" requires Docker to be up. It is written in the README too. -->
         <jacoco.line.minimum>0.80</jacoco.line.minimum>
     </properties>
 
@@ -66,10 +68,10 @@
     <build>
         <plugins>
             <!--
-                "mvn spring-boot:run -pl booking-service -am" applica il goal a ogni progetto del
-                reattore, aggregatore e shared inclusi, che non hanno una main class e
-                farebbero fallire il comando. Qui il goal diventa un no-op; app lo
-                riabilita esplicitamente.
+                "mvn spring-boot:run -pl booking-service -am" applies the goal to every
+                project in the reactor, the aggregator and shared included, neither of which
+                has a main class and both of which would fail the command. Here the goal
+                becomes a no-op; each service re-enables it explicitly.
             -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -83,24 +85,24 @@
         <pluginManagement>
             <plugins>
                 <!--
-                    api.version e' letto da docker-java (dentro Testcontainers) e fissa la
-                    versione di API Docker usata per parlare col daemon.
+                    api.version is read by docker-java (inside Testcontainers) and pins the
+                    Docker API version used to talk to the daemon.
 
-                    Serve: docker-java negozia di default la 1.32, mentre Docker Engine 29.x
-                    dichiara MinAPIVersion 1.40 e risponde 400 Bad Request. Testcontainers
-                    interpreta il 400 come "daemon assente", segna la classe come skipped e la
-                    build resta verde senza aver provato nulla. Non e' un problema di pipe ne'
-                    di versione di Testcontainers: la 1.21.3 fallisce allo stesso modo.
+                    It is needed: docker-java negotiates 1.32 by default, while Docker Engine
+                    29.x declares MinAPIVersion 1.40 and answers 400 Bad Request.
+                    Testcontainers reads that 400 as "no daemon", marks the class as skipped,
+                    and the build stays green having proved nothing. It is not a pipe problem
+                    nor a Testcontainers version problem: 1.21.3 fails the same way.
 
-                    1.40 e non 1.44: e' il minimo accettato dall'Engine 29 ed e' supportata
-                    gia' da Engine 19.03, quindi copre la banda piu' ampia di daemon.
+                    1.40 and not 1.44: it is the minimum Engine 29 accepts and has been
+                    supported since Engine 19.03, so it covers the widest band of daemons.
 
-                    Sta in pluginManagement perche' vale per ogni modulo che ospiti test
-                    Testcontainers: oggi solo app, domani booking-service.
+                    It sits in pluginManagement because it applies to every module hosting
+                    Testcontainers tests.
 
-                    ATTENZIONE: non aggiungere qui un <argLine>. La property "argLine" e'
-                    impostata da jacoco:prepare-agent; sovrascriverla senza @{argLine} manda
-                    la copertura a zero in silenzio. systemPropertyVariables non la tocca.
+                    CAREFUL: do not add an <argLine> here. The "argLine" property is set by
+                    jacoco:prepare-agent; overwriting it without @{argLine} sends coverage to
+                    zero in silence. systemPropertyVariables does not touch it.
                 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -112,9 +114,10 @@
                     </configuration>
                 </plugin>
                 <!--
-                    Copertura test. report gira in fase "test" (cosi' mvn test genera gia'
-                    target/site/jacoco/index.html), il gate gira in fase "verify": mvn test
-                    resta verde mentre si lavora, mvn verify e' cio' che fallisce sotto soglia.
+                    Test coverage. report runs in the "test" phase (so mvn test already
+                    produces target/site/jacoco/index.html), and the gate runs in "verify":
+                    mvn test stays green while you work, and mvn verify is what fails below
+                    the threshold.
                 -->
                 <plugin>
                     <groupId>org.jacoco</groupId>

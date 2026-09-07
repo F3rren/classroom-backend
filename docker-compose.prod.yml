@@ -1,26 +1,26 @@
 # ============================================================================
-# SOVRASCRITTURA PER LA PRODUZIONE
+# THE PRODUCTION OVERRIDE
 #
 #     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
-# FA UNA COSA SOLA: toglie i valori di ripiego ai segreti.
+# IT DOES ONE THING: it takes the fallback values away from the secrets.
 #
-# docker-compose.yml li ha di proposito - ${DB_PASSWORD:-postgres},
-# ${RABBITMQ_PASSWORD:-guest} - perche' in sviluppo "docker compose up" deve
-# funzionare senza preparare niente. Il problema e' come quella comodita' arriva
-# altrove: in silenzio. Nessun avviso, nessun errore, solo un database raggiungibile
-# con la password "postgres" e un broker con "guest".
+# docker-compose.yml has them on purpose - ${DB_PASSWORD:-postgres},
+# ${RABBITMQ_PASSWORD:-guest} - because in development "docker compose up" has to work with
+# nothing prepared. The problem is how that convenience travels elsewhere: silently. No
+# warning, no error, just a database reachable with the password "postgres" and a broker with
+# "guest".
 #
-# Qui le stesse variabili diventano ${...:?}, cioe' obbligatorie: se mancano, compose
-# si rifiuta di partire e dice quale manca. Un errore prima di partire, invece di un
-# sistema in piedi e aperto.
+# Here the same variables become ${...:?}, that is, mandatory: if they are missing, compose
+# refuses to start and says which one. An error before starting, instead of a system that is
+# up and open.
 #
-# JWT_SECRET non compare: e' gia' obbligatoria nel file principale, perche' un
-# segreto di firma con un valore di comodo non ha mai senso, nemmeno in sviluppo.
+# JWT_SECRET does not appear: it is already mandatory in the main file, because a signing
+# secret with a convenience value never makes sense, not even in development.
 #
-# COSA NON FA, di proposito: politiche di riavvio, limiti di memoria, repliche,
-# raccolta dei log. Sono decisioni che dipendono da DOVE si distribuisce, e
-# inventarle qui vorrebbe dire scriverle prima di sapere se servono.
+# WHAT IT DELIBERATELY DOES NOT DO: restart policies, memory limits, replicas, log shipping.
+# Those are decisions that depend on WHERE you deploy, and inventing them here would mean
+# writing them before knowing whether they are needed.
 # ============================================================================
 
 services:
@@ -51,8 +51,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
       RABBITMQ_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in produzione la password del broker va dichiarata, non lasciata a guest}
-      # Senza ripiego anche qui: le origini di localhost in produzione non sono un
-      # default utile, sono una porta lasciata aperta su un'origine che non esiste.
+      # No fallback here either: localhost origins in production are not a useful default,
+      # they are a door left open onto an origin that does not exist.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in produzione le origini ammesse vanno dichiarate}
 
   notification-service:

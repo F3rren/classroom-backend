@@ -7,19 +7,19 @@
         <groupId>com.classroom</groupId>
         <artifactId>classroom-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <!-- Il default sarebbe ../pom.xml, che da services/<modulo>/ non esiste. -->
+        <!-- The default would be ../pom.xml, which does not exist from services/<module>/. -->
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>auth-service</artifactId>
     <name>AuthService</name>
-    <description>Servizio utenti: possiede la tabella utenti ed e' l'unico a firmare i token</description>
+    <description>The user service: it owns the users table and is the only one that signs tokens</description>
 
     <!--
-        Il primo dominio staccato, perche' e' il piu' isolato: le notifiche portano gia'
-        denormalizzati i dati che mostrano (nome stanza, nome admin, id prenotazione),
-        quindi per rispondere non devono chiamare nessuno. L'unico legame era la
-        @ManyToOne verso Utente, diventata una colonna utente_id senza chiave esterna.
+        The first domain to be detached, because it was the most isolated: notifications
+        already carry the data they display in denormalised form (room name, admin name,
+        booking id), so they have to call nobody in order to answer. The only tie was the
+        @ManyToOne to User, which became a plain user id column with no foreign key.
     -->
     <dependencies>
         <dependency>
@@ -28,9 +28,9 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- L'emissione dei token vive solo qui: shared porta il solo verificatore, che
-             non ha bisogno di jjwt-impl a compile time. E' la dipendenza che rende
-             auth-service l'unico servizio capace di firmare. -->
+        <!-- Token issuing lives only here: shared carries the verifier alone, which does
+             not need jjwt-impl at compile time. This is the dependency that makes
+             auth-service the only service able to sign. -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -101,9 +101,9 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Il CHECK sul ruolo e' un vincolo PostgreSQL: H2 lo ignorerebbe, quindi
-             quel test deve girare su un database vero come gia' fa quello sui vincoli
-             delle prenotazioni. Versione gestita da spring-boot-dependencies. -->
+        <!-- The CHECK on the role is a PostgreSQL constraint: H2 would ignore it, so that
+             test has to run against a real database, as the booking constraint test already
+             does. Version managed by spring-boot-dependencies. -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -114,8 +114,8 @@
             <artifactId>postgresql</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- TestJwt: permette ai test di firmarsi i propri token invece di dover
-             creare un utente e passare da auth-service. -->
+        <!-- TestJwt: lets the tests sign their own tokens instead of having to create a
+             user and go through auth-service. -->
         <dependency>
             <groupId>com.classroom</groupId>
             <artifactId>shared</artifactId>
