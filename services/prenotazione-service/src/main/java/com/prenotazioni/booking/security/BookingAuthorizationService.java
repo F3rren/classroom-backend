@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Usato da @PreAuthorize("@prenotazioneAuth.isOwnerOrAdmin(#id, principal)") sugli endpoint
- * di lettura di PrenotazioneController, al posto del controllo imperativo isOwnerOrAdmin
- * che stava prima nel controller.
+ * read endpoints of BookingController, in place of the imperative isOwnerOrAdmin check that
+ * used to live in the controller.
  */
 @Component("prenotazioneAuth")
 public class BookingAuthorizationService {
@@ -20,14 +20,14 @@ public class BookingAuthorizationService {
     }
 
     public boolean isOwnerOrAdmin(Long bookingId, AppPrincipal principal) {
-        // false qui non e' un errore mascherato: questo metodo E' un predicato, e
-        // rispondere "no" a "puoi agire?" e' esattamente il suo lavoro.
+        // false here is not a disguised error: this method IS a predicate, and answering
+        // "no" to "may you act?" is exactly its job.
         if (principal == null) {
             return false;
         }
         Booking booking = bookingService.getBookingById(bookingId);
-        // Se la prenotazione non esiste, non blocchiamo qui: lasciamo che sia il controller
-        // a rispondere 404 (comportamento gia' esistente), invece di mascherarlo con un 403.
+        // If the booking does not exist we do not block here: we let the controller answer
+        // 404 (the behaviour that was already there) rather than masking it with a 403.
         if (booking == null) {
             return true;
         }

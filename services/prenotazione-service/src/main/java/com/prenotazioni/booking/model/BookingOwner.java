@@ -4,20 +4,20 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 /**
- * Chi ha effettuato una prenotazione, come istantanea presa al momento della prenotazione.
+ * Who made a booking, as a snapshot taken at the moment of booking.
  *
- * Prima era una @ManyToOne verso l'entita' Utente. Quella relazione attraversa il confine
- * fra due servizi: gli utenti appartengono ad auth-service, le prenotazioni no. Restando
- * una join, ogni lettura di prenotazione avrebbe richiesto una chiamata di rete.
+ * It used to be a @ManyToOne to the User entity. That relation crosses the boundary between
+ * two services: users belong to auth-service, bookings do not. Had it stayed a join, every
+ * read of a booking would have required a network call.
  *
- * I tre campi sono esattamente quelli che sanitizeOwnerForListing gia' esponeva nel JSON
- * (id, username, nome), quindi la forma della risposta non cambia: e' un @Embeddable e non
- * un'entita' proprio per continuare a serializzarsi come oggetto "utente" annidato.
- * Email, ruolo e date di accesso non sono mai stati esposti e continuano a non esserlo.
+ * The three fields are exactly the ones sanitizeOwnerForListing already exposed in the JSON
+ * (id, username, name), so the shape of the response does not change: it is an @Embeddable
+ * and not an entity precisely so it keeps serialising as a nested "user" object. The email,
+ * the role and the login dates were never exposed and still are not.
  *
- * E' un'istantanea per scelta: mostra chi ha prenotato COME ERA ALLORA. Se l'utente cambia
- * nome, lo storico non si riscrive. Per la stessa ragione questi campi non vanno
- * risincronizzati quando auth-service aggiorna un profilo.
+ * It is a snapshot by choice: it shows who booked AS THEY WERE THEN. If the user changes
+ * their name, history is not rewritten. For the same reason these fields must not be
+ * resynchronised when auth-service updates a profile.
  */
 @Embeddable
 public class BookingOwner {

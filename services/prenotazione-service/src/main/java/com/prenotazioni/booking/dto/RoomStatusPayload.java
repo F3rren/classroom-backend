@@ -5,16 +5,16 @@ import lombok.Value;
 
 import java.time.LocalDateTime;
 
-/** Risposta non avvolta di GET /api/bookings/status/{aulaId} (comportamento gia' esistente). */
+/** The unwrapped response of GET /api/bookings/room-status/{roomId} (the existing shape). */
 @Value
-@Schema(description = "Stato di occupazione di un'aula in questo momento")
+@Schema(description = "How occupied a room is at this moment")
 public class RoomStatusPayload {
-    @Schema(description = "Aula interrogata", example = "3")
+    @Schema(description = "The room that was asked about", example = "3")
     Long roomId;
-    @Schema(description = "Stato calcolato adesso. Vocabolario MAIUSCOLO, diverso da aula.status persistito: "
+    @Schema(description = "The status computed now. An UPPERCASE vocabulary, different from the stored room.status: "
             + "include BOOKED e non ha BUSY",
             allowableValues = {"FREE", "BOOKED", "BLOCKED", "MAINTENANCE"}, example = "FREE")
     String status;
-    @Schema(description = "Momento a cui si riferisce lo stato")
+    @Schema(description = "The moment the status refers to")
     LocalDateTime timestamp;
 }

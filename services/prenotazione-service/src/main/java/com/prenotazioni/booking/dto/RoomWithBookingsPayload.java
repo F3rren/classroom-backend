@@ -5,7 +5,7 @@ import lombok.Getter;
 
 import java.util.List;
 
-/** Aula + le sue prenotazioni con dettagli, non avvolta nell'envelope ApiEnvelope (comportamento gia' esistente). */
+/** A room plus its detailed bookings, not wrapped in ApiEnvelope (the existing shape). */
 @Getter
 public class RoomWithBookingsPayload {
     private final Room room;

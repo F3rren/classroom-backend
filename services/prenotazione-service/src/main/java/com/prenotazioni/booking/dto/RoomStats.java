@@ -2,7 +2,7 @@ package com.prenotazioni.booking.dto;
 
 import lombok.Getter;
 
-/** Statistiche aule fisiche vs virtuali, dentro RoomStatsPayload.statistics. */
+/** Physical versus virtual room statistics, inside RoomStatsPayload.statistics. */
 @Getter
 public class RoomStats {
     private final long totalRooms;

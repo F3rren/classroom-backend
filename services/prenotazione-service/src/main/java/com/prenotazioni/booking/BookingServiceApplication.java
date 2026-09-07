@@ -5,17 +5,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
- * Servizio prenotazioni: aule, corsi e prenotazioni.
+ * The booking service: rooms, courses and bookings.
  *
- * Il componentScan e' esplicito perche' questo servizio non vive piu' sotto
- * com.prenotazioni ma sotto com.prenotazioni.booking, come gia' facevano
+ * The componentScan is explicit because this service no longer lives under
+ * com.prenotazioni but under com.prenotazioni.booking, as
  * auth-service e notifica-service. Senza, i bean condivisi (JwtVerifier, JwtAuthFilter,
  * SecurityConfig, i due handler di errore, GlobalExceptionHandler) resterebbero fuori
- * dalla scansione: il servizio partirebbe senza filtro JWT e ogni endpoint sarebbe
- * raggiungibile senza token.
+ * out of the scan: the service would start with no JWT filter and every endpoint would
+ * be reachable without a token.
  *
- * Prima non serviva, ma solo perche' questo servizio condivideva il package radice con
- * shared - ed era proprio quella sovrapposizione il problema: rendeva il confine fra i
+ * It was not needed before, but only because this service shared its root package with
+ * shared - and that overlap was itself the problem: it made the boundary between the
  * due moduli invisibile al compilatore.
  */
 @SpringBootApplication

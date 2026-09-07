@@ -3,7 +3,7 @@ package com.prenotazioni.booking.dto;
 import lombok.Value;
 
 /**
- * Wrapper minimo per una singola aula, riusato da GET /api/admin/rooms/{id} (Aula grezza)
+ * A minimal wrapper around a single room, reused by GET /api/admin/rooms/{id} (the raw Room)
  * e GET /api/rooms/{id}/detailed (RoomDetailsResponse).
  */
 @Value

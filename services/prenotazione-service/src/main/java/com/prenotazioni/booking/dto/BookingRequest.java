@@ -6,32 +6,33 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * Richiesta di creazione/modifica/blocco di una prenotazione.
- * inizio/fine restano String (formato "2024-12-25T14:30:00"): il parsing e i controlli
- * di range (fine dopo inizio, non nel passato, ecc.) sono logica applicativa fatta
- * a mano nel controller dopo che questa validazione di presenza campo e' passata.
+ * A request to create, update or block a booking.
+ *
+ * start and end stay Strings (in the form "2024-12-25T14:30:00"): the parsing and the range
+ * checks (end after start, not in the past, and so on) are application logic done by hand in
+ * the controller, after this presence validation has passed.
  */
 @Data
-@Schema(description = "Dati di una prenotazione, usati per crearla, modificarla o bloccare un'aula")
+@Schema(description = "The data of a booking, used to create it, update it, or block a room")
 public class BookingRequest {
 
     @NotNull(message = "Devi specificare quale aula vuoi prenotare.")
-    @Schema(description = "ID dell'aula da prenotare", example = "3")
+    @Schema(description = "The id of the room to book", example = "3")
     private Long roomId;
 
-    @Schema(description = "ID del corso associato. Opzionale: assente per prenotazioni libere", example = "12")
+    @Schema(description = "The id of the associated course. Optional: absent for a booking with no course", example = "12")
     private Long courseId;
 
     @NotBlank(message = "Devi specificare quando inizia la prenotazione.")
-    @Schema(description = "Inizio della prenotazione, formato ISO senza fuso orario. Deve essere nel futuro",
+    @Schema(description = "The start of the booking, ISO format without a time zone. Must be in the future",
             example = "2026-12-25T14:30:00")
     private String startTime;
 
     @NotBlank(message = "Devi specificare quando finisce la prenotazione.")
-    @Schema(description = "Fine della prenotazione, deve essere successiva a inizio",
+    @Schema(description = "The end of the booking, which must come after the start",
             example = "2026-12-25T16:30:00")
     private String endTime;
 
-    @Schema(description = "Descrizione libera, mostrata nei dettagli aula", example = "Lezione di Analisi 1")
+    @Schema(description = "Free-text description, shown in the room details", example = "Lezione di Analisi 1")
     private String description;
 }

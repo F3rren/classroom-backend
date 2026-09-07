@@ -3,7 +3,7 @@ package com.prenotazioni.booking.dto;
 import com.prenotazioni.booking.model.Room;
 import lombok.Getter;
 
-/** Risposta di GET /api/rooms/{id}: l'aula piu' alcuni campi denormalizzati gia' presenti oggi. */
+/** The response of GET /api/rooms/{id}: the room plus a few denormalised fields already there. */
 @Getter
 public class RoomDetailAckPayload {
     private final Room room;

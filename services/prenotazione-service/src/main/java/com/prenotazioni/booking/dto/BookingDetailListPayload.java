@@ -4,7 +4,7 @@ import lombok.Getter;
 
 import java.util.List;
 
-/** Lista di dettagli prenotazione, non avvolta nell'envelope ApiEnvelope (comportamento gia' esistente). */
+/** A list of booking details, not wrapped in ApiEnvelope (the shape that was already there). */
 @Getter
 public class BookingDetailListPayload {
     private final List<BookingDetailDto> bookings;

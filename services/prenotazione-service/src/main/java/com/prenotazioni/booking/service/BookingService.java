@@ -42,15 +42,15 @@ public class BookingService {
         this.courseRepository = courseRepository;
     }
 
-    // Prenota un'aula per una lezione
+    // Books a room for a lesson.
     @Transactional
     public Booking bookRoom(Long roomId, Long courseId, BookingOwner owner, LocalDateTime startTime, LocalDateTime endTime, String description) {
-        logger.debug("INIZIO METODO prenotaAula");
-        logger.debug("Richiesta prenotazione aula - AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", roomId, courseId, owner.getId(), startTime, endTime);
+        logger.debug("START prenotaroom");
+        logger.debug("room booking requested - roomId: {}, courseId: {}, userId: {}, period: {} - {}", roomId, courseId, owner.getId(), startTime, endTime);
         
-        // Verifica disponibilità
+        // Availability check
         if (!isRoomAvailable(roomId, startTime, endTime)) {
-            logger.warn("Aula ID {} non disponibile per il periodo {} - {}", roomId, startTime, endTime);
+            logger.warn("room ID {} is not available for the period {} - {}", roomId, startTime, endTime);
             throw new BookingConflictException("BOOKING_CONFLICT",
                     "Aula " + roomId + " busy from " + startTime + " to " + endTime,
                     "L'aula non e' disponibile nel periodo richiesto.");
@@ -59,26 +59,26 @@ public class BookingService {
         Optional<Room> room = roomRepository.findById(roomId);
 
         if (room.isEmpty()) {
-            // 404 e non piu' 409: aula inesistente e aula occupata erano entrambe un null,
-            // e il controller le presentava tutte come conflitto. Sono cose diverse.
+            // 404 and no longer 409: a missing room and a busy room were both a null, and
+            // the controller presented them all as a conflict. They are different things.
             throw ResourceNotFoundException.forId(ResourceType.ROOM, roomId);
         }
-        // Non si verifica piu' che l'utente esista: questo servizio non ha piu' la tabella
-        // utenti. A garantirlo e' il token, che auth-service ha firmato al login. La finestra
-        // di un utente cancellato con un token ancora valido e' limitata dalla scadenza.
+        // The user's existence is no longer checked: this service does not have the users
+        // table any more. The token guarantees it, signed by auth-service at login. The
+        // window for a deleted user holding a still-valid token is bounded by its expiry.
         
-        // Corso opzionale - può essere null per prenotazioni libere
+        // The course is optional - null for a booking with no course attached
         Optional<Course> course = Optional.empty();
         if (courseId != null) {
             course = courseRepository.findById(courseId);
             if (course.isEmpty()) {
-                // Il corso e' facoltativo, ma se indicato deve esistere: passarne uno
-                // inesistente e' un errore del chiamante, non una prenotazione libera.
+                // The course is optional, but if given it has to exist: passing one that
+                // does not is a caller error, not a booking without a course.
                 throw ResourceNotFoundException.forId(ResourceType.COURSE, courseId);
             }
         }
 
-        logger.debug("Creazione prenotazione per aula - AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", roomId, courseId, owner.getId(), startTime, endTime);
+        logger.debug("creating a booking for room - roomId: {}, courseId: {}, userId: {}, period: {} - {}", roomId, courseId, owner.getId(), startTime, endTime);
         Booking booking = new Booking();
         booking.setRoom(room.get());
         booking.setCourse(course.orElse(null)); // Può essere null
@@ -91,23 +91,23 @@ public class BookingService {
         
         Booking savedBooking = bookingRepository.save(booking);
         
-        // Aggiorna lo stato dell'aula se la prenotazione è attiva ADESSO
+        // Refresh the room status if the booking is active RIGHT NOW
         updateRoomStatus(roomId);
         
-        logger.info("Prenotazione creata - id={} aula='{}' utenteId={} periodo={} - {}", savedBooking.getId(), room.get().getName(), owner.getId(), startTime, endTime);
-        logger.debug("FINE METODO prenotaAula");
+        logger.info("booking created - id={} room='{}' userId={} period={} - {}", savedBooking.getId(), room.get().getName(), owner.getId(), startTime, endTime);
+        logger.debug("END prenotaroom");
         return savedBooking;
     }
     
-    // Blocca un'aula (solo admin)
+    // Blocks a room. Admin only.
     @Transactional
     public Booking blockRoom(Long roomId, BookingOwner admin, LocalDateTime startTime, LocalDateTime endTime, String reason) {
-        logger.debug("INIZIO METODO bloccaAula");
-        logger.debug("Richiesta blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", roomId, admin.getId(), startTime, endTime);
+        logger.debug("START bloccaroom");
+        logger.debug("room block requested - roomId: {}, AdminId: {}, period: {} - {}", roomId, admin.getId(), startTime, endTime);
         
-        // Verifica disponibilità
+        // Availability check
         if (!isRoomAvailable(roomId, startTime, endTime)) {
-            logger.warn("Aula ID {} non disponibile per il periodo {} - {}", roomId, startTime, endTime);
+            logger.warn("room ID {} is not available for the period {} - {}", roomId, startTime, endTime);
             throw new BookingConflictException("BLOCK_CONFLICT",
                     "Aula " + roomId + " busy from " + startTime + " to " + endTime,
                     "L'aula non e' disponibile nel periodo richiesto.");
@@ -115,13 +115,13 @@ public class BookingService {
         
         Optional<Room> room = roomRepository.findById(roomId);
 
-        // Il ruolo non si rilegge dal database: arriva dal token, e il controller
-        // e' gia' annotato @PreAuthorize("hasRole('ADMIN')").
+        // The role is not re-read from the database: it comes from the token, and the
+        // controller is already annotated @PreAuthorize("hasRole('ADMIN')").
         if (room.isEmpty()) {
             throw ResourceNotFoundException.forId(ResourceType.ROOM, roomId);
         }
         
-        logger.debug("Blocco aula - AulaId: {}, AdminId: {}, Periodo: {} - {}", roomId, admin.getId(), startTime, endTime);
+        logger.debug("blocking room - roomId: {}, AdminId: {}, period: {} - {}", roomId, admin.getId(), startTime, endTime);
         Booking blocco = new Booking();
         blocco.setRoom(room.get());
         blocco.setCourse(null); // Nessun corso per i blocchi
@@ -132,73 +132,73 @@ public class BookingService {
         blocco.setDescription(reason);
         blocco.setCreatedAt(LocalDateTime.now());
         
-        logger.info("Blocco aula creato - id={} aula='{}' adminId={} periodo={} - {}", blocco.getId(), room.get().getName(), admin.getId(), startTime, endTime);
-        logger.debug("FINE METODO bloccaAula");
+        logger.info("room block created - id={} room='{}' adminId={} period={} - {}", blocco.getId(), room.get().getName(), admin.getId(), startTime, endTime);
+        logger.debug("END bloccaroom");
         return bookingRepository.save(blocco);
     }
     
-    // Verifica se un'aula è disponibile in un determinato periodo
+    // Is a room free over a given period?
     public boolean isRoomAvailable(Long roomId, LocalDateTime startTime, LocalDateTime endTime) {
-        logger.debug("INIZIO METODO isAulaDisponibile");
-        logger.debug("Verifica disponibilità aula - AulaId: {}, Periodo: {} - {}", roomId, startTime, endTime);
+        logger.debug("START isroomavailable");
+        logger.debug("Room availability check - roomId: {}, period: {} - {}", roomId, startTime, endTime);
         List<Booking> conflicts = bookingRepository.findConflictingBookings(roomId, startTime, endTime);
         boolean available = conflicts.isEmpty();
-        logger.debug("Risultato verifica disponibilità aula - AulaId: {}, Periodo: {} - {}", roomId, startTime, endTime, available);
+        logger.debug("room availability result - roomId: {}, period: {} - {}", roomId, startTime, endTime, available);
         return available;
     }
     
-    // Ottiene lo stato attuale di un'aula
+    // The current status of a room.
     public String getRoomStatus(Long roomId, LocalDateTime moment) {
-        logger.debug("INIZIO METODO getStatoAula");
-        logger.debug("Verifica stato aula - AulaId: {}, Momento: {}", roomId, moment);
+        logger.debug("START getstatusroom");
+        logger.debug("checking room status - roomId: {}, moment: {}", roomId, moment);
         List<Booking> activeBookings = bookingRepository.findActiveBookings(roomId, moment);
             
         if (activeBookings.isEmpty()) {
-            logger.debug("Stato aula - AulaId: {}, Momento: {} - FREE", roomId, moment);
+            logger.debug("room status - roomId: {}, moment: {} - FREE", roomId, moment);
             return "FREE";
         }
         
-        // Priorità: MAINTENANCE > BLOCKED > BOOKED
+        // Precedence: MAINTENANCE > BLOCKED > BOOKED
         for (Booking p : activeBookings) {
             if (p.getStatus() == BookingStatus.MAINTENANCE) {
-                logger.debug("Stato aula - AulaId: {}, Momento: {} - MAINTENANCE", roomId, moment);
+                logger.debug("room status - roomId: {}, moment: {} - MAINTENANCE", roomId, moment);
                 return "MAINTENANCE";
             }
         }
         
         for (Booking p : activeBookings) {
             if (p.getStatus() == BookingStatus.BLOCKED) {
-                logger.debug("Stato aula - AulaId: {}, Momento: {} - BLOCKED", roomId, moment);
+                logger.debug("room status - roomId: {}, moment: {} - BLOCKED", roomId, moment);
                 return "BLOCKED";
             }
         }
         
-        logger.debug("Stato aula - AulaId: {}, Momento: {} - BOOKED", roomId, moment);
-        logger.debug("FINE METODO getStatoAula");
+        logger.debug("room status - roomId: {}, moment: {} - BOOKED", roomId, moment);
+        logger.debug("END getstatusroom");
         return "BOOKED";
     }
     
-    // Aggiorna lo stato dell'aula in base alle prenotazioni attive
+    // Refreshes the room status from the bookings active right now.
     private void updateRoomStatus(Long roomId) {
-        logger.debug("INIZIO METODO aggiornaStatoAula - AulaId: {}", roomId);
+        logger.debug("START aggiornastatusroom - roomId: {}", roomId);
         
         Optional<Room> roomOpt = roomRepository.findById(roomId);
         if (roomOpt.isEmpty()) {
-            logger.warn("Aula non trovata per aggiornamento stato - AulaId: {}", roomId);
+            logger.warn("room not found while refreshing its status - roomId: {}", roomId);
             return;
         }
         
         Room room = roomOpt.get();
         LocalDateTime now = LocalDateTime.now();
         
-        // Ottieni prenotazioni attive in questo momento
+        // The bookings active at this moment
         List<Booking> activeBookings = bookingRepository.findActiveBookings(roomId, now);
         
         RoomStatus newStatus;
         if (activeBookings.isEmpty()) {
             newStatus = RoomStatus.FREE;
         } else {
-            // Controlla se c'è una prenotazione di manutenzione o bloccata
+            // Is there a maintenance or blocking booking among them?
             boolean hasManutenzione = activeBookings.stream()
                 .anyMatch(p -> p.getStatus() == BookingStatus.MAINTENANCE);
             boolean hasBloccata = activeBookings.stream()
@@ -213,53 +213,53 @@ public class BookingService {
             }
         }
         
-        // Aggiorna solo se lo stato è cambiato
+        // Write only if the status changed
         if (newStatus != room.getStatus()) {
-            logger.debug("Aggiornamento stato aula {} da '{}' a '{}'", roomId, room.getStatus(), newStatus);
+            logger.debug("refreshing status of room {} da '{}' a '{}'", roomId, room.getStatus(), newStatus);
             room.setStatus(newStatus);
             roomRepository.save(room);
         } else {
-            logger.debug("Stato aula {} rimane invariato: '{}'", roomId, room.getStatus());
+            logger.debug("room status {} unchanged: '{}'", roomId, room.getStatus());
         }
         
-        logger.debug("FINE METODO aggiornaStatoAula");
+        logger.debug("END aggiornastatusroom");
     }
     
-    // Annulla una prenotazione
+    // Cancels a booking.
     @Transactional
     public boolean cancelBooking(Long bookingId, Long userId, boolean isAdmin) {
-        logger.debug("INIZIO METODO annullaPrenotazione");
-        logger.debug("Richiesta annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", bookingId, userId);
+        logger.debug("START cancelBooking");
+        logger.debug("booking cancellation requested - bookingId: {}, userId: {}", bookingId, userId);
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         
         if (booking.isEmpty()) {
             throw ResourceNotFoundException.forId(ResourceType.BOOKING, bookingId);
         }
         
-        logger.debug("Verifica permessi annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", bookingId, userId);
+        logger.debug("checking cancellation permissions for booking - bookingId: {}, userId: {}", bookingId, userId);
         Booking p = booking.get();
         
-        // Solo il creatore o un admin può annullare
+        // Only the creator or an admin may cancel
 
-        logger.debug("Verifica permessi annullamento prenotazione - PrenotazioneId: {}, UtenteId: {}", bookingId, userId);
+        logger.debug("checking cancellation permissions for booking - bookingId: {}, userId: {}", bookingId, userId);
         boolean isCreator = p.getUser().getId().equals(userId);
                 
         if (!isCreator && !isAdmin) {
-            // AccessDeniedException e non un booleano: il gestore globale la traduce gia'
-            // in 403. Prima il controller doveva RIFARE questo stesso controllo per capire
-            // se il false significasse "non autorizzato" o qualcos'altro.
+            // AccessDeniedException and not a boolean: the global handler already turns it
+            // into a 403. The controller used to have to REDO this same check to work out
+            // whether the false meant "not allowed" or something else.
             throw new org.springframework.security.access.AccessDeniedException(
                     "Puoi annullare solo le tue prenotazioni.");
         }
 
-        // Solo una prenotazione attiva puo' essere annullata da questo endpoint. Senza questo
-        // controllo un secondo annullamento riusciva e rispondeva "annullata con successo"
-        // pur non cambiando nulla; i blocchi e le manutenzioni, che non sono "booked",
-        // si annullano dall'endpoint admin (annullaPrenotazioneAsAdmin, volutamente permissivo
-        // sullo stato). La regola e' sullo stato, non sul ruolo: vale anche per gli admin.
+        // Only an active booking can be cancelled through this endpoint. Without this check
+        // a second cancellation succeeded and answered "cancelled successfully" while
+        // changing nothing; blocks and maintenance, which are not "booked", are cancelled
+        // through the admin endpoint (cancelBookingAsAdmin, deliberately permissive about
+        // the status). The rule is about the status, not the role: it applies to admins too.
         if (!p.getStatus().isActive()) {
-            // 409: la prenotazione esiste ed e' visibile, ma il suo stato non ammette
-            // l'annullamento. Non e' "non trovata" e non e' "non autorizzato".
+            // 409: the booking exists and is visible, but its status does not admit
+            // cancellation. It is neither "not found" nor "not allowed".
             throw new DomainConflictException("INVALID_STATE",
                     "Prenotazione " + bookingId + " in state " + p.getStatus().getValue(),
                     "Questa prenotazione non puo' essere annullata nello stato attuale.");
@@ -268,128 +268,128 @@ public class BookingService {
         p.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(p);
         
-        // Aggiorna lo stato dell'aula
+        // Refresh the room status
         updateRoomStatus(p.getRoom().getId());
         
-        logger.info("Prenotazione ID {} annullata con successo da Utente ID {}", bookingId, userId);
-        logger.debug("FINE METODO annullaPrenotazione");
+        logger.info("booking ID {} cancelled by user ID {}", bookingId, userId);
+        logger.debug("END cancelBooking");
         return true;
     }
     
-    // Lista tutte le prenotazioni per gestione admin
+    // Every booking, for the admin views.
     public List<Booking> getAllBookings() {
-        logger.debug("INIZIO METODO getAllPrenotazioni");
-        logger.debug("Recupero tutte le prenotazioni dal database");
+        logger.debug("START getAllBookings");
+        logger.debug("fetching every booking from the database");
         List<Booking> bookings = bookingRepository.findAll();
-        logger.debug("Recuperate {} prenotazioni totali", bookings.size());
-        logger.debug("FINE METODO getAllPrenotazioni");
+        logger.debug("fetched {} bookings in total", bookings.size());
+        logger.debug("END getAllBookings");
         return bookings;
     }
     
-    // Lista prenotazioni per utente
+    // The bookings of one user.
     public List<Booking> getUserBookings(Long userId) {
-        logger.debug("INIZIO METODO getPrenotazioniUtente");
-        logger.debug("Recupero prenotazioni per utente - UtenteId: {}", userId);
+        logger.debug("START getUserBookings");
+        logger.debug("fetching bookings for user - userId: {}", userId);
         List<Booking> bookings = bookingRepository.findByUserId(userId);
-        logger.debug("Recuperate {} prenotazioni per utente ID {}", bookings.size(), userId);
-        logger.debug("FINE METODO getPrenotazioniUtente");
+        logger.debug("fetched {} bookings for user ID {}", bookings.size(), userId);
+        logger.debug("END getUserBookings");
         return bookings;
     }
     
-    // Ottieni dettagli completi per una specifica aula
+    // Full details for one room.
     public List<BookingDetailDto> getRoomCompleteDetails(Long roomId) {
-        logger.debug("INIZIO METODO getRoomCompleteDetails");
-        logger.debug("Recupero dettagli completi per aula - AulaId: {}", roomId);
-        logger.debug("FINE METODO getRoomCompleteDetails");
+        logger.debug("START getRoomCompleteDetails");
+        logger.debug("fetching full details for room - roomId: {}", roomId);
+        logger.debug("END getRoomCompleteDetails");
         return bookingRepository.findCompleteDetailsByRoomId(roomId);
     }
     
-    // Ottieni dettagli completi di tutte le prenotazioni
+    // Full details for every booking.
     public List<BookingDetailDto> getAllCompleteDetails() {
-        logger.debug("INIZIO METODO getAllCompleteDetails");
-        logger.debug("Recupero dettagli completi per tutte le prenotazioni");
-        logger.debug("FINE METODO getAllCompleteDetails");
+        logger.debug("START getAllCompleteDetails");
+        logger.debug("fetching full details for every booking");
+        logger.debug("END getAllCompleteDetails");
         return bookingRepository.findAllCompleteDetails();
     }
     
-    // Ottieni una singola prenotazione per ID
+    // A single booking by id.
     public Booking getBookingById(Long id) {
-        logger.debug("INIZIO METODO getPrenotazioneById");
-        logger.debug("Recupero prenotazione per ID - PrenotazioneId: {}", id);
+        logger.debug("START getBookingById");
+        logger.debug("fetching booking by ID - bookingId: {}", id);
         Optional<Booking> booking = bookingRepository.findById(id);
-        logger.debug("FINE METODO getPrenotazioneById");
+        logger.debug("END getBookingById");
         return booking.orElse(null);
     }
     
-    // Ottieni dettagli completi per una singola prenotazione
+    // Full details for a single booking.
     public List<BookingDetailDto> getBookingCompleteDetails(Long bookingId) {
-        logger.debug("INIZIO METODO getPrenotazioneCompleteDetails");
-        logger.debug("Recupero dettagli completi per prenotazione - PrenotazioneId: {}", bookingId);
-        logger.debug("FINE METODO getPrenotazioneCompleteDetails");
+        logger.debug("START getBookingCompleteDetails");
+        logger.debug("fetching full details for booking - bookingId: {}", bookingId);
+        logger.debug("END getBookingCompleteDetails");
         return bookingRepository.findCompleteDetailsByBookingId(bookingId);
     }
     
-    // Lista prenotazioni per stato
+    // The bookings in a given status.
     public List<Booking> getBookingsByStatus(String status) {
-        logger.debug("INIZIO METODO getPrenotazioniByStato");
-        logger.debug("Recupero prenotazioni per stato - Stato: {}", status);
-        logger.debug("FINE METODO getPrenotazioniByStato");
+        logger.debug("START getPrenotazioniBystatus");
+        logger.debug("fetching bookings by status - status: {}", status);
+        logger.debug("END getPrenotazioniBystatus");
         return bookingRepository.findByStatus(BookingStatus.from(status));
     }
     
-    // Lista prenotazioni future
+    // The bookings that start in the future.
     public List<Booking> getFutureBookings() {
-        logger.debug("INIZIO METODO getPrenotazioniFuture");
-        logger.debug("Recupero prenotazioni future a partire da ora");
-        logger.debug("FINE METODO getPrenotazioniFuture");
+        logger.debug("START getFutureBookings");
+        logger.debug("fetching bookings starting from now");
+        logger.debug("END getFutureBookings");
         return bookingRepository.findFutureBookings(LocalDateTime.now());
     }
     
-    // Metodo admin per annullare qualsiasi prenotazione
+    // The admin path for cancelling any booking at all.
     @Transactional
     public boolean cancelBookingAsAdmin(Long bookingId, Long adminId, String reason) {
-        logger.debug("INIZIO METODO annullaPrenotazioneAsAdmin");
-        logger.debug("Richiesta annullamento prenotazione da admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", bookingId, adminId, reason);
+        logger.debug("START cancelBookingAsAdmin");
+        logger.debug("booking cancellation requested by an admin - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
         Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
         if (bookingOpt.isEmpty()) {
             throw ResourceNotFoundException.forId(ResourceType.BOOKING, bookingId);
         }
         
-        logger.debug("Richiesta annullamento prenotazione da admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", bookingId, adminId, reason);
+        logger.debug("booking cancellation requested by an admin - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
         Booking booking = bookingOpt.get();
         
-        // Il ruolo admin e' gia' stato verificato dal filtro JWT e da @PreAuthorize:
-        // rileggerlo qui richiederebbe una chiamata ad auth-service a ogni cancellazione.
+        // The admin role has already been checked by the JWT filter and by @PreAuthorize:
+        // re-reading it here would mean calling auth-service on every cancellation.
         
-        logger.debug("Annullamento prenotazione da parte dell'admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", bookingId, adminId, reason);
-        // Gli admin possono eliminare qualsiasi prenotazione, indipendentemente dallo stato
+        logger.debug("booking cancelled by the admin - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
+        // An admin may cancel any booking, whatever its status
         booking.setStatus(BookingStatus.CANCELLED);
         
-        logger.debug("Aggiornamento descrizione prenotazione per indicare azione admin - PrenotazioneId: {}, AdminId: {}, Motivo: {}", bookingId, adminId, reason);
-        // Aggiorna la descrizione per indicare l'azione admin
+        logger.debug("updating the booking description to record the admin action - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
+        // Record in the description that an admin did this
         String descrizioneOriginale = booking.getDescription() != null ? booking.getDescription() : "";
         String newDescription = descrizioneOriginale + 
             (descrizioneOriginale.isEmpty() ? "" : " | ") +
             "CANCELLED DALL'AMMINISTRATORE: " + reason;
         booking.setDescription(newDescription);
 
-        logger.debug("Salvataggio prenotazione aggiornata - PrenotazioneId: {}", bookingId);
+        logger.debug("saving the updated booking - bookingId: {}", bookingId);
         bookingRepository.save(booking);
         
-        // Aggiorna lo stato dell'aula
+        // Refresh the room status
         updateRoomStatus(booking.getRoom().getId());
         
-        logger.debug("FINE METODO annullaPrenotazioneAsAdmin");
+        logger.debug("END cancelBookingAsAdmin");
         return true;
     }
 
-    // Aggiorna una prenotazione esistente
+    // Updates an existing booking.
     @Transactional
     public Booking updateBooking(Long bookingId, Long roomId, Long courseId, Long userId, boolean isAdmin, LocalDateTime startTime, LocalDateTime endTime, String description) {
-        logger.debug("INIZIO METODO updatePrenotazione");
-        logger.debug("Richiesta aggiornamento prenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, UtenteId: {}, Periodo: {} - {}", bookingId, roomId, courseId, userId, startTime, endTime);
+        logger.debug("START updateBooking");
+        logger.debug("booking update requested - bookingId: {}, roomId: {}, courseId: {}, userId: {}, period: {} - {}", bookingId, roomId, courseId, userId, startTime, endTime);
         
-        // Trova la prenotazione esistente
+        // Find the booking
         Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
         if (bookingOpt.isEmpty()) {
             throw ResourceNotFoundException.forId(ResourceType.BOOKING, bookingId);
@@ -397,7 +397,7 @@ public class BookingService {
         
         Booking booking = bookingOpt.get();
         
-        // Verifica autorizzazione - solo il creatore o un admin può modificare
+        // Authorisation - only the creator or an admin may change it
         boolean isCreator = booking.getUser().getId().equals(userId);
                 
         if (!isCreator && !isAdmin) {
@@ -405,34 +405,34 @@ public class BookingService {
                     "Puoi modificare solo le tue prenotazioni.");
         }
         
-        // Verifica che l'aula esista
+        // The room has to exist
         Optional<Room> room = roomRepository.findById(roomId);
         if (room.isEmpty()) {
-            // 404 e non piu' 409: aula inesistente e aula occupata erano entrambe un null,
-            // e il controller le presentava tutte come conflitto. Sono cose diverse.
+            // 404 and no longer 409: a missing room and a busy room were both a null, and
+            // the controller presented them all as a conflict. They are different things.
             throw ResourceNotFoundException.forId(ResourceType.ROOM, roomId);
         }
         
-        // Verifica disponibilità aula per il nuovo periodo (escludendo questa prenotazione)
+        // Is the room free over the new period? (this booking itself excluded)
         if (!isRoomAvailableExcluding(roomId, startTime, endTime, bookingId)) {
             throw new BookingConflictException("UPDATE_CONFLICT",
                     "Aula " + roomId + " busy from " + startTime + " to " + endTime,
                     "L'aula non e' disponibile nel nuovo periodo richiesto.");
         }
         
-        // Corso opzionale
+        // The course is optional
         Optional<Course> course = Optional.empty();
         if (courseId != null) {
             course = courseRepository.findById(courseId);
             if (course.isEmpty()) {
-                // Il corso e' facoltativo, ma se indicato deve esistere: passarne uno
-                // inesistente e' un errore del chiamante, non una prenotazione libera.
+                // The course is optional, but if given it has to exist: passing one that
+                // does not is a caller error, not a booking without a course.
                 throw ResourceNotFoundException.forId(ResourceType.COURSE, courseId);
             }
         }
         
-        // Aggiorna i campi
-        logger.debug("Aggiornamento campi prenotazione - PrenotazioneId: {}", bookingId);
+        // Apply the new values
+        logger.debug("applying the new booking values - bookingId: {}", bookingId);
         booking.setRoom(room.get());
         booking.setCourse(course.orElse(null));
         booking.setStartTime(startTime);
@@ -440,17 +440,17 @@ public class BookingService {
         booking.setDescription(description);
         
         Booking savedBooking = bookingRepository.save(booking);
-        logger.info("Prenotazione aggiornata - id={} aula='{}' utenteId={} periodo={} - {}", savedBooking.getId(), room.get().getName(), userId, startTime, endTime);
-        logger.debug("FINE METODO updatePrenotazione");
+        logger.info("booking updated - id={} room='{}' userId={} period={} - {}", savedBooking.getId(), room.get().getName(), userId, startTime, endTime);
+        logger.debug("END updateBooking");
         return savedBooking;
     }
     
-    // Verifica disponibilità aula escludendo una prenotazione specifica
+    // Is the room free over the period, ignoring one particular booking?
     private boolean isRoomAvailableExcluding(Long roomId, LocalDateTime startTime, LocalDateTime endTime, Long excludedBookingId) {
-        logger.debug("Verifica disponibilità aula escludendo prenotazione - AulaId: {}, Periodo: {} - {}, Esclusa: {}", roomId, startTime, endTime, excludedBookingId);
+        logger.debug("Room availability check excluding a booking - roomId: {}, period: {} - {}, excluded: {}", roomId, startTime, endTime, excludedBookingId);
         List<Booking> conflicts = bookingRepository.findConflictingBookingsExcluding(roomId, startTime, endTime, excludedBookingId);
         boolean available = conflicts.isEmpty();
-        logger.debug("Risultato verifica disponibilità aula (esclusa prenotazione {}) - AulaId: {}, Disponibile: {}", excludedBookingId, roomId, available);
+        logger.debug("room availability result (booking {} excluded) - roomId: {}, available: {}", excludedBookingId, roomId, available);
         return available;
     }
 }

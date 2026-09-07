@@ -8,24 +8,25 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Il lato "chi pubblica" della topologia.
+ * The publisher side of the topology.
  *
- * Dichiara solo l'exchange: la coda appartiene a chi consuma, ed e' notifica-service a
- * crearla. E' voluto - se il servizio prenotazioni dichiarasse anche la coda, saprebbe chi
- * sta ascoltando, e l'accoppiamento che la coda serve a togliere rientrerebbe dalla finestra.
- * Un exchange senza code collegate scarta i messaggi, il che e' il comportamento giusto:
- * pubblicare non richiede che qualcuno sia interessato.
+ * It declares only the exchange: the queue belongs to the consumer, and notification-service
+ * is the one that creates it. That is deliberate - if the booking service declared the queue
+ * too it would know who is listening, and the coupling the queue exists to remove would come
+ * back in through the window..
+ * An exchange with no queues bound to it discards messages, which is the right behaviour:
+ * publishing does not require anybody to be interested.
  *
- * Il converter e' JSON e non la serializzazione Java di default: i messaggi devono restare
- * leggibili nella console del broker e non devono legare le due parti alla stessa classe
- * compilata. Entrambi i servizi conoscono comunque il record condiviso in shared.
+ * The converter is JSON and not Java's default serialisation: the messages have to stay
+ * readable in the broker console and must not tie the two sides to the same compiled class.
+ * Both services know the shared record in shared anyway.
  */
 @Configuration
 public class EventTopologyConfig {
 
     @Bean
     TopicExchange eventsExchange() {
-        // durable: sopravvive al riavvio del broker, come la coda dall'altra parte.
+        // durable: it survives a broker restart, like the queue on the other side.
         return new TopicExchange(EventTopology.EXCHANGE, true, false);
     }
 

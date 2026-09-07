@@ -13,7 +13,7 @@ import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     
-    // Trova prenotazioni che si sovrappongono con un periodo dato
+    // The bookings that overlap a given period.
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId " +
            "AND p.status != 'cancelled' " +
            "AND ((p.startTime <= :start AND p.endTime > :start) " +
@@ -23,7 +23,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                                    @Param("start") LocalDateTime startTime, 
                                                    @Param("end") LocalDateTime endTime);
 
-    // Trova prenotazioni che si sovrappongono con un periodo dato escludendo una prenotazione specifica
+    // The bookings that overlap a given period, ignoring one particular booking.
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId " +
            "AND p.status != 'cancelled' " +
            "AND p.id != :excludedBookingId " +
@@ -43,12 +43,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findActiveBookings(@Param("roomId") Long roomId,
                                              @Param("moment") LocalDateTime moment);
     
-    // Trova prenotazioni per utente
+    // The bookings of one user.
     @Query("SELECT p FROM Booking p WHERE p.user.id = :userId " +
            "ORDER BY p.startTime DESC")
     List<Booking> findByUserId(@Param("userId") Long userId);
     
-    // Trova prenotazioni per stato
+    // The bookings in a given status.
     List<Booking> findByStatus(BookingStatus status);
     
     // Trova prenotazioni future
@@ -56,7 +56,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "ORDER BY p.startTime ASC")
     List<Booking> findFutureBookings(@Param("now") LocalDateTime now);
     
-    // Vista completa prenotazioni per una specifica aula
+    // The full booking view for one particular room.
     @Query("SELECT new com.prenotazioni.booking.dto.BookingDetailDto(" +
            "p.id, " +
            "p.startTime, " +
@@ -85,7 +85,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "ORDER BY p.startTime DESC")
     List<BookingDetailDto> findCompleteDetailsByRoomId(@Param("roomId") Long roomId);
     
-    // Vista completa di tutte le prenotazioni
+    // The full booking view, for every booking.
     @Query("SELECT new com.prenotazioni.booking.dto.BookingDetailDto(" +
            "p.id, " +
            "p.startTime, " +
@@ -113,7 +113,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "ORDER BY p.startTime DESC")
     List<BookingDetailDto> findAllCompleteDetails();
     
-    // Dettagli completi per una singola prenotazione
+    // Full details for a single booking.
     @Query("SELECT new com.prenotazioni.booking.dto.BookingDetailDto(" +
            "p.id, " +
            "p.startTime, " +
@@ -141,22 +141,22 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "WHERE p.id = :bookingId")
     List<BookingDetailDto> findCompleteDetailsByBookingId(@Param("bookingId") Long bookingId);
     
-    // Trova tutte le prenotazioni per una specifica aula
+    // Every booking for one particular room.
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId ORDER BY p.startTime ASC")
     List<Booking> findByRoomId(@Param("roomId") Long roomId);
 
     /**
-     * Le prenotazioni di piu' aule in una query sola, per costruire l'elenco dei
-     * dettagli senza interrogare il database una volta per aula.
+     * The bookings of several rooms in a single query, so the detail listing can be built
+     * without asking the database once per room.
      *
-     * Le tre relazioni di Prenotazione sono tutte EAGER, quindi senza i JOIN FETCH
-     * l'N+1 si limiterebbe a spostarsi: ogni riga caricata ne farebbe scattare altre
-     * per aula, utente e corso. Su corso il join e' LEFT perche' e' nullable (i blocchi
-     * admin non hanno corso): un JOIN FETCH normale li escluderebbe silenziosamente
-     * dal risultato, e le aule bloccate risulterebbero libere.
+     * Booking's three relations are all EAGER, so without the JOIN FETCHes the N+1 would
+     * merely move: every row loaded would trigger further ones for the room, the user and
+     * the course. The join on the course is a LEFT one because it is nullable (admin blocks
+     * have no course): a plain JOIN FETCH would silently drop them from the result, and
+     * blocked rooms would come out as free.
      *
-     * L'ordinamento per inizio ASC ricalca findByAulaId: i cicli che consumano questa
-     * lista si fermano alla prima prenotazione utile, quindi l'ordine e' significativo.
+     * Ordering by start_time ASC mirrors findByRoomId: the loops consuming this list stop at
+     * the first useful booking, so the order carries meaning.
      */
     @Query("SELECT p FROM Booking p " +
            "JOIN FETCH p.room a " +
@@ -165,7 +165,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "WHERE a.id IN :roomIds ORDER BY p.startTime ASC")
     List<Booking> findByRoomIdIn(@Param("roomIds") List<Long> roomIds);
     
-    // Elimina tutte le prenotazioni di un utente (per eliminazione utente)
+    // Deletes every booking of a user, for when the user itself is deleted.
     @Modifying
     @Query("DELETE FROM Booking p WHERE p.user.id = :userId")
     void deleteByUserId(@Param("userId") Long userId);

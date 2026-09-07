@@ -3,7 +3,7 @@ package com.prenotazioni.booking.dto;
 import com.prenotazioni.booking.model.Booking;
 import lombok.Value;
 
-/** Risposta di successo per creazione/modifica prenotazione (POST /prenota, PUT /{id}). */
+/** The success response for creating or updating a booking (POST /book, PUT /{id}). */
 @Value
 public class BookingAckPayload {
     Booking booking;

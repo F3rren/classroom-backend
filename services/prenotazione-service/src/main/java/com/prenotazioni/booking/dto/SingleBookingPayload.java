@@ -6,8 +6,8 @@ import lombok.Value;
 import java.util.List;
 
 /**
- * Lista prenotazioni con la sola chiave "bookings" (nessun "totalBookings"),
- * riusata da GET /mie e dal ramo non-vuoto di GET (lista base) - shape gia' esistente.
+ * A booking list carrying only the "bookings" key (no "totalBookings"), reused by
+ * GET /mine and by the non-empty branch of the base GET - the shape that was already there.
  */
 @Value
 public class SingleBookingPayload {

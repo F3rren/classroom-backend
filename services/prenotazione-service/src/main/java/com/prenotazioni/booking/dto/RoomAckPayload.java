@@ -3,7 +3,7 @@ package com.prenotazioni.booking.dto;
 import com.prenotazioni.booking.model.Room;
 import lombok.Getter;
 
-/** Riepilogo di un'aula creata/modificata, riusato da createRoom e updateRoom. */
+/** The summary of a created or updated room, reused by createRoom and updateRoom. */
 @Getter
 public class RoomAckPayload {
     private final Long roomId;

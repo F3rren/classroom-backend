@@ -15,8 +15,8 @@ public class RoomDetailsResponse {
     private int floor;
     private int capacity;
     private boolean isVirtual;
-    // Enum e non String: @JsonValue lo serializza nel valore minuscolo di prima,
-    // quindi il JSON resta identico, ma i valori possibili sono ora un insieme chiuso.
+    // An enum and not a String: @JsonValue serialises it to the same lowercase value as
+    // before, so the JSON is unchanged, but the possible values are now a closed set.
     private RoomAvailability status;
     private CurrentBooking booking;
     private BlockInfo blocked;

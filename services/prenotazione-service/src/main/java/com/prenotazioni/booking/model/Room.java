@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 /**
  * Entità Aula - Basata su analisi frontend
  * Campi utilizzati dal frontend (normalizeRoomData):
- * - id, nome/name, capienza/capacity, piano/floor, isVirtual, descrizione/description, stato/status
+ * - id, name, capacity, floor, isVirtual, description, status/status
  * 
  * Il frontend normalizza i dati quindi possiamo usare nomi italiani
  */

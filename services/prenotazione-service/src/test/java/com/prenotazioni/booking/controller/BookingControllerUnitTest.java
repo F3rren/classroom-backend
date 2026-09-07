@@ -87,7 +87,7 @@ class BookingControllerUnitTest {
         Booking p = new Booking();
         p.setId(99L);
         p.setRoom(room);
-        p.setUser(istantaneaDi(u.getId(), u.getUsername(), u.getName()));
+        p.setUser(snapshotOf(u.getId(), u.getUsername(), u.getName()));
         p.setStartTime(LocalDateTime.now().plusDays(1));
         p.setEndTime(LocalDateTime.now().plusDays(1).plusHours(2));
         p.setStatus(BookingStatus.BOOKED);
@@ -327,7 +327,7 @@ class BookingControllerUnitTest {
     }
 
     /** L'istantanea del proprietario, ora costruita a mano: la tabella utenti non e' piu' qui. */
-    private static BookingOwner istantaneaDi(Long id, String username, String name) {
+    private static BookingOwner snapshotOf(Long id, String username, String name) {
         return new BookingOwner(id, username, name);
     }
 }

@@ -5,8 +5,8 @@ import com.prenotazioni.exception.InvalidRequestException;
 import com.prenotazioni.exception.ResourceNotFoundException;
 import com.prenotazioni.exception.ResourceType;
 import com.prenotazioni.dto.*;
-// entrambe: in com.prenotazioni.dto restano le classi comuni di shared,
-// in com.prenotazioni.booking.dto quelle di questo servizio
+// both: com.prenotazioni.dto keeps the classes shared holds in common,
+// com.prenotazioni.booking.dto the ones belonging to this service
 import com.prenotazioni.booking.dto.*;
 import com.prenotazioni.exception.BookingConflictException;
 import com.prenotazioni.booking.model.Booking;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/bookings")
-@Tag(name = "Prenotazioni")
+@Tag(name = "Bookings")
 public class BookingController {
 
     private static final Logger logger = LoggerFactory.getLogger(BookingController.class);
@@ -50,17 +50,17 @@ public class BookingController {
     }
 
     /**
-     * L'istantanea di chi sta prenotando, presa dai claim del token.
+     * A snapshot of whoever is booking, taken from the token's claims.
      *
-     * Prima veniva letta dalla tabella utenti. Quella tabella ora appartiene ad
-     * auth-service: leggerla richiederebbe una chiamata di rete a ogni prenotazione,
-     * e il token porta gia' esattamente questi tre campi.
+     * It used to be read from the users table. That table now belongs to auth-service:
+     * reading it would mean a network call on every booking, and the token already carries
+     * exactly these three fields.
      */
-    private static BookingOwner istantaneaDi(AppPrincipal principal) {
+    private static BookingOwner snapshotOf(AppPrincipal principal) {
         return new BookingOwner(principal.id(), principal.username(), principal.name());
     }
 
-    /** Lo stesso identificativo che vedra' il gestore degli errori, non uno diverso. */
+    /** The same id the error handler will see, not a different one. */
     private String generateSessionId() {
         return RequestCorrelationFilter.current();
     }
@@ -77,29 +77,29 @@ public class BookingController {
         return ApiEnvelope.success(message, data, sessionId);
     }
 
-    // Rimuove i dati personali del proprietario dagli elenchi visibili a tutti gli utenti autenticati
-    // (mantiene solo id/username/nome, mai email/ruolo/date di accesso di un utente diverso dal chiamante)
+    // Strips the owner's personal data from listings visible to every authenticated user
+    // (keeps only id/username/name, never the email, role or login dates of somebody else)
     private Booking sanitizeOwnerForListing(Booking p) {
-        // Non c'e' piu' nulla da rimuovere: la prenotazione conserva solo id, username e
-        // nome, cioe' esattamente i campi che questo metodo ricopiava a mano. Email, ruolo
-        // e date di accesso non sono piu' nemmeno raggiungibili da qui.
+        // There is nothing left to strip: a booking keeps only id, username and name, which
+        // are exactly the fields this method used to copy across by hand. The email, the role
+        // and the login dates are not even reachable from here any more.
         return p;
     }
 
-    // Prenota un'aula
+    // Books a room.
     @PostMapping("/book")
-    @Operation(summary = "Prenota un'aula")
+    @Operation(summary = "Book a room")
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @RequestBody BookingRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO prenotaAula - AulaId: {}, CorsoId: {}, Periodo: {} - {}", request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
+        logger.debug("START prenotaroom - roomId: {}, courseId: {}, period: {} - {}", request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
 
         LocalDateTime startTime;
         LocalDateTime endTime;
         try {
             startTime = LocalDateTime.parse(request.getStartTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE prenotaAula - Errore parsing data inizio: '{}'", request.getStartTime());
+            logger.warn("END prenotaroom - could not parse the start date: '{}'", request.getStartTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
@@ -109,7 +109,7 @@ public class BookingController {
         try {
             endTime = LocalDateTime.parse(request.getEndTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE prenotaAula - Errore parsing data fine: '{}'", request.getEndTime());
+            logger.warn("END prenotaroom - could not parse the end date: '{}'", request.getEndTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
@@ -118,7 +118,7 @@ public class BookingController {
         }
 
         if (endTime.isBefore(startTime)) {
-            logger.warn("FINE prenotaAula - Data fine precedente alla data inizio");
+            logger.warn("END prenotaroom - the end date is before the start date");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
@@ -126,7 +126,7 @@ public class BookingController {
             );
         }
         if (startTime.isBefore(LocalDateTime.now())) {
-            logger.warn("FINE prenotaAula - Tentativo di prenotazione nel passato: {}", formatTimestamp(startTime));
+            logger.warn("END prenotaroom - attempt to book in the past: {}", formatTimestamp(startTime));
             return new ResponseEntity<>(
                 createErrorResponse("PAST_DATE", "Date in the past",
                                   "Non puoi prenotare un'aula per una data già trascorsa.", sessionId),
@@ -134,19 +134,19 @@ public class BookingController {
             );
         }
 
-        logger.debug("Validazioni superate, tentativo prenotazione per periodo: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
+        logger.debug("validation passed, attempting a booking for the period: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
 
         Booking booking;
         try {
             booking = bookingService.bookRoom(
-                request.getRoomId(), request.getCourseId(), istantaneaDi(principal), startTime, endTime, request.getDescription());
+                request.getRoomId(), request.getCourseId(), snapshotOf(principal), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("FINE prenotaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getRoomId());
+            logger.warn("END prenotaroom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.getRoomId());
             throw new BookingConflictException("BOOKING_CONFLICT", "Impossibile prenotare l'aula",
                     "L'aula è appena stata prenotata da un'altra richiesta per lo stesso periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("FINE prenotaAula - Prenotazione creata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getRoomId(), principal.id());
+        logger.debug("END prenotaroom - booking created - ID: {}, roomId: {}, userId: {}", booking.getId(), request.getRoomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione effettuata con successo",
                                 new BookingAckPayload(booking, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
@@ -155,21 +155,21 @@ public class BookingController {
         );
     }
 
-    // Modifica una prenotazione esistente
+    // Updates an existing booking.
     @PutMapping("/{bookingId}")
-    @Operation(summary = "Modifica una prenotazione esistente (solo proprietario o admin)")
+    @Operation(summary = "Update an existing booking (owner or admin only)")
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> editBooking(@PathVariable("bookingId") Long bookingId,
                                                  @Valid @RequestBody BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO modificaPrenotazione - PrenotazioneId: {}, AulaId: {}, CorsoId: {}, Periodo: {} - {}", bookingId, request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
+        logger.debug("START updateBooking - bookingId: {}, roomId: {}, courseId: {}, period: {} - {}", bookingId, request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
 
         LocalDateTime startTime;
         LocalDateTime endTime;
         try {
             startTime = LocalDateTime.parse(request.getStartTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE modificaPrenotazione - Errore parsing data inizio: '{}'", request.getStartTime());
+            logger.warn("END updateBooking - could not parse the start date: '{}'", request.getStartTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
@@ -179,7 +179,7 @@ public class BookingController {
         try {
             endTime = LocalDateTime.parse(request.getEndTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE modificaPrenotazione - Errore parsing data fine: '{}'", request.getEndTime());
+            logger.warn("END updateBooking - could not parse the end date: '{}'", request.getEndTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
@@ -188,7 +188,7 @@ public class BookingController {
         }
 
         if (endTime.isBefore(startTime)) {
-            logger.warn("FINE modificaPrenotazione - Data fine precedente alla data inizio");
+            logger.warn("END updateBooking - the end date is before the start date");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
@@ -196,7 +196,7 @@ public class BookingController {
             );
         }
         if (startTime.isBefore(LocalDateTime.now())) {
-            logger.warn("FINE modificaPrenotazione - Tentativo di modifica con data nel passato: {}", formatTimestamp(startTime));
+            logger.warn("END updateBooking - attempt to update with a date in the past: {}", formatTimestamp(startTime));
             return new ResponseEntity<>(
                 createErrorResponse("PAST_DATE", "Date in the past",
                                   "Non puoi modificare una prenotazione per una data già trascorsa.", sessionId),
@@ -204,19 +204,19 @@ public class BookingController {
             );
         }
 
-        logger.debug("Validazioni superate, tentativo modifica prenotazione ID {} per periodo: {} - {}", bookingId, formatTimestamp(startTime), formatTimestamp(endTime));
+        logger.debug("validation passed, attempting to update booking ID {} for the period: {} - {}", bookingId, formatTimestamp(startTime), formatTimestamp(endTime));
 
         Booking booking;
         try {
             booking = bookingService.updateBooking(
                 bookingId, request.getRoomId(), request.getCourseId(), principal.id(), principal.isAdmin(), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("FINE modificaPrenotazione - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - PrenotazioneId: {}, AulaId: {}", bookingId, request.getRoomId());
+            logger.warn("END updateBooking - conflict raised by the database constraint (concurrent booking) - bookingId: {}, roomId: {}", bookingId, request.getRoomId());
             throw new BookingConflictException("UPDATE_CONFLICT", "Impossibile modificare la prenotazione",
                     "L'aula è appena stata prenotata da un'altra richiesta per il nuovo periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("FINE modificaPrenotazione - Prenotazione modificata con successo - ID: {}, AulaId: {}, UtenteId: {}", booking.getId(), request.getRoomId(), principal.id());
+        logger.debug("END updateBooking - booking updated - ID: {}, roomId: {}, userId: {}", booking.getId(), request.getRoomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione modificata con successo",
                                 new BookingAckPayload(booking, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
@@ -225,21 +225,21 @@ public class BookingController {
         );
     }
 
-    // Blocca un'aula (solo admin)
+    // Blocks a room. Admin only.
     @PostMapping("/block")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Blocca un'aula per un periodo (solo admin)")
+    @Operation(summary = "Block a room for a period (admin only)")
     public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @RequestBody BookingRequest request,
                                        @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO bloccaAula - AulaId: {}, Periodo: {} - {}", request.getRoomId(), request.getStartTime(), request.getEndTime());
+        logger.debug("START bloccaroom - roomId: {}, period: {} - {}", request.getRoomId(), request.getStartTime(), request.getEndTime());
 
         LocalDateTime startTime;
         LocalDateTime endTime;
         try {
             startTime = LocalDateTime.parse(request.getStartTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE bloccaAula - Errore parsing data inizio: '{}'", request.getStartTime());
+            logger.warn("END bloccaroom - could not parse the start date: '{}'", request.getStartTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -249,7 +249,7 @@ public class BookingController {
         try {
             endTime = LocalDateTime.parse(request.getEndTime());
         } catch (DateTimeParseException e) {
-            logger.warn("FINE bloccaAula - Errore parsing data fine: '{}'", request.getEndTime());
+            logger.warn("END bloccaroom - could not parse the end date: '{}'", request.getEndTime());
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -258,7 +258,7 @@ public class BookingController {
         }
 
         if (endTime.isBefore(startTime)) {
-            logger.warn("FINE bloccaAula - Data fine precedente alla data inizio");
+            logger.warn("END bloccaroom - the end date is before the start date");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
@@ -266,18 +266,18 @@ public class BookingController {
             );
         }
 
-        logger.debug("Validazioni superate, tentativo blocco aula per periodo: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
+        logger.debug("validation passed, attempting to block the room for the period: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
 
         Booking blocco;
         try {
-            blocco = bookingService.blockRoom(request.getRoomId(), istantaneaDi(principal), startTime, endTime, request.getDescription());
+            blocco = bookingService.blockRoom(request.getRoomId(), snapshotOf(principal), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("FINE bloccaAula - Conflitto rilevato dal vincolo del database (prenotazione concorrente) - AulaId: {}", request.getRoomId());
+            logger.warn("END bloccaroom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.getRoomId());
             throw new BookingConflictException("BLOCK_CONFLICT", "Impossibile bloccare l'aula",
                     "L'aula è appena stata occupata da un'altra richiesta per lo stesso periodo.");
         }
 
-        logger.debug("FINE bloccaAula - Aula bloccata con successo - ID blocco: {}, AulaId: {}, Admin: {}", blocco.getId(), request.getRoomId(), principal.id());
+        logger.debug("END bloccaroom - room blocked - block ID: {}, roomId: {}, Admin: {}", blocco.getId(), request.getRoomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Aula bloccata con successo",
                                 new BlockAckPayload(blocco, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime), principal.id()),
@@ -286,21 +286,21 @@ public class BookingController {
         );
     }
 
-    // Verifica disponibilità aula
+    // Is the room free over the period?
     @GetMapping("/availability")
-    @Operation(summary = "Verifica la disponibilità di un'aula in un periodo")
+    @Operation(summary = "Check whether a room is free over a period")
     public ResponseEntity<ApiEnvelope<AvailabilityPayload>> checkAvailability(@RequestParam("roomId") Long roomId,
                                                    @RequestParam("start") String startTime,
                                                    @RequestParam("end") String endTime) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO verificaDisponibilita - AulaId: {}, Periodo: {} - {}", roomId, startTime, endTime);
+        logger.debug("START checkAvailability - roomId: {}, period: {} - {}", roomId, startTime, endTime);
 
         LocalDateTime startDateTime;
         LocalDateTime endDateTime;
         try {
             startDateTime = LocalDateTime.parse(startTime);
         } catch (DateTimeParseException e) {
-            logger.warn("FINE verificaDisponibilita - Errore parsing data inizio: '{}'", startTime);
+            logger.warn("END checkAvailability - could not parse the start date: '{}'", startTime);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_START_DATE", "Invalid start date format",
                                   "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -310,7 +310,7 @@ public class BookingController {
         try {
             endDateTime = LocalDateTime.parse(endTime);
         } catch (DateTimeParseException e) {
-            logger.warn("FINE verificaDisponibilita - Errore parsing data fine: '{}'", endTime);
+            logger.warn("END checkAvailability - could not parse the end date: '{}'", endTime);
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_END_DATE", "Invalid end date format",
                                   "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
@@ -319,7 +319,7 @@ public class BookingController {
         }
 
         if (endDateTime.isBefore(startDateTime)) {
-            logger.warn("FINE verificaDisponibilita - Data fine precedente alla data inizio");
+            logger.warn("END checkAvailability - the end date is before the start date");
             return new ResponseEntity<>(
                 createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
                                   "La data di fine deve essere successiva alla data di inizio.", sessionId),
@@ -327,9 +327,9 @@ public class BookingController {
             );
         }
 
-        logger.debug("Verifica disponibilità per AulaId: {} nel periodo: {} - {}", roomId, formatTimestamp(startDateTime), formatTimestamp(endDateTime));
+        logger.debug("availability check for roomId: {} over the period: {} - {}", roomId, formatTimestamp(startDateTime), formatTimestamp(endDateTime));
         boolean available = bookingService.isRoomAvailable(roomId, startDateTime, endDateTime);
-        logger.debug("FINE verificaDisponibilita - AulaId: {}, Disponibile: {}", roomId, available);
+        logger.debug("END checkAvailability - roomId: {}, available: {}", roomId, available);
 
         return new ResponseEntity<>(
             createSuccessResponse("Verifica disponibilità completata",
@@ -339,56 +339,57 @@ public class BookingController {
         );
     }
 
-    // Stato attuale di un'aula.
-    // Path "/stato-aula/{aulaId}" e non "/stato/{aulaId}": quest'ultimo collideva con
-    // "/stato/{stato}" (prenotazioni per stato) piu' sotto. Essendo lo stesso pattern di
-    // path, Spring li registrava entrambi ma a runtime falliva con "Ambiguous handler
-    // methods mapped", quindi ENTRAMBI gli endpoint rispondevano 500. Nessun client
-    // funzionante poteva dipendere dal vecchio path, per questo il rename e' sicuro.
+    // The current status of a room.
+    // The path is "/room-status/{roomId}" and not "/status/{roomId}": the latter collided
+    // with "/status/{status}" (bookings by status) further down. Being the same path
+    // pattern, Spring registered both but failed at runtime with "Ambiguous handler methods
+    // mapped", so BOTH endpoints answered 500. No working client could have depended on the
+    // old path, which is why the rename was safe.
     @GetMapping("/room-status/{roomId}")
-    @Operation(summary = "Stato attuale di un'aula")
+    @Operation(summary = "The current status of a room")
     public ResponseEntity<RoomStatusPayload> getRoomStatus(@PathVariable("roomId") Long roomId) {
-        logger.debug("INIZIO getStatoAula - AulaId: {}", roomId);
+        logger.debug("START getstatusroom - roomId: {}", roomId);
         String status = bookingService.getRoomStatus(roomId, LocalDateTime.now());
-        logger.debug("FINE getStatoAula - AulaId: {}, Stato: {}", roomId, status);
+        logger.debug("END getstatusroom - roomId: {}, status: {}", roomId, status);
         return ResponseEntity.ok(new RoomStatusPayload(roomId, status, LocalDateTime.now()));
     }
 
-    // Lista prenotazioni utente - ESCLUDE automaticamente le prenotazioni annullate
+    // The user's bookings - cancelled ones are excluded automatically.
     @GetMapping("/mine")
-    @Operation(summary = "Le prenotazioni dell'utente autenticato")
+    @Operation(summary = "The bookings of the authenticated user")
     public ResponseEntity<SingleBookingPayload> getMyBookings(@AuthenticationPrincipal AppPrincipal principal) {
-        logger.debug("INIZIO getMiePrenotazioni");
+        logger.debug("START getMyBookings");
         List<Booking> allBookings = bookingService.getUserBookings(principal.id());
 
         List<Booking> bookings = allBookings.stream()
             .filter(p -> p.getStatus() != BookingStatus.CANCELLED)
             .collect(Collectors.toList());
 
-        logger.debug("FINE getMiePrenotazioni - Prenotazioni attive recuperate per utente: {}, totale: {} (escluse {} annullate)",
+        logger.debug("END getMyBookings - active bookings fetched for user: {}, total: {} ({} cancelled excluded)",
                    principal.id(), bookings.size(), allBookings.size() - bookings.size());
         return ResponseEntity.ok(new SingleBookingPayload(bookings));
     }
 
     // Annulla prenotazione
     @DeleteMapping("/{bookingId}")
-    @Operation(summary = "Annulla una prenotazione (solo proprietario o admin)")
+    @Operation(summary = "Cancel a booking (owner or admin only)")
     public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("bookingId") Long bookingId,
                                                 @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO annullaPrenotazione - PrenotazioneId: {}", bookingId);
+        logger.debug("START cancelBooking - bookingId: {}", bookingId);
 
 
-        // Nessun controllo sull'esito, e soprattutto nessuna ricostruzione del perche':
-        // il service lancia gia' AccessDeniedException per il proprietario sbagliato,
-        // DomainConflictException per lo stato non annullabile e ResourceNotFoundException
-        // se non esiste. Prima questo blocco RIFACEVA quei controlli per interpretare un
-        // booleano, e un commento avvertiva di tenerne l'ordine allineato a quello del
-        // service: due copie della stessa regola da sincronizzare a mano.
+        // No check on the outcome, and above all no reconstruction of the reason: the
+        // service already throws AccessDeniedException for the wrong owner,
+        // DomainConflictException for a status that cannot be cancelled, and
+        // ResourceNotFoundException when it does not exist. This block used to REDO those
+        // checks in order to interpret a boolean, and a comment warned you to keep their
+        // order in step with the service's: two copies of the same rule to synchronise by
+        // hand.
         bookingService.cancelBooking(bookingId, principal.id(), principal.isAdmin());
 
 
-        logger.debug("FINE annullaPrenotazione - Prenotazione annullata con successo | PrenotazioneId: {} | UtenteId: {}", bookingId, principal.id());
+        logger.debug("END cancelBooking - booking cancelled | bookingId: {} | userId: {}", bookingId, principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione annullata con successo",
                                 new CancellationAckPayload(bookingId, principal.id(), formatTimestamp(LocalDateTime.now())),
@@ -397,14 +398,14 @@ public class BookingController {
         );
     }
 
-    // Lista tutte le prenotazioni (semplice) - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
-    // ESCLUDE automaticamente le prenotazioni annullate
+    // Every booking, in the simple shape - OPEN TO ANY AUTHENTICATED USER.
+    // Cancelled bookings are excluded automatically.
     @GetMapping
-    @Operation(summary = "Elenca tutte le prenotazioni attive (PII del proprietario rimossa)")
+    @Operation(summary = "List every active booking (the owner's personal data is stripped)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = SingleBookingPayload.class)))
     public ResponseEntity<?> getAllBookings() {
-        logger.debug("INIZIO getAllPrenotazioni");
+        logger.debug("START getAllBookings");
 
         List<Booking> allBookings = bookingService.getAllBookings();
         List<Booking> bookings = allBookings.stream()
@@ -413,89 +414,89 @@ public class BookingController {
             .collect(Collectors.toList());
 
         if (bookings.isEmpty()) {
-            logger.debug("FINE getAllPrenotazioni - Nessuna prenotazione attiva trovata");
+            logger.debug("END getAllBookings - no active booking found");
             return ResponseEntity.ok(new MessageResponse("Nessuna prenotazione attiva trovata"));
         }
 
-        logger.debug("FINE getAllPrenotazioni - Prenotazioni attive recuperate: {} (totale con annullate: {})",
+        logger.debug("END getAllBookings - active bookings fetched: {} (total including cancelled: {})",
                    bookings.size(), allBookings.size());
         return ResponseEntity.ok(new SingleBookingPayload(bookings));
     }
 
-    // Singola prenotazione per ID (semplice) - SOLO IL PROPRIETARIO O UN ADMIN
+    // A single booking by id, in the simple shape - OWNER OR ADMIN ONLY.
     @GetMapping("/{id}")
     @PreAuthorize("@prenotazioneAuth.isOwnerOrAdmin(#id, principal)")
-    @Operation(summary = "Recupera una singola prenotazione (solo proprietario o admin)")
+    @Operation(summary = "Fetch a single booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWrapper.class)))
     public ResponseEntity<?> getBookingById(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO getPrenotazioneById - ID Prenotazione: {}", id);
+        logger.debug("START getBookingById - booking ID: {}", id);
 
         Booking booking = bookingService.getBookingById(id);
         if (booking == null) {
-            // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
-            // "userMessage", e "error" conteneva una frase invece di un codice. Un client
-            // che legge userMessage otteneva undefined proprio su questi due endpoint.
+            // It used to be {"error":"Prenotazione non trovata"} - no "success", no
+            // "userMessage", and "error" held a sentence instead of a code. A client reading
+            // userMessage got undefined on exactly these two endpoints.
             throw ResourceNotFoundException.forId(ResourceType.BOOKING, id);
         }
 
-        logger.debug("FINE getPrenotazioneById - Prenotazione recuperata con successo: ID: {}", booking.getId());
+        logger.debug("END getBookingById - booking fetched: ID: {}", booking.getId());
         return ResponseEntity.ok(new BookingWrapper(booking));
     }
 
-    // Dettagli completi di una prenotazione specifica - SOLO IL PROPRIETARIO O UN ADMIN
+    // Full details of one particular booking - OWNER OR ADMIN ONLY.
     @GetMapping("/{id}/details")
     @PreAuthorize("@prenotazioneAuth.isOwnerOrAdmin(#id, principal)")
-    @Operation(summary = "Dettagli completi di una prenotazione (solo proprietario o admin)")
+    @Operation(summary = "Full details of one booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWithDetailsPayload.class)))
     public ResponseEntity<?> getBookingDetailsById(@PathVariable("id") Long id) {
         String sessionId = generateSessionId();
-        logger.debug("INIZIO getPrenotazioneDetailsById - ID Prenotazione: {}", id);
+        logger.debug("START getBookingDetailsById - booking ID: {}", id);
 
         Booking booking = bookingService.getBookingById(id);
         if (booking == null) {
-            // Prima: {"error":"Prenotazione non trovata"} - nessun "success", nessun
-            // "userMessage", e "error" conteneva una frase invece di un codice. Un client
-            // che legge userMessage otteneva undefined proprio su questi due endpoint.
+            // It used to be {"error":"Prenotazione non trovata"} - no "success", no
+            // "userMessage", and "error" held a sentence instead of a code. A client reading
+            // userMessage got undefined on exactly these two endpoints.
             throw ResourceNotFoundException.forId(ResourceType.BOOKING, id);
         }
 
-        logger.debug("Prenotazione trovata: ID: {}", booking.getId());
+        logger.debug("booking found: ID: {}", booking.getId());
         List<BookingDetailDto> fullDetails = bookingService.getBookingCompleteDetails(id);
-        logger.debug("FINE getPrenotazioneDetailsById - Dettagli completi recuperati con successo, totale dettagli: {}", fullDetails.size());
+        logger.debug("END getBookingDetailsById - full details fetched, total details: {}", fullDetails.size());
         return ResponseEntity.ok(new BookingWithDetailsPayload(booking, fullDetails));
     }
 
-    // Vista completa di tutte le prenotazioni con dettagli - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
+    // The full view of every booking with its details - OPEN TO ANY AUTHENTICATED USER.
     @GetMapping("/all-details")
-    @Operation(summary = "Dettagli completi di tutte le prenotazioni")
+    @Operation(summary = "Full details of every booking")
     public ResponseEntity<BookingDetailListPayload> getAllBookingsWithDetails() {
-        logger.debug("INIZIO getAllPrenotazioniWithDetails");
+        logger.debug("START getAllBookingsWithDetails");
         List<BookingDetailDto> fullDetails = bookingService.getAllCompleteDetails();
-        logger.debug("FINE getAllPrenotazioniWithDetails - Dettagli completi recuperati con successo, totale prenotazioni: {}", fullDetails.size());
+        logger.debug("END getAllBookingsWithDetails - full details fetched, total bookings: {}", fullDetails.size());
         return ResponseEntity.ok(new BookingDetailListPayload(fullDetails));
     }
 
-    // Prenotazioni per stato - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
+    // Bookings by status - OPEN TO ANY AUTHENTICATED USER.
     @GetMapping("/status/{status}")
-    @Operation(summary = "Elenca le prenotazioni per stato")
+    @Operation(summary = "List the bookings in a given status")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingsByStatusPayload.class)))
     public ResponseEntity<?> getBookingsByStatus(@PathVariable("status") String status) {
-        logger.debug("INIZIO getPrenotazioniByStato - Stato: {}", status);
+        logger.debug("START getPrenotazioniBystatus - status: {}", status);
         try {
             List<Booking> bookings = bookingService.getBookingsByStatus(status.toLowerCase())
                 .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
 
-            logger.debug("FINE getPrenotazioniByStato - Prenotazioni recuperate con successo per stato: {}, totale: {}", status, bookings.size());
+            logger.debug("END getPrenotazioniBystatus - bookings fetched for status: {}, total: {}", status, bookings.size());
             return ResponseEntity.ok(new BookingsByStatusPayload(status, bookings));
         } catch (IllegalArgumentException e) {
-            logger.debug("FINE getPrenotazioniByStato - Stato non valido: {}", status);
-            // Uno stato inesistente e' un dato non valido, quindi 400 con l'envelope
-            // comune. L'elenco degli stati ammessi si ricava dall'enum invece di essere
-            // scritto a mano: la versione scritta a mano si sarebbe scollata al primo
+            logger.debug("END getPrenotazioniBystatus - invalid status: {}", status);
+            // A status that does not exist is invalid input, so a 400 in the common
+            // envelope. The list of allowed statuses is derived from the enum instead of
+            // being written by hand: a hand-written one would have drifted at the first
             // valore aggiunto, e nessuno se ne sarebbe accorto.
             throw new InvalidRequestException("INVALID_STATE",
                     "Invalid state: " + status
@@ -508,12 +509,12 @@ public class BookingController {
 
     // Prenotazioni future - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
     @GetMapping("/future")
-    @Operation(summary = "Elenca le prenotazioni future")
+    @Operation(summary = "List the bookings that start in the future")
     public ResponseEntity<BookingsListWithTotalPayload> getFutureBookings() {
-        logger.debug("INIZIO getPrenotazioniFuture");
+        logger.debug("START getFutureBookings");
         List<Booking> bookings = bookingService.getFutureBookings()
             .stream().map(this::sanitizeOwnerForListing).collect(Collectors.toList());
-        logger.debug("FINE getPrenotazioniFuture - Prenotazioni future recuperate con successo, totale: {}", bookings.size());
+        logger.debug("END getFutureBookings - future bookings fetched, total: {}", bookings.size());
         return ResponseEntity.ok(new BookingsListWithTotalPayload(bookings));
     }
 }

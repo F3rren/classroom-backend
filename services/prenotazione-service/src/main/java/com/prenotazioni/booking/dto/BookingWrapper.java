@@ -3,7 +3,7 @@ package com.prenotazioni.booking.dto;
 import com.prenotazioni.booking.model.Booking;
 import lombok.Value;
 
-/** Wrapper non avvolto in ApiEnvelope per GET /api/bookings/{id} (shape gia' esistente). */
+/** A wrapper not enclosed in ApiEnvelope for GET /api/bookings/{id} (the existing shape). */
 @Value
 public class BookingWrapper {
     Booking booking;

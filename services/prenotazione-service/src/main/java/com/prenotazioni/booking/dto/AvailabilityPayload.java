@@ -5,15 +5,15 @@ import lombok.Getter;
 
 /** Risposta di GET /api/bookings/availability. */
 @Getter
-@Schema(description = "Esito della verifica di disponibilita' di un'aula in un periodo")
+@Schema(description = "The result of checking whether a room is free over a period")
 public class AvailabilityPayload {
-    @Schema(description = "Aula verificata", example = "3")
+    @Schema(description = "The room that was checked", example = "3")
     private final Long roomId;
-    @Schema(description = "true se l'aula e' libera nel periodo richiesto", example = "true")
+    @Schema(description = "true when the room is free over the requested period", example = "true")
     private final boolean available;
-    @Schema(description = "Periodo verificato", example = "2026-12-25 14:30:00 - 2026-12-25 16:30:00")
+    @Schema(description = "The period that was checked", example = "2026-12-25 14:30:00 - 2026-12-25 16:30:00")
     private final String period;
-    @Schema(description = "Esito in forma testuale. Vocabolario MAIUSCOLO, distinto dallo stato persistito dell'aula",
+    @Schema(description = "The result as text. An UPPERCASE vocabulary, distinct from the room's stored status",
             allowableValues = {"FREE", "BUSY"}, example = "FREE")
     private final String status;
 

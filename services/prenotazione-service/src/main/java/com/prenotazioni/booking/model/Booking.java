@@ -35,8 +35,8 @@ public class Booking {
     @JoinColumn(name = "course_id", nullable = true) // Nullable per blocchi admin
     private Course course;
     
-    // Istantanea e non relazione: gli utenti vivono in un altro servizio.
-    // Vedi ProprietarioPrenotazione per il perche' e per le conseguenze.
+    // A snapshot and not a relation: users live in another service.
+    // See BookingOwner for the reasoning and the consequences.
     @Embedded
     private BookingOwner user;
     
@@ -46,8 +46,8 @@ public class Booking {
     @Column(nullable = false)
     private LocalDateTime endTime;
     
-    // Persistito come stringa minuscola dal converter di StatoPrenotazione, per restare
-    // compatibile con il CHECK constraint prenotazione_stato_check e col frontend.
+    // Stored as a lowercase string by BookingStatus's converter, to stay compatible with
+    // the booking_status_check CHECK constraint and with the client.
     @Column(nullable = false, length = 20)
     private BookingStatus status;
     

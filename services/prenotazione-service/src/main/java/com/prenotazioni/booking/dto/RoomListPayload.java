@@ -6,10 +6,11 @@ import lombok.Getter;
 import java.util.List;
 
 /**
- * Lista di aule, riusata da RoomController e AdminController.
- * I campi opzionali (piano, capienzaMinima, type, suggestion, maxCapacityFound) sono
- * popolati solo dagli endpoint che li usavano gia' come chiavi extra nel Map.of originale;
- * @JsonInclude(NON_NULL) li omette per tutti gli altri, riproducendo lo shape esatto di oggi.
+ * A list of rooms, reused by RoomController and AdminController.
+ *
+ * The optional fields (floor, minCapacity, type, suggestion, maxCapacityFound) are filled in
+ * only by the endpoints that already used them as extra keys in the original Map.of;
+ * @JsonInclude(NON_NULL) omits them for all the others, reproducing today's exact shape.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter

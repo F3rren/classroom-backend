@@ -9,23 +9,23 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@Schema(description = "Dati per creare o modificare un'aula (solo amministratori)")
+@Schema(description = "The data to create or update a room (administrators only)")
 @NoArgsConstructor
 public class RoomRequest {
     @NotBlank(message = "Il nome dell'aula è obbligatorio.")
-    @Schema(description = "Nome univoco dell'aula", example = "Aula Magna")
+    @Schema(description = "The unique name of the room", example = "Aula Magna")
     private String name;
 
     @Positive(message = "La capienza deve essere un numero positivo.")
-    @Schema(description = "Numero massimo di persone, deve essere positivo", example = "120")
+    @Schema(description = "The maximum number of people, which must be positive", example = "120")
     private int capacity;
 
     @PositiveOrZero(message = "Il piano deve essere un numero non negativo.")
-    @Schema(description = "Piano dell'edificio, 0 per il piano terra", example = "1")
+    @Schema(description = "The floor of the building, 0 for the ground floor", example = "1")
     private int floor;
 
     @JsonProperty("isVirtual")
-    @Schema(description = "true per le aule virtuali, che non occupano spazio fisico", example = "false")
+    @Schema(description = "true for virtual rooms, which take up no physical space", example = "false")
     private boolean isVirtual = false;
 
     public RoomRequest(String name, int capacity, int floor) {

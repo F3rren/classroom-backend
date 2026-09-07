@@ -15,21 +15,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoint chiamati da altri servizi, non dal frontend.
+ * Endpoints called by other services, not by the frontend.
  *
- * Esiste per una ragione sola: quando auth-service cancella un utente deve poter
- * rimuovere le sue prenotazioni, che vivono in questo database. Finche' tutto stava
- * insieme lo faceva una chiave esterna con ON DELETE, e prima ancora una singola
- * transazione. Ora e' una chiamata di rete, e puo' fallire.
+ * It exists for one reason: when auth-service deletes a user it has to be able to remove
+ * their bookings, which live in this database. While everything sat together a foreign key
+ * with ON DELETE did that, and before it a single transaction. It is a network call now,
+ * and it can fail.
  *
  * Il gateway chiude /api/bookings/internal/** dall'esterno: raggiungerlo richiede di
- * parlare direttamente con questo servizio. La protezione non si ferma pero' li',
- * perche' un gateway aggirato non deve bastare: serve comunque un token con ruolo ADMIN,
+ * talk to this service directly. The protection does not stop there, though, because a
+ * bypassed gateway must not be enough: an ADMIN token is still required,
  * verificato qui come su qualunque altro endpoint.
  */
 @RestController
 @RequestMapping("/api/bookings/internal")
-@Tag(name = "Prenotazioni (interne)", description = "Chiamate da altri servizi, non dal frontend")
+@Tag(name = "Bookings (internal)", description = "Called by other services, not by the frontend")
 @PreAuthorize("hasRole('ADMIN')")
 public class InternalBookingController {
 
@@ -42,10 +42,10 @@ public class InternalBookingController {
     }
 
     @DeleteMapping("/user/{userId}")
-    @Operation(summary = "Elimina le prenotazioni di un utente che sta per essere rimosso")
+    @Operation(summary = "Delete the bookings of a user about to be removed")
     @Transactional
     public ResponseEntity<MessageResponse> deleteUserBookings(@PathVariable("userId") Long userId) {
-        logger.info("Eliminazione prenotazioni dell'utenteId={} su richiesta del servizio utenti", userId);
+        logger.info("deleting the bookings of userId={} at the request of the user service", userId);
         bookingRepository.deleteByUserId(userId);
         return ResponseEntity.ok(new MessageResponse("Prenotazioni dell'utente eliminate"));
     }

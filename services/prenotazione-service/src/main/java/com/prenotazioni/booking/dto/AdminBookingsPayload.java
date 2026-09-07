@@ -5,7 +5,7 @@ import lombok.Value;
 
 import java.util.List;
 
-/** Vista admin di tutte le prenotazioni (incluse annullate), con statistiche per stato. */
+/** The admin view of every booking (cancelled ones included), with per-status statistics. */
 @Value
 public class AdminBookingsPayload {
     List<Booking> bookings;

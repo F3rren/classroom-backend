@@ -9,31 +9,31 @@ import java.util.List;
 
 public interface RoomRepository extends JpaRepository<Room, Long> {
     
-    // Verifica se esiste un'aula con un certo nome (case insensitive)
+    // Is there a room with this name? Case insensitive.
     @Query("SELECT COUNT(a) > 0 FROM Room a WHERE LOWER(a.name) = LOWER(:name)")
     boolean existsByNameIgnoreCase(@Param("name") String name);
     
-    // Verifica se esiste un'aula con un certo nome escludendo un ID specifico
+    // Is there a room with this name, ignoring one particular id?
     @Query("SELECT COUNT(a) > 0 FROM Room a WHERE LOWER(a.name) = LOWER(:name) AND a.id != :excludeId")
     boolean existsByNameIgnoreCaseAndIdNot(@Param("name") String name, @Param("excludeId") Long excludeId);
     
-    // Trova aule per piano
+    // Rooms on a given floor.
     List<Room> findByFloor(int floor);
     
-    // Trova aule con capienza maggiore o uguale a un valore
+    // Rooms with at least the given capacity.
     List<Room> findByCapacityGreaterThanEqual(int capacity);
     
-    // Trova aule fisiche o virtuali
+    // Physical or virtual rooms.
     List<Room> findByIsVirtual(boolean isVirtual);
     
-    // Trova aule fisiche ordinate per piano e nome
+    // Physical rooms, ordered by floor then name.
     @Query("SELECT a FROM Room a WHERE a.isVirtual = false ORDER BY a.floor ASC, a.name ASC")
     List<Room> findPhysicalRoomsOrderByFloorAndName();
     
-    // Trova aule virtuali ordinate per nome
+    // Virtual rooms, ordered by name.
     @Query("SELECT a FROM Room a WHERE a.isVirtual = true ORDER BY a.name ASC")
     List<Room> findVirtualRoomsOrderByNome();
     
-    // Conta aule fisiche e virtuali
+    // How many physical rooms. e virtuali
     long countByIsVirtual(boolean isVirtual);
 }
