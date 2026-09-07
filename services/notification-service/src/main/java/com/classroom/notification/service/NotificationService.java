@@ -69,28 +69,30 @@ public class NotificationService {
      *
      * The title and the message stay Italian: they are the one thing here that a person
      * reads, straight out of the frontend.
+     *
+     * roomName and adminName arrive null when the room was since deleted or the admin's
+     * token carried no name - booking-service used to paper over that with its own Italian
+     * placeholder text before publishing the event. That was this service's call to make,
+     * not booking-service's: the wording shown to the recipient belongs to whoever owns
+     * that wording, so the two fall back here instead. The only caller of this method is
+     * the admin-cancellation flow (there is no self-cancellation notification today), which
+     * is why a missing admin name reads as "an administrator", never as "you".
      */
     public Notification createBookingCancelledNotification(Long userId, Long bookingId,
             String roomName, String adminName, String bookingDate, String startTime, String endTime, String reason) {
 
         logger.debug("START - creating cancellation notification for user ID: {}, booking ID: {}", userId, bookingId);
 
-        String title = "Cancellazione Prenotazione: " + roomName;
-        String message;
+        String room = roomName != null ? roomName : "una stanza non più disponibile";
+        String admin = adminName != null ? adminName : "un amministratore";
 
-        if (adminName != null) {
-            message = String.format(
-                "La tua prenotazione per la stanza '%s' il %s dalle %s alle %s è stata cancellata dall'amministratore %s.",
-                roomName, bookingDate, startTime, endTime, adminName
-            );
-            if (reason != null && !reason.trim().isEmpty()) {
-                message += " Motivo: " + reason;
-            }
-        } else {
-            message = String.format(
-                "Hai annullato la tua prenotazione per la stanza '%s' il %s dalle %s alle %s.",
-                roomName, bookingDate, startTime, endTime
-            );
+        String title = "Cancellazione Prenotazione: " + room;
+        String message = String.format(
+            "La tua prenotazione per la stanza '%s' il %s dalle %s alle %s è stata cancellata da %s.",
+            room, bookingDate, startTime, endTime, admin
+        );
+        if (reason != null && !reason.trim().isEmpty()) {
+            message += " Motivo: " + reason;
         }
 
         Notification notification = createNotification(userId, TYPE_CANCELLATION, title, message);
@@ -98,10 +100,11 @@ public class NotificationService {
         // These four columns already existed on the entity but NOBODY was filling them in:
         // they had been permanently null since before the split into services. They are the
         // only thing letting the frontend tie the notification back to the booking without
-        // parsing the message text, so they get filled.
+        // parsing the message text, so they get filled. The defaulted room/admin go in here
+        // too, so the structured fields and the message text never disagree.
         notification.setBookingId(bookingId);
-        notification.setRoomName(roomName);
-        notification.setAdminName(adminName);
+        notification.setRoomName(room);
+        notification.setAdminName(admin);
         notification.setBookingDate(toInstant(bookingDate, startTime));
         notification = notificationRepository.save(notification);
         logger.debug("END - cancellation notification created with ID: {}", notification.getId());

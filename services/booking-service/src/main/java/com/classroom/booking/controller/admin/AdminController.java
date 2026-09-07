@@ -255,11 +255,16 @@ public class AdminController {
         try {
             // The admin's name comes from the token: asking auth-service for it would mean
             // a network call just to compose the text of a notification.
-            String adminName = principal.name() != null ? principal.name() : "Amministratore";
+            //
+            // Neither field is defaulted here when missing: what to show the recipient when
+            // the room is gone or the admin's name is unavailable is notification-service's
+            // call, since it is the one that owns the wording shown to a person. Passing
+            // null and letting it decide keeps that decision in one place instead of two.
+            String adminName = principal.name();
             String bookingDate = booking.getStartTime().toLocalDate().toString();
             String startTime = booking.getStartTime().toLocalTime().toString();
             String endTime = booking.getEndTime().toLocalTime().toString();
-            String roomName = bookingRoom != null ? bookingRoom.getName() : "Stanza non specificata";
+            String roomName = bookingRoom != null ? bookingRoom.getName() : null;
 
             // Published to a queue rather than called over REST: that way the notification
             // is not lost if notification-service is down. The typed record also replaced
