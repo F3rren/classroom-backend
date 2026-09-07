@@ -149,7 +149,12 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void theByIdShortcutComposesBothTheTechnicalAndTheUserMessage() {
-        ResourceNotFoundException ex = ResourceNotFoundException.forId(ResourceType.ROOM, 42L);
+        // No ResourceType here: that enum now lives one per service (booking-service's,
+        // auth-service's), and shared cannot depend on either. This is the generic
+        // mechanism every service's own enum composes through - see booking-service's or
+        // auth-service's ResourceType for the version a call site actually uses.
+        ResourceNotFoundException ex = ResourceNotFoundException.forId(
+                "Room", "ROOM_NOT_FOUND", "L'aula richiesta non esiste.", 42L);
 
         // the technical one carries the id, useful in a log; the user's does not, because
         // they have no use for it

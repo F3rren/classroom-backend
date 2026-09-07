@@ -1,8 +1,7 @@
 package com.classroom.booking.controller;
 
 import com.classroom.config.RequestCorrelationFilter;
-import com.classroom.exception.ResourceNotFoundException;
-import com.classroom.exception.ResourceType;
+import com.classroom.booking.exception.ResourceType;
 import com.classroom.booking.service.RoomService;
 import com.classroom.booking.service.BookingService;
 import com.classroom.booking.model.Room;
@@ -128,7 +127,7 @@ public class RoomController {
             // It used to be {"error":"Aula non trovata"}, a shape different from the
             // envelope used everywhere else: no "success", no "userMessage", and an
             // "error" holding a sentence instead of a code.
-            throw ResourceNotFoundException.forId(ResourceType.ROOM, id);
+            throw ResourceType.ROOM.notFoundById(id);
         }
 
         logger.debug("room found: ID: {}, name: {}", room.get().getId(), room.get().getName());

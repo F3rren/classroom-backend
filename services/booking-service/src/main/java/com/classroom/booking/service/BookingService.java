@@ -5,8 +5,7 @@ import com.classroom.booking.model.Room;
 import com.classroom.booking.model.Course;
 import com.classroom.exception.BookingConflictException;
 import com.classroom.exception.DomainConflictException;
-import com.classroom.exception.ResourceNotFoundException;
-import com.classroom.exception.ResourceType;
+import com.classroom.booking.exception.ResourceType;
 import com.classroom.booking.model.Booking;
 import com.classroom.booking.model.BookingOwner;
 import com.classroom.booking.model.RoomStatus;
@@ -61,7 +60,7 @@ public class BookingService {
         if (room.isEmpty()) {
             // 404 and no longer 409: a missing room and a busy room were both a null, and
             // the controller presented them all as a conflict. They are different things.
-            throw ResourceNotFoundException.forId(ResourceType.ROOM, roomId);
+            throw ResourceType.ROOM.notFoundById(roomId);
         }
         // The user's existence is no longer checked: this service does not have the users
         // table any more. The token guarantees it, signed by auth-service at login. The
@@ -74,7 +73,7 @@ public class BookingService {
             if (course.isEmpty()) {
                 // The course is optional, but if given it has to exist: passing one that
                 // does not is a caller error, not a booking without a course.
-                throw ResourceNotFoundException.forId(ResourceType.COURSE, courseId);
+                throw ResourceType.COURSE.notFoundById(courseId);
             }
         }
 
@@ -118,7 +117,7 @@ public class BookingService {
         // The role is not re-read from the database: it comes from the token, and the
         // controller is already annotated @PreAuthorize("hasRole('ADMIN')").
         if (room.isEmpty()) {
-            throw ResourceNotFoundException.forId(ResourceType.ROOM, roomId);
+            throw ResourceType.ROOM.notFoundById(roomId);
         }
         
         logger.debug("blocking room - roomId: {}, AdminId: {}, period: {} - {}", roomId, admin.getId(), startTime, endTime);
@@ -233,7 +232,7 @@ public class BookingService {
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         
         if (booking.isEmpty()) {
-            throw ResourceNotFoundException.forId(ResourceType.BOOKING, bookingId);
+            throw ResourceType.BOOKING.notFoundById(bookingId);
         }
         
         logger.debug("checking cancellation permissions for booking - bookingId: {}, userId: {}", bookingId, userId);
@@ -352,7 +351,7 @@ public class BookingService {
         logger.debug("booking cancellation requested by an admin - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
         Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
         if (bookingOpt.isEmpty()) {
-            throw ResourceNotFoundException.forId(ResourceType.BOOKING, bookingId);
+            throw ResourceType.BOOKING.notFoundById(bookingId);
         }
         
         logger.debug("booking cancellation requested by an admin - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
@@ -392,7 +391,7 @@ public class BookingService {
         // Find the booking
         Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
         if (bookingOpt.isEmpty()) {
-            throw ResourceNotFoundException.forId(ResourceType.BOOKING, bookingId);
+            throw ResourceType.BOOKING.notFoundById(bookingId);
         }
         
         Booking booking = bookingOpt.get();
@@ -410,7 +409,7 @@ public class BookingService {
         if (room.isEmpty()) {
             // 404 and no longer 409: a missing room and a busy room were both a null, and
             // the controller presented them all as a conflict. They are different things.
-            throw ResourceNotFoundException.forId(ResourceType.ROOM, roomId);
+            throw ResourceType.ROOM.notFoundById(roomId);
         }
         
         // Is the room free over the new period? (this booking itself excluded)
@@ -427,7 +426,7 @@ public class BookingService {
             if (course.isEmpty()) {
                 // The course is optional, but if given it has to exist: passing one that
                 // does not is a caller error, not a booking without a course.
-                throw ResourceNotFoundException.forId(ResourceType.COURSE, courseId);
+                throw ResourceType.COURSE.notFoundById(courseId);
             }
         }
         

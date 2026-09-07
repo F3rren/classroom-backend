@@ -1,8 +1,7 @@
 package com.classroom.booking.service;
 
 import com.classroom.exception.DomainConflictException;
-import com.classroom.exception.ResourceNotFoundException;
-import com.classroom.exception.ResourceType;
+import com.classroom.booking.exception.ResourceType;
 import com.classroom.booking.model.Room;
 import com.classroom.booking.model.RoomAvailability;
 import com.classroom.booking.model.Booking;
@@ -108,7 +107,7 @@ public class RoomService {
                    id, request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
         
         Room room = roomRepository.findById(id)
-                .orElseThrow(() -> ResourceNotFoundException.forId(ResourceType.ROOM, id));
+                .orElseThrow(() -> ResourceType.ROOM.notFoundById(id));
         logger.debug("existing room found - name: {}, capacity: {}, floor: {}, isVirtual: {}", 
                    room.getName(), room.getCapacity(), room.getFloor(), room.isVirtual());
 
@@ -140,7 +139,7 @@ public class RoomService {
         logger.debug("START deleteRoom - ID: {}", id);
         
         if (!roomRepository.existsById(id)) {
-            throw ResourceNotFoundException.forId(ResourceType.ROOM, id);
+            throw ResourceType.ROOM.notFoundById(id);
         }
 
         // false used to mean two opposite things: "no such room" (above) and "the deletion
@@ -180,7 +179,7 @@ public class RoomService {
         logger.debug("START getRoomWithDetails - ID room: {}", roomId);
 
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> ResourceNotFoundException.forId(ResourceType.ROOM, roomId));
+                .orElseThrow(() -> ResourceType.ROOM.notFoundById(roomId));
 
         RoomDetailsResponse roomDetails = toRoomDetails(
                 room, bookingRepository.findByRoomId(room.getId()), LocalDateTime.now());

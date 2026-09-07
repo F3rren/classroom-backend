@@ -2,8 +2,7 @@ package com.classroom.booking.controller;
 
 import com.classroom.config.RequestCorrelationFilter;
 import com.classroom.exception.InvalidRequestException;
-import com.classroom.exception.ResourceNotFoundException;
-import com.classroom.exception.ResourceType;
+import com.classroom.booking.exception.ResourceType;
 import com.classroom.dto.*;
 // both: com.classroom.dto keeps the classes shared holds in common,
 // com.classroom.booking.dto the ones belonging to this service
@@ -438,7 +437,7 @@ public class BookingController {
             // It used to be {"error":"Prenotazione non trovata"} - no "success", no
             // "userMessage", and "error" held a sentence instead of a code. A client reading
             // userMessage got undefined on exactly these two endpoints.
-            throw ResourceNotFoundException.forId(ResourceType.BOOKING, id);
+            throw ResourceType.BOOKING.notFoundById(id);
         }
 
         logger.debug("END getBookingById - booking fetched: ID: {}", booking.getId());
@@ -460,7 +459,7 @@ public class BookingController {
             // It used to be {"error":"Prenotazione non trovata"} - no "success", no
             // "userMessage", and "error" held a sentence instead of a code. A client reading
             // userMessage got undefined on exactly these two endpoints.
-            throw ResourceNotFoundException.forId(ResourceType.BOOKING, id);
+            throw ResourceType.BOOKING.notFoundById(id);
         }
 
         logger.debug("booking found: ID: {}", booking.getId());

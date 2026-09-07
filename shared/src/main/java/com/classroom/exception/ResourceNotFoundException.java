@@ -19,11 +19,17 @@ public class ResourceNotFoundException extends ApplicationException {
      *
      * The id goes in the technical message only. It is useful in a log and means nothing
      * to the person reading the answer, who already knows what they asked for.
+     *
+     * Generic on purpose: shared cannot know the resource types of every service - booking
+     * and auth do not share a domain vocabulary, only this mechanism. Each service ties its
+     * own technicalName/errorCode/userMessage together with its own ResourceType enum,
+     * whose notFoundById(id) is the one place that calls this and cannot mismatch them.
+     * Call this directly only where there is no local ResourceType to reach for.
      */
-    public static ResourceNotFoundException forId(ResourceType type, Object id) {
+    public static ResourceNotFoundException forId(String technicalName, String errorCode, String userMessage, Object id) {
         return new ResourceNotFoundException(
-                type.getErrorCode(),
-                String.format("%s not found with id: %s", type.getTechnicalName(), id),
-                type.getUserMessage());
+                errorCode,
+                String.format("%s not found with id: %s", technicalName, id),
+                userMessage);
     }
 }

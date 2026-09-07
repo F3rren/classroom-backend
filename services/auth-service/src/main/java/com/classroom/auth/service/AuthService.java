@@ -2,8 +2,7 @@ package com.classroom.auth.service;
 
 import com.classroom.auth.model.User;
 import com.classroom.exception.DomainConflictException;
-import com.classroom.exception.ResourceNotFoundException;
-import com.classroom.exception.ResourceType;
+import com.classroom.auth.exception.ResourceType;
 import com.classroom.model.Role;
 import com.classroom.auth.repository.UserRepository;
 import com.classroom.auth.dto.CreateUserRequest;
@@ -88,7 +87,7 @@ public class AuthService {
     public User updateUser(Long id, UpdateUserRequest request) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
-            throw ResourceNotFoundException.forId(ResourceType.USER, id);
+            throw ResourceType.USER.notFoundById(id);
         }
 
         // Is the new email or username already taken by somebody else?
