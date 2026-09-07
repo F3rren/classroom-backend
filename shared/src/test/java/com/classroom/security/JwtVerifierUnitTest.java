@@ -60,9 +60,9 @@ class JwtVerifierUnitTest {
     @Test
     void rejectsATamperedSignature() {
         String token = TestJwt.forUser(7L, "mario@example.it");
-        String manomesso = token.substring(0, token.lastIndexOf('.')) + ".firmaAlterata";
+        String tampered = token.substring(0, token.lastIndexOf('.')) + ".firmaAlterata";
 
-        assertThat(verifier.validateToken(manomesso)).isFalse();
+        assertThat(verifier.validateToken(tampered)).isFalse();
     }
 
     @Test

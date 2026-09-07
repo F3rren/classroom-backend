@@ -55,7 +55,7 @@ class AuthControllerUnitTest {
         when(httpRequest.getRemoteAddr()).thenReturn("10.0.0.1");
     }
 
-    private LoginRequest credenziali(String email, String password) {
+    private LoginRequest credentials(String email, String password) {
         LoginRequest r = new LoginRequest();
         r.setEmail(email);
         r.setPassword(password);
@@ -87,11 +87,11 @@ class AuthControllerUnitTest {
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         // first attempt: uses up the quota and fails on wrong credentials
-        ResponseEntity<?> primo = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
+        ResponseEntity<?> primo = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
         assertThat(primo.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
         // second attempt: over the threshold
-        ResponseEntity<?> second = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
+        ResponseEntity<?> second = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
         assertThat(second.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(errorCode(second)).isEqualTo("TOO_MANY_ATTEMPTS");
     }
@@ -104,8 +104,8 @@ class AuthControllerUnitTest {
                 new LoginAttemptLimiter(1, -1L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
-        controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
-        ResponseEntity<?> second = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
+        controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
+        ResponseEntity<?> second = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
 
         // no 429: the window has expired and the counter was reset
         assertThat(second.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -117,10 +117,10 @@ class AuthControllerUnitTest {
                 new LoginAttemptLimiter(1, 60_000L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
-        controller.login(credenziali("primo@test.it", "password"), httpRequest);
-        controller.login(credenziali("primo@test.it", "password"), httpRequest); // primo utente in 429
+        controller.login(credentials("primo@test.it", "password"), httpRequest);
+        controller.login(credentials("primo@test.it", "password"), httpRequest); // primo utente in 429
 
-        ResponseEntity<?> altro = controller.login(credenziali("secondo@test.it", "password"), httpRequest);
+        ResponseEntity<?> altro = controller.login(credentials("secondo@test.it", "password"), httpRequest);
         assertThat(altro.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
@@ -128,7 +128,7 @@ class AuthControllerUnitTest {
 
     @Test
     void rejectsAMissingEmail() {
-        ResponseEntity<?> resp = controller.login(credenziali(null, "password"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials(null, "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("MISSING_EMAIL");
@@ -136,7 +136,7 @@ class AuthControllerUnitTest {
 
     @Test
     void rejectsAMalformedEmail() {
-        ResponseEntity<?> resp = controller.login(credenziali("non-una-email", "password"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("non-una-email", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("INVALID_EMAIL_FORMAT");
@@ -144,7 +144,7 @@ class AuthControllerUnitTest {
 
     @Test
     void rejectsAMissingPassword() {
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", ""), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", ""), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("MISSING_PASSWORD");
@@ -152,7 +152,7 @@ class AuthControllerUnitTest {
 
     @Test
     void rejectsATooShortPassword() {
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "ab"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "ab"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errorCode(resp)).isEqualTo("PASSWORD_TOO_SHORT");
@@ -162,7 +162,7 @@ class AuthControllerUnitTest {
     void rejectsWrongCredentials() {
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "sbagliata"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(errorCode(resp)).isEqualTo("INVALID_CREDENTIALS");
@@ -174,7 +174,7 @@ class AuthControllerUnitTest {
     void returns500WhenTheServiceBlowsUp() {
         when(authService.login(anyString(), anyString())).thenThrow(new RuntimeException("DB giu'"));
 
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(errorCode(resp)).isEqualTo("AUTHENTICATION_ERROR");
@@ -186,7 +186,7 @@ class AuthControllerUnitTest {
         corrotto.setId(null);
         when(authService.login(anyString(), anyString())).thenReturn(corrotto);
 
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(errorCode(resp)).isEqualTo("USER_DATA_CORRUPTION");
@@ -197,7 +197,7 @@ class AuthControllerUnitTest {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("   ");
 
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(errorCode(resp)).isEqualTo("TOKEN_GENERATION_FAILED");
@@ -208,7 +208,7 @@ class AuthControllerUnitTest {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenThrow(new IllegalStateException("chiave assente"));
 
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(errorCode(resp)).isEqualTo("TOKEN_GENERATION_ERROR");
@@ -219,7 +219,7 @@ class AuthControllerUnitTest {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("token-valido");
 
-        ResponseEntity<?> resp = controller.login(credenziali("u@test.it", "password"), httpRequest);
+        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         LoginResponse body = (LoginResponse) resp.getBody();

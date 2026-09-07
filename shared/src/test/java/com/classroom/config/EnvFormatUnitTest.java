@@ -38,7 +38,7 @@ class EnvFormatUnitTest {
         // test would stop being about what it is meant to check.
     }
 
-    private ConfigurableApplicationContext avviaCon(String contenutoEnv) throws IOException {
+    private ConfigurableApplicationContext startWith(String contenutoEnv) throws IOException {
         Path env = cartella.resolve("prova.env");
         Files.writeString(env, contenutoEnv);
         return new SpringApplicationBuilder(SoloAmbiente.class)
@@ -50,7 +50,7 @@ class EnvFormatUnitTest {
     @Test
     void springLeggeIlFormatoDiCompose() throws IOException {
         // The closing line: without this, the whole choice of keeping one single file falls.
-        try (var context = avviaCon("JWT_SECRET=abc123\nSPRING_DATASOURCE_PASSWORD=segreta\n")) {
+        try (var context = startWith("JWT_SECRET=abc123\nSPRING_DATASOURCE_PASSWORD=segreta\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo("abc123");
             assertThat(context.getEnvironment().getProperty("SPRING_DATASOURCE_PASSWORD")).isEqualTo("segreta");
         }
@@ -80,7 +80,7 @@ class EnvFormatUnitTest {
         // Nessuno di questi ha significato speciale in un file properties, ma "nessuno di
         // these" is a claim that has to be checked, not remembered.
         String secret = "aB3+xY/9zQ==";
-        try (var context = avviaCon("JWT_SECRET=" + secret + "\n")) {
+        try (var context = startWith("JWT_SECRET=" + secret + "\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET")).isEqualTo(secret);
         }
     }
@@ -91,7 +91,7 @@ class EnvFormatUnitTest {
         // says not to use quotes: Compose strips them, Java keeps them. The test does not fix
         // it - it DOCUMENTS it, because one day somebody will quote a secret and the symptom
         // will be a token that does not validate, with nothing to explain why.
-        try (var context = avviaCon("JWT_SECRET=\"virgolettato\"\n")) {
+        try (var context = startWith("JWT_SECRET=\"virgolettato\"\n")) {
             assertThat(context.getEnvironment().getProperty("JWT_SECRET"))
                     .isEqualTo("\"virgolettato\"")
                     .isNotEqualTo("virgolettato");

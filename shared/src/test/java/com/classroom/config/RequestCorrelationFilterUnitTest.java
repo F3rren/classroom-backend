@@ -40,7 +40,7 @@ class RequestCorrelationFilterUnitTest {
 
         filter.doFilter(request, response, new MockFilterChain());
 
-        assertThat(request.getAttribute(RequestCorrelationFilter.ATTRIBUTO)).isEqualTo("REQ_DALGATEWAY");
+        assertThat(request.getAttribute(RequestCorrelationFilter.ATTRIBUTE)).isEqualTo("REQ_DALGATEWAY");
         assertThat(response.getHeader(RequestCorrelationFilter.HEADER)).isEqualTo("REQ_DALGATEWAY");
     }
 
@@ -51,7 +51,7 @@ class RequestCorrelationFilterUnitTest {
 
         filter.doFilter(request, response, new MockFilterChain());
 
-        String id = (String) request.getAttribute(RequestCorrelationFilter.ATTRIBUTO);
+        String id = (String) request.getAttribute(RequestCorrelationFilter.ATTRIBUTE);
         assertThat(id).isNotBlank();
         // Sending it back serves whoever opens a report: they can quote the id even when the
         // response is a 204, or a body that does not carry it.

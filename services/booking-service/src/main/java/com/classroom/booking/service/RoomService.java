@@ -29,16 +29,16 @@ public class RoomService {
 
     private static final Logger logger = LoggerFactory.getLogger(RoomService.class);
 
-    private static final DateTimeFormatter FORMATO_DATA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter FORMATO_ORA = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     /** How far ahead a future booking already makes the room read as "booked". */
-    private static final int ORE_DI_PREAVVISO = 2;
+    private static final int NOTICE_HOURS = 2;
 
-    private static final String SCOPO_PREDEFINITO = "Lezione";
+    private static final String DEFAULT_PURPOSE = "Lezione";
     private static final String DEFAULT_BLOCK_REASON = "Aula bloccata";
     /** Who a block is attributed to: a block is by definition an admin intervention. */
-    private static final String BLOCCATA_DA = Role.ADMIN.getValue();
+    private static final String BLOCKED_BY = Role.ADMIN.getValue();
 
     private final RoomRepository roomRepository;
 
@@ -67,11 +67,11 @@ public class RoomService {
 
     // Creates a room.
     public Room createRoom(RoomRequest request) {
-        logger.debug("START createroom - data received: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
+        logger.debug("START createRoom - data received: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
                    request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
         
         if (roomRepository.existsByNameIgnoreCase(request.getName())) {
-            logger.debug("END createroom - name already taken: {}", request.getName());
+            logger.debug("END createRoom - name already taken: {}", request.getName());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
                     "Room name already taken: " + request.getName(),
                     "Esiste gia' un'aula con questo nome.");
@@ -98,13 +98,13 @@ public class RoomService {
         // when the cause was the database. The concrete case is a violation of the UNIQUE on
         // rooms.name between two concurrent creations: that is a 409 now, not a 400.
         Room savedRoom = roomRepository.save(room);
-        logger.debug("END createroom - room saved - ID: {}, name: {}", savedRoom.getId(), savedRoom.getName());
+        logger.debug("END createRoom - room saved - ID: {}, name: {}", savedRoom.getId(), savedRoom.getName());
         return savedRoom;
     }
 
     // Updates an existing room.
     public Room updateRoom(Long id, RoomRequest request) {
-        logger.debug("START updateroom - ID: {}, data received: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
+        logger.debug("START updateRoom - ID: {}, data received: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
                    id, request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
         
         Room room = roomRepository.findById(id)
@@ -113,7 +113,7 @@ public class RoomService {
                    room.getName(), room.getCapacity(), room.getFloor(), room.isVirtual());
 
         if (roomRepository.existsByNameIgnoreCaseAndIdNot(request.getName(), id)) {
-            logger.debug("END updateroom - name already taken: {}", request.getName());
+            logger.debug("END updateRoom - name already taken: {}", request.getName());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
                     "Room name already taken: " + request.getName(),
                     "Esiste gia' un'aula con questo nome.");
@@ -131,13 +131,13 @@ public class RoomService {
 
         // As in createRoom: the error is left to rise to the global handler.
         Room savedRoom = roomRepository.save(room);
-        logger.debug("END updateroom - room updated - ID: {}, name: {}", savedRoom.getId(), savedRoom.getName());
+        logger.debug("END updateRoom - room updated - ID: {}, name: {}", savedRoom.getId(), savedRoom.getName());
         return savedRoom;
     }
 
     // Deletes a room.
     public void deleteRoom(Long id) {
-        logger.debug("START deleteroom - ID: {}", id);
+        logger.debug("START deleteRoom - ID: {}", id);
         
         if (!roomRepository.existsById(id)) {
             throw ResourceNotFoundException.forId(ResourceType.ROOM, id);
@@ -148,22 +148,22 @@ public class RoomService {
         // The realistic case is a booking still referencing the room: that is a 409, and
         // saying so is more use than answering "room not found" about a room that exists.
         roomRepository.deleteById(id);
-        logger.debug("END deleteroom - room deleted - ID: {}", id);
+        logger.debug("END deleteRoom - room deleted - ID: {}", id);
     }
 
     // Rooms on a given floor.
     public List<Room> getRoomsByFloor(int floor) {
-        logger.debug("START getAuleByfloor - floor: {}", floor);
+        logger.debug("START getRoomsByFloor - floor: {}", floor);
         List<Room> rooms = roomRepository.findByFloor(floor);
-        logger.debug("END getAuleByfloor - rooms found: {}", rooms.size());
+        logger.debug("END getRoomsByFloor - rooms found: {}", rooms.size());
         return rooms;
     }
     
     // Rooms with at least a given capacity.
     public List<Room> getRoomsByMinCapacity(int minCapacity) {
-        logger.debug("START getAuleBycapacityMinima - capacity minima: {}", minCapacity);
+        logger.debug("START getRoomsByMinCapacity - capacity minima: {}", minCapacity);
         List<Room> rooms = roomRepository.findByCapacityGreaterThanEqual(minCapacity);
-        logger.debug("END getAuleBycapacityMinima - rooms found: {}", rooms.size());
+        logger.debug("END getRoomsByMinCapacity - rooms found: {}", rooms.size());
         return rooms;
     }
 
@@ -297,8 +297,8 @@ public class RoomService {
                     status = RoomAvailability.BLOCKED;
                     blockInfo = new RoomDetailsResponse.BlockInfo(
                         descriptionOr(booking, DEFAULT_BLOCK_REASON),
-                        BLOCCATA_DA,
-                        booking.getCreatedAt().toLocalDate().format(FORMATO_DATA)
+                        BLOCKED_BY,
+                        booking.getCreatedAt().toLocalDate().format(DATE_FORMAT)
                     );
                 }
                 break;
@@ -307,7 +307,7 @@ public class RoomService {
 
         // If it is free now, is there a booking about to start?
         if (status == RoomAvailability.FREE) {
-            LocalDateTime noticeEnd = adesso.plusHours(ORE_DI_PREAVVISO);
+            LocalDateTime noticeEnd = adesso.plusHours(NOTICE_HOURS);
             for (Booking booking : bookings) {
                 if (booking.getStartTime().isAfter(adesso) && booking.getStartTime().isBefore(noticeEnd) &&
                     booking.getStatus() == BookingStatus.BOOKED) {
@@ -322,11 +322,11 @@ public class RoomService {
         for (Booking booking : bookings) {
             if (booking.getStatus() == BookingStatus.BOOKED) {
                 bookingInfos.add(new RoomDetailsResponse.BookingInfo(
-                    booking.getStartTime().toLocalDate().format(FORMATO_DATA),
-                    booking.getStartTime().format(FORMATO_ORA),
-                    booking.getEndTime().format(FORMATO_ORA),
+                    booking.getStartTime().toLocalDate().format(DATE_FORMAT),
+                    booking.getStartTime().format(TIME_FORMAT),
+                    booking.getEndTime().format(TIME_FORMAT),
                     booking.getUser().getName(),
-                    descriptionOr(booking, SCOPO_PREDEFINITO)
+                    descriptionOr(booking, DEFAULT_PURPOSE)
                 ));
             }
         }
@@ -341,9 +341,9 @@ public class RoomService {
     private RoomDetailsResponse.CurrentBooking toCurrentBooking(Booking booking) {
         return new RoomDetailsResponse.CurrentBooking(
                 booking.getUser().getName(),
-                booking.getStartTime().toLocalDate().format(FORMATO_DATA),
-                booking.getStartTime().format(FORMATO_ORA) + "-" + booking.getEndTime().format(FORMATO_ORA),
-                descriptionOr(booking, SCOPO_PREDEFINITO));
+                booking.getStartTime().toLocalDate().format(DATE_FORMAT),
+                booking.getStartTime().format(TIME_FORMAT) + "-" + booking.getEndTime().format(TIME_FORMAT),
+                descriptionOr(booking, DEFAULT_PURPOSE));
     }
 
     private static String descriptionOr(Booking booking, String predefinita) {

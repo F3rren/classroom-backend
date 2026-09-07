@@ -42,7 +42,7 @@ class JwtAuthFilterUnitTest {
         SecurityContextHolder.clearContext();
     }
 
-    private Authentication eseguiConHeader(String authorization) throws Exception {
+    private Authentication runWithHeader(String authorization) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/rooms");
         if (authorization != null) {
             request.addHeader("Authorization", authorization);
@@ -53,7 +53,7 @@ class JwtAuthFilterUnitTest {
 
     @Test
     void unTokenValidoDiventaUnUtenteAutenticato() throws Exception {
-        Authentication auth = eseguiConHeader("Bearer " + TestJwt.forUser(7L, "mario@example.it"));
+        Authentication auth = runWithHeader("Bearer " + TestJwt.forUser(7L, "mario@example.it"));
 
         assertThat(auth).isNotNull();
         AppPrincipal principal = (AppPrincipal) auth.getPrincipal();
@@ -64,7 +64,7 @@ class JwtAuthFilterUnitTest {
 
     @Test
     void unTokenDaAdminPortaLAuthorityCheCercaPreAuthorize() throws Exception {
-        Authentication auth = eseguiConHeader("Bearer " + TestJwt.forAdmin(1L, "admin@example.it"));
+        Authentication auth = runWithHeader("Bearer " + TestJwt.forAdmin(1L, "admin@example.it"));
 
         // hasRole('ADMIN') looks for exactly this string
         assertThat(auth.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_ADMIN");
@@ -72,20 +72,20 @@ class JwtAuthFilterUnitTest {
 
     @Test
     void noHeaderLeavesTheRequestUnauthenticated() throws Exception {
-        assertThat(eseguiConHeader(null)).isNull();
+        assertThat(runWithHeader(null)).isNull();
     }
 
     @Test
     void unaIntestazioneSenzaIlPrefissoBearerVieneIgnorata() throws Exception {
-        assertThat(eseguiConHeader(TestJwt.forUser(7L, "mario@example.it"))).isNull();
+        assertThat(runWithHeader(TestJwt.forUser(7L, "mario@example.it"))).isNull();
     }
 
     @Test
     void anInvalidTokenLeavesTheRequestUnauthenticated() throws Exception {
         // It neither throws nor answers on its own: it lets the chain continue, and it is
         // policy di sicurezza a rispondere 401 tramite ApiAuthenticationEntryPoint.
-        assertThat(eseguiConHeader("Bearer token-inventato")).isNull();
-        assertThat(eseguiConHeader("Bearer " + TestJwt.expired(7L, "mario@example.it"))).isNull();
+        assertThat(runWithHeader("Bearer token-inventato")).isNull();
+        assertThat(runWithHeader("Bearer " + TestJwt.expired(7L, "mario@example.it"))).isNull();
     }
 
     @Test

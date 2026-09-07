@@ -35,11 +35,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                                            @Param("end") LocalDateTime endTime,
                                                            @Param("excludedBookingId") Long excludedBookingId);
     
-    // Trova prenotazioni attive in un momento specifico
+    // The bookings active at one specific moment.
     @Query("SELECT p FROM Booking p WHERE p.room.id = :roomId " +
            "AND p.status != 'cancelled' " +
            "AND p.startTime <= :moment AND p.endTime > :moment " +
-           "ORDER BY p.status DESC") // solo per un ordine stabile: la precedenza la decide il chiamante
+           "ORDER BY p.status DESC") // only for a stable order: the caller decides the precedence
     List<Booking> findActiveBookings(@Param("roomId") Long roomId,
                                              @Param("moment") LocalDateTime moment);
     

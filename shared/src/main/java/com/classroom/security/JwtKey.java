@@ -38,7 +38,7 @@ public final class JwtKey {
         }
         // Everything is brought to base64url, the alphabet the decoder expects. A secret
         // already in base64url passes through this line unchanged.
-        String normalizzato = secret.trim().replace('+', '-').replace('/', '_');
-        return Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(normalizzato));
+        String normalized = secret.trim().replace('+', '-').replace('/', '_');
+        return Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(normalized));
     }
 }

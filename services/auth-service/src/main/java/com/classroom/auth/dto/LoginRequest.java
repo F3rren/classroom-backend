@@ -20,14 +20,14 @@ import lombok.Data;
  * documentation would show them as optional.
  */
 @Data
-@Schema(description = "Credenziali di accesso")
+@Schema(description = "The login credentials")
 public class LoginRequest {
 
     @NotBlank(message = "L'email è obbligatoria per effettuare il login.")
-    @Schema(description = "Email dell'account", example = "mario.rossi@example.it")
+    @Schema(description = "The account email address", example = "mario.rossi@example.it")
     private String email;
 
     @NotBlank(message = "La password è obbligatoria per effettuare il login.")
-    @Schema(description = "Password dell'account", example = "password-sicura")
+    @Schema(description = "The account password", example = "password-sicura")
     private String password;
 }

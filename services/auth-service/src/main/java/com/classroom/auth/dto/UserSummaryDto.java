@@ -16,22 +16,22 @@ import lombok.Getter;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
-@Schema(description = "Vista pubblica di un utente. Non contiene mai la password")
+@Schema(description = "The public view of a user. It never carries the password")
 public class UserSummaryDto {
 
-    @Schema(description = "Identificativo dell'utente", example = "7")
+    @Schema(description = "The user's id", example = "7")
     private Long id;
-    @Schema(description = "Username univoco", example = "m.rossi")
+    @Schema(description = "The unique username", example = "m.rossi")
     private String username;
-    @Schema(description = "Nome e cognome", example = "Mario Rossi")
+    @Schema(description = "The full name", example = "Mario Rossi")
     private String name;
-    @Schema(description = "Email dell'utente", example = "mario.rossi@example.it")
+    @Schema(description = "The user's email address", example = "mario.rossi@example.it")
     private String email;
-    @Schema(description = "Ruolo applicativo", example = "user")
+    @Schema(description = "The application role", example = "user")
     private Role role;
-    @Schema(description = "Data di registrazione. Omessa quando non disponibile", example = "2026-01-15 09:30:00")
+    @Schema(description = "The registration date. Omitted when not available", example = "2026-01-15 09:30:00")
     private String registeredAt;
-    @Schema(description = "Ultimo accesso. Omesso quando non disponibile", example = "2026-08-31 14:05:00")
+    @Schema(description = "The last login. Omitted when not available", example = "2026-08-31 14:05:00")
     private String lastLogin;
 
     public static UserSummaryDto basic(User user) {

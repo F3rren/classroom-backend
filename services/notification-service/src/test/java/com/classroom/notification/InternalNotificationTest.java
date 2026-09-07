@@ -42,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // it against a real broker.
 class InternalNotificationTest {
 
-    private static final Long DESTINATARIO = 42L;
+    private static final Long RECIPIENT_ID = 42L;
 
     @Autowired
     private TestRestTemplate rest;
@@ -61,10 +61,10 @@ class InternalNotificationTest {
         return h;
     }
 
-    private Map<String, Object> corpoCancellazione() {
+    private Map<String, Object> cancellationBody() {
         // HashMap and not Map.of: adminName and reason can be null, as in the client
         Map<String, Object> body = new HashMap<>();
-        body.put("userId", DESTINATARIO);
+        body.put("userId", RECIPIENT_ID);
         body.put("prenotazioneId", 99L);
         body.put("nomeStanza", "Aula Magna");
         body.put("adminNome", "Mario Rossi");
@@ -77,12 +77,12 @@ class InternalNotificationTest {
 
     @Test
     void deletingAUsersNotificationsLeavesTheOthersAlone() {
-        notificationRepository.save(new Notification(DESTINATARIO, "Sua", "Messaggio", "INFO"));
-        notificationRepository.save(new Notification(DESTINATARIO, "Sua anche questa", "Messaggio", "INFO"));
+        notificationRepository.save(new Notification(RECIPIENT_ID, "Sua", "Messaggio", "INFO"));
+        notificationRepository.save(new Notification(RECIPIENT_ID, "Sua anche questa", "Messaggio", "INFO"));
         notificationRepository.save(new Notification(7L, "Di un altro", "Non toccare", "INFO"));
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/notifications/internal/user/" + DESTINATARIO, HttpMethod.DELETE,
+                "/api/notifications/internal/user/" + RECIPIENT_ID, HttpMethod.DELETE,
                 new HttpEntity<>(headers(TestJwt.forAdmin(1L, "admin@test.it"))), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);

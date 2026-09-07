@@ -7,5 +7,5 @@ import lombok.Value;
 public class CancellationAckPayload {
     Long bookingId;
     Long userId;
-    String dataAnnullamento;
+    String cancelledAt;
 }

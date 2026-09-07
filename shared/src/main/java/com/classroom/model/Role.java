@@ -40,9 +40,9 @@ public enum Role {
         if (value == null) {
             return null;
         }
-        String normalizzato = value.trim().toLowerCase(Locale.ROOT);
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
         for (Role role : values()) {
-            if (role.value.equals(normalizzato)) {
+            if (role.value.equals(normalized)) {
                 return role;
             }
         }

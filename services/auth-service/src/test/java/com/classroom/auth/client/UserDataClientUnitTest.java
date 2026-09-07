@@ -39,13 +39,13 @@ class UserDataClientUnitTest {
     private static final String URI_BOOKINGS = BOOKINGS + "/api/bookings/internal/user/7";
 
     private RestClient.Builder builder;
-    private MockRestServiceServer servizioFinto;
+    private MockRestServiceServer fakeService;
     private UserDataClient client;
 
     @BeforeEach
     void setUp() {
         builder = RestClient.builder();
-        servizioFinto = MockRestServiceServer.bindTo(builder).build();
+        fakeService = MockRestServiceServer.bindTo(builder).build();
         // The current request is only there to forward the Authorization header: there is no
         // HTTP request in flight here, and a mock answering null is perfectly fine.
         client = new UserDataClient(builder, NOTIFICATIONS, BOOKINGS, mock(HttpServletRequest.class));
@@ -53,11 +53,11 @@ class UserDataClientUnitTest {
 
     @Test
     void nothingIsLeftBehindWhenAllGoesWell() {
-        servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
-        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
+        fakeService.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
+        fakeService.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).isEmpty();
-        servizioFinto.verify();
+        fakeService.verify();
     }
 
     @Test
@@ -65,23 +65,23 @@ class UserDataClientUnitTest {
         // THE reason for the retries. A restarting service fails the first attempt and
         // answers the second: that alone used to be enough to leave the deletion half done,
         // and finishing it depended on a person noticing.
-        servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
-        servizioFinto.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
-        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
+        fakeService.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
+        fakeService.expect(requestTo(URI_NOTIFICATIONS)).andRespond(withSuccess());
+        fakeService.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).isEmpty();
-        servizioFinto.verify();
+        fakeService.verify();
     }
 
     @Test
     void itGivesUpAfterThreeAttempts() {
         // The retries are not endless: a service that really is down must not leave the
         // administrator's request hanging.
-        servizioFinto.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
-        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
+        fakeService.expect(ExpectedCount.times(3), requestTo(URI_NOTIFICATIONS)).andRespond(withServerError());
+        fakeService.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).containsExactly("notifications");
-        servizioFinto.verify();
+        fakeService.verify();
     }
 
     @Test
@@ -89,41 +89,41 @@ class UserDataClientUnitTest {
         // A 4xx is an answer, not a failure: repeating it would give the same outcome. The
         // exact count is the only thing telling this case from the previous one - the
         // outcome is identical, the behaviour is not.
-        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
+        fakeService.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
-        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
+        fakeService.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).containsExactly("notifications");
-        servizioFinto.verify();
+        fakeService.verify();
     }
 
     @Test
     void theSecondServiceIsCalledEvenWhenTheFirstFails() {
         // Stopping at the first error would leave more behind without telling the reader of
         // the message any more: both are attempted, and the error names both.
-        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
+        fakeService.expect(ExpectedCount.once(), requestTo(URI_NOTIFICATIONS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
-        servizioFinto.expect(ExpectedCount.once(), requestTo(URI_BOOKINGS))
+        fakeService.expect(ExpectedCount.once(), requestTo(URI_BOOKINGS))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
         List<String> failed = client.deleteDataOf(7L);
 
         assertThat(failed).containsExactly("notifications", "bookings");
-        servizioFinto.verify();
+        fakeService.verify();
     }
 
     @Test
     void everyCallCarriesTheCorrelationId() {
         // Without it, an operation crossing three services ends up in the logs under three
         // different keys: correlation would work everywhere except where it is needed.
-        servizioFinto.expect(requestTo(URI_NOTIFICATIONS))
+        fakeService.expect(requestTo(URI_NOTIFICATIONS))
                 .andExpect(method(org.springframework.http.HttpMethod.DELETE))
                 .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers
                         .header("X-Request-Id", org.hamcrest.Matchers.not(org.hamcrest.Matchers.blankOrNullString())))
                 .andRespond(withSuccess());
-        servizioFinto.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
+        fakeService.expect(requestTo(URI_BOOKINGS)).andRespond(withSuccess());
 
         assertThat(client.deleteDataOf(7L)).isEmpty();
-        servizioFinto.verify();
+        fakeService.verify();
     }
 }

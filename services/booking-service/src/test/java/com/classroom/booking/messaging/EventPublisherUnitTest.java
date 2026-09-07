@@ -59,7 +59,7 @@ class EventPublisherUnitTest {
     @Test
     void carriesTheIdOfTheRequestThatCausedTheEvent() {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setAttribute(RequestCorrelationFilter.ATTRIBUTO, "REQ_DALGATEWAY");
+        request.setAttribute(RequestCorrelationFilter.ATTRIBUTE, "REQ_DALGATEWAY");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
         eventPublisher.publishCancellation(event);

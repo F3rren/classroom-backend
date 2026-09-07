@@ -81,7 +81,7 @@ class PostgresSchemaConstraintsTest {
      * Testcontainers extension and Spring's.
      */
     @DynamicPropertySource
-    static void datasourceDalContainer(DynamicPropertyRegistry registry) {
+    static void datasourceFromContainer(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
@@ -145,13 +145,15 @@ class PostgresSchemaConstraintsTest {
 
     @Test
     void flywayAppliedEveryMigrationWithoutBaselining() {
-        List<String> versioni = jdbc.queryForList(
+        List<String> versions = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
                 String.class);
         // V3 and V5 hand notifications and users over to their own services, V4
         // denormalises the booking's owner. If one were missing, the schema here would be
         // the monolith's and the tests below would be exercising the wrong system.
-        assertThat(versioni).containsExactly("1", "2", "3", "4", "5");
+        // V6 to V8 move the schema itself to English: the tables and columns, then the
+        // names PostgreSQL generated on its own, then the status values.
+        assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
 
         // No BASELINE row: that is what proves V1 was EXECUTED and not merely marked as
         // already applied, which would have skipped the exclusion constraint.

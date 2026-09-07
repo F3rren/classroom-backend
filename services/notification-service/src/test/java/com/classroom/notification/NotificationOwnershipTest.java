@@ -118,10 +118,10 @@ class NotificationOwnershipTest {
         // A direct test of the mechanism the whole split rests on: this service accepts a
         // token only if the signature checks out against the shared secret, without asking
         // anybody. An otherwise well-formed token signed elsewhere does not get through.
-        String tokenFasullo = tokenOwner.substring(0, tokenOwner.lastIndexOf('.')) + ".firmaSbagliata";
+        String bogusToken = tokenOwner.substring(0, tokenOwner.lastIndexOf('.')) + ".firmaSbagliata";
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/notifications", HttpMethod.GET, new HttpEntity<>(bearer(tokenFasullo)), String.class);
+                "/api/notifications", HttpMethod.GET, new HttpEntity<>(bearer(bogusToken)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }

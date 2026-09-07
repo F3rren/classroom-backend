@@ -163,11 +163,11 @@ class BookingQueryTest {
 
     @Test
     void availabilityReportsFreeForAFreeSlot() throws Exception {
-        String libero = startTime.plusDays(5).format(ISO);
+        String freeStart = startTime.plusDays(5).format(ISO);
         String freeEnd = startTime.plusDays(5).plusHours(1).format(ISO);
 
         ResponseEntity<String> resp = get(
-                "/api/bookings/availability?roomId=" + roomId + "&start=" + libero + "&end=" + freeEnd);
+                "/api/bookings/availability?roomId=" + roomId + "&start=" + freeStart + "&end=" + freeEnd);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = castMap(TestJson.asMap(resp.getBody()).get("data"));

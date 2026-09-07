@@ -173,7 +173,7 @@ class BookingControllerUnitTest {
 
     @Test
     void updateRejectsAnUnparsableStartDate() {
-        ResponseEntity<?> resp = controller.editBooking(
+        ResponseEntity<?> resp = controller.updateBooking(
                 5L, request("boom", "2030-01-01T12:00:00"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -182,7 +182,7 @@ class BookingControllerUnitTest {
 
     @Test
     void updateRejectsAnUnparsableEndDate() {
-        ResponseEntity<?> resp = controller.editBooking(
+        ResponseEntity<?> resp = controller.updateBooking(
                 5L, request("2030-01-01T10:00:00", "boom"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -191,7 +191,7 @@ class BookingControllerUnitTest {
 
     @Test
     void updateRejectsAnEndBeforeTheStart() {
-        ResponseEntity<?> resp = controller.editBooking(
+        ResponseEntity<?> resp = controller.updateBooking(
                 5L, request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -201,7 +201,7 @@ class BookingControllerUnitTest {
     @Test
     void updateRejectsADateInThePast() {
         LocalDateTime passato = LocalDateTime.now().minusDays(2).withNano(0);
-        ResponseEntity<?> resp = controller.editBooking(
+        ResponseEntity<?> resp = controller.updateBooking(
                 5L, request(passato.format(ISO), passato.plusHours(1).format(ISO)), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -215,7 +215,7 @@ class BookingControllerUnitTest {
         // that the controller does not intercept it, which is the correct behaviour.
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString())).thenThrow(new BookingConflictException("UPDATE_CONFLICT", "busy", "L'aula non e' disponibile."));
 
-        assertThatThrownBy(() -> controller.editBooking(5L, validRequest(), user))
+        assertThatThrownBy(() -> controller.updateBooking(5L, validRequest(), user))
                 .isInstanceOf(BookingConflictException.class);
     }
 
@@ -225,7 +225,7 @@ class BookingControllerUnitTest {
                 .thenThrow(new DataIntegrityViolationException("bookings_no_overlap"));
 
         BookingRequest req = validRequest();
-        assertThatThrownBy(() -> controller.editBooking(5L, req, user))
+        assertThatThrownBy(() -> controller.updateBooking(5L, req, user))
                 .isInstanceOf(BookingConflictException.class)
                 .satisfies(e -> assertThat(((BookingConflictException) e).getErrorCode()).isEqualTo("UPDATE_CONFLICT"));
     }
@@ -235,7 +235,7 @@ class BookingControllerUnitTest {
         when(service.updateBooking(anyLong(), anyLong(), any(), anyLong(), anyBoolean(), any(), any(), anyString()))
                 .thenReturn(fakeBooking());
 
-        ResponseEntity<?> resp = controller.editBooking(5L, validRequest(), user);
+        ResponseEntity<?> resp = controller.updateBooking(5L, validRequest(), user);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }

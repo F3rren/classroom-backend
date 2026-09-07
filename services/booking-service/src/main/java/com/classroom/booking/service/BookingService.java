@@ -45,7 +45,7 @@ public class BookingService {
     // Books a room for a lesson.
     @Transactional
     public Booking bookRoom(Long roomId, Long courseId, BookingOwner owner, LocalDateTime startTime, LocalDateTime endTime, String description) {
-        logger.debug("START prenotaroom");
+        logger.debug("START bookRoom");
         logger.debug("room booking requested - roomId: {}, courseId: {}, userId: {}, period: {} - {}", roomId, courseId, owner.getId(), startTime, endTime);
         
         // Availability check
@@ -95,14 +95,14 @@ public class BookingService {
         updateRoomStatus(roomId);
         
         logger.info("booking created - id={} room='{}' userId={} period={} - {}", savedBooking.getId(), room.get().getName(), owner.getId(), startTime, endTime);
-        logger.debug("END prenotaroom");
+        logger.debug("END bookRoom");
         return savedBooking;
     }
     
     // Blocks a room. Admin only.
     @Transactional
     public Booking blockRoom(Long roomId, BookingOwner admin, LocalDateTime startTime, LocalDateTime endTime, String reason) {
-        logger.debug("START bloccaroom");
+        logger.debug("START blockRoom");
         logger.debug("room block requested - roomId: {}, AdminId: {}, period: {} - {}", roomId, admin.getId(), startTime, endTime);
         
         // Availability check
@@ -133,13 +133,13 @@ public class BookingService {
         blocco.setCreatedAt(LocalDateTime.now());
         
         logger.info("room block created - id={} room='{}' adminId={} period={} - {}", blocco.getId(), room.get().getName(), admin.getId(), startTime, endTime);
-        logger.debug("END bloccaroom");
+        logger.debug("END blockRoom");
         return bookingRepository.save(blocco);
     }
     
     // Is a room free over a given period?
     public boolean isRoomAvailable(Long roomId, LocalDateTime startTime, LocalDateTime endTime) {
-        logger.debug("START isroomavailable");
+        logger.debug("START isRoomAvailable");
         logger.debug("Room availability check - roomId: {}, period: {} - {}", roomId, startTime, endTime);
         List<Booking> conflicts = bookingRepository.findConflictingBookings(roomId, startTime, endTime);
         boolean available = conflicts.isEmpty();
@@ -149,7 +149,7 @@ public class BookingService {
     
     // The current status of a room.
     public String getRoomStatus(Long roomId, LocalDateTime moment) {
-        logger.debug("START getstatusroom");
+        logger.debug("START getRoomStatus");
         logger.debug("checking room status - roomId: {}, moment: {}", roomId, moment);
         List<Booking> activeBookings = bookingRepository.findActiveBookings(roomId, moment);
             
@@ -174,13 +174,13 @@ public class BookingService {
         }
         
         logger.debug("room status - roomId: {}, moment: {} - BOOKED", roomId, moment);
-        logger.debug("END getstatusroom");
+        logger.debug("END getRoomStatus");
         return "BOOKED";
     }
     
     // Refreshes the room status from the bookings active right now.
     private void updateRoomStatus(Long roomId) {
-        logger.debug("START aggiornastatusroom - roomId: {}", roomId);
+        logger.debug("START updateRoomStatus - roomId: {}", roomId);
         
         Optional<Room> roomOpt = roomRepository.findById(roomId);
         if (roomOpt.isEmpty()) {
@@ -199,14 +199,14 @@ public class BookingService {
             newStatus = RoomStatus.FREE;
         } else {
             // Is there a maintenance or blocking booking among them?
-            boolean hasManutenzione = activeBookings.stream()
+            boolean hasMaintenance = activeBookings.stream()
                 .anyMatch(p -> p.getStatus() == BookingStatus.MAINTENANCE);
-            boolean hasBloccata = activeBookings.stream()
+            boolean hasBlocked = activeBookings.stream()
                 .anyMatch(p -> p.getStatus() == BookingStatus.BLOCKED);
             
-            if (hasManutenzione) {
+            if (hasMaintenance) {
                 newStatus = RoomStatus.MAINTENANCE;
-            } else if (hasBloccata) {
+            } else if (hasBlocked) {
                 newStatus = RoomStatus.BLOCKED;
             } else {
                 newStatus = RoomStatus.BUSY;
@@ -222,7 +222,7 @@ public class BookingService {
             logger.debug("room status {} unchanged: '{}'", roomId, room.getStatus());
         }
         
-        logger.debug("END aggiornastatusroom");
+        logger.debug("END updateRoomStatus");
     }
     
     // Cancels a booking.
@@ -331,9 +331,9 @@ public class BookingService {
     
     // The bookings in a given status.
     public List<Booking> getBookingsByStatus(String status) {
-        logger.debug("START getPrenotazioniBystatus");
+        logger.debug("START getBookingsByStatus");
         logger.debug("fetching bookings by status - status: {}", status);
-        logger.debug("END getPrenotazioniBystatus");
+        logger.debug("END getBookingsByStatus");
         return bookingRepository.findByStatus(BookingStatus.from(status));
     }
     
@@ -367,9 +367,9 @@ public class BookingService {
         
         logger.debug("updating the booking description to record the admin action - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
         // Record in the description that an admin did this
-        String descrizioneOriginale = booking.getDescription() != null ? booking.getDescription() : "";
-        String newDescription = descrizioneOriginale + 
-            (descrizioneOriginale.isEmpty() ? "" : " | ") +
+        String originalDescription = booking.getDescription() != null ? booking.getDescription() : "";
+        String newDescription = originalDescription + 
+            (originalDescription.isEmpty() ? "" : " | ") +
             "CANCELLED DALL'AMMINISTRATORE: " + reason;
         booking.setDescription(newDescription);
 

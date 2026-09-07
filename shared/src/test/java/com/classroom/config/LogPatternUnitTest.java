@@ -42,7 +42,7 @@ class LogPatternUnitTest {
     }
 
     /** L'encoder dell'appender su console, come Logback l'ha costruito. */
-    private PatternLayoutEncoder encoderConfigurato() {
+    private PatternLayoutEncoder configuredEncoder() {
         // The context has to start: it is Spring Boot that tells Logback to read
         // logback-spring.xml, and without it the default configuration would apply.
         try (var context = new SpringApplicationBuilder(SoloContesto.class)
@@ -62,7 +62,7 @@ class LogPatternUnitTest {
 
     /** Renders an event with the configured encoder, as a real line would be. */
     private String line(String message) {
-        PatternLayoutEncoder encoder = encoderConfigurato();
+        PatternLayoutEncoder encoder = configuredEncoder();
         LoggingEvent event = new LoggingEvent();
         event.setLoggerName("com.classroom.prova.Servizio");
         event.setLevel(Level.INFO);

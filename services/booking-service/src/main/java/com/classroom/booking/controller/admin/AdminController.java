@@ -188,15 +188,15 @@ public class AdminController {
         logger.debug("START getAllBookingsForAdmin");
 
         List<Booking> allBookings = bookingService.getAllBookings();
-        long attive = allBookings.stream()
+        long active = allBookings.stream()
             .filter(p -> p.getStatus() != BookingStatus.CANCELLED)
             .count();
-        long annullate = allBookings.size() - attive;
+        long cancelled = allBookings.size() - active;
 
-        logger.debug("END getAllBookingsForAdmin - total: {} (active: {}, cancelled: {})", allBookings.size(), attive, annullate);
+        logger.debug("END getAllBookingsForAdmin - total: {} (active: {}, cancelled: {})", allBookings.size(), active, cancelled);
 
         AdminBookingsPayload payload = new AdminBookingsPayload(
-            allBookings, new BookingStats(allBookings.size(), attive, annullate));
+            allBookings, new BookingStats(allBookings.size(), active, cancelled));
 
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazioni recuperate con successo", payload, sessionId),

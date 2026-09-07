@@ -82,21 +82,21 @@ class CancellationMessagingTest {
 
     /** Lets the consumer be stopped and restarted, to prove the queue holds messages. */
     @Autowired
-    private RabbitListenerEndpointRegistry registro;
+    private RabbitListenerEndpointRegistry listenerRegistry;
 
     @BeforeEach
     void setUp() {
         notificationRepository.deleteAll();
     }
 
-    private void pubblica(BookingCancelledEvent event) {
+    private void publish(BookingCancelledEvent event) {
         rabbitTemplate.convertAndSend(
                 EventTopology.EXCHANGE, EventTopology.ROUTING_KEY_CANCELLATION, event);
     }
 
     @Test
     void aPublishedEventBecomesANotification() {
-        pubblica(new BookingCancelledEvent(
+        publish(new BookingCancelledEvent(
                 7L, 42L, "Aula Magna", "Mario Rossi", "2026-12-25", "14:30", "16:30", "Sessione d'esame"));
 
         // Consumption is asynchronous: wait for the effect instead of sleeping a fixed time,
@@ -119,9 +119,9 @@ class CancellationMessagingTest {
         // This is THE reason the queue exists, so it has to be tested by actually stopping
         // the consumer, not by publishing and hoping. With the old REST call this message
         // would have been lost; here it has to wait on the queue.
-        registro.stop();
+        listenerRegistry.stop();
 
-        pubblica(new BookingCancelledEvent(
+        publish(new BookingCancelledEvent(
                 9L, 99L, "Aula B", "Admin", "2026-01-01", "09:00", "11:00", "Manutenzione"));
 
         // With the consumer stopped nothing must happen: a notification appearing here would
@@ -135,7 +135,7 @@ class CancellationMessagingTest {
                         .as("con il consumatore fermo la notifica non puo' esistere ancora")
                         .isEmpty());
 
-        registro.start();
+        listenerRegistry.start();
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 assertThat(notificationRepository.findAll())
@@ -147,11 +147,11 @@ class CancellationMessagingTest {
     void anEventWithNoRecipientIsDiscardedWithoutBlockingTheQueue() {
         // An unfixable message must not be requeued forever: it would spin endlessly, tying
         // up the consumer and holding the good ones up behind it.
-        pubblica(new BookingCancelledEvent(
+        publish(new BookingCancelledEvent(
                 null, 1L, "Aula X", "Admin", "2026-01-01", "09:00", "11:00", "Motivo"));
 
         // Then a valid event: if the first had blocked the queue, this would never arrive.
-        pubblica(new BookingCancelledEvent(
+        publish(new BookingCancelledEvent(
                 11L, 2L, "Aula Y", "Admin", "2026-01-02", "10:00", "12:00", "Motivo"));
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {

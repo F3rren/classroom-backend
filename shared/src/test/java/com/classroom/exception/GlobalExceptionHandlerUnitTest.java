@@ -31,7 +31,7 @@ class GlobalExceptionHandlerUnitTest {
 
     /** A dummy method, used only to build a valid MethodParameter. */
     @SuppressWarnings("unused")
-    private void metodoDiComodo(String argomento) {
+    private void dummyMethod(String argomento) {
     }
 
     /**
@@ -107,7 +107,7 @@ class GlobalExceptionHandlerUnitTest {
     @Test
     void laValidazioneSenzaErroriDiCampoRipiegaSuUnMessaggioGenerico() throws Exception {
         // the firstError == null branch: a BindingResult with no field errors
-        Method metodo = getClass().getDeclaredMethod("metodoDiComodo", String.class);
+        Method metodo = getClass().getDeclaredMethod("dummyMethod", String.class);
         MethodParameter parametro = new MethodParameter(metodo, 0);
         BindingResult binding = new BeanPropertyBindingResult(new Object(), "oggetto");
 
@@ -121,7 +121,7 @@ class GlobalExceptionHandlerUnitTest {
 
     @Test
     void validationUsesTheFirstFieldErrorMessage() throws Exception {
-        Method metodo = getClass().getDeclaredMethod("metodoDiComodo", String.class);
+        Method metodo = getClass().getDeclaredMethod("dummyMethod", String.class);
         MethodParameter parametro = new MethodParameter(metodo, 0);
         // the target has to have a real field: rejectValue on a field that does not exist
         // would produce a global error and getFieldError() would return null

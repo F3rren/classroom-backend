@@ -38,8 +38,8 @@ import java.util.UUID;
 public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-Request-Id";
-    public static final String ATTRIBUTO = "com.classroom.requestId";
-    private static final String CHIAVE_MDC = "requestId";
+    public static final String ATTRIBUTE = "com.classroom.requestId";
+    private static final String MDC_KEY = "requestId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -49,8 +49,8 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             id = generate();
         }
 
-        request.setAttribute(ATTRIBUTO, id);
-        MDC.put(CHIAVE_MDC, id);
+        request.setAttribute(ATTRIBUTE, id);
+        MDC.put(MDC_KEY, id);
         // Sent back out: whoever made the call can quote it in a report even when the
         // response has no body to carry it in.
         response.setHeader(HEADER, id);
@@ -60,7 +60,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         } finally {
             // Mandatory: threads are reused, and an MDC left uncleared would make one
             // request's id show up in the next request's log lines.
-            MDC.remove(CHIAVE_MDC);
+            MDC.remove(MDC_KEY);
         }
     }
 
@@ -73,7 +73,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
      */
     public static String current() {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributi) {
-            Object id = attributi.getRequest().getAttribute(ATTRIBUTO);
+            Object id = attributi.getRequest().getAttribute(ATTRIBUTE);
             if (id instanceof String stringa && !stringa.isBlank()) {
                 return stringa;
             }
@@ -92,7 +92,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
      * keep being consumed, simply with an id of its own.
      */
     public static void applyToMdc(String id) {
-        MDC.put(CHIAVE_MDC, (id == null || id.isBlank()) ? generate() : id);
+        MDC.put(MDC_KEY, (id == null || id.isBlank()) ? generate() : id);
     }
 
     /**
@@ -100,7 +100,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
      * this message's id show up in the next message's log lines.
      */
     public static void clearMdc() {
-        MDC.remove(CHIAVE_MDC);
+        MDC.remove(MDC_KEY);
     }
 
     private static String generate() {

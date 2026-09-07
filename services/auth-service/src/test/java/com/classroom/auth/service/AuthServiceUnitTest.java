@@ -63,7 +63,7 @@ class AuthServiceUnitTest {
         return r;
     }
 
-    private UpdateUserRequest modifica(String email, String username, String password) {
+    private UpdateUserRequest updateRequest(String email, String username, String password) {
         UpdateUserRequest r = new UpdateUserRequest();
         r.setEmail(email);
         r.setUsername(username);
@@ -161,7 +161,7 @@ class AuthServiceUnitTest {
     void updateReportsAMissingUser() {
         when(userRepository.findById(9L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.updateUser(9L, modifica("x@test.it", "x", "")))
+        assertThatThrownBy(() -> service.updateUser(9L, updateRequest("x@test.it", "x", "")))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -170,7 +170,7 @@ class AuthServiceUnitTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, "mia@test.it")));
         when(userRepository.findByEmail("altrui@test.it")).thenReturn(user(2L, "altrui@test.it"));
 
-        assertThatThrownBy(() -> service.updateUser(1L, modifica("altrui@test.it", "mio", "")))
+        assertThatThrownBy(() -> service.updateUser(1L, updateRequest("altrui@test.it", "mio", "")))
                 .isInstanceOf(DomainConflictException.class);
         verify(userRepository, never()).save(any());
     }
@@ -181,7 +181,7 @@ class AuthServiceUnitTest {
         when(userRepository.findByEmail("mia@test.it")).thenReturn(user(1L, "mia@test.it"));
         when(userRepository.findByUsername("altrui")).thenReturn(user(2L, "altro@test.it"));
 
-        assertThatThrownBy(() -> service.updateUser(1L, modifica("mia@test.it", "altrui", "")))
+        assertThatThrownBy(() -> service.updateUser(1L, updateRequest("mia@test.it", "altrui", "")))
                 .isInstanceOf(DomainConflictException.class);
     }
 
@@ -193,7 +193,7 @@ class AuthServiceUnitTest {
         when(userRepository.findByUsername("mio")).thenReturn(existing);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.updateUser(1L, modifica("mia@test.it", "mio", "   "));
+        service.updateUser(1L, updateRequest("mia@test.it", "mio", "   "));
 
         assertThat(existing.getPassword()).isEqualTo("hash");
         verify(passwordEncoder, never()).encode(anyString());
@@ -208,7 +208,7 @@ class AuthServiceUnitTest {
         when(passwordEncoder.encode("nuova-password")).thenReturn("nuovo-hash");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.updateUser(1L, modifica("mia@test.it", "mio", "nuova-password"));
+        service.updateUser(1L, updateRequest("mia@test.it", "mio", "nuova-password"));
 
         assertThat(existing.getPassword()).isEqualTo("nuovo-hash");
     }
@@ -217,7 +217,7 @@ class AuthServiceUnitTest {
     void updateFallsBackToExistingRoleWhenNoneGiven() {
         User existing = user(1L, "mia@test.it");
         existing.setRole(Role.ADMIN);
-        UpdateUserRequest request = modifica("mia@test.it", "mio", "");
+        UpdateUserRequest request = updateRequest("mia@test.it", "mio", "");
         request.setRole(null);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));

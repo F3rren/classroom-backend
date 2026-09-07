@@ -84,7 +84,7 @@ class AdminUsersTest {
         return h;
     }
 
-    private ResponseEntity<String> chiama(String url, HttpMethod metodo, Object body) {
+    private ResponseEntity<String> call(String url, HttpMethod metodo, Object body) {
         return rest.exchange(url, metodo, new HttpEntity<>(body, headers()), String.class);
     }
 
@@ -92,7 +92,7 @@ class AdminUsersTest {
     @Test
     @SuppressWarnings("unchecked")
     void theUserListNeverExposesPasswords() throws Exception {
-        ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.GET, null);
+        ResponseEntity<String> resp = call("/api/admin/users", HttpMethod.GET, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).doesNotContain("password");
@@ -106,7 +106,7 @@ class AdminUsersTest {
         Map<String, String> body = Map.of("username", "nuovo", "name", "Nuovo",
                 "email", "normale@test.it", "password", "password-lunga", "role", "user");
 
-        ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.POST, body);
+        ResponseEntity<String> resp = call("/api/admin/users", HttpMethod.POST, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(TestJson.bodyOf(resp).get("success")).isEqualTo(false);
@@ -117,7 +117,7 @@ class AdminUsersTest {
         Map<String, String> body = Map.of("username", "normale", "name", "Nuovo",
                 "email", "un-altra@test.it", "password", "password-lunga", "role", "user");
 
-        ResponseEntity<String> resp = chiama("/api/admin/users", HttpMethod.POST, body);
+        ResponseEntity<String> resp = call("/api/admin/users", HttpMethod.POST, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
@@ -126,14 +126,14 @@ class AdminUsersTest {
     void updatingAMissingUserAnswers404() {
         Map<String, String> body = Map.of("username", "x", "name", "X", "email", "x@test.it");
 
-        ResponseEntity<String> resp = chiama("/api/admin/users/999999", HttpMethod.PUT, body);
+        ResponseEntity<String> resp = call("/api/admin/users/999999", HttpMethod.PUT, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void deletingAMissingUserAnswers404() {
-        ResponseEntity<String> resp = chiama("/api/admin/users/999999", HttpMethod.DELETE, null);
+        ResponseEntity<String> resp = call("/api/admin/users/999999", HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -143,7 +143,7 @@ class AdminUsersTest {
         // Neither booking-service nor notification-service exists in this test: the calls
         // fail, and the user has to stay. This is the guarantee that replaces the foreign
         // key lost in the split.
-        ResponseEntity<String> resp = chiama("/api/admin/users/" + regularUserId, HttpMethod.DELETE, null);
+        ResponseEntity<String> resp = call("/api/admin/users/" + regularUserId, HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isNotEqualTo(HttpStatus.OK);
         assertThat(userRepository.findById(regularUserId))

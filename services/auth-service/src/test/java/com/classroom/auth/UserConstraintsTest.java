@@ -59,26 +59,26 @@ class UserConstraintsTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    private void inserisci(String username, String role) {
-        jdbc.update("INSERT INTO utenti (username, password, nome, email, ruolo, data_registrazione) "
-                        + "VALUES (?, 'hash', 'Nome', ?, ?, now())",
+    private void insert(String username, String role) {
+        jdbc.update("INSERT INTO users (username, password, name, email, role, registered_at) "
+                        + "VALUES (?, 'hash', 'A Name', ?, ?, now())",
                 username, username + "@test.it", role);
     }
 
     @Test
     void theMigrationCreatedTheTableAndTheConstraint() {
-        List<String> vincoli = jdbc.queryForList(
+        List<String> constraints = jdbc.queryForList(
                 "SELECT con.conname FROM pg_constraint con JOIN pg_class rel ON rel.oid = con.conrelid "
-                        + "WHERE rel.relname = 'utenti' AND con.contype = 'c'", String.class);
+                        + "WHERE rel.relname = 'users' AND con.contype = 'c'", String.class);
 
-        assertThat(vincoli).contains("user_role_check");
+        assertThat(constraints).contains("user_role_check");
     }
 
     @Test
     void theCheckRejectsARoleOutsideTheDomain() {
         // A raw insert and not one through the entity: the enum could not produce this
         // value, so the constraint has to be tested by stepping around the application.
-        assertThatThrownBy(() -> inserisci("superuser", "SUPERUSER"))
+        assertThatThrownBy(() -> insert("superuser", "SUPERUSER"))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("user_role_check");
     }
@@ -87,15 +87,15 @@ class UserConstraintsTest {
     void theCheckAlsoRejectsTheUppercaseFormOfAValidRole() {
         // The converter writes lowercase: if somebody bypassed it, the database has to
         // notice rather than accept two spellings of the same role.
-        assertThatThrownBy(() -> inserisci("admin-maiuscolo", "ADMIN"))
+        assertThatThrownBy(() -> insert("admin-uppercase", "ADMIN"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void everyEnumValueIsAcceptedByTheConstraint() {
         for (Role r : Role.values()) {
-            assertThatCode(() -> inserisci("utente-" + r.name().toLowerCase(), r.getValue()))
-                    .as("il valore '%s' dell'enum Ruolo deve essere accettato dal CHECK", r.getValue())
+            assertThatCode(() -> insert("user-" + r.name().toLowerCase(), r.getValue()))
+                    .as("the CHECK has to accept '%s', a value of the Role enum", r.getValue())
                     .doesNotThrowAnyException();
         }
     }

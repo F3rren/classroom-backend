@@ -126,26 +126,26 @@ class NotificationEndpointsTest {
         exchange("/api/notifications/mark-all-read", HttpMethod.PUT, tokenOwner);
         exchange("/api/notifications/read", HttpMethod.DELETE, tokenOwner);
 
-        long rimasteDiOwner = notificationRepository.findAll().stream()
+        long ownerRemaining = notificationRepository.findAll().stream()
                 .filter(n -> n.getUserId().equals(OWNER_ID))
                 .count();
-        assertThat(rimasteDiOwner).isZero();
+        assertThat(ownerRemaining).isZero();
 
         // the other user's inbox is untouched
-        long rimasteDiOther = notificationRepository.findAll().stream()
+        long otherRemaining = notificationRepository.findAll().stream()
                 .filter(n -> n.getUserId().equals(OTHER_ID))
                 .count();
-        assertThat(rimasteDiOther).isEqualTo(1);
+        assertThat(otherRemaining).isEqualTo(1);
     }
 
     @Test
     void otherUserCannotMarkOwnersNotificationAsRead() {
-        Long idDiOwner = notificationRepository.findAll().stream()
+        Long ownerNotificationId = notificationRepository.findAll().stream()
                 .filter(n -> n.getUserId().equals(OWNER_ID))
                 .findFirst().orElseThrow().getId();
 
         ResponseEntity<String> resp = exchange(
-                "/api/notifications/" + idDiOwner + "/mark-read", HttpMethod.PUT, tokenOther);
+                "/api/notifications/" + ownerNotificationId + "/mark-read", HttpMethod.PUT, tokenOther);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }

@@ -69,7 +69,7 @@ class AdminManagementTest {
     private Long bookingId;
 
     /** The ids no longer come from an insert: the test picks them and signs them into the token. */
-    private static final Long ID_ADMIN = 1L;
+    private static final Long ADMIN_ID = 1L;
     private static final Long REGULAR_USER_ID = 2L;
 
     @BeforeEach
@@ -99,7 +99,7 @@ class AdminManagementTest {
         p.setCreatedAt(LocalDateTime.now());
         bookingId = bookingRepository.save(p).getId();
 
-        tokenAdmin = TestJwt.forAdmin(ID_ADMIN, "admin-mgmt@test.it");
+        tokenAdmin = TestJwt.forAdmin(ADMIN_ID, "admin-mgmt@test.it");
         tokenUser = TestJwt.forUser(REGULAR_USER_ID, "user-mgmt@test.it", "User Mgmt");
     }
 
@@ -201,10 +201,10 @@ class AdminManagementTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> stats = (Map<String, Object>) data.get("statistiche");
-        assertThat(stats.keySet()).containsExactlyInAnyOrder("totale", "attive", "annullate");
-        assertThat(stats.get("totale")).isEqualTo(1);
-        assertThat(stats.get("attive")).isEqualTo(1);
-        assertThat(stats.get("annullate")).isEqualTo(0);
+        assertThat(stats.keySet()).containsExactlyInAnyOrder("total", "active", "cancelled");
+        assertThat(stats.get("total")).isEqualTo(1);
+        assertThat(stats.get("active")).isEqualTo(1);
+        assertThat(stats.get("cancelled")).isEqualTo(0);
     }
 
     @Test
@@ -230,11 +230,11 @@ class AdminManagementTest {
         // Without a limit the notification save blows up and AdminController swallows the
         // exception ("a failed notification does not hold up the operation"): the booking
         // comes out cancelled but the owner is NEVER told, silently.
-        String motivoEnorme = "x".repeat(1500);
+        String hugeReason = "x".repeat(1500);
 
         ResponseEntity<String> resp = exchange(
                 "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
-                Map.of("reason", motivoEnorme));
+                Map.of("reason", hugeReason));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         // and the booking must NOT have been cancelled by a request that was refused
@@ -244,11 +244,11 @@ class AdminManagementTest {
 
     @Test
     void aReasonWithinTheLimitStillNotifiesTheOwner() {
-        String motivoLungoMaValido = "y".repeat(400);
+        String longButValidReason = "y".repeat(400);
 
         ResponseEntity<String> resp = exchange(
                 "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
-                Map.of("reason", motivoLungoMaValido));
+                Map.of("reason", longButValidReason));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         // the notification has to really exist, not be lost to a silent catch

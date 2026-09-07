@@ -14,29 +14,29 @@ import lombok.NoArgsConstructor;
  * existing one.
  */
 @Data
-@Schema(description = "Dati per modificare un utente esistente (solo amministratori)")
+@Schema(description = "The data to update an existing user (administrators only)")
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateUserRequest {
 
     @NotBlank(message = "Lo username è obbligatorio.")
-    @Schema(description = "Nuovo username, deve restare univoco", example = "m.rossi")
+    @Schema(description = "The new username, which has to stay unique", example = "m.rossi")
     private String username;
 
     @NotBlank(message = "L'email è obbligatoria.")
     @Email(message = "Il formato dell'email non è valido.")
-    @Schema(description = "Nuova email, deve restare univoca", example = "mario.rossi@example.it")
+    @Schema(description = "The new email address, which has to stay unique", example = "mario.rossi@example.it")
     private String email;
 
-    @Schema(description = "Nuova password. Lasciare vuoto per NON modificarla", example = "")
+    @Schema(description = "The new password. Leave it empty to leave the password unchanged", example = "")
     private String password;
 
     @Pattern(regexp = "(?i)admin|user", message = "Il ruolo deve essere 'admin' o 'user'.")
-    @Schema(description = "Nuovo ruolo. Se omesso resta quello attuale",
+    @Schema(description = "The new role. When omitted the current one is kept",
             allowableValues = {"admin", "user"}, example = "user")
     private String role;
 
     @NotBlank(message = "Il nome è obbligatorio.")
-    @Schema(description = "Nome e cognome mostrati nell'interfaccia", example = "Mario Rossi")
+    @Schema(description = "The full name shown in the interface", example = "Mario Rossi")
     private String name;
 }

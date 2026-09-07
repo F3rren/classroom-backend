@@ -6,8 +6,6 @@ import lombok.Getter;
 
 import com.classroom.util.Timestamps;
 
-import java.time.LocalDateTime;
-
 /**
  * The generic response envelope. It reproduces exactly the shape already in use across every
  * controller (success, error, message, userMessage, timestamp, sessionId for errors; success,
@@ -22,23 +20,23 @@ import java.time.LocalDateTime;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
-@Schema(description = "Involucro comune a quasi tutte le risposte: distingue esito, messaggi e payload")
+@Schema(description = "The envelope wrapping almost every response: it separates outcome, messages and payload")
 public class ApiEnvelope<T> {
 
-    @Schema(description = "true se l'operazione e' riuscita", example = "true")
+    @Schema(description = "Whether the operation succeeded", example = "true")
     private boolean success;
-    @Schema(description = "Codice di errore stabile, presente solo in caso di errore", example = "BOOKING_CONFLICT")
+    @Schema(description = "A stable error code, present only on an error", example = "BOOKING_CONFLICT")
     private String error;
-    @Schema(description = "Messaggio tecnico per gli sviluppatori", example = "Impossibile prenotare l'aula")
+    @Schema(description = "The technical message, for developers", example = "Could not book the room")
     private String message;
-    @Schema(description = "Messaggio pensato per essere mostrato all'utente finale",
+    @Schema(description = "The message meant to be shown to the end user. Italian, unlike the rest",
             example = "L'aula non e' disponibile nel periodo richiesto.")
     private String userMessage;
-    @Schema(description = "Payload della risposta, assente in caso di errore")
+    @Schema(description = "The response payload, absent on an error")
     private T data;
-    @Schema(description = "Momento della risposta", example = "2026-08-31 14:05:00")
+    @Schema(description = "The moment of the response", example = "2026-08-31 14:05:00")
     private String timestamp;
-    @Schema(description = "Identificativo della richiesta, utile per correlare i log", example = "S4D094712")
+    @Schema(description = "The request id, which is what correlates the logs", example = "S4D094712")
     private String sessionId;
 
     public static <T> ApiEnvelope<T> success(String message, T data, String sessionId) {
