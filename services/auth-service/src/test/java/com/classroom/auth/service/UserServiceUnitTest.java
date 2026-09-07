@@ -1,34 +1,26 @@
 package com.classroom.auth.service;
 
-import com.classroom.auth.client.UserDataClient;
+import com.classroom.auth.messaging.EventPublisher;
 import com.classroom.auth.repository.UserRepository;
-import com.classroom.exception.ServiceUnavailableException;
+import com.classroom.events.UserDeletedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Deleting a user and their data in the other services.
+ * Deleting a user, and telling booking-service and notification-service their data on that
+ * user is now orphaned.
  *
- * Deleting a user has to take their bookings and their notifications with it, but those live
- * in two other databases behind two other services: there is no transaction covering all
- * three, and each piece can fail on its own.
- *
- * There is ONE invariant that makes this acceptable, and it is the one the tests below hold
- * still: the user is deleted LAST. While the user is still there, the rows left elsewhere
- * still have an owner they can be traced back to, and the operation can be repeated.
- * Deleting the user first would leave data nobody can attribute any more - and no amount
- * of repeating would put that right.
+ * The two services no longer hear about it over REST: they consume a UserDeletedEvent
+ * published after the user row is gone. That order is the point of the tests below - it is
+ * the same order booking-service already uses for a cancelled booking, and for the same
+ * reason: the user has already been deleted, and a failed publish must not undo that or
+ * block the admin's response.
  */
 @ExtendWith(MockitoExtension.class)
 class UserServiceUnitTest {
@@ -37,72 +29,42 @@ class UserServiceUnitTest {
     private UserRepository userRepository;
 
     @Mock
-    private UserDataClient userDataClient;
+    private EventPublisher eventPublisher;
 
     private UserService service() {
-        return new UserService(userRepository, userDataClient);
+        return new UserService(userRepository, eventPublisher);
     }
 
     @Test
-    void deletesTheUserWhenTheCascadeSucceeded() {
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of());
+    void deletesTheUserAndPublishesTheEvent() {
+        service().deleteById(7L);
+
+        verify(userRepository).deleteById(7L);
+        verify(eventPublisher).publishUserDeleted(eq(new UserDeletedEvent(7L)));
+    }
+
+    @Test
+    void theDeletionRunsBeforeThePublish() {
+        // The order, not just the outcome: the user has to be gone before anybody is told so.
+        // If somebody one day swapped the two lines, the other test would carry on passing
+        // while the invariant behind the design was already lost.
+        service().deleteById(7L);
+
+        var order = org.mockito.Mockito.inOrder(userRepository, eventPublisher);
+        order.verify(userRepository).deleteById(7L);
+        order.verify(eventPublisher).publishUserDeleted(eq(new UserDeletedEvent(7L)));
+    }
+
+    @Test
+    void aFailedPublishDoesNotUndoTheDeletion() {
+        // The user is already gone by the time the publish is attempted: failing the
+        // response because the broker is unreachable would be worse than the damage. This
+        // mirrors EventPublisherUnitTest.anUnreachableBrokerDoesNotFailTheCancellation in
+        // booking-service.
+        when(eventPublisher.publishUserDeleted(eq(new UserDeletedEvent(7L)))).thenReturn(false);
 
         service().deleteById(7L);
 
         verify(userRepository).deleteById(7L);
-    }
-
-    @Test
-    void doesNotDeleteTheUserWhenSomethingWasLeftBehind() {
-        // The invariant. If it fell, a downstream failure would leave bookings and
-        // notifications with no user to trace them back to, and repeating the operation
-        // would achieve nothing: there would be nobody left to start from.
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("bookings"));
-
-        assertThatThrownBy(() -> service().deleteById(7L))
-                .isInstanceOf(ServiceUnavailableException.class);
-
-        verify(userRepository, never()).deleteById(anyLong());
-    }
-
-    @Test
-    void theErrorSaysWhatWasLeftBehind() {
-        // "Something failed" is not enough for whoever has to decide whether to retry: the
-        // message has to name the data left behind, otherwise the only way to know is to
-        // read the logs of three different services.
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifications", "bookings"));
-
-        assertThatThrownBy(() -> service().deleteById(7L))
-                .isInstanceOf(ServiceUnavailableException.class)
-                .hasMessageContaining("notifications")
-                .hasMessageContaining("bookings");
-    }
-
-    @Test
-    void theErrorInvitesARetry() {
-        // The user message and the code are what separates "it is broken" from "try
-        // again". Those are two different actions, and with a generic 500 the second did not
-        // come to mind: the operation stayed half done because nobody repeated it.
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of("notifications"));
-
-        ServiceUnavailableException error = (ServiceUnavailableException)
-                org.assertj.core.api.Assertions.catchThrowable(() -> service().deleteById(7L));
-
-        assertThat(error.getErrorCode()).isEqualTo("USER_DELETE_INCOMPLETE");
-        assertThat(error.getUserMessage()).containsIgnoringCase("riprova");
-    }
-
-    @Test
-    void theCascadeRunsBeforeTheDeletion() {
-        // The order, not just the outcome: the downstream data is ALWAYS attempted, even
-        // when everything then goes well. If somebody one day swapped the two lines, the
-        // other tests would carry on passing while the invariant was already lost.
-        when(userDataClient.deleteDataOf(7L)).thenReturn(List.of());
-
-        service().deleteById(7L);
-
-        var order = org.mockito.Mockito.inOrder(userDataClient, userRepository);
-        order.verify(userDataClient).deleteDataOf(7L);
-        order.verify(userRepository).deleteById(7L);
     }
 }

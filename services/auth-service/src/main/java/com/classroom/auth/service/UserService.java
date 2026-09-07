@@ -1,10 +1,9 @@
 package com.classroom.auth.service;
 
-import java.util.List;
-import com.classroom.exception.ServiceUnavailableException;
 import com.classroom.auth.model.User;
 import com.classroom.auth.repository.UserRepository;
-import com.classroom.auth.client.UserDataClient;
+import com.classroom.auth.messaging.EventPublisher;
+import com.classroom.events.UserDeletedEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -16,12 +15,12 @@ public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
-    
-    private final UserDataClient userDataClient;
 
-    UserService(UserRepository userRepository, UserDataClient userDataClient) {
+    private final EventPublisher eventPublisher;
+
+    UserService(UserRepository userRepository, EventPublisher eventPublisher) {
         this.userRepository = userRepository;
-        this.userDataClient = userDataClient;
+        this.eventPublisher = eventPublisher;
     }
 
     public User findById(Long id) {
@@ -36,41 +35,28 @@ public class UserService {
     }
 
     /**
-     * Deletes the user and what belongs to them in the other services.
+     * Deletes the user, then tells the other services their data is now orphaned.
      *
-     * It is NOT atomic any more, and that is better learnt from reading this method than
-     * discovered from inconsistent data. Before the split it was a single transaction and
-     * the foreign keys guaranteed nothing was left orphaned; notifications and bookings now
-     * live in databases this service cannot touch.
+     * It is NOT atomic, and that is better learnt from reading this method than discovered
+     * from inconsistent data. Before the split it was a single transaction and the foreign
+     * keys guaranteed nothing was left orphaned; notifications and bookings now live in
+     * databases this service cannot touch.
      *
-     * @Transactional stays, but it covers only the row in this database: it undoes nothing
-     * of what the other services have already done.
+     * @Transactional stays, but it covers only the row in this database.
      *
-     * The order is deliberate: dependent data first, the user last. If a downstream deletion
-     * fails the user is NOT removed, so the operation stays repeatable and the rows left
-     * behind still have an owner they can be traced back to. Removing the user first would
-     * leave data nobody can attribute any more.
+     * The order is deliberate, and it is the reverse of what it used to be: the user is
+     * deleted FIRST, and the event is published best-effort afterwards, exactly as
+     * booking-service already does for a cancelled booking - the user is already gone by
+     * the time we get here, and failing this response would not bring them back. The
+     * trade-off is real: if the broker is unreachable, the event never reaches the other two
+     * services and their rows are never cleaned up. There is no longer a synchronous
+     * guarantee that the whole deletion succeeded, the way there used to be.
      */
     @Transactional
     public void deleteById(Long id) {
-        logger.debug("START - deleting user and associated data for ID: {}", id);
-
-        List<String> notDeleted = userDataClient.deleteDataOf(id);
-        if (!notDeleted.isEmpty()) {
-            String what = String.join(" e ", notDeleted);
-            logger.error("User ID {} NOT deleted: {} could not be removed. "
-                    + "L'operazione e' ripetibile e va ripetuta.", id, what);
-            // 503 and not 500: it tells the reader that retrying is worth it, and retrying
-            // is the only thing that finishes the deletion. With "internal server error",
-            // retrying was not the obvious conclusion, and the half-done work stayed put.
-            throw new ServiceUnavailableException("USER_DELETE_INCOMPLETE",
-                    "Could not delete " + what + " of utente " + id,
-                    "L'utente non e' stato eliminato perche' " + what + " non si sono potute "
-                            + "rimuovere. Riprova fra qualche istante.");
-        }
-
         logger.info("Deleting user ID: {}", id);
         userRepository.deleteById(id);
+        eventPublisher.publishUserDeleted(new UserDeletedEvent(id));
         logger.debug("END - deletion complete for user ID: {}", id);
     }
 }

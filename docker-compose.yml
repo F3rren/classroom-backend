@@ -75,6 +75,8 @@ services:
       args:
         MODULE: auth-service
     depends_on:
+      broker:
+        condition: service_healthy
       db-users: *attesa-db
     environment:
       # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
@@ -82,13 +84,14 @@ services:
       # deliberate, so that forgetting it degrades rather than breaks.
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: db-users
+      RABBITMQ_HOST: broker
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       DB_NAME: classroom_users
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       # The SAME secret for all of them: that is what lets every service verify on its own
       # the tokens this one signs, without calling it.
       JWT_SECRET: "${JWT_SECRET:?generate one with: openssl rand -base64 48}"
-      NOTIFICATION_SERVICE_URL: http://notification-service:17104
-      BOOKING_SERVICE_URL: http://booking-service:17103
       # The first administrator, used ONLY if the users table is empty. Without it, on a new
       # database there would be no way to create one: /api/admin/users already requires an
       # administrator token. The empty defaults leave the mechanism inert for anybody who does

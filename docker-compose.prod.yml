@@ -45,6 +45,8 @@ services:
   auth-service:
     environment:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
 
   booking-service:
     environment:

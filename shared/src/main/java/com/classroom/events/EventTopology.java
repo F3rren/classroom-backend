@@ -48,9 +48,38 @@ public final class EventTopology {
      */
     public static final String ERROR_EXCHANGE = "classroom.events.errors";
 
-    public static final String ROUTING_KEY_CANCELLATION_FAILED = "booking.cancelled.failed";
+    /**
+     * notification-service's one error queue, shared by every listener in that service, not
+     * just the cancellation one. Spring Boot wires in a MessageRecoverer bean only when
+     * there is exactly one unique candidate in the context (ObjectProvider.getIfUnique());
+     * a second MessageRecoverer bean makes that lookup ambiguous and BOTH listeners silently
+     * fall back to dropping exhausted messages with no trace. So: one recoverer bean per
+     * service, one shared error queue, regardless of how many event types that service
+     * consumes. Naming it after "notification" rather than "cancellation" is deliberate,
+     * now that it also catches a failed UserDeletedEvent.
+     */
+    public static final String ROUTING_KEY_NOTIFICATION_FAILED = "notification.failed";
 
-    public static final String CANCELLATION_ERROR_QUEUE = "notifications.booking-cancelled.errors";
+    public static final String NOTIFICATION_ERROR_QUEUE = "notifications.errors";
+
+    /** The routing key of the user-deletion event. */
+    public static final String ROUTING_KEY_USER_DELETED = "user.deleted";
+
+    /**
+     * The two consumers' queues. Unlike the cancellation event, this one has two independent
+     * consumers - booking-service and notification-service - each cleaning up its own table,
+     * so each gets its own durable queue bound to the same routing key on the same exchange.
+     */
+    public static final String USER_DELETED_BOOKINGS_QUEUE = "bookings.user-deleted";
+    public static final String USER_DELETED_NOTIFICATIONS_QUEUE = "notifications.user-deleted";
+
+    /**
+     * booking-service's error queue, for the one listener it has today. If it ever gains a
+     * second, the same reasoning as NOTIFICATION_ERROR_QUEUE applies: merge onto one shared
+     * queue and one recoverer, do not add a second MessageRecoverer bean.
+     */
+    public static final String ROUTING_KEY_USER_DELETED_BOOKINGS_FAILED = "user.deleted.bookings.failed";
+    public static final String USER_DELETED_BOOKINGS_ERROR_QUEUE = "bookings.user-deleted.errors";
 
     private EventTopology() {
     }

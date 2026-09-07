@@ -30,11 +30,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * These cases used to live in AdminManagementTest, in the application module, which checked
  * them alongside rooms and bookings. They followed their endpoints.
  *
- * The deletion test is the most important one: this used to be a single transaction with
- * foreign keys, and is now a sequence of network calls that can fail halfway. The downstream
- * services do not exist here, so every deletion fails - and that is exactly the condition
- * worth checking, because it shows the user is NOT removed while their data elsewhere still
- * is. The other way round would leave orphan rows whose owner nobody could name.
+ * The deletion test is the most important one: deleting a user used to be a sequence of
+ * network calls to the other two services, and the response depended on both succeeding.
+ * Now it publishes a UserDeletedEvent and returns without waiting for anybody. There is no
+ * broker in this test context, so the publish itself fails - and that is exactly the
+ * condition worth checking, because it proves the deletion no longer depends on it.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -139,15 +139,13 @@ class AdminUsersTest {
     }
 
     @Test
-    void theUserIsNotDeletedWhenTheDownstreamServicesDoNotAnswer() {
-        // Neither booking-service nor notification-service exists in this test: the calls
-        // fail, and the user has to stay. This is the guarantee that replaces the foreign
-        // key lost in the split.
+    void deletingAUserSucceedsEvenWhenTheBrokerIsUnreachable() {
+        // No RabbitMQ container in this test: the publish underneath deleteUser fails,
+        // caught and logged by EventPublisher. The deletion itself does not depend on it -
+        // that is the point of moving it off the synchronous path.
         ResponseEntity<String> resp = call("/api/admin/users/" + regularUserId, HttpMethod.DELETE, null);
 
-        assertThat(resp.getStatusCode()).isNotEqualTo(HttpStatus.OK);
-        assertThat(userRepository.findById(regularUserId))
-                .as("the user must not disappear when their bookings were not deleted")
-                .isPresent();
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(userRepository.findById(regularUserId)).isEmpty();
     }
 }

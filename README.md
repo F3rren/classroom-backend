@@ -110,7 +110,7 @@ as an argument). Each module's name says what it does — the booking service us
 | Module | Port | Database | Contents |
 |---|---|---|---|
 | `gateway` | **17102** | — | The single entry point: it routes by prefix |
-| `broker` | 5672 | — | RabbitMQ: it carries the cancellation notification |
+| `broker` | 5672 | — | RabbitMQ: it carries the cancellation notification and the user-deletion event |
 | `booking-service` | 17103 | `classroom` | Rooms, bookings, courses |
 | `auth-service` | 17105 | `classroom_users` | Users, login, user administration |
 | `notification-service` | 17104 | `classroom_notifications` | The notifications |
@@ -128,7 +128,7 @@ services/auth-service/src/main/java/com/classroom/auth/
   repository/     Spring Data interfaces
   model/          JPA entities
   dto/            what comes in and goes out, kept apart from the entities
-  client/         calls towards THE OTHER services (only where they are needed)
+  messaging/      publishes UserDeletedEvent when an admin deletes a user
 
 shared/src/main/java/com/classroom/
   config/         SecurityConfig, JwtAuthFilter, RequestCorrelationFilter, the 401/403 handlers
@@ -140,8 +140,11 @@ shared/src/main/java/com/classroom/
   util/           LogSanitizer
 ```
 
-`messaging/` in `booking-service` and `events/` in `notification-service` are the two sides of
-the same queue: the publisher and the listener.
+`messaging/` (in `auth-service` and `booking-service`) and `events/` (in `notification-service`)
+are where each service's side of the two queues lives. `booking-service` is on both sides at
+once: it publishes `BookingCancelledEvent` and, in the same package, consumes
+`UserDeletedEvent`. There is no more service-to-service REST client in this codebase — every
+call that once went there is one of these two events instead.
 
 ### The rule on language
 
@@ -236,7 +239,9 @@ mvn spring-boot:run -pl gateway -am                # 17102
 
 The gateway does not validate tokens: it routes, and nothing else. Every service verifies the
 JWT itself, so it stays protected even when reached directly. The gateway does close off
-`/api/notifications/internal/**` from outside, which are service-to-service calls.
+`/api/notifications/internal/**` and `/api/bookings/internal/**` from outside, kept as a
+standing rule for the whole namespace even now that nothing lives under either path: both
+of the endpoints that used to be there were replaced by the events described below.
 
 Before the first start each service needs its database (empty: Flyway creates the schema):
 
@@ -418,9 +423,9 @@ reaches them another way.
 
 **The request id crosses everything.** It is born at the gateway, travels in the
 `X-Request-Id` header, ends up in the MDC inside every service, and is sent back both in the
-response header and in the body's `sessionId` field. It crosses the REST calls between
-services and the events on RabbitMQ too. It is the only key that lets you reconstruct an
-operation touching three services, three databases and two different threads.
+response header and in the body's `sessionId` field. It crosses the events on RabbitMQ too,
+carried as a message header: it is the only key that lets you reconstruct an operation
+touching three services, three databases and two different threads.
 
 ## Tokens and authentication
 
@@ -482,12 +487,13 @@ status once:
 | `DomainConflictException` | 409 | it exists, but its state does not admit the operation |
 | `BookingConflictException` | 409 | overlapping bookings |
 | `DataIntegrityViolationException` | 409 | a database constraint said no |
-| `ServiceUnavailableException` | 503 | a downstream service is not answering: **retrying is worth it** |
 | anything else | 500 | unexpected, with the stack trace in the logs |
 
 The distinction between 500 and 503 is not formal: they suggest two different actions. A 500
-says "something is broken", a 503 says "try again" — and in a system where repeating is what
-finishes a cascading deletion, saying so changes the outcome.
+says "something is broken", a 503 says "try again". `ServiceUnavailableException` still
+carries that meaning in `shared` for whichever future case needs it, but nothing throws it
+today: deleting a user used to be the one case where the caller had to know a downstream
+call had failed, and that call is gone — see "Communication between services" below.
 
 `IllegalArgumentException` is deliberately **not** mapped to 400: it signals a programming
 error, not a bad request, and turning it into a 400 would hide defects behind a response that
@@ -547,30 +553,31 @@ next to the file it applies to.
 
 ## Communication between services
 
-Two ways, chosen case by case and not by taste:
+**Every cross-service coupling today is a RabbitMQ event.** That was not always true, and
+saying so is worth more than a passing note: deleting a user used to be the one place a
+service called another synchronously, over REST, and waited for the answer. It no longer is
+— there is currently nothing in this system that needs the synchronous, know-the-outcome
+kind of call `ServiceUnavailableException` exists for. If that changes, the table above is
+where its next throw site would show up.
 
-**Synchronous (REST)** when the caller *has to* know the outcome. Deleting a user is the only
-case: `auth-service` removes the data in the other services first and deletes the user **only
-if it succeeded**. With a queue that guarantee would be lost, and orphan rows would remain
-where the foreign key used to prevent them.
+**A booking cancelled by an admin.** It used to be a REST call from `booking-service` to
+`notification-service` and was lost if the second was down. Now it waits on a queue.
 
-The invariant is that the user goes last: while they are still there, the rows left elsewhere
-still have an owner and the operation can be repeated. It is held still by a test, which also
-checks the *order* of the two operations — swapping them would lose it without failing
-anything else.
+**A user deleted by an admin.** It used to be two REST calls from `auth-service`, made
+synchronously and retried three times each, and the user was deleted **only if both
+succeeded** — the guarantee a foreign key used to give for free. That guarantee is gone: now
+`auth-service` deletes the user immediately and publishes a `UserDeletedEvent`;
+`booking-service` and `notification-service` each remove their own rows independently,
+whenever they get to the message.
 
-Repeating, though, must not depend on a person noticing: the downstream calls are retried
-three times with growing backoff, because most of these failures last less than a second.
-There is no retry on a 4xx — that is a refusal, not a failure. If something is still left
-behind after the attempts, the answer is a **503 that names the data not deleted**, not a
-generic 500.
-
-**Asynchronous (a RabbitMQ queue)** when the recipient's failure must stop nothing. The
-notification of a booking cancelled by an admin: it used to be a REST call and was lost if
-`notification-service` was down. Now it waits on the queue. The dependency moves from the
-service to the broker — the window narrows, it does not close: if the broker is unreachable
-the message is lost all the same, and the failure stays logged and unpropagated, because the
-booking has already been cancelled.
+Both events share the same shape of trade-off. The dependency moves from the service to the
+broker — the window narrows, it does not close: if the broker is unreachable the message is
+lost all the same, and the failure stays logged and unpropagated, because the action that
+matters (the cancellation, the deletion) has already happened and failing the response would
+not undo it. For the user-deletion event specifically, that means a broker outage at the
+wrong moment leaves orphan bookings and notifications with nobody left to clean them up —
+the same risk the old synchronous calls carried when a downstream service, rather than the
+broker, was unreachable, just moved to a different failure point.
 
 ## The first administrator
 

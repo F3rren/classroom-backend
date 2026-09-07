@@ -15,28 +15,44 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * The consumer side of the topology.
+ * The consumer side of the topology - this service consumes TWO independent events, each
+ * with its own queue and binding, sharing ONE error queue between them.
  *
- * The queue is declared by this service, because it is its own: a publisher has no business
- * knowing who listens. The exchange is declared by both, and that is correct - declaring it
- * is idempotent, and it lets the two services start in either order without the first one
- * failing because the other has not been through yet.
+ * Each queue is declared by this service, because it is its own: a publisher has no business
+ * knowing who listens. The exchange is declared by every side that uses it, and that is
+ * correct - declaring it is idempotent, and it lets the services start in any order without
+ * one failing because another has not been through yet.
  *
- * The queue is DURABLE and messages are persistent by default with this converter: that is
- * the only reason this queue exists at all. A non-durable queue would lose its messages when
- * the broker restarts, which is precisely the moment it would be needed.
+ * Every queue is DURABLE and messages are persistent by default with this converter: that is
+ * the only reason these queues exist at all. A non-durable queue would lose its messages when
+ * the broker restarts, which is precisely the moment they would be needed.
+ *
+ * ONLY ONE MessageRecoverer BEAN, ON PURPOSE. Spring Boot wires a custom recoverer into the
+ * listener container factory only when exactly one MessageRecoverer bean exists in the
+ * context (it looks it up with ObjectProvider.getIfUnique()); with two, the lookup is
+ * ambiguous, Boot silently falls back to a bare RejectAndDontRequeueRecoverer for BOTH
+ * listeners, and an exhausted message is dropped with no trace instead of landing in an
+ * error queue - for the cancellation listener too, not only for the new one. That is why
+ * the two listeners here share one error queue instead of getting one each.
  */
 @Configuration
 public class NotificationQueueConfig {
 
     @Bean
-    Queue cancellationQueue() {
-        return new Queue(EventTopology.CANCELLATION_QUEUE, true);
+    TopicExchange eventsExchange() {
+        return new TopicExchange(EventTopology.EXCHANGE, true, false);
     }
 
     @Bean
-    TopicExchange eventsExchange() {
-        return new TopicExchange(EventTopology.EXCHANGE, true, false);
+    MessageConverter jsonConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    // ==================== consumer: BookingCancelledEvent ====================
+
+    @Bean
+    Queue cancellationQueue() {
+        return new Queue(EventTopology.CANCELLATION_QUEUE, true);
     }
 
     @Bean
@@ -46,17 +62,21 @@ public class NotificationQueueConfig {
                 .with(EventTopology.ROUTING_KEY_CANCELLATION);
     }
 
+    // ==================== consumer: UserDeletedEvent ====================
+
     @Bean
-    MessageConverter jsonConverter() {
-        return new Jackson2JsonMessageConverter();
+    Queue userDeletedQueue() {
+        return new Queue(EventTopology.USER_DELETED_NOTIFICATIONS_QUEUE, true);
+    }
+
+    @Bean
+    Binding userDeletedBinding(Queue userDeletedQueue, TopicExchange eventsExchange) {
+        return BindingBuilder.bind(userDeletedQueue)
+                .to(eventsExchange)
+                .with(EventTopology.ROUTING_KEY_USER_DELETED);
     }
 
     // ==================== recovery of messages that cannot be handled ====================
-
-    @Bean
-    Queue errorQueue() {
-        return new Queue(EventTopology.CANCELLATION_ERROR_QUEUE, true);
-    }
 
     @Bean
     DirectExchange errorExchange() {
@@ -64,14 +84,19 @@ public class NotificationQueueConfig {
     }
 
     @Bean
+    Queue errorQueue() {
+        return new Queue(EventTopology.NOTIFICATION_ERROR_QUEUE, true);
+    }
+
+    @Bean
     Binding errorBinding(Queue errorQueue, DirectExchange errorExchange) {
         return BindingBuilder.bind(errorQueue)
                 .to(errorExchange)
-                .with(EventTopology.ROUTING_KEY_CANCELLATION_FAILED);
+                .with(EventTopology.ROUTING_KEY_NOTIFICATION_FAILED);
     }
 
     /**
-     * Where a message ends up once its attempts are exhausted.
+     * Where a message from EITHER listener ends up once its attempts are exhausted.
      *
      * Without this bean the default behaviour after the retries would be to drop it and
      * nothing more: no infinite loop, but also no trace of what failed.
@@ -85,6 +110,6 @@ public class NotificationQueueConfig {
     MessageRecoverer failedMessageRecoverer(RabbitTemplate rabbitTemplate) {
         return new RepublishMessageRecoverer(rabbitTemplate,
                 EventTopology.ERROR_EXCHANGE,
-                EventTopology.ROUTING_KEY_CANCELLATION_FAILED);
+                EventTopology.ROUTING_KEY_NOTIFICATION_FAILED);
     }
 }

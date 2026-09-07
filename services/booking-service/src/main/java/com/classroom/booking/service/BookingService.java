@@ -453,4 +453,19 @@ public class BookingService {
         logger.debug("room availability result (booking {} excluded) - roomId: {}, available: {}", excludedBookingId, roomId, available);
         return available;
     }
+
+    /**
+     * Deletes every booking of a user about to be removed.
+     *
+     * Called from UserDeletionListener, not from a controller: this is what used to be
+     * InternalBookingController's one endpoint, reachable now only as the reaction to a
+     * UserDeletedEvent. Going through the service and not straight to the repository, unlike
+     * that old controller did, keeps this on the same footing as
+     * NotificationService.deleteAllByUser, which CancellationListener already calls this way.
+     */
+    @Transactional
+    public void deleteBookingsOfUser(Long userId) {
+        logger.info("Deleting every booking of userId={}", userId);
+        bookingRepository.deleteByUserId(userId);
+    }
 }
