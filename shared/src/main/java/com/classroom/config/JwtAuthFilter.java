@@ -81,12 +81,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
-            logger.debug("JWT Filter - autenticato userId={} ruolo={}", id, role);
+            logger.debug("JWT filter - authenticated userId={} role={}", id, role);
         } else if (token != null) {
             // A token that is present but invalid (expired, wrongly signed, tampered with):
             // until now this passed in silence and the request arrived unauthenticated
             // without leaving a trace.
-            // E' un segnale di sicurezza, quindi WARN.
+            // It is a security signal, so WARN.
             logger.warn("JWT filter - invalid or expired token on {} {}", method, path);
         }
         filterChain.doFilter(request, response);

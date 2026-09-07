@@ -101,7 +101,7 @@ public class AdminController {
         if (room.isEmpty()) {
             logger.warn("END getRoomById - no room found with ID: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("ROOM_NOT_FOUND", "Aula not found",
+                createErrorResponse("ROOM_NOT_FOUND", "Room not found",
                                   String.format("L'aula con ID %d non esiste.", id), sessionId),
                 HttpStatus.NOT_FOUND
             );
@@ -179,7 +179,7 @@ public class AdminController {
         );
     }
 
-    // ========== GESTIONE PRENOTAZIONI ADMIN ==========
+    // ========== admin booking management ==========
 
     @GetMapping("/bookings")
     @Operation(summary = "List every booking, cancelled ones included (admin only)")
@@ -240,7 +240,7 @@ public class AdminController {
         String reason = (requestBody != null && requestBody.getReason() != null)
             ? requestBody.getReason()
             : "Eliminazione da parte dell'amministratore";
-        logger.debug("reason eliminazione: {}", reason);
+        logger.debug("deletion reason: {}", reason);
 
         boolean deleted = bookingService.cancelBookingAsAdmin(id, adminId, reason);
         if (!deleted) {
@@ -264,7 +264,7 @@ public class AdminController {
             // Published to a queue rather than called over REST: that way the notification
             // is not lost if notification-service is down. The typed record also replaced
             // the map of strings that used to be here, where a wrong field name would have
-            // arrivato a destinazione come semplice valore mancante.
+            // arrived as a plain missing value.
             eventPublisher.publishCancellation(new BookingCancelledEvent(
                     bookingUser.getId(), id, roomName, adminName,
                     bookingDate, startTime, endTime, reason));

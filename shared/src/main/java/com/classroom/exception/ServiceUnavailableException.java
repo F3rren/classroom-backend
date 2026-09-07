@@ -4,7 +4,7 @@ package com.classroom.exception;
  * A downstream service did not answer, and the operation needs repeating.
  *
  * It becomes a 503 and not a 500, and that distinction is for whoever reads the response:
- * un 500 dice "e' rotto qualcosa", un 503 dice "riprova". Sono due azioni diverse.
+ * a 500 says "something is broken", a 503 says "try again". Those are two different actions.
  *
  * The concrete case it was born for: deleting a user deletes their data in the other
  * services first and the user only afterwards. If one of those services does not answer the

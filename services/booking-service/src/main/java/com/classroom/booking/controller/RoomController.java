@@ -103,7 +103,7 @@ public class RoomController {
         if (room.isEmpty()) {
             logger.warn("END getRoomById - no room found with ID: {}", id);
             return new ResponseEntity<>(
-                createErrorResponse("ROOM_NOT_FOUND", "Aula not found",
+                createErrorResponse("ROOM_NOT_FOUND", "Room not found",
                                   String.format("L'aula con ID %d non esiste nel sistema.", id), sessionId),
                 HttpStatus.NOT_FOUND
             );

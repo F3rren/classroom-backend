@@ -120,7 +120,7 @@ public class AdminUserController {
         }
 
         User updated = authService.updateUser(id, request);
-        logger.info("Utente modificato da admin - utenteId={}", updated.getId());
+        logger.info("User updated by an admin - userId={}", updated.getId());
 
         return new ResponseEntity<>(
             createSuccessResponse("Utente aggiornato con successo dall'amministratore", new UserUpdateAck(updated), sessionId),

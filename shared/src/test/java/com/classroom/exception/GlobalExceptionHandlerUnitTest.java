@@ -138,7 +138,7 @@ class GlobalExceptionHandlerUnitTest {
     @Test
     void unaRisorsaInesistenteDiventa404ConIlSuoCodice() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
-                new ResourceNotFoundException("ROOM_NOT_FOUND", "Aula non trovata con ID: 42",
+                new ResourceNotFoundException("ROOM_NOT_FOUND", "Room not found with id: 42",
                         "L'aula richiesta non esiste."));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -163,7 +163,7 @@ class GlobalExceptionHandlerUnitTest {
         // 409 and not 400: a name already taken is not a malformed request, and the caller
         // does not fix it by correcting the syntax.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDomainConflict(
-                new DomainConflictException("ROOM_NAME_TAKEN", "Nome gia' esistente: Aula Magna",
+                new DomainConflictException("ROOM_NAME_TAKEN", "Room name already taken: Aula Magna",
                         "Esiste gia' un'aula con questo nome."));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -185,7 +185,7 @@ class GlobalExceptionHandlerUnitTest {
     @Test
     void unaRichiestaNonValidaDiventa400() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleInvalidRequest(
-                new InvalidRequestException("INVALID_STATE", "Stato non valido: inventato",
+                new InvalidRequestException("INVALID_STATE", "Invalid status: inventato",
                         "Stato non riconosciuto."));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

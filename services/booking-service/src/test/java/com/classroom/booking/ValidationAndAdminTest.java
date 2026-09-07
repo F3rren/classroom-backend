@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The regression suite for Bean Validation on the DTOs,
- * (CreateUserRequest/UpdateUserRequest/AulaRequest/PrenotazioneRequest) e conferma
+ * (CreateUserRequest/UpdateUserRequest/RoomRequest/BookingRequest), and confirms
  * and that the behaviour of AuthController.login has NOT changed (no @Valid there,
  * deliberately, so as not to disturb the order with respect to the rate limiter).
  */

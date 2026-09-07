@@ -29,9 +29,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit test (niente contesto Spring) di PrenotazioneController.
+ * Unit tests for BookingController, with no Spring context.
  *
- * Copre i rami NON raggiungibili via HTTP dai test di integrazione:
+ * They cover the branches the integration tests cannot reach over HTTP:
  *  - the three DataIntegrityViolationException catches: on H2 the anti-overlap constraint
  *    "EXCLUDE USING gist" does not exist (it is Postgres-only, and the tests use
  *    ddl-auto=create-drop, so the schema comes from the entities), which means that
@@ -310,7 +310,7 @@ class BookingControllerUnitTest {
         // on the status. This stays to pin down that the controller does not reintroduce an
         // interpretation of its own.
         when(service.cancelBooking(7L, 2L, true))
-                .thenThrow(new DomainConflictException("INVALID_STATE", "gia' annullata",
+                .thenThrow(new DomainConflictException("INVALID_STATE", "already cancelled",
                         "Questa prenotazione non puo' essere annullata nello stato attuale."));
 
         assertThatThrownBy(() -> controller.cancelBooking(7L, admin))

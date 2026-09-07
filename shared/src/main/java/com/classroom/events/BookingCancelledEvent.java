@@ -1,7 +1,7 @@
 package com.classroom.events;
 
 /**
- * Una prenotazione e' stata cancellata da un amministratore.
+ * A booking was cancelled by an administrator.
  *
  * The contract between the publisher (the booking service) and the consumer (the
  * notification service). It sits in shared on purpose: that way the compiler guarantees the

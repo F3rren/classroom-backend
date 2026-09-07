@@ -1,476 +1,462 @@
-# Prenotazioni Aule — Backend
+# Classroom Booking — Backend
 
-API REST per la gestione di prenotazioni aule, corsi e notifiche.
+A REST API for managing classroom bookings, courses and notifications.
 
-## Prerequisiti
+## Prerequisites
 
 - **Java 17**
-- **PostgreSQL 13 o superiore** (verificato su 18.3)
-- **Maven** (il progetto non include il wrapper `mvnw`)
-- **Docker** — facoltativo: serve solo a una classe di test, che senza viene saltata
+- **PostgreSQL 13 or later** (checked against 18.3)
+- **Maven** (the project does not ship the `mvnw` wrapper)
+- **Docker** — optional: only a few test classes need it, and they skip themselves without it
 
 Spring Boot **3.2.12**.
 
 ---
 
-## 1. Creare il database
+## 1. Create the database
 
 ```sql
 CREATE DATABASE classroom;
 ```
 
-Il database può restare **vuoto**: lo schema viene creato da Flyway al primo avvio.
+The database can stay **empty**: Flyway creates the schema on the first start.
 
-## 2. Configurare i segreti
+## 2. Configure the secrets
 
-Tutti i segreti stanno in **`.env`**, ignorato da git. Il modello versionato è
-`.env.example`, che non contiene valori.
+Every secret lives in **`.env`**, which git ignores. The versioned template is
+`.env.example`, and it holds no values.
 
 ```bash
 cp .env.example .env
 openssl rand -base64 48     # -> JWT_SECRET
-# poi valorizzare SPRING_DATASOURCE_PASSWORD con la password del PostgreSQL locale
+# then set SPRING_DATASOURCE_PASSWORD to your local PostgreSQL password
 ```
 
-Non serve fare altro, né in container né fuori: **`.env` lo leggono in due**. Docker
-Compose lo trova da solo e inietta i valori nei container; Spring lo importa direttamente,
-perché ogni `application.properties` dichiara
+Nothing else is needed, in a container or outside one: **two things read `.env`**. Docker
+Compose finds it on its own and injects the values into the containers; Spring imports it
+directly, because every `application.properties` declares
 
 ```properties
 spring.config.import=optional:file:./.env[.properties],optional:file:../.env[.properties]
 ```
 
-Il formato `KEY=valore` di Compose è anche quello dei file `.properties` di Java, e
-`[.properties]` è come lo si dichiara a Spring. `optional:` perché nei container il file
-non c'è affatto — i valori arrivano già come variabili d'ambiente.
+Compose's `KEY=value` format is also that of Java `.properties` files, and `[.properties]` is
+how you declare that to Spring. `optional:` because in the containers the file is not there
+at all — the values arrive as environment variables already.
 
-I nomi però non combaciano, e **la conversione automatica non avviene**: il *relaxed
-binding* di Spring tratta le maiuscole con underscore solo per le variabili d'ambiente
-vere, non per le chiavi lette da un file. Il ponte è esplicito, in ogni servizio:
+The names do not line up, though, and **the automatic conversion does not happen**: Spring's
+*relaxed binding* treats uppercase-with-underscores only for real environment variables, not
+for keys read from a file. The bridge is explicit, in every service:
 
 ```properties
 jwt.secret=${JWT_SECRET}
 spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:}
 ```
 
-> **Niente virgolette e niente backslash nei valori di `.env`.** Compose toglie le
-> virgolette, Java le tiene: violarlo non dà errore, dà due letture diverse *dello stesso
-> file*, con il file che a guardarlo sembra giusto. I segreti base64 non ne contengono, e
-> il vincolo è fissato da `FormatoEnvUnitTest` in `shared`.
+> **No quotes and no backslashes in `.env` values.** Compose strips quotes, Java keeps them:
+> breaking that raises no error, it produces two different readings *of the same file*, from
+> a file that looks right. Base64 secrets contain neither, and the constraint is pinned by
+> `EnvFormatUnitTest` in `shared`.
 
-`jwt.secret` è **senza valore di ripiego** apposta: se manca, il servizio si rifiuta di
-partire invece di firmare token con una chiave vuota. Verificato spostando `.env` e
-ottenendo `Could not resolve placeholder 'JWT_SECRET'` — se fosse partito lo stesso,
-significherebbe che il segreto arriva da un'altra parte.
+`jwt.secret` has **no fallback** on purpose: if it is missing, the service refuses to start
+rather than sign tokens with an empty key. Checked by moving `.env` away and getting
+`Could not resolve placeholder 'JWT_SECRET'` — had it started anyway, that would have meant
+the secret was coming from somewhere else.
 
-`.env` deve contenere **solo segreti e parametri d'ambiente**. Host, porta e nome del
-database si cambiano nel profilo (vedi sotto), non qui.
+`.env` must hold **only secrets and environment parameters**. The database host, port and
+name are changed in the profile (see below), not here.
 
-> `jwt.secret` non ha un valore di default nel codice: se manca, l'avvio **fallisce
-> esplicitamente** invece di usare un segreto noto. È voluto.
-
-Per generare un segreto:
-
-```bash
-openssl rand -base64 48
-```
-
-## 3. Avviare
+## 3. Start it
 
 ```bash
 mvn spring-boot:run -pl booking-service -am
 ```
 
-`-pl booking-service` sceglie il modulo, `-am` costruisce prima `shared` da cui dipende.
+`-pl booking-service` picks the module, `-am` builds `shared` first, which it depends on.
 
-Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log:
-`Successfully applied 2 migrations`).
+The default profile is `dev`. On the first start Flyway creates the whole schema.
 
-Verifica che funzioni:
+Check that it works:
 
 ```bash
 curl -i http://localhost:17102/api/rooms
 ```
 
-Attendersi **`401 Unauthorized`**: è la risposta corretta senza token, e prova che
-database, migrazioni e configurazione si sono risolti. Documentazione interattiva su
-<http://localhost:17103/swagger-ui.html> (attiva solo in `dev`).
+Expect **`401 Unauthorized`**: that is the correct answer without a token, and it proves the
+database, the migrations and the configuration all resolved. Interactive documentation at
+<http://localhost:17103/swagger-ui.html> (enabled only in `dev`).
 
 ---
 
-## Struttura del progetto
+## The project layout
 
 ```
-services/           i quattro deployable: uno per servizio
-  gateway/            l'unico esposto (17102)
+services/           the four deployables: one per service
+  gateway/            the only one exposed (17102)
   auth-service/
   booking-service/
   notification-service/
-shared/             non e' un servizio: e' la libreria che i quattro importano
+shared/             not a service: the library the four of them import
 ```
 
-La distinzione fra `services/` e `shared/` e' l'unica cosa che quell'albero deve dire, ed e'
-il motivo per cui `shared` non sta dentro `services/`: non si avvia, non ha una porta.
+The distinction between `services/` and `shared/` is the only thing that tree has to say, and
+it is why `shared` does not sit inside `services/`: it does not start, and it has no port.
 
-Il progetto e' un build Maven multi-modulo, e la scomposizione e' completa: ogni servizio
-ha il proprio database, il proprio deployable e il proprio Dockerfile (lo stesso, con il
-modulo passato come argomento). Il nome di ciascun modulo dice cosa fa — il servizio delle
-prenotazioni si chiamava `app`, che non diceva niente.
+The project is a multi-module Maven build, and the split is complete: every service has its
+own database, its own deployable and its own Dockerfile (the same one, with the module passed
+as an argument). Each module's name says what it does — the booking service used to be called
+`app`, which said nothing.
 
-| Modulo | Porta | Database | Contenuto |
+| Module | Port | Database | Contents |
 |---|---|---|---|
-| `gateway` | **17102** | — | Punto di ingresso unico: instrada per prefisso |
-| `broker` | 5672 | — | RabbitMQ: trasporta la notifica di cancellazione |
-| `booking-service` | 17103 | `classroom` | Aule, prenotazioni, corsi |
-| `auth-service` | 17105 | `classroom_users` | Utenti, login, amministrazione utenti |
-| `notification-service` | 17104 | `classroom_notifications` | Le notifiche |
-| `shared` | — | — | Comune a tutti: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
+| `gateway` | **17102** | — | The single entry point: it routes by prefix |
+| `broker` | 5672 | — | RabbitMQ: it carries the cancellation notification |
+| `booking-service` | 17103 | `classroom` | Rooms, bookings, courses |
+| `auth-service` | 17105 | `classroom_users` | Users, login, user administration |
+| `notification-service` | 17104 | `classroom_notifications` | The notifications |
+| `shared` | — | — | Common to all: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Role` |
 
-### Dentro un servizio
+### Inside a service
 
-Tutti e tre i servizi applicativi hanno la stessa forma, così passare dall'uno all'altro non
-richiede di reimparare dove stanno le cose:
+All three application services have the same shape, so moving between them does not mean
+relearning where things are:
 
 ```
 services/auth-service/src/main/java/com/classroom/auth/
-  controller/     riceve HTTP, non decide nulla di dominio
-  service/        le regole; e' qui che nascono le eccezioni di dominio
-  repository/     interfacce Spring Data
-  model/          entita' JPA
-  dto/            cio' che entra ed esce, separato dalle entita'
-  client/         chiamate verso GLI ALTRI servizi (solo dove servono)
+  controller/     receives HTTP, decides nothing about the domain
+  service/        the rules; this is where the domain exceptions are born
+  repository/     Spring Data interfaces
+  model/          JPA entities
+  dto/            what comes in and goes out, kept apart from the entities
+  client/         calls towards THE OTHER services (only where they are needed)
 
 shared/src/main/java/com/classroom/
-  config/         SecurityConfig, JwtAuthFilter, RequestCorrelationFilter, gestori 401/403
-  exception/      GlobalExceptionHandler e le eccezioni di dominio
+  config/         SecurityConfig, JwtAuthFilter, RequestCorrelationFilter, the 401/403 handlers
+  exception/      GlobalExceptionHandler and the domain exceptions
   security/       JwtVerifier, AppPrincipal
-  eventi/         i messaggi che viaggiano su RabbitMQ e i nomi di code ed exchange
-  dto/            ApiEnvelope, l'involucro di ogni risposta
-  model/          Ruolo
+  events/         the messages that travel on RabbitMQ, and the queue and exchange names
+  dto/            ApiEnvelope, the wrapper around every response
+  model/          Role
   util/           LogSanitizer
 ```
 
-### La regola sui nomi
+`messaging/` in `booking-service` and `events/` in `notification-service` are the two sides of
+the same queue: the publisher and the listener.
 
-**Il vocabolario tecnico è in inglese, quello di dominio in italiano.**
+### The rule on language
 
-| | Esempi | Perché |
+**Everything a programmer reads is English. Only what a person using the system reads stays
+Italian.**
+
+That is the whole rule, and it is worth being precise about where the line falls, because it
+does not fall where you might expect.
+
+| | Examples | Why |
 |---|---|---|
-| tecnico → **inglese** | `RequestCorrelationFilter`, `LoginAttemptLimiter`, `EventPublisher`, `GatewayErrorHandler`, `JwtKey` | è la convenzione di Spring: chiunque apra il progetto li riconosce senza tradurre |
-| dominio → **italiano** | `Aula`, `Prenotazione`, `Utente`, `Corso`, `Notifica`, `Ruolo`, `StatoAula` | sono le parole degli utenti, ed è l'unico modo di restare allineati a ciò che non si può rinominare |
+| everything → **English** | class and method names, variables, comments, log lines, endpoints, JSON keys, table and column names, status values, error codes, Swagger summaries | the code has to be readable by any programmer, and the rest of the Java world is in English |
+| what the user reads → **Italian** | `userMessage` in every error, the Bean Validation messages, the title and body of a notification, the `message` of a **successful** response | those are the words of the people using the system, and they are the one place the code's language is not the right one |
 
-Quel «non si può rinominare» è la parte che decide, e vale la pena scriverla:
-
-- le **tabelle** — `aule`, `corsi`, `notifiche`, `prenotazioni`, `utenti` — vivono nelle
-  migrazioni Flyway, e cambiarle ne cambierebbe il checksum;
-- i **percorsi dell'API** sono un contratto già pubblicato;
-- le **code AMQP** sono durabili e già create sul broker.
-
-Rinominare `Aula` in `Room` lascerebbe `@Table(name = "aule")` accanto: non uniformerebbe,
-**creerebbe** uno scarto fra il codice e tutto ciò che tocca. La stessa cosa varrebbe per un
-`BookingController` mappato su `/api/bookings`.
-
-`messaggistica/` in `booking-service` e `eventi/` in `notification-service` sono i due lati
-della stessa coda: chi pubblica e chi ascolta.
-
-### La lingua delle risposte
-
-I due campi di testo dell'involucro hanno **due lettori diversi**, ed è l'unica ragione per
-cui esistono entrambi:
+The asymmetry in the last row is easy to miss. On an **error** the envelope carries both
+fields, and they have two different readers:
 
 ```json
 {
   "error":       "BOOKING_CONFLICT",
-  "message":     "Aula 3 busy from 2026-09-10T09:00 to 2026-09-10T11:00",
-  "userMessage": "L'aula non è disponibile nel periodo richiesto."
+  "message":     "Room 3 busy from 2026-09-10T09:00 to 2026-09-10T11:00",
+  "userMessage": "L'aula non e' disponibile nel periodo richiesto."
 }
 ```
 
-- **`message` è in inglese.** Lo legge chi indaga un guasto: log, sviluppo, una segnalazione
-  girata a qualcun altro. È testo tecnico e segue la lingua del codice.
-- **`userMessage` è in italiano.** È l'unica stringa del sistema che legge una persona che
-  non sviluppa — chi prenota un'aula. Segue la lingua di chi usa il sistema, non quella di
-  chi lo scrive.
+`message` is read by whoever is investigating a failure — logs, development, a report passed
+to somebody else. `userMessage` is read by the person booking a room.
 
-I nomi di dominio restano in italiano anche dentro il messaggio inglese (`Aula 3 busy…`):
-sono le parole delle tabelle e dell'API, e tradurle solo lì reintrodurrebbe lo scarto.
+On a **success** there is no `userMessage`, and `message` is the only text field there is:
 
-> Se un giorno servisse più di una lingua, la strada è `MessageSource` con i file
-> `messages_xx.properties` e la lingua scelta dall'header `Accept-Language`. Oggi non c'è, e
-> con una lingua sola sarebbe un meccanismo da mantenere senza nessuno che lo usi. Il campo
-> `error` è già un codice stabile (`BOOKING_CONFLICT`, `USER_ALREADY_EXISTS`), quindi un
-> frontend che voglia tradurre da sé può farlo su quello senza aspettare.
+```json
+{ "success": true, "message": "Aula creata con successo", "data": { ... } }
+```
 
-**Il frontend conosce solo la 17102.** Le porte crescono in sequenza a partire da lì, così
-aggiungere un servizio non obbliga a ripensare l'assegnazione (il prossimo servizio prenderà la 17106). La 8080 è volutamente evitata: è troppo comune e collide con altri
-progetti sulla stessa macchina. Ogni porta resta sovrascrivibile da variabile d'ambiente
-(`GATEWAY_PORT`, `PRENOTAZIONE_PORT`, `AUTH_PORT`, `NOTIFICA_PORT`) senza toccare codice.
+So on success `message` is the user's field, and it stays Italian. A test pins that down.
 
-### Con Docker
+> If more than one language were ever needed, the road is `MessageSource` with
+> `messages_xx.properties` files and the language chosen from the `Accept-Language` header.
+> It is not there today, and with a single language it would be a mechanism to maintain with
+> nobody using it. The `error` field is already a stable code (`BOOKING_CONFLICT`,
+> `USER_ALREADY_EXISTS`), so a frontend that wants to translate on its own can do so from
+> that without waiting.
 
-Al primo avvio, una volta sola:
+**The frontend knows only 17102.** The ports run in sequence from there, so adding a service
+does not mean rethinking the allocation (the next one takes 17106). 8080 is deliberately
+avoided: it is too common and collides with other projects on the same machine. Every port
+stays overridable from an environment variable (`GATEWAY_PORT`, `BOOKING_PORT`, `AUTH_PORT`,
+`NOTIFICATION_PORT`) with no code to touch.
+
+### With Docker
+
+The first time, once:
 
 ```bash
 cp .env.example .env
-openssl rand -base64 48    # incollare il risultato in JWT_SECRET dentro .env
+openssl rand -base64 48    # paste the result into JWT_SECRET inside .env
 ```
 
-Poi, sempre:
+Then, always:
 
 ```bash
 docker compose up --build
 ```
 
-Docker Compose legge `.env` da solo. `JWT_SECRET` non ha un default di proposito: un
-segreto con un valore di comodo prima o poi finisce in produzione, quindi lo stack si
-rifiuta di partire finché non ne esiste uno vero. Va tenuto **stabile** fra un avvio e
-l'altro — cambiarlo invalida tutti i token già emessi, e chi era autenticato riceve un 401
-senza una ragione visibile.
+Docker Compose reads `.env` on its own. `JWT_SECRET` has no default on purpose: a secret with
+a convenience value ends up in production sooner or later, so the stack refuses to start
+until a real one exists. It has to be kept **stable** between runs — changing it invalidates
+every token already issued, and whoever was logged in gets a 401 for no visible reason.
 
-`.env` è ignorato da git; il modello versionato è `.env.example`, che non contiene valori.
+`.env` is ignored by git; the versioned template is `.env.example`, which holds no values.
 
-Alza tre PostgreSQL (uno per servizio), i quattro servizi e pubblica **solo la 17102**.
-Gli altri si parlano sulla rete interna e non sono raggiungibili da fuori: le rotte
-`/interne/` diventano così irraggiungibili per costruzione, non solo per regola del gateway.
+It brings up three PostgreSQL instances (one per service), the four services, and publishes
+**only 17102**. The others talk on the internal network and are not reachable from outside:
+the `/internal/` routes are therefore unreachable by construction, and not merely by the
+gateway's rule.
 
-Provato: le quattro immagini si costruiscono, lo stack sale e il giro completo (login →
-creazione aula → notifiche) passa dal gateway. Serve comunque inserire a mano il primo
-admin nel database utenti, per la ragione spiegata più sotto.
+> Inside the containers `booking-service` runs with the **`prod`** profile, and that is not a
+> preference: `application-dev.properties` has the database URL written against `localhost`,
+> so with the default profile `DB_HOST` would be ignored and the service would die on its
+> first connection. Only `prod` reads the environment variables.
 
-> Dentro i container `booking-service` gira con il profilo **`prod`**, e non è una preferenza:
-> `application-dev.properties` ha l'URL del database scritto su `localhost`, quindi con il
-> profilo predefinito `DB_HOST` verrebbe ignorato e il servizio morirebbe alla prima
-> connessione. Solo `prod` legge le variabili d'ambiente.
+### Without Docker
 
-### Senza Docker
-
-Servono quattro processi, ognuno in un terminale:
+Four processes, each in its own terminal:
 
 ```bash
-mvn spring-boot:run -pl booking-service -am              # 17103
-mvn spring-boot:run -pl auth-service -am     # 17105
-mvn spring-boot:run -pl notification-service -am # 17104
-mvn spring-boot:run -pl gateway -am          # 17102
+mvn spring-boot:run -pl booking-service -am        # 17103
+mvn spring-boot:run -pl auth-service -am           # 17105
+mvn spring-boot:run -pl notification-service -am   # 17104
+mvn spring-boot:run -pl gateway -am                # 17102
 ```
 
-Il gateway non valida i token: instrada e basta. Ogni servizio verifica il JWT da sé, così
-resta protetto anche se raggiunto direttamente. Il gateway chiude però dall'esterno le
-rotte `/api/notifications/internal/**`, che sono chiamate fra servizi.
+The gateway does not validate tokens: it routes, and nothing else. Every service verifies the
+JWT itself, so it stays protected even when reached directly. The gateway does close off
+`/api/notifications/internal/**` from outside, which are service-to-service calls.
 
-Prima del primo avvio serve il suo database (vuoto: lo schema lo crea Flyway):
+Before the first start each service needs its database (empty: Flyway creates the schema):
 
 ```sql
+CREATE DATABASE classroom_users;
 CREATE DATABASE classroom_notifications;
 ```
 
-`JWT_SECRET` in `.env` deve essere lo stesso per tutti i servizi:
-e' cio' che permette a ognuno di validare i token da solo, senza chiamare gli altri. E'
-anche il motivo per cui i test possono firmarsi i propri token invece di creare un utente.
+`JWT_SECRET` in `.env` has to be the same for every service: that is what lets each of them
+validate tokens on its own, without calling the others. It is also why the tests can sign
+their own tokens instead of creating a user.
 
-`shared` e' una libreria e non viene ripacchettata come jar eseguibile. Ci entra solo cio'
-la cui chiusura transitiva non tocca il dominio: e' il compilatore, non una convenzione, a
-verificare che il confine regga.
+`shared` is a library and is not repackaged as an executable jar. Only what has a transitive
+closure that does not touch the domain goes in: it is the compiler, not a convention, that
+checks the boundary holds.
 
 ---
 
-## Configurazione per ambiente
+## Configuration per environment
 
-| File | Contenuto |
+| File | Contents |
 |---|---|
-| `application.properties` | tutto cio' che serve a partire, con segnaposto `${VAR:default}` |
-| `application-dev.properties` | comodita' di sviluppo: DevTools, log su file, baseline Flyway |
-| `application-prod.properties` | **solo irrobustimento**: Swagger spento, pool piu' largo, Flyway in sicurezza |
-| `.env` | **solo segreti e parametri d'ambiente**, non versionato |
+| `application.properties` | everything needed to start, with `${VAR:default}` placeholders |
+| `application-dev.properties` | development conveniences: DevTools, logging to file, the Flyway baseline |
+| `application-prod.properties` | **hardening only**: Swagger off, a wider pool, Flyway made safe |
+| `.env` | **secrets and environment parameters only**, not versioned |
 
-**Nessun servizio dipende da un profilo per vivere.** La connessione, la porta e la CORS
-stanno in `application.properties` con la forma `${DB_HOST:localhost}`, che in container
-prende i valori veri e fuori ripiega sui default di sviluppo. Un profilo aggiunge o toglie
-comportamento, non lo fornisce: dimenticare `SPRING_PROFILES_ACTIVE` **degrada** — si resta
-meno protetti — invece di rompere.
+**No service depends on a profile in order to live.** The connection, the port and CORS live
+in `application.properties` in the `${DB_HOST:localhost}` form, which takes the real values in
+a container and falls back to the development defaults outside one. A profile adds or removes
+behaviour, it does not supply it: forgetting `SPRING_PROFILES_ACTIVE` **degrades** — you end
+up less protected — instead of breaking.
 
-Non e' sempre stato cosi', ed e' costato caro: l'URL del database viveva solo in
-`application-dev.properties`, scritto su `localhost`, e con `spring.profiles.default=dev` un
-container senza quella variabile partiva puntando a localhost e moriva alla prima query. Il
-sintomo era un 503 dal gateway, e la causa stava tre file piu' in la'.
+It was not always so, and it cost dearly: the database URL lived only in
+`application-dev.properties`, written against `localhost`, and with
+`spring.profiles.default=dev` a container without that variable started pointing at localhost
+and died on its first query. The symptom was a 503 from the gateway, and the cause sat three
+files away.
 
-`application-dev.properties` esiste solo per `booking-service`, ed e' voluto: e' l'unico
-con DevTools e log su file. Gli altri due non hanno nulla di specifico dello sviluppo, e un
-file vuoto non sarebbe coerenza — sarebbe un file da leggere per scoprire che non dice niente.
+`application-dev.properties` exists only for `booking-service`, and that is deliberate: it is
+the only one with DevTools and file logging. The other two have nothing specific to
+development, and an empty file would not be consistency — it would be a file to read in order
+to discover it says nothing.
 
-### Perche' un file e' .yml e dieci sono .properties
+### Why one file is .yml and ten are .properties
 
-Non e' una svista rimasta indietro: e' una regola, ed e' **`.properties` ovunque, `.yml`
-solo dove la configurazione e' una lista di oggetti annidati**. Oggi succede in un posto
-solo, le rotte del gateway.
+It is not an oversight left behind: it is a rule, and it is **`.properties` everywhere,
+`.yml` only where the configuration is a list of nested objects**. Today that happens in one
+place, the gateway's routes.
 
-La differenza si vede meglio guardando cosa diventerebbero quelle rotte in properties:
+The difference is clearest when you look at what those routes would become in properties:
 
 ```properties
-spring.cloud.gateway.routes[3].id=autenticazione
+spring.cloud.gateway.routes[3].id=authentication
 spring.cloud.gateway.routes[3].uri=${AUTH_SERVICE_URL:http://localhost:17105}
 spring.cloud.gateway.routes[3].predicates[0]=Path=/api/auth/**,/api/admin/users/**
 ```
 
-L'ordine delle rotte non e' decorativo: e' cio' che manda `/api/admin/users` ad
-auth-service invece che a booking-service, perche' entrambe le rotte accettano quel
-percorso e vince la prima. Scritto in properties, quell'ordine vive negli **indici**, e
-inserire una rotta a meta' vuol dire rinumerare tutte quelle sotto. Sbagliare la
-rinumerazione da' un 404 senza errori di configurazione e senza niente nei log.
+The order of the routes is not decorative: it is what sends `/api/admin/users` to
+auth-service rather than booking-service, because both routes accept that path and the first
+one wins. Written in properties, that order lives in the **indexes**, and inserting a route
+in the middle means renumbering every one below it. Getting the renumbering wrong gives a 404
+with no configuration error and nothing in the logs.
 
-Nella direzione opposta, convertire i dieci file a YAML costerebbe piu' di quanto renda:
-sono 243 righe di configurazione e **501 di commento**, cioe' due righe di spiegazione per
-ogni impostazione, da portare attraverso un formato sensibile all'indentazione — e un
-errore di configurazione non fa fallire la build, si vede all'avvio o non si vede affatto.
+In the opposite direction, converting the ten files to YAML would cost more than it returns:
+they are 243 lines of configuration and **501 of comment**, which is two lines of explanation
+per setting, to be carried through an indentation-sensitive format — and a configuration
+mistake does not fail the build, it shows up at startup or not at all.
 
-> **Mai i due formati insieme nella stessa cartella.** Spring caricherebbe entrambi i file
-> e `.properties` vincerebbe: chi ha appena scritto il `.yml` lo vedrebbe ignorato senza
-> alcun segnale, e cercherebbe il difetto nel codice invece che nel file accanto. La CI ha
-> un passo che si rifiuta di proseguire se trova una coppia del genere.
+> **Never both formats in the same folder.** Spring would load both files and `.properties`
+> would win: whoever had just written the `.yml` would see it ignored with no signal at all,
+> and would look for the defect in the code instead of in the file next door. CI has a step
+> that refuses to continue if it finds such a pair.
 
-### Produzione
+### Production
 
-I segreti che in sviluppo hanno un valore di ripiego — `DB_PASSWORD`, `RABBITMQ_USER`,
-`RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — in produzione diventano **obbligatori**:
+The secrets that have a fallback in development — `DB_PASSWORD`, `RABBITMQ_USER`,
+`RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — become **mandatory** in production:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-Quel file fa una cosa sola: sostituisce `${DB_PASSWORD:-postgres}` con
-`${DB_PASSWORD:?...}`. Il ripiego in `docker-compose.yml` c'e' di proposito, perche' in
-sviluppo `docker compose up` deve funzionare senza preparare niente; il problema e' **come
-quella comodita' arriva altrove**, cioe' in silenzio. Nessun avviso, nessun errore, solo un
-database raggiungibile con la password `postgres` e un broker con `guest`.
+That file does one thing: it replaces `${DB_PASSWORD:-postgres}` with `${DB_PASSWORD:?...}`.
+The fallback in `docker-compose.yml` is there on purpose, because in development
+`docker compose up` has to work with nothing prepared; the problem is **how that convenience
+travels elsewhere**, which is silently. No warning, no error, just a database reachable with
+the password `postgres` and a broker with `guest`.
 
-Con l'override, una variabile mancante ferma compose prima che parta qualcosa e dice quale
-manca. Verificato sui tre stati: senza le variabili si rifiuta, senza l'override lo stesso
-`.env` incompleto parte lo stesso (ed e' giusto, e' sviluppo), con entrambi e' valido.
+With the override, a missing variable stops compose before anything starts and says which one
+is missing. Checked in all three states: without the variables it refuses, without the
+override the same incomplete `.env` starts anyway (which is right, that is development), and
+with both it is valid.
 
-`JWT_SECRET` non compare in quel file perche' e' **gia** obbligatoria ovunque: un segreto di
-firma con un valore di comodo non ha senso nemmeno in sviluppo.
+`JWT_SECRET` does not appear in that file because it is **already** mandatory everywhere: a
+signing secret with a convenience value makes no sense even in development.
 
-> Il file non contiene politiche di riavvio, limiti di memoria o repliche. Sono decisioni
-> che dipendono da dove si distribuisce, e scriverle qui vorrebbe dire inventarle prima di
-> sapere se servono.
+> The file holds no restart policies, memory limits or replicas. Those are decisions that
+> depend on where you deploy, and writing them here would mean inventing them before knowing
+> whether they are needed.
 
 ```bash
 mvn clean package
-export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
+export CORS_ALLOWED_ORIGINS="https://your-frontend.example.com"
 java -jar services/booking-service/target/booking-service-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
-Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PRENOTAZIONE_PORT`.
-I log vanno su stdout: in container li raccoglie Docker (`docker compose logs`). La
-scrittura su file resta solo nel profilo `dev`.
-La password arriva da `SPRING_DATASOURCE_PASSWORD`: variabile d'ambiente nei container,
-letta da `.env` fuori.
+Recognised variables: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `BOOKING_PORT`.
+The logs go to stdout: in a container Docker collects them (`docker compose logs`). Writing to
+a file stays in the `dev` profile alone. The password comes from
+`SPRING_DATASOURCE_PASSWORD`: an environment variable in the containers, read from `.env`
+outside them.
 
-`CORS_ALLOWED_ORIGINS` **non ha un default**: se non è impostata l'avvio fallisce, invece
-di pubblicare in produzione le origini di localhost. In `prod` Swagger è disattivato,
-perché lo schema dell'API è servito su percorsi pubblici.
+`CORS_ALLOWED_ORIGINS` **has no default**: if it is unset the startup fails, instead of
+publishing localhost origins to production. In `prod` Swagger is disabled, because the API
+schema is served on public paths.
 
 ---
 
-## Organizzazione dei package
+## How the packages are organised
 
-Ogni servizio ha un namespace proprio, e `shared` tiene la radice:
+Every service has a namespace of its own, and `shared` keeps the root:
 
-| Modulo | Package |
+| Module | Package |
 |---|---|
-| `shared` | `com.classroom.{dto,model,security,config,util,exception,eventi}` |
+| `shared` | `com.classroom.{dto,model,security,config,util,exception,events}` |
 | `booking-service` | `com.classroom.booking.*` |
 | `auth-service` | `com.classroom.auth.*` |
 | `notification-service` | `com.classroom.notification.*` |
 | `gateway` | `com.classroom.gateway.*` |
 
-Non è una convenzione estetica. Finché `booking-service` stava sotto `com.classroom.*` come `shared`,
-tre package erano pubblicati da entrambi i jar e il confine fra i due moduli non era
-verificato dal compilatore: una classe poteva usare un membro package-private dell'altro
-modulo e compilare. Separando i namespace è successo davvero — `PrenotazioneAuthorizationService`
-usava `AppPrincipal` senza import, e ora deve dichiararlo.
+This is not an aesthetic convention. While the booking service sat under `com.classroom.*`
+like `shared`, three packages were published by both jars and the boundary between the two
+modules was not checked by the compiler: a class could use a package-private member of the
+other module and still compile. Separating the namespaces made it happen for real —
+`BookingAuthorizationService` was using `AppPrincipal` with no import, and now has to declare
+it.
 
-Conseguenza pratica: ogni servizio dichiara un `@ComponentScan` esplicito che include i
-package di `shared`. Senza, i bean condivisi (filtro JWT, configurazione di sicurezza,
-gestore degli errori) resterebbero fuori dalla scansione e il servizio partirebbe senza
-autenticazione.
+The practical consequence: every service declares an explicit `@ComponentScan` that includes
+`shared`'s packages. Without it, the shared beans (the JWT filter, the security
+configuration, the error handler) would fall outside the scan and the service would start
+with no authentication at all.
 
-## Flusso di una richiesta
+## The path of a request
 
-Dal browser alla riga di database, con i punti in cui qualcosa può fermarla:
+From the browser to the database row, with the points where something can stop it:
 
 ```
   browser
      |  POST /api/bookings      Authorization: Bearer <token>
      v
-  gateway :17102 ------------------------------------------------ l'unica porta pubblicata
-     |  1. EdgeCorrelationFilter conia X-Request-Id (o riusa quello ricevuto)
-     |  2. sceglie la rotta per prefisso del percorso
-     |     -> nessuna rotta corrisponde ......................... 404
-     |     -> il servizio non risponde ......................... 503
+  gateway :17102 ------------------------------------------------ the only published port
+     |  1. EdgeCorrelationFilter mints X-Request-Id (or reuses the one it received)
+     |  2. picks the route by path prefix
+     |     -> no route matches ................................. 404
+     |     -> the service does not answer ...................... 503
      v
-  booking-service :17103 ------------------------- non raggiungibile dall'esterno
-     |  3. RequestCorrelationFilter rimette X-Request-Id in MDC
-     |  4. JwtAuthFilter verifica la firma del token, da solo
-     |     -> token assente, scaduto o falso .................... 401
-     |  5. SecurityConfig controlla il ruolo
-     |     -> ruolo insufficiente ............................... 403
-     |  6. Bean Validation sul corpo
-     |     -> campo mancante o fuori intervallo ................. 400
+  booking-service :17103 ------------------------- not reachable from outside
+     |  3. RequestCorrelationFilter puts X-Request-Id back into the MDC
+     |  4. JwtAuthFilter verifies the token's signature, on its own
+     |     -> token absent, expired or forged .................. 401
+     |  5. SecurityConfig checks the role
+     |     -> insufficient role ................................ 403
+     |  6. Bean Validation on the body
+     |     -> missing field or out of range .................... 400
      v
   controller -> service -> repository -> PostgreSQL
-     |     -> aula gia' occupata ............................... 409
-     |     -> vincolo del database violato ..................... 409
+     |     -> the room is already taken ........................ 409
+     |     -> a database constraint said no .................... 409
      v
-  risposta: sempre lo stesso involucro JSON, con lo stesso X-Request-Id
+  response: always the same JSON envelope, with the same X-Request-Id
 ```
 
-**Il gateway non valida i token.** Non ha alcuna configurazione di sicurezza: instrada e
-basta. La verifica la fa ogni servizio per conto proprio, ed è una scelta — un gateway che
-autentica diventa il punto in cui tutto passa e tutto si ferma, e i servizi dietro finirebbero
-per fidarsi di lui senza controllare, restando indifesi il giorno in cui qualcuno li
-raggiungesse per altra via.
+**The gateway does not validate tokens.** It has no security configuration at all: it routes,
+and nothing else. Each service verifies for itself, and that is a choice — a gateway that
+authenticates becomes the point everything passes through and everything stops at, and the
+services behind it end up trusting it without checking, left defenceless the day somebody
+reaches them another way.
 
-**L'identificativo di richiesta attraversa tutto.** Nasce al gateway, viaggia
-nell'intestazione `X-Request-Id`, finisce in MDC dentro ogni servizio, e viene rimandato
-indietro nella risposta e nel campo `sessionId` del corpo. Attraversa anche le chiamate REST
-fra servizi e gli eventi su RabbitMQ. È l'unica chiave che permette di ricostruire
-un'operazione che tocca tre servizi, tre database e due thread diversi.
+**The request id crosses everything.** It is born at the gateway, travels in the
+`X-Request-Id` header, ends up in the MDC inside every service, and is sent back both in the
+response header and in the body's `sessionId` field. It crosses the REST calls between
+services and the events on RabbitMQ too. It is the only key that lets you reconstruct an
+operation touching three services, three databases and two different threads.
 
-## Token e autenticazione
+## Tokens and authentication
 
-**Li emette solo `auth-service`.** È l'unico modulo con `jjwt-impl` fra le dipendenze di
-compilazione: gli altri hanno solo `jjwt-api` e possono verificare, non firmare. Il confine è
-imposto dal classpath, non da una regola scritta.
+**Only `auth-service` issues them.** It is the only module with `jjwt-impl` among its compile
+dependencies: the others have `jjwt-api` alone and can verify, not sign. The boundary is
+enforced by the classpath, not by a written rule.
 
-**Li verifica ogni servizio da solo**, senza chiamare nessuno. È possibile perché la firma è
-HMAC con un segreto condiviso — `JWT_SECRET`, lo stesso per tutti — e il token porta con sé
-tutto ciò che serve a decidere:
+**Every service verifies them on its own**, calling nobody. That is possible because the
+signature is HMAC with a shared secret — `JWT_SECRET`, the same for all of them — and the
+token carries everything needed to decide:
 
-| Claim | A cosa serve |
+| Claim | What it is for |
 |---|---|
-| `sub` | l'email di chi ha fatto il login |
-| `id` | l'id numerico, usato come proprietario di prenotazioni e notifiche |
-| `nome`, `username` | denormalizzati nelle prenotazioni, così mostrarle non richiede di interrogare il servizio utenti |
-| `ruolo` | `admin` o `user`, da cui Spring costruisce l'authority che `@PreAuthorize` cerca |
+| `sub` | the email of whoever logged in |
+| `id` | the numeric id, used as the owner of bookings and notifications |
+| `name`, `username` | denormalised into the bookings, so showing them needs no call to the user service |
+| `role` | `admin` or `user`, from which Spring builds the authority `@PreAuthorize` looks for |
 
-Il prezzo di questa scelta è che **un token non si può revocare**: dura un'ora e resta valido
-fino alla scadenza. Cancellare un utente non lo disconnette. È il rovescio della validazione
-offline, ed è consapevole — «ho cancellato l'utente» e «l'utente non può più fare niente»
-oggi sono due affermazioni diverse.
+The price of this choice is that **a token cannot be revoked**: it lasts an hour and stays
+valid until it expires. Deleting a user does not log them out. It is the flip side of offline
+validation, and it is a conscious one — "I deleted the user" and "the user can no longer do
+anything" are two different statements today.
 
-`JWT_SECRET` deve essere **identico** in tutti i servizi, altrimenti chi non ce l'ha uguale
-rifiuta ogni token con un 401. Cambiarlo invalida tutti quelli già emessi.
+`JWT_SECRET` has to be **identical** in every service, or whoever does not share it refuses
+every token with a 401. Changing it invalidates all the tokens already issued.
 
-## Gestione degli errori
+## Error handling
 
-**Un solo involucro, per ogni risposta.** Successo o errore, la forma non cambia: chi legge
-non deve indovinare quale schema ha ricevuto.
+**One envelope, for every response.** Success or error, the shape does not change: the reader
+does not have to guess which schema they received.
 
 ```json
 {
   "success": false,
   "error": "BOOKING_CONFLICT",
-  "message": "Aula 3 occupata dal 2026-09-10T09:00 al 2026-09-10T11:00",
+  "message": "Room 3 busy from 2026-09-10T09:00 to 2026-09-10T11:00",
   "userMessage": "L'aula non e' disponibile nel periodo richiesto.",
   "data": null,
   "timestamp": "2026-09-10 08:14:22",
@@ -478,199 +464,199 @@ non deve indovinare quale schema ha ricevuto.
 }
 ```
 
-`message` è per chi sviluppa, `userMessage` è per chi usa: separarli evita di dover scegliere
-fra un messaggio inutile a chi indaga e uno incomprensibile a chi legge lo schermo.
-`sessionId` è l'identificativo di richiesta, quindi una segnalazione può citarlo e i log di
-tutti e tre i servizi si trovano cercando quella stringa.
+`message` is for whoever develops, `userMessage` for whoever uses: keeping them apart avoids
+having to choose between a message useless to the investigator and one incomprehensible to
+the person reading the screen. `sessionId` is the request id, so a report can quote it and the
+logs of all three services are found by searching for that string.
 
-**I controller non traducono gli errori.** Lanciano un'eccezione di dominio e
-`GlobalExceptionHandler` — uno solo, in `shared`, condiviso da tutti i servizi — decide lo
-status una volta sola:
+**The controllers do not translate errors.** They throw a domain exception and
+`GlobalExceptionHandler` — one of them, in `shared`, shared by every service — decides the
+status once:
 
-| Eccezione | Status | Quando |
+| Exception | Status | When |
 |---|---|---|
-| `InvalidRequestException` | 400 | la richiesta chiede qualcosa che non ha senso |
-| `MethodArgumentNotValidException` | 400 | Bean Validation ha respinto il corpo |
-| `AccessDeniedException` | 403 | autenticato, ma non suo e non admin |
-| `ResourceNotFoundException` | 404 | l'oggetto indicato non esiste |
-| `DomainConflictException` | 409 | esiste, ma il suo stato non ammette l'operazione |
-| `BookingConflictException` | 409 | sovrapposizione di prenotazioni |
-| `DataIntegrityViolationException` | 409 | un vincolo del database ha detto no |
-| `ServiceUnavailableException` | 503 | un servizio a valle non risponde: **ripetere ha senso** |
-| qualunque altra | 500 | imprevisto, con lo stack trace nei log |
+| `InvalidRequestException` | 400 | the request asks for something that makes no sense |
+| `MethodArgumentNotValidException` | 400 | Bean Validation rejected the body |
+| `AccessDeniedException` | 403 | authenticated, but not theirs and not an admin |
+| `ResourceNotFoundException` | 404 | the object named does not exist |
+| `DomainConflictException` | 409 | it exists, but its state does not admit the operation |
+| `BookingConflictException` | 409 | overlapping bookings |
+| `DataIntegrityViolationException` | 409 | a database constraint said no |
+| `ServiceUnavailableException` | 503 | a downstream service is not answering: **retrying is worth it** |
+| anything else | 500 | unexpected, with the stack trace in the logs |
 
-La distinzione fra 500 e 503 non è formale: suggeriscono due azioni diverse. Un 500 dice «è
-rotto qualcosa», un 503 dice «riprova» — e in un sistema dove ripetere è ciò che porta a
-termine una cancellazione a cascata, dirlo cambia l'esito.
+The distinction between 500 and 503 is not formal: they suggest two different actions. A 500
+says "something is broken", a 503 says "try again" — and in a system where repeating is what
+finishes a cascading deletion, saying so changes the outcome.
 
-`IllegalArgumentException` **non** è mappata a 400 di proposito: segnala un errore di
-programmazione, non una richiesta sbagliata, e trasformarla in 400 nasconderebbe difetti
-dietro una risposta che sembra normale.
+`IllegalArgumentException` is deliberately **not** mapped to 400: it signals a programming
+error, not a bad request, and turning it into a 400 would hide defects behind a response that
+looks normal.
 
-**Il gateway ha il proprio gestore**, perché è WebFlux e non condivide quello dei servizi.
-Produce lo stesso involucro — è un test a tenere allineate le due forme — e distingue un
-servizio irraggiungibile (503) da un percorso senza rotta (404).
+**The gateway has its own handler**, because it is WebFlux and does not share the services'.
+It produces the same envelope — a test keeps the two shapes aligned — and tells an unreachable
+service (503) apart from a path with no route (404).
 
-## Log
+## Logging
 
-Configurati in `shared/src/main/resources/logback-spring.xml`, ereditato dai tre servizi che
-dipendono da `shared`. Il gateway ha la propria copia, perche' non puo' dipendere da `shared`
-(porta Tomcat, che in WebFlux non ci sta).
+Configured in `shared/src/main/resources/logback-spring.xml`, inherited by the three services
+that depend on `shared`. The gateway has a copy of its own, because it cannot depend on
+`shared` (which brings Tomcat, and Tomcat has no place in WebFlux).
 
 ```
-2026-09-05 17:45:30.369  WARN  REQ_A1B2C3D4 PrenotazioneService   : aula 3 occupata dal ...
-2026-09-05 17:45:30.372  INFO  -            FirstAdminBootstrap       : primo amministratore creato
+2026-09-05 17:45:30.369  WARN  REQ_A1B2C3D4 BookingService        : room 3 is not available ...
+2026-09-05 17:45:30.372  INFO  -            FirstAdminBootstrap   : first administrator created
 ```
 
-La colonna dell'identificativo viene da `%X{requestId}`, che Logback legge da MDC: **ogni
-riga la porta**, comprese quelle di Spring, Hibernate e Flyway, senza che nessuno debba
-passarla. Il trattino segna le righe nate fuori da una richiesta — avvio, consumo di
-messaggi, attivita' pianificate.
+The id column comes from `%X{requestId}`, which Logback reads from the MDC: **every line
+carries it**, including Spring's, Hibernate's and Flyway's, without anybody having to pass it
+around. The dash marks the lines born outside a request — startup, message consumption,
+scheduled jobs.
 
-Prima non era cosi': `RequestCorrelationFilter` metteva l'identificativo in MDC da sempre, ma
-senza un tracciato che lo stampasse non compariva da nessuna parte. 127 chiamate su 322 se lo
-passavano a mano dentro il messaggio; le altre 195 non avevano modo di essere ricondotte a
-una richiesta. Ora il tracciato lo mette su tutte, e i 127 prefissi manuali sono spariti.
+It was not always so: `RequestCorrelationFilter` had always been putting the id into the MDC,
+but without a pattern to print it, it appeared nowhere. 127 calls out of 322 were passing it
+by hand inside the message; the other 195 had no way of being traced back to a request. Now
+the pattern puts it on all of them, and the 127 manual prefixes are gone.
 
-### Quale livello per quale caso
+### Which level for which case
 
-La regola e' una sola: **il livello dice chi deve fare qualcosa**, non quanto e' grave.
+There is one rule: **the level says who has to do something**, not how serious it is.
 
-| Livello | Il caso | Chi deve intervenire | In produzione |
+| Level | The case | Who has to act | In production |
 |---|---|---|---|
-| `DEBUG` | la narrazione di una richiesta, passo per passo | nessuno: serve a chi guarda adesso | **spento** |
-| `INFO` | qualcosa e' cambiato e conta anche domani: utente creato, login riuscito, prenotazione annullata | nessuno ora, forse qualcuno poi | acceso |
-| `WARN` | la richiesta e' stata **rifiutata** e il rifiuto dice qualcosa: 400, 401, 403, 409, 429, 503 | nessuno su una riga sola; molte righe uguali sono un segnale | acceso |
-| `ERROR` | **nessuno sa cosa sia successo**: il 500 di `handleGeneric` | qualcuno, e subito. Sempre con lo stack trace | acceso |
+| `DEBUG` | the narration of a request, step by step | nobody: it is for whoever is watching now | **off** |
+| `INFO` | something changed and it still matters tomorrow: a user created, a login succeeded, a booking cancelled | nobody now, maybe somebody later | on |
+| `WARN` | the request was **refused** and the refusal says something: 400, 401, 403, 409, 429, 503 | nobody on a single line; many identical lines are a signal | on |
+| `ERROR` | **nobody knows what happened**: the 500 from `handleGeneric` | somebody, and now. Always with the stack trace | on |
 
-La conseguenza pratica: **un `ERROR` nei log di produzione e' un fatto, non rumore.** Nel
-codice sono 14 chiamate su 322. Se `ERROR` coprisse anche i rifiuti previsti, cercare i
-guasti veri vorrebbe dire filtrarli via — e tanto varrebbe non averlo.
+The practical consequence: **an `ERROR` in the production logs is a fact, not noise.** In the
+code they are 14 calls out of 322. If `ERROR` also covered the expected refusals, finding the
+real failures would mean filtering them out — and then you may as well not have it.
 
-`TRACE` non e' usato: quando serve quel dettaglio, serve un debugger.
+`TRACE` is not used: when that much detail is needed, what is needed is a debugger.
 
-### Dove finiscono
+### Where they go
 
-Su **stdout**, sempre. In container li raccoglie Docker (`docker compose logs`); scriverli in
-un file dentro l'immagine vorrebbe dire produrli dove nessuno li legge e nessuno li ruota.
+To **stdout**, always. In a container Docker collects them (`docker compose logs`); writing
+them to a file inside the image would mean producing them where nobody reads them and nobody
+rotates them.
 
-L'unica eccezione e' il profilo `dev`, che aggiunge un appender su `logs/application.log` con
-rotazione a 10 MB, 30 giorni, 500 MB complessivi. Sta dentro `<springProfile name="dev">`,
-accanto al file a cui si applica.
+The one exception is the `dev` profile, which adds an appender on `logs/application.log` with
+rotation at 10 MB, 30 days and 500 MB in total. It sits inside `<springProfile name="dev">`,
+next to the file it applies to.
 
-## Comunicazione fra servizi
+## Communication between services
 
-Due modi, scelti caso per caso e non per gusto:
+Two ways, chosen case by case and not by taste:
 
-**Sincrono (REST)** quando il chiamante *deve* sapere l'esito. La cancellazione di un utente
-è l'unico caso: `auth-service` rimuove prima i dati negli altri servizi e cancella l'utente
-**solo se ci è riuscito**. Con una coda questa garanzia si perderebbe, e resterebbero righe
-orfane che la chiave esterna impediva.
+**Synchronous (REST)** when the caller *has to* know the outcome. Deleting a user is the only
+case: `auth-service` removes the data in the other services first and deletes the user **only
+if it succeeded**. With a queue that guarantee would be lost, and orphan rows would remain
+where the foreign key used to prevent them.
 
-L'invariante è che l'utente se ne va per ultimo: finché c'è lui, le righe rimaste altrove
-hanno ancora un proprietario e l'operazione si può ripetere. È tenuta ferma da un test, che
-verifica anche l'*ordine* delle due operazioni — invertirle la perderebbe senza far fallire
-nient'altro.
+The invariant is that the user goes last: while they are still there, the rows left elsewhere
+still have an owner and the operation can be repeated. It is held still by a test, which also
+checks the *order* of the two operations — swapping them would lose it without failing
+anything else.
 
-Ripetere però non deve dipendere da una persona che se ne accorge: le chiamate a valle si
-ritentano tre volte con attesa crescente, perché la gran parte di questi guasti dura meno di
-un secondo. Non si ritenta su un 4xx — è un rifiuto, non un guasto. Se dopo i tentativi
-qualcosa resta indietro, la risposta è un **503 che nomina i dati non cancellati**, non un
-500 generico.
+Repeating, though, must not depend on a person noticing: the downstream calls are retried
+three times with growing backoff, because most of these failures last less than a second.
+There is no retry on a 4xx — that is a refusal, not a failure. If something is still left
+behind after the attempts, the answer is a **503 that names the data not deleted**, not a
+generic 500.
 
-**Asincrono (coda RabbitMQ)** quando il fallimento del destinatario non deve fermare nulla.
-La notifica di una prenotazione cancellata da un admin: prima era una chiamata REST e andava
-persa se `notification-service` era spento. Ora aspetta in coda. La dipendenza si sposta dal
-servizio al broker — la finestra si restringe, non si chiude: se il broker è irraggiungibile
-il messaggio si perde comunque, e il fallimento resta loggato e non propagato, perché la
-prenotazione è già stata cancellata.
+**Asynchronous (a RabbitMQ queue)** when the recipient's failure must stop nothing. The
+notification of a booking cancelled by an admin: it used to be a REST call and was lost if
+`notification-service` was down. Now it waits on the queue. The dependency moves from the
+service to the broker — the window narrows, it does not close: if the broker is unreachable
+the message is lost all the same, and the failure stays logged and unpropagated, because the
+booking has already been cancelled.
 
-## Il primo amministratore
+## The first administrator
 
-Su un database utenti vuoto `/api/admin/users` non è raggiungibile: richiede già un
-token con ruolo `ADMIN`. Non è una conseguenza della separazione — il monolite aveva lo
-stesso vincolo — ma su database nuovi si incontra subito, e prima si usciva dal cerchio
-solo con una `INSERT` a mano e un hash BCrypt calcolato fuori.
+On an empty users database `/api/admin/users` is unreachable: it already requires a token
+with the `ADMIN` role. That is not a consequence of the split — the monolith had the same
+constraint — but on new databases you meet it immediately, and the only way out used to be a
+hand-written `INSERT` with a BCrypt hash computed elsewhere.
 
-Ora bastano due variabili in `.env`:
+Two variables in `.env` are now enough:
 
 ```bash
-BOOTSTRAP_ADMIN_EMAIL=tua@email.it
-BOOTSTRAP_ADMIN_PASSWORD=unaPasswordLunga
+BOOTSTRAP_ADMIN_EMAIL=your@email.example
+BOOTSTRAP_ADMIN_PASSWORD=aLongPassword
 ```
 
-All'avvio di `auth-service`, **e solo se la tabella utenti è vuota**, viene creato un
-amministratore con quelle credenziali. Poi vanno svuotate, insieme al cambio della password.
+At `auth-service` startup, **and only if the users table is empty**, an administrator is
+created with those credentials. They should then be emptied, along with changing the password.
 
-La condizione è stretta apposta: a tabella non vuota il meccanismo è **inerte** — non
-promuove, non aggiorna, non tocca nessun utente esistente. È ciò che separa un aiuto
-all'avvio da una scorciatoia per ottenere privilegi da amministratore, ed è tenuto fermo dai
-test in `FirstAdminBootstrapUnitTest`. La creazione passa da `AuthService.register`, la stessa
-strada di ogni altro utente, quindi la password attraversa lo stesso `PasswordEncoder`.
+The condition is deliberately tight: on a non-empty table the mechanism is **inert** — it
+promotes nobody, updates nobody, touches no existing user. That is what separates a help at
+startup from a shortcut to administrator privileges, and it is held still by the tests in
+`FirstAdminBootstrapUnitTest`. Creation goes through `AuthService.register`, the same road as
+every other user, so the password passes the same `PasswordEncoder`.
 
-Se il database è vuoto e le variabili non ci sono, il servizio parte comunque ma **logga a
-`WARN`** come procedere: un database vuoto e silenzioso è esattamente il modo in cui questo
-problema si ripresenta.
+If the database is empty and the variables are absent, the service still starts but **logs at
+`WARN`** how to proceed: an empty, silent database is exactly how this problem comes back.
 
-Vedi [FirstAdminBootstrap.java](services/auth-service/src/main/java/com/classroom/auth/FirstAdminBootstrap.java).
+See [FirstAdminBootstrap.java](services/auth-service/src/main/java/com/classroom/auth/FirstAdminBootstrap.java).
 
-## Schema del database
+## The database schema
 
-Gestito da **Flyway**, in `services/booking-service/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
-Hibernate non modifica mai lo schema, verifica soltanto che le entity corrispondano e
-fallisce all'avvio se divergono.
+Managed by **Flyway**, under each service's `src/main/resources/db/migration/`. `ddl-auto` is
+`validate`: Hibernate never changes the schema, it only checks that the entities match and
+fails at startup if they have drifted.
 
-Per modificare lo schema si aggiunge una migrazione (`V3__descrizione.sql`). Quelle già
-applicate non vanno più modificate: Flyway ne verifica il checksum.
+To change the schema you add a migration (`V9__description.sql`). The ones already applied are
+never modified again: Flyway checksums them, and it also stores the description derived from
+the filename, so renaming a file counts as modifying it.
 
 ---
 
-## Test
+## Tests
 
 ```bash
-mvn test      # la suite di tutti i moduli. Funziona SENZA Docker.
-mvn verify    # aggiunge il gate di copertura. RICHIEDE Docker.
+mvn test      # the suite across every module. Works WITHOUT Docker.
+mvn verify    # adds the coverage gate. REQUIRES Docker.
 ```
 
-**Senza Docker si usa `mvn test`.** Le tre classi Testcontainers si saltano da sole
-(`Skipped: 20`, segnalato da Maven come warning perche' resti visibile) e il resto gira
-normalmente: e' il comando del ciclo di sviluppo.
+**Without Docker, use `mvn test`.** The Testcontainers classes skip themselves (`Skipped: 20`,
+reported by Maven as a warning so it stays visible) and the rest runs normally: that is the
+command of the development cycle.
 
-`mvn verify` invece richiede Docker, e non e' una svista. Il gate certifica che il codice
-sia provato, e non puo' certificare cio' che non ha potuto eseguire: saltata
-`MessaggisticaCancellazioniTest`, notification-service scende a **0.67** contro una soglia di
-0.80, perche' quella classe e' l'unica a esercitare la topologia AMQP. Abbassare la soglia
-renderebbe il gate una formalita'.
+`mvn verify` requires Docker, and that is not an oversight. The gate certifies that the code
+has been tested, and it cannot certify what it could not execute: with
+`CancellationMessagingTest` skipped, notification-service drops to **0.67** against a
+threshold of 0.80, because that class is the only thing exercising the AMQP topology.
+Lowering the threshold would make the gate a formality.
 
-> Il messaggio di Maven in quel caso dice solo `Coverage checks have not been met`, **senza
-> nominare Docker**. Se lo incontri, la causa e' quasi sempre questa.
+> Maven's message in that case says only `Coverage checks have not been met`, **without
+> naming Docker**. If you meet it, that is almost always the cause.
 
-I report di copertura finiscono in `shared/target/site/jacoco/index.html` e
-`services/booking-service/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
-separatamente, perche' il denominatore cambia da modulo a modulo.
+The coverage reports end up in each module's `target/site/jacoco/index.html`: the 80% gate is
+applied to every module separately, because the denominator changes from module to module.
 
-La suite è unit test senza Spring, test di integrazione HTTP su H2, e **tre** classi su
-servizi reali in container:
+The suite is unit tests without Spring, HTTP integration tests on H2, and **three** classes
+against real services in containers:
 
-| Classe | Serve a verificare cosa non si puo' verificare altrimenti |
+| Class | What it checks that cannot be checked otherwise |
 |---|---|
-| `PostgresSchemaConstraintsTest` | il vincolo anti-sovrapposizione `EXCLUDE USING gist`, che in H2 non esiste |
-| `VincoliUtentiTest` | i `CHECK` sui ruoli, che H2 applica in modo diverso — su H2 un test passerebbe **anche col vincolo assente** |
-| `MessaggisticaCancellazioniTest` | l'intera topologia AMQP: exchange, routing key, binding, converter, listener. Chiamare il metodo del consumatore proverebbe il metodo, non che il messaggio arrivi |
+| `PostgresSchemaConstraintsTest` | the anti-overlap constraint `EXCLUDE USING gist`, which does not exist in H2 |
+| `UserConstraintsTest` | the `CHECK` on the role, which H2 applies differently — on H2 a test would pass **even with the constraint absent** |
+| `CancellationMessagingTest` | the whole AMQP topology: exchange, routing key, binding, converter, listener. Calling the consumer's method would prove the method, not that the message arrives |
 
-Tutte e tre hanno `disabledWithoutDocker = true`, quindi senza Docker si saltano invece di
-far fallire la build.
+All three have `disabledWithoutDocker = true`, so without Docker they skip rather than fail
+the build.
 
-**Il salto e' innocuo in locale e impossibile in CI**, ed e' una distinzione voluta: il passo
-di guardia in `.github/workflows/ci.yml` cerca da se' le classi `@Testcontainers` e fallisce
-se un report dice `skipped` diverso da zero, se manca, o se contiene zero test. Verificato
-spegnendo Docker davvero: le tre classi producono report con `skipped` 3, 4 e 13, e la
-guardia le nomina tutte e tre.
+**The skip is harmless locally and impossible in CI**, and that distinction is deliberate: the
+guard step in `.github/workflows/ci.yml` looks for the `@Testcontainers` classes itself and
+fails if a report says `skipped` is not zero, if it is missing, or if it contains no tests.
+Checked by actually switching Docker off: the three classes produce reports with `skipped` 3,
+4 and 13, and the guard names all three.
 
-> Non e' una precauzione teorica. Prima che quella guardia esistesse, **quattro asserzioni
-> fallite sono rimaste nascoste per giorni** dietro una classe che si saltava in silenzio.
+> This is not a theoretical precaution. Before that guard existed, **four failed assertions
+> stayed hidden for days** behind a class that skipped itself in silence.
 
-Alla prima esecuzione con Docker attivo serve la rete per scaricare le immagini:
+On the first run with Docker up, the network is needed to pull the images:
 
 ```bash
 docker pull postgres:16-alpine

@@ -87,7 +87,7 @@ class RoomQueryTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<String, Object> data = dataOf(resp);
-        // Aula Grande (100) e Aula Virtuale (50) passano, Aula Piccola (10) no
+        // the large room (100) and the virtual one (50) pass, the small one (10) does not
         assertThat(data.get("totalRooms")).isEqualTo(2);
         assertThat(data).containsEntry("minCapacity", 50);
         assertThat(data).containsEntry("maxCapacityFound", 100);

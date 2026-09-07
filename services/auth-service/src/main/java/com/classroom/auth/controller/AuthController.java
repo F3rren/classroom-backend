@@ -94,7 +94,7 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "User login")
     @SecurityRequirements
-    @ApiResponse(responseCode = "200", description = "Login effettuato con successo",
+    @ApiResponse(responseCode = "200", description = "Login succeeded",
             content = @Content(schema = @Schema(implementation = LoginResponse.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String sessionId = generateSessionId();

@@ -57,7 +57,7 @@ class AdminManagementTest {
      * The notification is no longer a row written in this process but a call to
      * notification-service. The test keeps its intent by checking that the call goes out:
      * that is the right boundary to check from here, and it does not require the other
-     * servizio sia in esecuzione.
+     * service to be running.
      */
     @MockBean
     private EventPublisher eventPublisher;
@@ -189,9 +189,7 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    // ==================== Gestione utenti ====================
-
-    // ==================== Gestione prenotazioni ====================
+    // ==================== booking management ====================
 
     @Test
     void theAdminListsEveryBookingWithTheStatistics() throws Exception {
@@ -300,7 +298,7 @@ class AdminManagementTest {
         assertThat(roomRepository.existsById(roomId)).isTrue();
     }
 
-    // ==================== Elenco utenti ====================
+
 
     @Test
     void adminCreateRoomRejectsDuplicateName() throws Exception {

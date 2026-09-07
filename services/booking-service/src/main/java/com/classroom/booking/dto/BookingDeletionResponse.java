@@ -2,7 +2,7 @@ package com.classroom.booking.dto;
 
 import lombok.Getter;
 
-/** Conferma di eliminazione prenotazione da parte di un admin. */
+/** Confirmation that an admin deleted a booking. */
 @Getter
 public class BookingDeletionResponse {
     private final Long deletedBookingId;

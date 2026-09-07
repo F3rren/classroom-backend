@@ -14,7 +14,7 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Il file .env e' l'unico posto dove stanno i segreti, e lo leggono in due: Docker Compose
+ * The .env file is the only place the secrets live, and two things read it: Docker Compose
  * to inject them into the containers, and Spring - through spring.config.import - for runs
  * outside them. This class checks that the second half of that sentence is true.
  *

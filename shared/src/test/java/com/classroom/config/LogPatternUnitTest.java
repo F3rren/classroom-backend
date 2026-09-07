@@ -43,7 +43,7 @@ class LogPatternUnitTest {
 
     /** L'encoder dell'appender su console, come Logback l'ha costruito. */
     private PatternLayoutEncoder encoderConfigurato() {
-        // Il contesto va avviato: e' Spring Boot a dire a Logback di leggere
+        // The context has to start: it is Spring Boot that tells Logback to read
         // logback-spring.xml, and without it the default configuration would apply.
         try (var context = new SpringApplicationBuilder(SoloContesto.class)
                 .web(WebApplicationType.NONE)
@@ -86,7 +86,7 @@ class LogPatternUnitTest {
     @Test
     void unIdentificativoPiuLungoNonVieneTagliato() {
         // Found by looking at the real output, not at the file: with %-12.12X Logback
-        // SINISTRA, e "REQ_LEGGIBILE" usciva come "EQ_LEGGIBILE". Gli identificativi coniati
+        // LEFT, and "REQ_READABLE" came out as "EQ_READABLE". The ids minted
         // here are exactly 12 characters long and never noticed, but the gateway reuses the
         // X-Request-Id it receives, which can be as long as the caller likes.
         //

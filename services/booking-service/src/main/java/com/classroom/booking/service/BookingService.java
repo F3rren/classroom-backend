@@ -52,7 +52,7 @@ public class BookingService {
         if (!isRoomAvailable(roomId, startTime, endTime)) {
             logger.warn("room ID {} is not available for the period {} - {}", roomId, startTime, endTime);
             throw new BookingConflictException("BOOKING_CONFLICT",
-                    "Aula " + roomId + " busy from " + startTime + " to " + endTime,
+                    "Room " + roomId + " busy from " + startTime + " to " + endTime,
                     "L'aula non e' disponibile nel periodo richiesto.");
         }
         
@@ -109,7 +109,7 @@ public class BookingService {
         if (!isRoomAvailable(roomId, startTime, endTime)) {
             logger.warn("room ID {} is not available for the period {} - {}", roomId, startTime, endTime);
             throw new BookingConflictException("BLOCK_CONFLICT",
-                    "Aula " + roomId + " busy from " + startTime + " to " + endTime,
+                    "Room " + roomId + " busy from " + startTime + " to " + endTime,
                     "L'aula non e' disponibile nel periodo richiesto.");
         }
         
@@ -416,7 +416,7 @@ public class BookingService {
         // Is the room free over the new period? (this booking itself excluded)
         if (!isRoomAvailableExcluding(roomId, startTime, endTime, bookingId)) {
             throw new BookingConflictException("UPDATE_CONFLICT",
-                    "Aula " + roomId + " busy from " + startTime + " to " + endTime,
+                    "Room " + roomId + " busy from " + startTime + " to " + endTime,
                     "L'aula non e' disponibile nel nuovo periodo richiesto.");
         }
         

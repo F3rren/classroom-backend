@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Entità Aula - Basata su analisi frontend
+ * A room that can be booked.
  * Campi utilizzati dal frontend (normalizeRoomData):
  * - id, name, capacity, floor, isVirtual, description, status/status
  * 
@@ -41,7 +41,7 @@ public class Room {
     private String description;
     
     @Column(length = 20)
-    // Persistito minuscolo dal converter di StatoAula (CHECK constraint aula_stato_check)
+    // Stored lowercase by RoomStatus's converter (CHECK constraint room_status_check)
     private RoomStatus status;
     
     @PrePersist

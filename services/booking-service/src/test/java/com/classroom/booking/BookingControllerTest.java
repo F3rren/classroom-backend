@@ -201,7 +201,7 @@ class BookingControllerTest {
     void missingFieldErrorResponseShapeIsLocked() throws Exception {
         HttpHeaders headers = bearer(tokenOwner);
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-        // aulaId mancante
+        // roomId missing
         Map<String, Object> body = Map.of(
                 "startTime", LocalDateTime.now().plusDays(2).toString(),
                 "endTime", LocalDateTime.now().plusDays(2).plusHours(1).toString());

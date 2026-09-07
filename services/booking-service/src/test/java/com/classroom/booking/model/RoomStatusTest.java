@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Contratto esterno di StatoAula.
+ * The external contract of RoomStatus.
  *
  * These two tests used to live inside RoleTest, which covered two different enums. The
  * modularisation separated the cases: Role is common to every service and lives in shared,

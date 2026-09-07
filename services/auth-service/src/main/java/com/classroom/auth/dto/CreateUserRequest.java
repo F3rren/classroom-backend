@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * A request from an admin to create a new user (POST /api/admin/users).
- * La password e' obbligatoria qui, a differenza di UpdateUserRequest dove e' opzionale.
+ * The password is mandatory here, unlike in UpdateUserRequest where it is optional.
  */
 @Data
 @Schema(description = "Dati per creare un nuovo utente (solo amministratori)")

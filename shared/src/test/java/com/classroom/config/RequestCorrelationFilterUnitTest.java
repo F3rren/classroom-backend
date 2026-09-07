@@ -31,8 +31,9 @@ class RequestCorrelationFilterUnitTest {
     @Test
     void riusaLIdentificativoRicevutoDaChiamaChiama() throws Exception {
         // This is the point of the whole class in a system of several services: the gateway
-        // genera l'id, i servizi a valle lo ereditano. Se qui se ne generasse uno nuovo,
-        // un giro fra gateway e servizio prenotazioni resterebbe impossibile da ricucire.
+        // mints the id and the downstream services inherit it. If a new one were generated
+        // here, a round trip between the gateway and the booking service could never be
+        // stitched back together.
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader(RequestCorrelationFilter.HEADER, "REQ_DALGATEWAY");
         MockHttpServletResponse response = new MockHttpServletResponse();

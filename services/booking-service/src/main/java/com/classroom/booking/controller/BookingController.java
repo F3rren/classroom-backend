@@ -142,7 +142,7 @@ public class BookingController {
                 request.getRoomId(), request.getCourseId(), snapshotOf(principal), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
             logger.warn("END prenotaroom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.getRoomId());
-            throw new BookingConflictException("BOOKING_CONFLICT", "Impossibile prenotare l'aula",
+            throw new BookingConflictException("BOOKING_CONFLICT", "Could not book the room",
                     "L'aula è appena stata prenotata da un'altra richiesta per lo stesso periodo. Riprova con un altro orario.");
         }
 
@@ -212,7 +212,7 @@ public class BookingController {
                 bookingId, request.getRoomId(), request.getCourseId(), principal.id(), principal.isAdmin(), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
             logger.warn("END updateBooking - conflict raised by the database constraint (concurrent booking) - bookingId: {}, roomId: {}", bookingId, request.getRoomId());
-            throw new BookingConflictException("UPDATE_CONFLICT", "Impossibile modificare la prenotazione",
+            throw new BookingConflictException("UPDATE_CONFLICT", "Could not update the booking",
                     "L'aula è appena stata prenotata da un'altra richiesta per il nuovo periodo. Riprova con un altro orario.");
         }
 
@@ -273,7 +273,7 @@ public class BookingController {
             blocco = bookingService.blockRoom(request.getRoomId(), snapshotOf(principal), startTime, endTime, request.getDescription());
         } catch (DataIntegrityViolationException e) {
             logger.warn("END bloccaroom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.getRoomId());
-            throw new BookingConflictException("BLOCK_CONFLICT", "Impossibile bloccare l'aula",
+            throw new BookingConflictException("BLOCK_CONFLICT", "Could not block the room",
                     "L'aula è appena stata occupata da un'altra richiesta per lo stesso periodo.");
         }
 
@@ -370,7 +370,7 @@ public class BookingController {
         return ResponseEntity.ok(new SingleBookingPayload(bookings));
     }
 
-    // Annulla prenotazione
+    // Cancels a booking.
     @DeleteMapping("/{bookingId}")
     @Operation(summary = "Cancel a booking (owner or admin only)")
     public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("bookingId") Long bookingId,
@@ -425,7 +425,7 @@ public class BookingController {
 
     // A single booking by id, in the simple shape - OWNER OR ADMIN ONLY.
     @GetMapping("/{id}")
-    @PreAuthorize("@prenotazioneAuth.isOwnerOrAdmin(#id, principal)")
+    @PreAuthorize("@bookingAuth.isOwnerOrAdmin(#id, principal)")
     @Operation(summary = "Fetch a single booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWrapper.class)))
@@ -447,7 +447,7 @@ public class BookingController {
 
     // Full details of one particular booking - OWNER OR ADMIN ONLY.
     @GetMapping("/{id}/details")
-    @PreAuthorize("@prenotazioneAuth.isOwnerOrAdmin(#id, principal)")
+    @PreAuthorize("@bookingAuth.isOwnerOrAdmin(#id, principal)")
     @Operation(summary = "Full details of one booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWithDetailsPayload.class)))
@@ -507,7 +507,7 @@ public class BookingController {
         }
     }
 
-    // Prenotazioni future - ACCESSIBILE A TUTTI GLI UTENTI AUTENTICATI
+    // Bookings that start in the future - OPEN TO ANY AUTHENTICATED USER.
     @GetMapping("/future")
     @Operation(summary = "List the bookings that start in the future")
     public ResponseEntity<BookingsListWithTotalPayload> getFutureBookings() {

@@ -36,7 +36,7 @@ public class RoomService {
     private static final int ORE_DI_PREAVVISO = 2;
 
     private static final String SCOPO_PREDEFINITO = "Lezione";
-    private static final String MOTIVO_BLOCCO_PREDEFINITO = "Aula bloccata";
+    private static final String DEFAULT_BLOCK_REASON = "Aula bloccata";
     /** Who a block is attributed to: a block is by definition an admin intervention. */
     private static final String BLOCCATA_DA = Role.ADMIN.getValue();
 
@@ -73,7 +73,7 @@ public class RoomService {
         if (roomRepository.existsByNameIgnoreCase(request.getName())) {
             logger.debug("END createroom - name already taken: {}", request.getName());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Aula name already taken: " + request.getName(),
+                    "Room name already taken: " + request.getName(),
                     "Esiste gia' un'aula con questo nome.");
         }
         
@@ -115,7 +115,7 @@ public class RoomService {
         if (roomRepository.existsByNameIgnoreCaseAndIdNot(request.getName(), id)) {
             logger.debug("END updateroom - name already taken: {}", request.getName());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Aula name already taken: " + request.getName(),
+                    "Room name already taken: " + request.getName(),
                     "Esiste gia' un'aula con questo nome.");
         }
 
@@ -296,7 +296,7 @@ public class RoomService {
                 } else if (booking.getStatus().isAdminIntervention()) {
                     status = RoomAvailability.BLOCKED;
                     blockInfo = new RoomDetailsResponse.BlockInfo(
-                        descriptionOr(booking, MOTIVO_BLOCCO_PREDEFINITO),
+                        descriptionOr(booking, DEFAULT_BLOCK_REASON),
                         BLOCCATA_DA,
                         booking.getCreatedAt().toLocalDate().format(FORMATO_DATA)
                     );

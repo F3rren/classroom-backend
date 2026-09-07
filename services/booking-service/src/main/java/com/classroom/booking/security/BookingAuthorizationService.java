@@ -6,11 +6,11 @@ import com.classroom.booking.service.BookingService;
 import org.springframework.stereotype.Component;
 
 /**
- * Usato da @PreAuthorize("@prenotazioneAuth.isOwnerOrAdmin(#id, principal)") sugli endpoint
+ * Used by @PreAuthorize("@bookingAuth.isOwnerOrAdmin(#id, principal)") on the read
  * read endpoints of BookingController, in place of the imperative isOwnerOrAdmin check that
  * used to live in the controller.
  */
-@Component("prenotazioneAuth")
+@Component("bookingAuth")
 public class BookingAuthorizationService {
 
     private final BookingService bookingService;

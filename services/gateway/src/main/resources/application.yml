@@ -43,7 +43,7 @@ spring:
       # the limit entirely. With for-append: false the gateway writes only its own direct
       # peer and discards whatever the client declares.
       #
-      # QUESTA RIGA E "server.forward-headers-strategy=framework" NEI TRE SERVIZI SI
+      # THIS LINE AND "server.forward-headers-strategy=framework" IN THE THREE SERVICES
       # THEY HOLD EACH OTHER UP: there the header is trusted, here it is made trustworthy.
       # Removing one without knowing about the other reopens the hole in silence.
       # Fissata da IndirizzoDelChiamanteTest.
@@ -114,7 +114,7 @@ spring:
             # why. The route now describes a boundary between services.
             - Path=/api/auth/**,/api/me/**,/api/admin/users,/api/admin/users/**
 
-        # Aule, prenotazioni e amministrazione delle stesse.
+        # Rooms, bookings, and the administration of both.
         - id: application
           uri: ${BOOKING_SERVICE_URL:http://localhost:17103}
           predicates:

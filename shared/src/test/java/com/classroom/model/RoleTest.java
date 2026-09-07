@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Contratto esterno di Ruolo.
+ * The external contract of Role.
  *
  * The test on toAuthority() is the most important in the file: the
  * @PreAuthorize("hasRole('ADMIN')") expressions are SpEL strings the compiler does not check,
@@ -34,7 +34,7 @@ class RoleTest {
 
     @Test
     void matchesTheDatabaseCheckConstraint() {
-        // utente_ruolo_check ammette esattamente 'admin' e 'user'
+        // user_role_check admits exactly 'admin' and 'user'
         assertThat(java.util.Arrays.stream(Role.values()).map(Role::getValue))
                 .containsExactlyInAnyOrder("admin", "user");
     }
