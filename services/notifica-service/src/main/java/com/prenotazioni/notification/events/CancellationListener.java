@@ -37,7 +37,7 @@ public class CancellationListener {
     @RabbitListener(queues = EventTopology.CANCELLATION_QUEUE)
     public void onCancellation(
             BookingCancelledEvent event,
-            @Header(name = RequestCorrelationFilter.INTESTAZIONE, required = false) String requestId) {
+            @Header(name = RequestCorrelationFilter.HEADER, required = false) String requestId) {
         // Rimesso in MDC per la durata del trattamento: e' cio' che permette di leggere in
         // fila la richiesta HTTP che ha annullato la prenotazione e la notifica creata qui,
         // che avviene su un altro servizio, un altro thread e qualche istante dopo.

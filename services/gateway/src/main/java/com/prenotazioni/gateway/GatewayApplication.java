@@ -4,11 +4,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Punto di ingresso unico verso i servizi.
+ * The single entry point towards the services.
  *
- * Non c'e' altro codice oltre a questa classe: le rotte sono dichiarate in
- * application.yml, perche' sono configurazione e non logica. Aggiungere un servizio
- * significa aggiungere una voce a quel file, non ricompilare questo modulo.
+ * There is no code here beyond this class: the routes are declared in application.yml,
+ * because they are configuration and not logic. Adding a service means adding an entry to
+ * that file, not recompiling this module.
  */
 @SpringBootApplication
 public class GatewayApplication {

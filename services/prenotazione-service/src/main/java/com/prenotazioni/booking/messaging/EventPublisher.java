@@ -54,7 +54,7 @@ public class EventPublisher {
                     event,
                     message -> {
                         message.getMessageProperties()
-                                .setHeader(RequestCorrelationFilter.INTESTAZIONE, requestId);
+                                .setHeader(RequestCorrelationFilter.HEADER, requestId);
                         return message;
                     });
             logger.debug("Evento di cancellazione pubblicato per utenteId={}, prenotazioneId={}",

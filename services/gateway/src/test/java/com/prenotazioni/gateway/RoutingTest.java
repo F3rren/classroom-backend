@@ -7,26 +7,29 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
- * Verifica le DECISIONI di instradamento, non i servizi a valle.
+ * Checks the routing DECISIONS, not the downstream services.
  *
- * Le rotte puntano a una porta su cui non ascolta nessuno, e questo rende le due
- * risposte distinguibili senza avviare alcun servizio ne' uno stub HTTP:
+ * The routes point at a port where nothing is listening, and that alone makes the two
+ * answers distinguishable without starting any service or even an HTTP stub:
  *
- *  - un percorso instradato prova a raggiungere il servizio e fallisce con 5xx;
- *  - un percorso bloccato o sconosciuto risponde 404 senza uscire dal gateway.
+ *  - a routed path tries to reach the service and fails with a 5xx;
+ *  - a blocked or unknown path answers 404 without ever leaving the gateway.
  *
- * Cio' che si verifica e' quindi esattamente la scelta del gateway, che e' la sua
- * unica responsabilita'.
+ * What is checked is therefore exactly the gateway's choice, which is its only
+ * responsibility.
+ *
+ * The route ids here are the ones this test declares for itself, not the ones in
+ * application.yml: the real table is covered by RouteTableTest.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
-        "spring.cloud.gateway.routes[0].id=notifiche-interne-bloccate",
+        "spring.cloud.gateway.routes[0].id=notifications-internal-blocked",
         "spring.cloud.gateway.routes[0].uri=forward:/route-not-exposed",
         "spring.cloud.gateway.routes[0].predicates[0]=Path=/api/notifications/internal/**",
-        "spring.cloud.gateway.routes[1].id=notifiche",
+        "spring.cloud.gateway.routes[1].id=notifications",
         "spring.cloud.gateway.routes[1].uri=http://localhost:9",
         "spring.cloud.gateway.routes[1].predicates[0]=Path=/api/notifications/**",
-        "spring.cloud.gateway.routes[2].id=applicazione",
+        "spring.cloud.gateway.routes[2].id=application",
         "spring.cloud.gateway.routes[2].uri=http://localhost:9",
         "spring.cloud.gateway.routes[2].predicates[0]=Path=/api/auth/**,/api/me/**,/api/rooms/**,/api/bookings/**,/api/admin/**"
 })
@@ -37,9 +40,9 @@ class RoutingTest {
 
     @Test
     void theInternalRoutesAreNotReachableFromOutside() {
-        // 404 e non 5xx: la richiesta non e' nemmeno partita verso notifica-service.
-        // E' il controllo piu' importante del file: quelle rotte creano notifiche
-        // arbitrarie e devono restare una conversazione fra servizi.
+        // 404 and not 5xx: the request never even set off towards notification-service.
+        // This is the most important check in the file: those routes create arbitrary
+        // notifications and must stay a conversation between services.
         client.post().uri("/api/notifications/internal/booking-cancellation")
                 .exchange()
                 .expectStatus().isNotFound();
@@ -51,8 +54,8 @@ class RoutingTest {
 
     @Test
     void thePublicNotificationPathsAreRouted() {
-        // 5xx: il gateway ha deciso di inoltrare e non ha trovato nessuno in ascolto.
-        // E' la prova che la rotta e' stata riconosciuta.
+        // 5xx: the gateway decided to forward and found nobody listening. That is the
+        // proof that the route was recognised.
         client.get().uri("/api/notifications")
                 .exchange()
                 .expectStatus().is5xxServerError();
@@ -69,8 +72,8 @@ class RoutingTest {
 
     @Test
     void loginIsRoutedLikeTheRest() {
-        // Rotta pubblica, ma per il gateway non e' un caso speciale: non valida token,
-        // quindi non deve distinguere fra rotte protette e no.
+        // A public route, but not a special case for the gateway: it validates no tokens,
+        // so it has no reason to tell protected routes from open ones.
         client.post().uri("/api/auth/login")
                 .exchange()
                 .expectStatus().is5xxServerError();
@@ -78,7 +81,7 @@ class RoutingTest {
 
     @Test
     void anUnknownPathStaysOut() {
-        client.get().uri("/api/inventato")
+        client.get().uri("/api/made-up")
                 .exchange()
                 .expectStatus().isNotFound();
     }

@@ -10,43 +10,43 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 /**
- * L'identificativo della richiesta nasce qui, al bordo, e non dentro ogni servizio.
+ * The request id is born here, at the edge, and not inside each service.
  *
- * I servizi a valle hanno gia' un filtro che riusa l'intestazione X-Request-Id se la
- * trovano (RequestCorrelationFilter, nel modulo shared) - ma finche' nessuno la manda, ogni
- * servizio se ne genera una propria e una chiamata che attraversa gateway e servizio
- * prenotazioni resta spezzata in due tronconi scollegati nei log. Coniarla qui e' cio' che
- * rende utile quel riuso: da questo punto in avanti tutti parlano della stessa richiesta.
+ * The downstream services already have a filter that reuses the X-Request-Id header when
+ * they find one (RequestCorrelationFilter, in the shared module) - but as long as nobody
+ * sends it, every service generates its own, and a call crossing the gateway and the
+ * booking service stays split into two disconnected halves in the logs. Minting it here is
+ * what makes that reuse worth anything: from this point on everyone is talking about the
+ * same request.
  *
- * Il filtro sta il piu' vicino possibile all'ingresso (HIGHEST_PRECEDENCE) cosi' che anche
- * cio' che fallisce presto - un instradamento che non trova il servizio, per dire - abbia
- * gia' il suo identificativo da mostrare.
+ * The filter sits as close to the entrance as possible (HIGHEST_PRECEDENCE) so that even
+ * what fails early - a route that finds no service, say - already has an id to show.
  */
 @Component
 public class EdgeCorrelationFilter implements GlobalFilter, Ordered {
 
-    static final String INTESTAZIONE = "X-Request-Id";
+    static final String HEADER = "X-Request-Id";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String ricevuto = exchange.getRequest().getHeaders().getFirst(INTESTAZIONE);
-        // Si rispetta quella in arrivo: se un giorno davanti al gateway ci fosse un
-        // proxy o un frontend che gia' traccia le chiamate, sovrascriverla romperebbe
-        // proprio la catena che questo filtro esiste per tenere insieme.
-        String id = (ricevuto == null || ricevuto.isBlank()) ? generate() : ricevuto;
+        String received = exchange.getRequest().getHeaders().getFirst(HEADER);
+        // An incoming id is honoured: if one day there were a proxy or a frontend in front
+        // of the gateway that already traces calls, overwriting it would break exactly the
+        // chain this filter exists to hold together.
+        String id = (received == null || received.isBlank()) ? generate() : received;
 
         ServerWebExchange withId = exchange.mutate()
-                .request(r -> r.headers(h -> h.set(INTESTAZIONE, id)))
+                .request(r -> r.headers(h -> h.set(HEADER, id)))
                 .build();
-        // Anche nell'exchange, cosi' GatewayErrorHandler puo' citarlo quando risponde
-        // al posto di un servizio irraggiungibile.
-        withId.getAttributes().put(INTESTAZIONE, id);
-        // set() prima di inoltrare non basta: il servizio a valle rimanda a sua volta la
-        // sua X-Request-Id, il gateway la unisce a quella gia' presente e il client si
-        // ritrova l'intestazione DUE volte (stesso valore, ma comunque una lista).
-        // beforeCommit gira dopo la fusione, quindi qui set() sostituisce davvero.
+        // In the exchange too, so that GatewayErrorHandler can quote it when it answers on
+        // behalf of an unreachable service.
+        withId.getAttributes().put(HEADER, id);
+        // A set() before forwarding is not enough: the downstream service sends its own
+        // X-Request-Id back, the gateway merges it with the one already there, and the
+        // client ends up with the header TWICE (same value, but a list all the same).
+        // beforeCommit runs after that merge, so here set() really does replace.
         withId.getResponse().beforeCommit(() -> {
-            withId.getResponse().getHeaders().set(INTESTAZIONE, id);
+            withId.getResponse().getHeaders().set(HEADER, id);
             return Mono.empty();
         });
 
@@ -54,23 +54,23 @@ public class EdgeCorrelationFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * L'identificativo di una richiesta, da qualunque punto lo si chieda.
+     * The id of a request, from wherever it is asked for.
      *
-     * L'ordine dei ripieghi non e' casuale. L'attributo lo scrive il filtro qui sopra, ma
-     * il filtro NON gira quando nessuna rotta corrisponde: in quel caso il 404 nasce nella
-     * mappatura, prima della catena. Rileggere l'intestazione originale copre proprio
-     * quel buco, e conserva l'id del chiamante anche su un percorso inesistente.
+     * The order of the fallbacks is not arbitrary. The attribute is written by the filter
+     * above, but that filter does NOT run when no route matches: in that case the 404 is
+     * born in the mapping, before the chain. Re-reading the original header covers exactly
+     * that gap, and keeps the caller's id even on a path that does not exist.
      */
     static String ofRequest(ServerWebExchange exchange) {
-        Object attributo = exchange.getAttribute(INTESTAZIONE);
-        if (attributo instanceof String saved && !saved.isBlank()) {
+        Object attribute = exchange.getAttribute(HEADER);
+        if (attribute instanceof String saved && !saved.isBlank()) {
             return saved;
         }
-        String ricevuto = exchange.getRequest().getHeaders().getFirst(INTESTAZIONE);
-        return (ricevuto == null || ricevuto.isBlank()) ? generate() : ricevuto;
+        String received = exchange.getRequest().getHeaders().getFirst(HEADER);
+        return (received == null || received.isBlank()) ? generate() : received;
     }
 
-    /** Lo stesso formato dei servizi a valle: un id che cambia forma a meta' strada confonde. */
+    /** The same shape as the downstream services: an id that changes form halfway confuses. */
     static String generate() {
         return "REQ_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }

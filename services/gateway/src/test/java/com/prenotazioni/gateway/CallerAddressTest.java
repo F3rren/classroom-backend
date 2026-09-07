@@ -13,90 +13,90 @@ import java.net.InetSocketAddress;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Quale indirizzo arriva ai servizi come indirizzo del chiamante.
+ * Which address reaches the services as the caller's address.
  *
- * Non e' un dettaglio di configurazione: auth-service limita i tentativi di login su una
- * chiave che comincia con quell'indirizzo, e i tre servizi dichiarano
- * server.forward-headers-strategy=framework, cioe' si FIDANO di X-Forwarded-For per
- * ricavarlo. Se il valore che arriva lo puo' scegliere chi chiama, il limite sui tentativi
- * si evita cambiandolo a ogni richiesta.
+ * This is not a configuration detail: auth-service rate-limits login attempts on a key that
+ * starts with that address, and the three services declare
+ * server.forward-headers-strategy=framework, meaning they TRUST X-Forwarded-For to derive
+ * it. If the caller can choose the value that arrives, the attempt limit is sidestepped by
+ * changing it on every request.
  *
- * Il comportamento predefinito di Spring Cloud Gateway e' AGGIUNGERE in coda a un
- * X-Forwarded-For gia' presente invece di sostituirlo, e ForwardedHeaderFilter legge il
- * primo valore: senza spring.cloud.gateway.x-forwarded.for-append=false questi test
- * falliscono, ed e' cosi' che sono stati scritti - prima della correzione, per vedere
- * l'aggiramento accadere invece di dare per buono che fosse chiuso.
+ * Spring Cloud Gateway's default behaviour is to APPEND to an existing X-Forwarded-For
+ * rather than replace it, and ForwardedHeaderFilter reads the first value: without
+ * spring.cloud.gateway.x-forwarded.for-append=false these tests fail, and that is how they
+ * were written - before the fix, to watch the bypass happen instead of assuming it was
+ * closed.
  *
- * Se un giorno davanti al gateway ci fosse un proxy vero, questa scelta andrebbe rifatta:
- * li' l'intestazione in arrivo sarebbe legittima, e la strada giusta sarebbe fidarsi del
- * proxy - non del client.
+ * If one day there were a real proxy in front of the gateway, this choice would have to be
+ * revisited: there the incoming header would be legitimate, and the right answer would be
+ * to trust the proxy - not the client.
  */
 @SpringBootTest
 class CallerAddressTest {
 
-    private static final String INTESTAZIONE = "X-Forwarded-For";
+    private static final String HEADER = "X-Forwarded-For";
 
     @Autowired
     private XForwardedHeadersFilter filter;
 
-    /** Le intestazioni che il gateway manderebbe al servizio a valle. */
-    private HttpHeaders inoltrate(String dichiaratoDalClient, String realAddress) {
-        MockServerHttpRequest.BaseBuilder<?> costruttore = MockServerHttpRequest
+    /** The headers the gateway would send on to the downstream service. */
+    private HttpHeaders forwarded(String declaredByClient, String realAddress) {
+        MockServerHttpRequest.BaseBuilder<?> builder = MockServerHttpRequest
                 .get("/api/auth/login")
                 .remoteAddress(new InetSocketAddress(realAddress, 51234));
-        if (dichiaratoDalClient != null) {
-            costruttore.header(INTESTAZIONE, dichiaratoDalClient);
+        if (declaredByClient != null) {
+            builder.header(HEADER, declaredByClient);
         }
-        MockServerHttpRequest request = costruttore.build();
+        MockServerHttpRequest request = builder.build();
         return filter.filter(request.getHeaders(), MockServerWebExchange.from(request));
     }
 
     @Test
     void anAddressDeclaredByTheClientNeverReachesTheServices() {
-        // LA prova. Se questo cade, il limite sui tentativi di login si aggira mandando un
-        // X-Forwarded-For diverso a ogni richiesta, e nessun altro controllo se ne accorge.
-        HttpHeaders inoltrate = inoltrate("9.9.9.9", "203.0.113.7");
+        // THE test. If this falls, the login attempt limit is bypassed by sending a
+        // different X-Forwarded-For on every request, and no other check notices.
+        HttpHeaders forwarded = forwarded("9.9.9.9", "203.0.113.7");
 
-        assertThat(inoltrate.get(INTESTAZIONE))
-                .as("il gateway deve scrivere solo l'indirizzo del suo interlocutore diretto")
+        assertThat(forwarded.get(HEADER))
+                .as("the gateway must write only the address of its direct peer")
                 .containsExactly("203.0.113.7");
     }
 
     @Test
     void notEvenAnInventedChainSurvives() {
-        // Chi vuole aggirare il limite non manda un indirizzo solo: ne manda una catena,
-        // sperando che il primo valore vinca. Vale la stessa regola.
-        HttpHeaders inoltrate = inoltrate("9.9.9.9, 8.8.8.8, 7.7.7.7", "203.0.113.7");
+        // Someone bypassing the limit does not send a single address: they send a chain,
+        // hoping the first value wins. The same rule applies.
+        HttpHeaders forwarded = forwarded("9.9.9.9, 8.8.8.8, 7.7.7.7", "203.0.113.7");
 
-        assertThat(inoltrate.get(INTESTAZIONE)).containsExactly("203.0.113.7");
+        assertThat(forwarded.get(HEADER)).containsExactly("203.0.113.7");
     }
 
     @Test
     void theRealAddressTravelsAnyway() {
-        // L'altra meta' del requisito: scartare quello dichiarato non deve voler dire non
-        // mandarne nessuno. Senza intestazione i servizi vedrebbero tutti lo stesso
-        // indirizzo - quello del gateway - e chiunque potrebbe esaurire il contatore di un
-        // indirizzo email altrui tenendone fuori il proprietario.
-        HttpHeaders inoltrate = inoltrate(null, "198.51.100.42");
+        // The other half of the requirement: discarding the declared one must not mean
+        // sending none at all. With no header the services would all see the same address -
+        // the gateway's - and anybody could exhaust the counter for somebody else's email
+        // address and lock its owner out.
+        HttpHeaders forwarded = forwarded(null, "198.51.100.42");
 
-        assertThat(inoltrate.get(INTESTAZIONE)).containsExactly("198.51.100.42");
+        assertThat(forwarded.get(HEADER)).containsExactly("198.51.100.42");
     }
 
     @Test
     void differentCallersStayDistinct() {
-        // Se collassassero sullo stesso valore, il limitatore conterebbe tutti insieme e
-        // un solo attaccante basterebbe a bloccare il login di chiunque altro.
-        assertThat(inoltrate(null, "203.0.113.7").getFirst(INTESTAZIONE))
-                .isNotEqualTo(inoltrate(null, "198.51.100.42").getFirst(INTESTAZIONE));
+        // If they collapsed onto the same value the limiter would count everyone together,
+        // and a single attacker would be enough to block everybody else's login.
+        assertThat(forwarded(null, "203.0.113.7").getFirst(HEADER))
+                .isNotEqualTo(forwarded(null, "198.51.100.42").getFirst(HEADER));
     }
 
     @Test
     void theConfigurationHoldingAllThisUpIsExplicit() {
-        // Ridondante rispetto ai test sopra, e tenuto apposta: se un aggiornamento cambiasse
-        // il default di for-append, questo dice in una riga QUALE riga di configurazione
-        // rimettere, invece di lasciare quattro asserzioni rosse da interpretare.
+        // Redundant with the tests above, and kept on purpose: if an upgrade changed the
+        // default of for-append, this says in one line WHICH configuration line to put
+        // back, instead of leaving four red assertions to interpret.
         assertThat(filter.isForAppend())
-                .as("spring.cloud.gateway.x-forwarded.for-append deve restare false")
+                .as("spring.cloud.gateway.x-forwarded.for-append must stay false")
                 .isFalse();
     }
 }

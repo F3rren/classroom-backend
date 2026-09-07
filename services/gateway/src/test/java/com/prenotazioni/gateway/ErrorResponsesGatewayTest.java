@@ -7,24 +7,24 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
- * La forma delle risposte d'errore del gateway.
+ * The shape of the gateway's error responses.
  *
- * E' un test di contratto, non di comportamento: il frontend legge queste chiavi esatte, e
- * fino a poco fa il gateway ne restituiva altre. Un client che leggeva userMessage otteneva
- * undefined ogni volta che a fallire era il gateway - cioe' quando un servizio e' giu', che
- * e' quando un messaggio sensato serve di piu'.
+ * This is a contract test, not a behaviour test: the frontend reads these exact keys, and
+ * until recently the gateway returned different ones. A client reading userMessage got
+ * undefined every time the failure was the gateway's - that is, whenever a service is down,
+ * which is when a sensible message matters most.
  *
- * L'insieme delle chiavi e' volutamente bloccato con jsonPath su ciascuna: l'envelope e'
- * ricostruito a mano qui dentro (il gateway non puo' dipendere da shared senza trascinarsi
- * Tomcat) e questo test e' cio' che tiene le due forme allineate. Il gemello dall'altra
- * parte e' ApiEnvelopeUnitTest in shared.
+ * The set of keys is deliberately pinned with a jsonPath on each: the envelope is rebuilt by
+ * hand in the gateway (which cannot depend on shared without dragging Tomcat in) and this
+ * test is what keeps the two shapes aligned. Its twin on the other side is
+ * ApiEnvelopeUnitTest in shared.
  *
- * Le rotte puntano a una porta dove non ascolta nessuno: e' cosi' che si ottiene un
- * servizio a valle irraggiungibile senza doverne spegnere uno vero.
+ * The routes point at a port where nothing is listening: that is how you get an unreachable
+ * downstream service without having to shut a real one down.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
-        "spring.cloud.gateway.routes[0].id=verso-il-nulla",
+        "spring.cloud.gateway.routes[0].id=to-nowhere",
         "spring.cloud.gateway.routes[0].uri=http://localhost:9",
         "spring.cloud.gateway.routes[0].predicates[0]=Path=/api/rooms/**"
 })
@@ -35,8 +35,8 @@ class ErrorResponsesGatewayTest {
 
     @Test
     void anUnreachableServiceGives503AndNoLonger500() {
-        // 503 e non 500: il servizio non risponde, ma il problema e' temporaneo e riprovare
-        // ha senso. Prima erano indistinguibili, ed entrambi 500.
+        // 503 and not 500: the service is not answering, but the problem is temporary and
+        // retrying makes sense. They used to be indistinguishable, and both 500.
         client.get().uri("/api/rooms")
                 .exchange()
                 .expectStatus().isEqualTo(503)
@@ -50,20 +50,21 @@ class ErrorResponsesGatewayTest {
 
     @Test
     void anUnknownPathGives404InTheRightShape() {
-        client.get().uri("/api/inventato")
+        client.get().uri("/api/made-up")
                 .exchange()
                 .expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.error").isEqualTo("NOT_FOUND")
+                // Italian on purpose: userMessage is the one field a person reads.
                 .jsonPath("$.userMessage").isEqualTo("La risorsa richiesta non esiste.");
     }
 
     @Test
     void theResponseHasExactlyTheServiceEnvelopeKeys() {
-        // Il vincolo vero di questo file. Le chiavi sono sette in ApiEnvelope, ma "data"
-        // e' omesso quando nullo (@JsonInclude NON_NULL), quindi un errore ne espone sei.
-        client.get().uri("/api/inventato")
+        // The real constraint of this file. ApiEnvelope has seven keys, but "data" is omitted
+        // when null (@JsonInclude NON_NULL), so an error exposes six.
+        client.get().uri("/api/made-up")
                 .exchange()
                 .expectBody()
                 .jsonPath("$.success").exists()
@@ -72,8 +73,8 @@ class ErrorResponsesGatewayTest {
                 .jsonPath("$.userMessage").exists()
                 .jsonPath("$.timestamp").exists()
                 .jsonPath("$.sessionId").exists()
-                // e nessuna delle chiavi del formato predefinito di Spring, che erano
-                // il problema da cui e' nata questa classe
+                // and none of the keys of Spring's default format, which were the problem
+                // this class was born from
                 .jsonPath("$.path").doesNotExist()
                 .jsonPath("$.status").doesNotExist()
                 .jsonPath("$.requestId").doesNotExist();
@@ -81,9 +82,9 @@ class ErrorResponsesGatewayTest {
 
     @Test
     void theTimestampUsesTheServiceFormatAndNotSpringsIso() {
-        // yyyy-MM-dd HH:mm:ss, lo stesso di util.Timestamps. Prima era ISO con offset,
-        // quindi due formati diversi nella stessa API a seconda di chi rispondeva.
-        client.get().uri("/api/inventato")
+        // yyyy-MM-dd HH:mm:ss, the same as util.Timestamps. It used to be ISO with an offset,
+        // so the same API carried two different formats depending on who answered.
+        client.get().uri("/api/made-up")
                 .exchange()
                 .expectBody()
                 .jsonPath("$.timestamp").value(org.hamcrest.Matchers.matchesPattern(
@@ -92,8 +93,8 @@ class ErrorResponsesGatewayTest {
 
     @Test
     void theUserMessageExposesNoInternalDetail() {
-        // Nessun nome di classe, nessun indirizzo, nessuno stack: cio' che serve a chi
-        // indaga sta nei log insieme al sessionId, non nella risposta.
+        // No class name, no address, no stack: what the investigator needs is in the logs
+        // alongside the sessionId, not in the response.
         client.get().uri("/api/rooms")
                 .exchange()
                 .expectBody()

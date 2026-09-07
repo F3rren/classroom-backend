@@ -103,7 +103,7 @@ public class UserDataClient {
                         // nuovo, e un'operazione che attraversa tre servizi finisce nei log
                         // sotto tre chiavi diverse. Cioe' la correlazione funzionerebbe
                         // ovunque tranne dove serve.
-                        .header(RequestCorrelationFilter.INTESTAZIONE, RequestCorrelationFilter.current())
+                        .header(RequestCorrelationFilter.HEADER, RequestCorrelationFilter.current())
                         .retrieve()
                         .toBodilessEntity();
                 if (attempt > 1) {

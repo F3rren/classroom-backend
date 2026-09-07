@@ -44,7 +44,7 @@ class EventPublisherUnitTest {
     }
 
     /** Applica al messaggio il post-processore che il pubblicatore ha passato. */
-    private MessageProperties intestazioniProdotte() {
+    private MessageProperties producedHeaders() {
         ArgumentCaptor<MessagePostProcessor> processore = ArgumentCaptor.forClass(MessagePostProcessor.class);
         verify(rabbitTemplate).convertAndSend(
                 eq(EventTopology.EXCHANGE),
@@ -64,7 +64,7 @@ class EventPublisherUnitTest {
 
         eventPublisher.publishCancellation(event);
 
-        assertThat((String) intestazioniProdotte().getHeader(RequestCorrelationFilter.INTESTAZIONE))
+        assertThat((String) producedHeaders().getHeader(RequestCorrelationFilter.HEADER))
                 .isEqualTo("REQ_DALGATEWAY");
     }
 
@@ -75,7 +75,7 @@ class EventPublisherUnitTest {
         // resterebbe senza chiave e non si potrebbe nemmeno raggrupparla con se stessa.
         eventPublisher.publishCancellation(event);
 
-        assertThat((String) intestazioniProdotte().getHeader(RequestCorrelationFilter.INTESTAZIONE))
+        assertThat((String) producedHeaders().getHeader(RequestCorrelationFilter.HEADER))
                 .isNotBlank();
     }
 

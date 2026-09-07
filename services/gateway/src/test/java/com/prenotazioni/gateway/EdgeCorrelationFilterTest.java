@@ -7,22 +7,22 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
- * L'identificativo di richiesta coniato al bordo.
+ * The request id minted at the edge.
  *
- * Serve a una cosa sola: permettere di seguire una chiamata attraverso piu' servizi. I
- * servizi a valle riusano X-Request-Id se la ricevono, ma finche' nessuno la manda ognuno
- * se ne genera una propria e una chiamata che attraversa gateway e servizio prenotazioni
- * resta spezzata in due tronconi che nessuno puo' ricollegare.
+ * It serves one purpose: making a call followable across several services. The downstream
+ * services reuse X-Request-Id when they receive one, but as long as nobody sends it each
+ * generates its own, and a call crossing the gateway and the booking service stays split
+ * into two halves nobody can put back together.
  *
- * I due casi limite qui sotto sono entrambi difetti trovati provando il gateway dal vivo,
- * non ipotesi: nei test unitari del filtro non comparivano.
+ * The two edge cases below are both defects found by exercising the gateway for real, not
+ * hypotheses: neither showed up in the filter's unit tests.
  *
- * Come in RisposteErroreTest, la rotta punta a una porta dove non ascolta nessuno: serve un
- * servizio a valle irraggiungibile senza spegnerne uno vero.
+ * As in ErrorResponsesGatewayTest, the route points at a port where nothing is listening:
+ * that is how you get an unreachable downstream service without shutting a real one down.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
-        "spring.cloud.gateway.routes[0].id=verso-il-nulla",
+        "spring.cloud.gateway.routes[0].id=to-nowhere",
         "spring.cloud.gateway.routes[0].uri=http://localhost:9",
         "spring.cloud.gateway.routes[0].predicates[0]=Path=/api/rooms/**"
 })
@@ -35,52 +35,52 @@ class EdgeCorrelationFilterTest {
     void mintsAnIdWhenTheCallerSendsNone() {
         client.get().uri("/api/rooms")
                 .exchange()
-                .expectHeader().value(EdgeCorrelationFilter.INTESTAZIONE, id ->
+                .expectHeader().value(EdgeCorrelationFilter.HEADER, id ->
                         org.assertj.core.api.Assertions.assertThat(id).startsWith("REQ_"))
                 .expectBody()
-                // Lo stesso valore nel corpo: chi apre una segnalazione cita un id solo, e
-                // quell'id e' cercabile nei log di tutti i servizi coinvolti.
+                // The same value in the body: whoever opens a report quotes a single id, and
+                // that id is searchable in the logs of every service involved.
                 .jsonPath("$.sessionId").value(org.hamcrest.Matchers.startsWith("REQ_"));
     }
 
     @Test
     void keepsTheIdItReceived() {
-        // Il punto dell'intero meccanismo: se un giorno davanti al gateway ci fosse un proxy
-        // o un frontend che gia' traccia le chiamate, sovrascrivere il suo id romperebbe
-        // proprio la catena che questo filtro esiste per tenere insieme.
+        // The point of the whole mechanism: if one day there were a proxy or a frontend in
+        // front of the gateway that already traces calls, overwriting its id would break
+        // exactly the chain this filter exists to hold together.
         client.get().uri("/api/rooms")
-                .header(EdgeCorrelationFilter.INTESTAZIONE, "REQ_DALCHIAMANTE")
+                .header(EdgeCorrelationFilter.HEADER, "REQ_FROMCALLER")
                 .exchange()
-                .expectHeader().valueEquals(EdgeCorrelationFilter.INTESTAZIONE, "REQ_DALCHIAMANTE")
+                .expectHeader().valueEquals(EdgeCorrelationFilter.HEADER, "REQ_FROMCALLER")
                 .expectBody()
-                .jsonPath("$.sessionId").isEqualTo("REQ_DALCHIAMANTE");
+                .jsonPath("$.sessionId").isEqualTo("REQ_FROMCALLER");
     }
 
     @Test
     void survivesAPathWithNoRoute() {
-        // Trovato dal vivo: su un percorso che non corrisponde a nessuna rotta il 404 nasce
-        // nella mappatura, PRIMA che la catena dei GlobalFilter parta. Il filtro non gira e
-        // senza il ripiego in GatewayErrorHandler l'id del chiamante andava perso proprio
-        // sulla richiesta piu' sospetta - quella verso un percorso che non esiste.
-        client.get().uri("/percorso/che/non/esiste")
-                .header(EdgeCorrelationFilter.INTESTAZIONE, "REQ_SENZAROTTA")
+        // Found for real: on a path matching no route the 404 is born in the mapping, BEFORE
+        // the GlobalFilter chain starts. The filter does not run, and without the fallback in
+        // GatewayErrorHandler the caller's id was lost on exactly the most suspicious request
+        // there is - one aimed at a path that does not exist.
+        client.get().uri("/path/that/does/not/exist")
+                .header(EdgeCorrelationFilter.HEADER, "REQ_NOROUTE")
                 .exchange()
                 .expectStatus().isNotFound()
-                .expectHeader().valueEquals(EdgeCorrelationFilter.INTESTAZIONE, "REQ_SENZAROTTA")
+                .expectHeader().valueEquals(EdgeCorrelationFilter.HEADER, "REQ_NOROUTE")
                 .expectBody()
-                .jsonPath("$.sessionId").isEqualTo("REQ_SENZAROTTA");
+                .jsonPath("$.sessionId").isEqualTo("REQ_NOROUTE");
     }
 
     @Test
     void doesNotDuplicateTheHeaderWhenTheDownstreamServiceEchoesItBack() {
-        // Trovato dal vivo: scrivere l'intestazione prima di inoltrare non basta, perche' il
-        // gateway UNISCE le intestazioni della risposta a valle alle proprie e il client se
-        // la ritrovava due volte. Il rimedio e' scriverla in beforeCommit, dopo la fusione.
+        // Found for real: writing the header before forwarding is not enough, because the
+        // gateway MERGES the downstream response headers with its own and the client got it
+        // twice. The remedy is to write it in beforeCommit, after that merge.
         client.get().uri("/api/rooms")
-                .header(EdgeCorrelationFilter.INTESTAZIONE, "REQ_UNAVOLTASOLA")
+                .header(EdgeCorrelationFilter.HEADER, "REQ_ONLYONCE")
                 .exchange()
-                .expectHeader().values(EdgeCorrelationFilter.INTESTAZIONE, valori ->
-                        org.assertj.core.api.Assertions.assertThat(valori)
-                                .containsExactly("REQ_UNAVOLTASOLA"));
+                .expectHeader().values(EdgeCorrelationFilter.HEADER, values ->
+                        org.assertj.core.api.Assertions.assertThat(values)
+                                .containsExactly("REQ_ONLYONCE"));
     }
 }

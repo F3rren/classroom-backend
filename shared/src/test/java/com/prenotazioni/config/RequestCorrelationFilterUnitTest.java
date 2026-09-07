@@ -34,13 +34,13 @@ class RequestCorrelationFilterUnitTest {
         // genera l'id, i servizi a valle lo ereditano. Se qui se ne generasse uno nuovo,
         // un giro fra gateway e servizio prenotazioni resterebbe impossibile da ricucire.
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader(RequestCorrelationFilter.INTESTAZIONE, "REQ_DALGATEWAY");
+        request.addHeader(RequestCorrelationFilter.HEADER, "REQ_DALGATEWAY");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilter(request, response, new MockFilterChain());
 
         assertThat(request.getAttribute(RequestCorrelationFilter.ATTRIBUTO)).isEqualTo("REQ_DALGATEWAY");
-        assertThat(response.getHeader(RequestCorrelationFilter.INTESTAZIONE)).isEqualTo("REQ_DALGATEWAY");
+        assertThat(response.getHeader(RequestCorrelationFilter.HEADER)).isEqualTo("REQ_DALGATEWAY");
     }
 
     @Test
@@ -54,7 +54,7 @@ class RequestCorrelationFilterUnitTest {
         assertThat(id).isNotBlank();
         // Rimandarlo indietro serve a chi apre una segnalazione: puo' citare l'id anche
         // quando la risposta e' un 204 o un corpo che non lo contiene.
-        assertThat(response.getHeader(RequestCorrelationFilter.INTESTAZIONE)).isEqualTo(id);
+        assertThat(response.getHeader(RequestCorrelationFilter.HEADER)).isEqualTo(id);
     }
 
     @Test

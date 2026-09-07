@@ -37,14 +37,14 @@ import java.util.UUID;
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class RequestCorrelationFilter extends OncePerRequestFilter {
 
-    public static final String INTESTAZIONE = "X-Request-Id";
+    public static final String HEADER = "X-Request-Id";
     public static final String ATTRIBUTO = "com.prenotazioni.requestId";
     private static final String CHIAVE_MDC = "requestId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        String id = request.getHeader(INTESTAZIONE);
+        String id = request.getHeader(HEADER);
         if (id == null || id.isBlank()) {
             id = generate();
         }
@@ -53,7 +53,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         MDC.put(CHIAVE_MDC, id);
         // Rimandato indietro: chi ha fatto la chiamata puo' citarlo in una segnalazione
         // anche quando la risposta non ha un corpo in cui infilarlo.
-        response.setHeader(INTESTAZIONE, id);
+        response.setHeader(HEADER, id);
 
         try {
             chain.doFilter(request, response);

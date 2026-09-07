@@ -22,26 +22,26 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Le risposte d'errore del gateway, nella stessa forma di quelle dei servizi.
+ * The gateway's error responses, in the same shape as the services' own.
  *
- * Senza questa classe il gateway rispondeva con il formato predefinito di Spring:
+ * Without this class the gateway answered with Spring's default format:
  *
  *   {"timestamp":"2026-09-02T19:54:32.451+00:00","path":"/api/rooms",
  *    "status":500,"error":"Internal Server Error","requestId":"8e51fd93-51"}
  *
- * che non ha ne' "success" ne' "userMessage", e cioe' proprio i due campi da cui il
- * frontend decide se e cosa mostrare. Un client che legge userMessage otteneva
- * undefined ogni volta che a fallire era il gateway: cioe' quando un servizio e' giu',
- * che e' esattamente il momento in cui un messaggio sensato serve di piu'.
+ * which has neither "success" nor "userMessage", and those are precisely the two fields a
+ * frontend uses to decide whether and what to show. A client reading userMessage got
+ * undefined every time the failure was the gateway's: that is, whenever a service is down,
+ * which is exactly the moment a sensible message matters most.
  *
- * PERCHE' L'ENVELOPE E' RICOSTRUITO A MANO invece di riusare com.prenotazioni.dto.ApiEnvelope:
- * quella classe vive in shared, che porta spring-boot-starter-web. Aggiungerlo qui farebbe
- * partire Tomcat al posto di Netty e il gateway smetterebbe di essere reattivo. Fra
- * duplicare sette nomi di campo e trascinare dentro lo stack servlet, la duplicazione e'
- * il male minore - ma resta un rischio di divergenza, quindi entrambi i lati hanno un test
- * che ne blocca l'insieme delle chiavi (vedi RisposteErroreTest e ApiEnvelopeUnitTest).
+ * WHY THE ENVELOPE IS REBUILT BY HAND instead of reusing com.prenotazioni.dto.ApiEnvelope:
+ * that class lives in shared, which brings spring-boot-starter-web with it. Adding it here
+ * would start Tomcat instead of Netty and the gateway would stop being reactive. Between
+ * duplicating seven field names and dragging in the servlet stack, the duplication is the
+ * lesser evil - but it stays a risk of drift, so both sides have a test that pins the set
+ * of keys (see ErrorResponsesGatewayTest and ApiEnvelopeUnitTest).
  *
- * @Order(-2) per precedere DefaultErrorWebExceptionHandler, registrato a -1.
+ * @Order(-2) to come before DefaultErrorWebExceptionHandler, registered at -1.
  */
 @Component
 @Order(-2)
@@ -49,8 +49,9 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GatewayErrorHandler.class);
 
-    /** Lo stesso formato usato da util.Timestamps nei servizi, non l'ISO di Spring. */
-    private static final DateTimeFormatter FORMATO_API = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /** The same format util.Timestamps uses in the services, not Spring's ISO. */
+    private static final DateTimeFormatter API_TIMESTAMP_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ObjectMapper objectMapper;
 
@@ -61,98 +62,100 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable error) {
         if (exchange.getResponse().isCommitted()) {
-            // La risposta e' gia' partita: qui non si puo' piu' fare nulla di utile
-            // se non evitare di sovrascriverla a meta'.
+            // The response has already left: there is nothing useful left to do here except
+            // avoid overwriting it halfway.
             return Mono.error(error);
         }
 
-        Outcome outcome = classifica(error);
-        // L'id lo conia EdgeCorrelationFilter all'ingresso, e i servizi a valle lo riusano:
-        // un 503 mostrato qui porta cosi' la stessa chiave che l'utente vedrebbe se la
-        // richiesta fosse arrivata a destinazione. Il ripiego copre i casi in cui si
-        // fallisce prima ancora di entrare in quel filtro.
+        Outcome outcome = classify(error);
+        // The id is minted by EdgeCorrelationFilter on the way in, and the downstream
+        // services reuse it: a 503 shown here therefore carries the same key the user would
+        // have seen had the request reached its destination. The fallback covers the cases
+        // where things fail before ever entering that filter.
         String sessionId = EdgeCorrelationFilter.ofRequest(exchange);
-        // Su un percorso che non corrisponde a nessuna rotta il 404 nasce prima dei
-        // GlobalFilter, quindi qui l'intestazione non l'ha ancora scritta nessuno.
-        exchange.getResponse().getHeaders().set(EdgeCorrelationFilter.INTESTAZIONE, sessionId);
+        // On a path matching no route the 404 is born before the GlobalFilters, so nobody
+        // has written the header yet at this point.
+        exchange.getResponse().getHeaders().set(EdgeCorrelationFilter.HEADER, sessionId);
 
-        // Il percorso e' nel log, non nella risposta: al client non serve e a chi indaga si'.
-        logger.error("{} su {} -> {}: {}", outcome.code,
+        // The path goes in the log, not in the response: the client does not need it and
+        // whoever is investigating does.
+        logger.error("{} on {} -> {}: {}", outcome.code,
                 exchange.getRequest().getPath(), outcome.status.value(), error.toString());
 
         exchange.getResponse().setStatusCode(outcome.status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        DataBuffer body = scrivi(exchange, outcome, sessionId);
+        DataBuffer body = writeBody(exchange, outcome, sessionId);
         return exchange.getResponse().writeWith(Mono.just(body));
     }
 
-    private DataBuffer scrivi(ServerWebExchange exchange, Outcome outcome, String sessionId) {
-        // LinkedHashMap: l'ordine delle chiavi resta quello dell'envelope dei servizi,
-        // che rende i due formati confrontabili a occhio nei log e negli strumenti.
+    private DataBuffer writeBody(ServerWebExchange exchange, Outcome outcome, String sessionId) {
+        // LinkedHashMap: the key order stays the one of the service envelope, which keeps
+        // the two formats comparable by eye in logs and tools.
         Map<String, Object> envelope = new LinkedHashMap<>();
         envelope.put("success", false);
         envelope.put("error", outcome.code);
         envelope.put("message", outcome.message);
         envelope.put("userMessage", outcome.userMessage);
-        envelope.put("timestamp", LocalDateTime.now().format(FORMATO_API));
+        envelope.put("timestamp", LocalDateTime.now().format(API_TIMESTAMP_FORMAT));
         envelope.put("sessionId", sessionId);
 
         try {
             return exchange.getResponse().bufferFactory().wrap(objectMapper.writeValueAsBytes(envelope));
         } catch (IOException e) {
-            // Se persino la serializzazione fallisce, meglio un corpo minimo scritto a mano
-            // che una risposta vuota: il client deve comunque trovare la forma che si aspetta.
-            logger.error("Envelope non serializzabile: {}", e.getMessage());
-            String minimo = "{\"success\":false,\"error\":\"INTERNAL_ERROR\"}";
-            return exchange.getResponse().bufferFactory().wrap(minimo.getBytes());
+            // If even serialisation fails, a minimal hand-written body beats an empty
+            // response: the client still has to find the shape it expects.
+            logger.error("Envelope not serialisable: {}", e.getMessage());
+            String minimal = "{\"success\":false,\"error\":\"INTERNAL_ERROR\"}";
+            return exchange.getResponse().bufferFactory().wrap(minimal.getBytes());
         }
     }
 
     /**
-     * Traduce l'eccezione in stato e messaggi.
+     * Turns the exception into a status and a pair of messages.
      *
-     * La distinzione che conta e' fra "il servizio non risponde" e "il gateway ha un
-     * problema": il primo e' 503 e temporaneo, quindi vale la pena riprovare; il secondo
-     * e' 500 e riprovare non serve. Prima erano entrambi 500, e il client non poteva
-     * distinguerli.
+     * The distinction that matters is between "the service is not answering" and "the
+     * gateway has a problem": the first is a 503 and temporary, so retrying is worth it;
+     * the second is a 500 and retrying achieves nothing. Both used to be 500, and the
+     * client had no way to tell them apart.
+     *
+     * userMessage stays Italian on purpose: it is the one string here that a person reads.
      */
-    private Outcome classifica(Throwable error) {
+    private Outcome classify(Throwable error) {
         if (error instanceof ResponseStatusException rse) {
             HttpStatus status = HttpStatus.resolve(rse.getStatusCode().value());
             if (status == HttpStatus.NOT_FOUND) {
                 return new Outcome(HttpStatus.NOT_FOUND, "NOT_FOUND",
-                        "Percorso non instradato",
+                        "Path not routed",
                         "La risorsa richiesta non esiste.");
             }
             return new Outcome(status != null ? status : HttpStatus.INTERNAL_SERVER_ERROR, "GATEWAY_ERROR",
-                    "Richiesta rifiutata dal gateway",
+                    "Request refused by the gateway",
                     "La richiesta non e' stata accettata.");
         }
 
         if (unreachable(error)) {
             return new Outcome(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE",
-                    "Servizio a valle non raggiungibile",
+                    "Downstream service unreachable",
                     "Il servizio non e' momentaneamente disponibile. Riprova fra qualche istante.");
         }
 
         return new Outcome(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
-                "Errore interno del gateway",
+                "Internal gateway error",
                 "Si e' verificato un errore imprevisto. Riprova piu' tardi.");
     }
 
     /**
-     * Il servizio a valle non e' stato raggiunto.
+     * The downstream service was not reached.
      *
-     * Si controllano piu' tipi perche' il motivo per cui non si arriva a destinazione
-     * cambia il tipo dell'eccezione ma non la risposta da dare. ConnectException e' il
-     * caso ovvio (porta chiusa); UnknownHostException si presenta quando il resolver di
-     * Netty non risolve il nome, cosa che capita anche con nomi banali come "localhost" e
-     * che aveva gia' portato fuori strada una volta in questo progetto; il timeout di
-     * connessione di Netty e' un terzo caso ancora.
+     * Several types are checked because the reason for not arriving changes the type of the
+     * exception but not the answer to give. ConnectException is the obvious one (closed
+     * port); UnknownHostException shows up when Netty's resolver fails to resolve the name,
+     * which happens even with names as ordinary as "localhost" and has already led this
+     * project astray once; Netty's connect timeout is a third case again.
      *
-     * Confronto per nome e non per classe: cosi' non serve dipendere dai tipi interni di
-     * Netty solo per nominarli.
+     * Compared by name rather than by class, so that Netty's internal types do not have to
+     * become a dependency just to be named.
      */
     private boolean unreachable(Throwable error) {
         for (Throwable t = error; t != null && t.getCause() != t; t = t.getCause()) {

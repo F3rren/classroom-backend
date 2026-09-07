@@ -15,19 +15,18 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * La tabella delle rotte VERA, quella di application.yml.
+ * The REAL route table, the one in application.yml.
  *
- * Serve perche' InstradamentoTest, che sembra coprire l'instradamento, in realta' dichiara
- * le proprie rotte in @TestPropertySource: verifica il meccanismo del gateway su una tabella
- * sintetica, non su quella che gira in produzione. Un errore nella tabella vera passerebbe
- * di li' senza che nessuno se ne accorga.
+ * It is needed because RoutingTest, which looks like it covers routing, actually declares
+ * its own routes in @TestPropertySource: it checks the gateway's mechanism against a
+ * synthetic table, not against the one that runs in production. A mistake in the real table
+ * would pass straight through it unnoticed.
  *
- * Cio' che va tenuto fermo e' soprattutto UN ORDINE. Due servizi diversi espongono
- * /api/admin: auth-service sotto /api/admin/users, prenotazione-service tutto il resto.
- * Spring Cloud Gateway valuta le rotte nell'ordine in cui sono dichiarate, quindi quella
- * piu' specifica deve venire prima. Se qualcuno le riordinasse, /api/admin/users finirebbe
- * a prenotazione-service e risponderebbe 404 - senza errori di configurazione, senza log,
- * e senza niente che indichi il perche'.
+ * What has to be held still is above all AN ORDER. Two different services expose
+ * /api/admin: auth-service under /api/admin/users, booking-service everything else. Spring
+ * Cloud Gateway evaluates routes in declaration order, so the more specific one has to come
+ * first. If somebody reordered them, /api/admin/users would end up at booking-service and
+ * answer 404 - with no configuration error, no log, and nothing to suggest why.
  */
 @SpringBootTest
 class RouteTableTest {
@@ -35,12 +34,12 @@ class RouteTableTest {
     @Autowired
     private RouteLocator routes;
 
-    /** L'id della prima rotta che accetta il percorso, come farebbe il gateway. */
+    /** The id of the first route that accepts the path, as the gateway would pick it. */
     private String firstRouteMatching(String path) {
         ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path).build());
-        List<Route> ordinate = routes.getRoutes().collectList().block();
-        assertThat(ordinate).as("nessuna rotta caricata: application.yml non e' stato letto").isNotEmpty();
-        for (Route r : ordinate) {
+        List<Route> ordered = routes.getRoutes().collectList().block();
+        assertThat(ordered).as("no route loaded: application.yml was not read").isNotEmpty();
+        for (Route r : ordered) {
             if (Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(exchange)).block())) {
                 return r.getId();
             }
@@ -48,8 +47,8 @@ class RouteTableTest {
         return null;
     }
 
-    /** L'indirizzo a cui una rotta manda, per distinguere i servizi a valle. */
-    private String destinazioneDi(String routeId) {
+    /** The address a route sends to, used to tell the downstream services apart. */
+    private String destinationOf(String routeId) {
         return routes.getRoutes()
                 .filter(r -> r.getId().equals(routeId))
                 .map(r -> r.getUri().toString())
@@ -58,8 +57,8 @@ class RouteTableTest {
 
     @Test
     void theAdminUserPathsGoToTheUserService() {
-        // LA regressione da tenere chiusa: questa rotta e' dichiarata PRIMA di quella
-        // generica su /api/admin/**, ed e' l'ordine a farla vincere.
+        // THE regression to keep closed: this route is declared BEFORE the generic one on
+        // /api/admin/**, and it is the order that makes it win.
         assertThat(firstRouteMatching("/api/admin/users")).isEqualTo("authentication");
         assertThat(firstRouteMatching("/api/admin/users/42")).isEqualTo("authentication");
     }
@@ -72,10 +71,10 @@ class RouteTableTest {
 
     @Test
     void onlyTheOrderDecidesWhoReceivesTheAdminUserPaths() {
-        // Senza questo, i due test sopra potrebbero passare per costruzione: se
-        // /api/admin/users corrispondesse a una rotta sola, l'ordine non conterebbe e non
-        // ci sarebbe niente da tenere fermo. Qui si pretende che ENTRAMBE lo accettino,
-        // cosi' l'unica cosa che manda la richiesta al servizio giusto e' la posizione.
+        // Without this, the two tests above could pass by construction: if /api/admin/users
+        // matched a single route, the order would not matter and there would be nothing to
+        // hold still. Here BOTH are required to accept it, so the only thing sending the
+        // request to the right service is the position.
         ServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/admin/users").build());
         List<String> whoAcceptsIt = routes.getRoutes()
@@ -88,35 +87,35 @@ class RouteTableTest {
 
     @Test
     void theTwoAdminRoutesPointToDifferentServices() {
-        // Se puntassero allo stesso, l'ordine non conterebbe e questi test non
-        // proverebbero niente: e' cio' che rende significativi i due sopra.
-        assertThat(destinazioneDi("authentication")).isNotEqualTo(destinazioneDi("application"));
+        // If they pointed at the same one the order would not matter and these tests would
+        // prove nothing: this is what makes the two above meaningful.
+        assertThat(destinationOf("authentication")).isNotEqualTo(destinationOf("application"));
     }
 
     @Test
     void theInternalRoutesStayOutOfReach() {
-        // Sono chiamate da altri servizi, non dal browser: esporle darebbe a chiunque abbia
-        // un token da admin la possibilita' di fabbricare notifiche arbitrarie.
+        // They are called by other services, not by the browser: exposing them would let
+        // anybody holding an admin token fabricate arbitrary notifications.
         assertThat(firstRouteMatching("/api/notifications/internal/user/1")).isEqualTo("notifications-internal-blocked");
         assertThat(firstRouteMatching("/api/bookings/internal/user/1")).isEqualTo("bookings-internal-blocked");
     }
 
     @Test
     void everyPublicPathFindsARoute() {
-        // Un percorso senza rotta non da' un errore di configurazione: da' un 404 a chi
-        // chiama, ed e' il modo in cui un endpoint nuovo resta invisibile dopo essere stato
-        // scritto e messo in produzione.
+        // A path with no route does not produce a configuration error: it produces a 404 for
+        // the caller, and that is how a new endpoint stays invisible after being written and
+        // shipped.
         for (String path : new String[]{
                 "/api/auth/login", "/api/me", "/api/rooms", "/api/bookings",
                 "/api/notifications", "/api/admin/users", "/api/admin/rooms"}) {
             assertThat(firstRouteMatching(path))
-                    .as("nessuna rotta per %s", path)
+                    .as("no route for %s", path)
                     .isNotNull();
         }
     }
 
     @Test
     void anInventedPathFindsNoRoute() {
-        assertThat(firstRouteMatching("/percorso/che/non/esiste")).isNull();
+        assertThat(firstRouteMatching("/path/that/does/not/exist")).isNull();
     }
 }

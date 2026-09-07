@@ -36,17 +36,17 @@ class UserDataClientUnitTest {
     private static final String URI_NOTIFICATIONS = NOTIFICATIONS + "/api/notifications/internal/user/7";
     private static final String URI_BOOKINGS = BOOKINGS + "/api/bookings/internal/user/7";
 
-    private RestClient.Builder costruttore;
+    private RestClient.Builder builder;
     private MockRestServiceServer servizioFinto;
     private UserDataClient client;
 
     @BeforeEach
     void setUp() {
-        costruttore = RestClient.builder();
-        servizioFinto = MockRestServiceServer.bindTo(costruttore).build();
+        builder = RestClient.builder();
+        servizioFinto = MockRestServiceServer.bindTo(builder).build();
         // La richiesta corrente serve solo a inoltrare l'intestazione Authorization: qui non
         // c'e' una richiesta HTTP in corso, e un mock che risponde null va benissimo.
-        client = new UserDataClient(costruttore, NOTIFICATIONS, BOOKINGS, mock(HttpServletRequest.class));
+        client = new UserDataClient(builder, NOTIFICATIONS, BOOKINGS, mock(HttpServletRequest.class));
     }
 
     @Test
