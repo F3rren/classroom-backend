@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.prenotazioni</groupId>
-        <artifactId>prenotazioni-aule-parent</artifactId>
+        <groupId>com.classroom</groupId>
+        <artifactId>classroom-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
         <!-- Il default sarebbe ../pom.xml, che da services/<modulo>/ non esiste. -->
         <relativePath>../../pom.xml</relativePath>
@@ -16,7 +16,7 @@
     <description>Punto di ingresso unico: il frontend conosce un solo indirizzo</description>
 
     <!--
-        Perche' esiste: dalla separazione di notifica-service il frontend dovrebbe conoscere
+        Perche' esiste: dalla separazione di notification-service il frontend dovrebbe conoscere
         due indirizzi, e diventerebbero tre con auth-service. La topologia interna non e'
         affare del client, ed e' proprio l'accoppiamento che la separazione doveva togliere.
 
@@ -86,7 +86,7 @@
                         cio' che conta e' il test sull'instradamento, non il rapporto.
                     -->
                     <excludes>
-                        <exclude>com/prenotazioni/gateway/GatewayApplication.class</exclude>
+                        <exclude>com/classroom/gateway/GatewayApplication.class</exclude>
                     </excludes>
                 </configuration>
             </plugin>

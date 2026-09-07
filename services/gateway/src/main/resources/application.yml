@@ -9,7 +9,7 @@
 #
 #     17102  gateway            <-- il frontend parla solo con questa
 #     17103  app                (aule, prenotazioni, corsi)
-#     17104  notifica-service
+#     17104  notification-service
 #     17105  auth-service       (utenti, emissione dei token)
 #
 # La 8080 e' volutamente evitata: e' troppo comune e finisce per collidere con
@@ -77,7 +77,7 @@ spring:
 
       routes:
         # ------------------------------------------------------------------
-        # PRIMA REGOLA, E L'ORDINE CONTA: le rotte interne di notifica-service
+        # PRIMA REGOLA, E L'ORDINE CONTA: le rotte interne di notification-service
         # sono chiamate da altri servizi, non dal browser. Esporle attraverso il
         # gateway darebbe a chiunque abbia un token admin la possibilita' di
         # fabbricare notifiche arbitrarie. Spring Cloud Gateway valuta le rotte
@@ -101,7 +101,7 @@ spring:
             - Path=/api/bookings/internal/**
 
         - id: notifications
-          uri: ${NOTIFICA_SERVICE_URL:http://localhost:17104}
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:17104}
           predicates:
             - Path=/api/notifications/**
 
@@ -111,13 +111,13 @@ spring:
           predicates:
             # Un prefisso, non un elenco. Prima qui c'era la lista degli endpoint admin di
             # auth-service, copiata dal controller: aggiungerne uno la' senza toccare
-            # questa riga lo avrebbe mandato a prenotazione-service, con un 404 e niente
+            # questa riga lo avrebbe mandato a booking-service, con un 404 e niente
             # che indicasse il perche'. Ora la rotta descrive un confine fra servizi.
             - Path=/api/auth/**,/api/me/**,/api/admin/users,/api/admin/users/**
 
         # Aule, prenotazioni e amministrazione delle stesse.
         - id: application
-          uri: ${PRENOTAZIONE_SERVICE_URL:http://localhost:17103}
+          uri: ${BOOKING_SERVICE_URL:http://localhost:17103}
           predicates:
             - Path=/api/rooms/**,/api/bookings/**,/api/admin/**
 

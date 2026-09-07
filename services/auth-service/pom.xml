@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.prenotazioni</groupId>
-        <artifactId>prenotazioni-aule-parent</artifactId>
+        <groupId>com.classroom</groupId>
+        <artifactId>classroom-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
         <!-- Il default sarebbe ../pom.xml, che da services/<modulo>/ non esiste. -->
         <relativePath>../../pom.xml</relativePath>
@@ -23,7 +23,7 @@
     -->
     <dependencies>
         <dependency>
-            <groupId>com.prenotazioni</groupId>
+            <groupId>com.classroom</groupId>
             <artifactId>shared</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -117,7 +117,7 @@
         <!-- TestJwt: permette ai test di firmarsi i propri token invece di dover
              creare un utente e passare da auth-service. -->
         <dependency>
-            <groupId>com.prenotazioni</groupId>
+            <groupId>com.classroom</groupId>
             <artifactId>shared</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
@@ -143,7 +143,7 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <configuration>
                     <excludes>
-                        <exclude>com/prenotazioni/auth/AuthServiceApplication.class</exclude>
+                        <exclude>com/classroom/auth/AuthServiceApplication.class</exclude>
                     </excludes>
                 </configuration>
             </plugin>

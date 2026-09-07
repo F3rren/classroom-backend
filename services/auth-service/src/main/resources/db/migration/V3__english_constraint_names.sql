@@ -1,6 +1,6 @@
 -- ============================================================================
 -- The names PostgreSQL generated on its own, moved to English.
--- Same reasoning and same guards as V7 of prenotazione-service.
+-- Same reasoning and same guards as V7 of booking-service.
 --
 -- V2 renamed the table, the columns and utente_ruolo_check, which V1 had named
 -- explicitly. The primary key, the two unique keys and the sequence were never

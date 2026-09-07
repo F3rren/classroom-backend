@@ -16,7 +16,7 @@ Spring Boot **3.2.12**.
 ## 1. Creare il database
 
 ```sql
-CREATE DATABASE prenotazione_aule;
+CREATE DATABASE classroom;
 ```
 
 Il database può restare **vuoto**: lo schema viene creato da Flyway al primo avvio.
@@ -78,10 +78,10 @@ openssl rand -base64 48
 ## 3. Avviare
 
 ```bash
-mvn spring-boot:run -pl prenotazione-service -am
+mvn spring-boot:run -pl booking-service -am
 ```
 
-`-pl prenotazione-service` sceglie il modulo, `-am` costruisce prima `shared` da cui dipende.
+`-pl booking-service` sceglie il modulo, `-am` costruisce prima `shared` da cui dipende.
 
 Il profilo predefinito è `dev`. Al primo avvio Flyway crea l'intero schema (log:
 `Successfully applied 2 migrations`).
@@ -104,8 +104,8 @@ database, migrazioni e configurazione si sono risolti. Documentazione interattiv
 services/           i quattro deployable: uno per servizio
   gateway/            l'unico esposto (17102)
   auth-service/
-  prenotazione-service/
-  notifica-service/
+  booking-service/
+  notification-service/
 shared/             non e' un servizio: e' la libreria che i quattro importano
 ```
 
@@ -121,9 +121,9 @@ prenotazioni si chiamava `app`, che non diceva niente.
 |---|---|---|---|
 | `gateway` | **17102** | — | Punto di ingresso unico: instrada per prefisso |
 | `broker` | 5672 | — | RabbitMQ: trasporta la notifica di cancellazione |
-| `prenotazione-service` | 17103 | `prenotazione_aule` | Aule, prenotazioni, corsi |
-| `auth-service` | 17105 | `prenotazione_aule_utenti` | Utenti, login, amministrazione utenti |
-| `notifica-service` | 17104 | `prenotazione_aule_notifiche` | Le notifiche |
+| `booking-service` | 17103 | `classroom` | Aule, prenotazioni, corsi |
+| `auth-service` | 17105 | `classroom_users` | Utenti, login, amministrazione utenti |
+| `notification-service` | 17104 | `classroom_notifications` | Le notifiche |
 | `shared` | — | — | Comune a tutti: `ApiEnvelope`, `GlobalExceptionHandler`, 401/403, `JwtVerifier`, `JwtAuthFilter`, `SecurityConfig`, `AppPrincipal`, `Ruolo` |
 
 ### Dentro un servizio
@@ -132,7 +132,7 @@ Tutti e tre i servizi applicativi hanno la stessa forma, così passare dall'uno 
 richiede di reimparare dove stanno le cose:
 
 ```
-services/auth-service/src/main/java/com/prenotazioni/auth/
+services/auth-service/src/main/java/com/classroom/auth/
   controller/     riceve HTTP, non decide nulla di dominio
   service/        le regole; e' qui che nascono le eccezioni di dominio
   repository/     interfacce Spring Data
@@ -140,7 +140,7 @@ services/auth-service/src/main/java/com/prenotazioni/auth/
   dto/            cio' che entra ed esce, separato dalle entita'
   client/         chiamate verso GLI ALTRI servizi (solo dove servono)
 
-shared/src/main/java/com/prenotazioni/
+shared/src/main/java/com/classroom/
   config/         SecurityConfig, JwtAuthFilter, RequestCorrelationFilter, gestori 401/403
   exception/      GlobalExceptionHandler e le eccezioni di dominio
   security/       JwtVerifier, AppPrincipal
@@ -170,7 +170,7 @@ Rinominare `Aula` in `Room` lascerebbe `@Table(name = "aule")` accanto: non unif
 **creerebbe** uno scarto fra il codice e tutto ciò che tocca. La stessa cosa varrebbe per un
 `BookingController` mappato su `/api/bookings`.
 
-`messaggistica/` in `prenotazione-service` e `eventi/` in `notifica-service` sono i due lati
+`messaggistica/` in `booking-service` e `eventi/` in `notification-service` sono i due lati
 della stessa coda: chi pubblica e chi ascolta.
 
 ### La lingua delle risposte
@@ -237,7 +237,7 @@ Provato: le quattro immagini si costruiscono, lo stack sale e il giro completo (
 creazione aula → notifiche) passa dal gateway. Serve comunque inserire a mano il primo
 admin nel database utenti, per la ragione spiegata più sotto.
 
-> Dentro i container `prenotazione-service` gira con il profilo **`prod`**, e non è una preferenza:
+> Dentro i container `booking-service` gira con il profilo **`prod`**, e non è una preferenza:
 > `application-dev.properties` ha l'URL del database scritto su `localhost`, quindi con il
 > profilo predefinito `DB_HOST` verrebbe ignorato e il servizio morirebbe alla prima
 > connessione. Solo `prod` legge le variabili d'ambiente.
@@ -247,9 +247,9 @@ admin nel database utenti, per la ragione spiegata più sotto.
 Servono quattro processi, ognuno in un terminale:
 
 ```bash
-mvn spring-boot:run -pl prenotazione-service -am              # 17103
+mvn spring-boot:run -pl booking-service -am              # 17103
 mvn spring-boot:run -pl auth-service -am     # 17105
-mvn spring-boot:run -pl notifica-service -am # 17104
+mvn spring-boot:run -pl notification-service -am # 17104
 mvn spring-boot:run -pl gateway -am          # 17102
 ```
 
@@ -260,7 +260,7 @@ rotte `/api/notifications/internal/**`, che sono chiamate fra servizi.
 Prima del primo avvio serve il suo database (vuoto: lo schema lo crea Flyway):
 
 ```sql
-CREATE DATABASE prenotazione_aule_notifiche;
+CREATE DATABASE classroom_notifications;
 ```
 
 `JWT_SECRET` in `.env` deve essere lo stesso per tutti i servizi:
@@ -293,7 +293,7 @@ Non e' sempre stato cosi', ed e' costato caro: l'URL del database viveva solo in
 container senza quella variabile partiva puntando a localhost e moriva alla prima query. Il
 sintomo era un 503 dal gateway, e la causa stava tre file piu' in la'.
 
-`application-dev.properties` esiste solo per `prenotazione-service`, ed e' voluto: e' l'unico
+`application-dev.properties` esiste solo per `booking-service`, ed e' voluto: e' l'unico
 con DevTools e log su file. Gli altri due non hanno nulla di specifico dello sviluppo, e un
 file vuoto non sarebbe coerenza — sarebbe un file da leggere per scoprire che non dice niente.
 
@@ -312,7 +312,7 @@ spring.cloud.gateway.routes[3].predicates[0]=Path=/api/auth/**,/api/admin/users/
 ```
 
 L'ordine delle rotte non e' decorativo: e' cio' che manda `/api/admin/users` ad
-auth-service invece che a prenotazione-service, perche' entrambe le rotte accettano quel
+auth-service invece che a booking-service, perche' entrambe le rotte accettano quel
 percorso e vince la prima. Scritto in properties, quell'ordine vive negli **indici**, e
 inserire una rotta a meta' vuol dire rinumerare tutte quelle sotto. Sbagliare la
 rinumerazione da' un 404 senza errori di configurazione e senza niente nei log.
@@ -356,7 +356,7 @@ firma con un valore di comodo non ha senso nemmeno in sviluppo.
 ```bash
 mvn clean package
 export CORS_ALLOWED_ORIGINS="https://tuo-frontend.example.it"
-java -jar services/prenotazione-service/target/prenotazione-service-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar services/booking-service/target/booking-service-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 Variabili riconosciute: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `PRENOTAZIONE_PORT`.
@@ -377,13 +377,13 @@ Ogni servizio ha un namespace proprio, e `shared` tiene la radice:
 
 | Modulo | Package |
 |---|---|
-| `shared` | `com.prenotazioni.{dto,model,security,config,util,exception,eventi}` |
-| `prenotazione-service` | `com.prenotazioni.booking.*` |
-| `auth-service` | `com.prenotazioni.auth.*` |
-| `notifica-service` | `com.prenotazioni.notification.*` |
-| `gateway` | `com.prenotazioni.gateway.*` |
+| `shared` | `com.classroom.{dto,model,security,config,util,exception,eventi}` |
+| `booking-service` | `com.classroom.booking.*` |
+| `auth-service` | `com.classroom.auth.*` |
+| `notification-service` | `com.classroom.notification.*` |
+| `gateway` | `com.classroom.gateway.*` |
 
-Non è una convenzione estetica. Finché `prenotazione-service` stava sotto `com.prenotazioni.*` come `shared`,
+Non è una convenzione estetica. Finché `booking-service` stava sotto `com.classroom.*` come `shared`,
 tre package erano pubblicati da entrambi i jar e il confine fra i due moduli non era
 verificato dal compilatore: una classe poteva usare un membro package-private dell'altro
 modulo e compilare. Separando i namespace è successo davvero — `PrenotazioneAuthorizationService`
@@ -408,7 +408,7 @@ Dal browser alla riga di database, con i punti in cui qualcosa può fermarla:
      |     -> nessuna rotta corrisponde ......................... 404
      |     -> il servizio non risponde ......................... 503
      v
-  prenotazione-service :17103 ------------------------- non raggiungibile dall'esterno
+  booking-service :17103 ------------------------- non raggiungibile dall'esterno
      |  3. RequestCorrelationFilter rimette X-Request-Id in MDC
      |  4. JwtAuthFilter verifica la firma del token, da solo
      |     -> token assente, scaduto o falso .................... 401
@@ -580,7 +580,7 @@ qualcosa resta indietro, la risposta è un **503 che nomina i dati non cancellat
 
 **Asincrono (coda RabbitMQ)** quando il fallimento del destinatario non deve fermare nulla.
 La notifica di una prenotazione cancellata da un admin: prima era una chiamata REST e andava
-persa se `notifica-service` era spento. Ora aspetta in coda. La dipendenza si sposta dal
+persa se `notification-service` era spento. Ora aspetta in coda. La dipendenza si sposta dal
 servizio al broker — la finestra si restringe, non si chiude: se il broker è irraggiungibile
 il messaggio si perde comunque, e il fallimento resta loggato e non propagato, perché la
 prenotazione è già stata cancellata.
@@ -612,11 +612,11 @@ Se il database è vuoto e le variabili non ci sono, il servizio parte comunque m
 `WARN`** come procedere: un database vuoto e silenzioso è esattamente il modo in cui questo
 problema si ripresenta.
 
-Vedi [FirstAdminBootstrap.java](services/auth-service/src/main/java/com/prenotazioni/auth/FirstAdminBootstrap.java).
+Vedi [FirstAdminBootstrap.java](services/auth-service/src/main/java/com/classroom/auth/FirstAdminBootstrap.java).
 
 ## Schema del database
 
-Gestito da **Flyway**, in `services/prenotazione-service/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
+Gestito da **Flyway**, in `services/booking-service/src/main/resources/db/migration/`. `ddl-auto` è `validate`:
 Hibernate non modifica mai lo schema, verifica soltanto che le entity corrispondano e
 fallisce all'avvio se divergono.
 
@@ -638,7 +638,7 @@ normalmente: e' il comando del ciclo di sviluppo.
 
 `mvn verify` invece richiede Docker, e non e' una svista. Il gate certifica che il codice
 sia provato, e non puo' certificare cio' che non ha potuto eseguire: saltata
-`MessaggisticaCancellazioniTest`, notifica-service scende a **0.67** contro una soglia di
+`MessaggisticaCancellazioniTest`, notification-service scende a **0.67** contro una soglia di
 0.80, perche' quella classe e' l'unica a esercitare la topologia AMQP. Abbassare la soglia
 renderebbe il gate una formalita'.
 
@@ -646,7 +646,7 @@ renderebbe il gate una formalita'.
 > nominare Docker**. Se lo incontri, la causa e' quasi sempre questa.
 
 I report di copertura finiscono in `shared/target/site/jacoco/index.html` e
-`services/prenotazione-service/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
+`services/booking-service/target/site/jacoco/index.html`: il gate all'80% e' applicato a ogni modulo
 separatamente, perche' il denominatore cambia da modulo a modulo.
 
 La suite è unit test senza Spring, test di integrazione HTTP su H2, e **tre** classi su

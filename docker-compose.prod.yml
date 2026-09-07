@@ -25,15 +25,15 @@
 
 services:
 
-  db-utenti:
+  db-users:
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
 
-  db-prenotazioni:
+  db-bookings:
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
 
-  db-notifiche:
+  db-notifications:
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
 
@@ -46,7 +46,7 @@ services:
     environment:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
 
-  prenotazione-service:
+  booking-service:
     environment:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
       RABBITMQ_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}
@@ -55,7 +55,7 @@ services:
       # default utile, sono una porta lasciata aperta su un'origine che non esiste.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in produzione le origini ammesse vanno dichiarate}
 
-  notifica-service:
+  notification-service:
     environment:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in produzione la password del database va dichiarata, non ereditata da un default}
       RABBITMQ_USER: ${RABBITMQ_USER:?in produzione l'utente del broker va dichiarato, non lasciato a guest}

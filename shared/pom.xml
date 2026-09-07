@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.prenotazioni</groupId>
-        <artifactId>prenotazioni-aule-parent</artifactId>
+        <groupId>com.classroom</groupId>
+        <artifactId>classroom-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
@@ -93,7 +93,7 @@
                     <excludes>
                         <!-- Helper per i test degli altri moduli: non e' codice di produzione
                              e non ha test propri, quindi falserebbe la copertura di shared. -->
-                        <exclude>com/prenotazioni/testsupport/**</exclude>
+                        <exclude>com/classroom/testsupport/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>

@@ -27,7 +27,7 @@
 
   DEBUG  La narrazione di cosa sta facendo una richiesta, passo per passo.
          Nessuno deve fare niente: serve a chi sta guardando adesso.
-         SPENTO in produzione (logging.level.com.prenotazioni=INFO).
+         SPENTO in produzione (logging.level.com.classroom=INFO).
          Esempio: "INIZIO login", "aula 3 disponibile nel periodo richiesto".
 
   INFO   Qualcosa e' CAMBIATO e conta anche domani: un utente creato, un login

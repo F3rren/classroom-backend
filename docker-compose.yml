@@ -10,48 +10,48 @@
 # che attraversa il confine non fallisce a runtime - non compila proprio.
 # ============================================================================
 
-name: prenotazioni-aule
+name: classroom
 
 x-attesa-db: &attesa-db
   condition: service_healthy
 
 services:
 
-  db-utenti:
+  db-users:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: prenotazione_aule_utenti
+      POSTGRES_DB: classroom_users
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - dati-utenti:/var/lib/postgresql/data
+      - data-users:/var/lib/postgresql/data
     healthcheck:
       # I servizi partono piu' in fretta di PostgreSQL: senza questo controllo
       # fallirebbero all'avvio con "connection refused" e andrebbero in restart loop.
-      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule_utenti"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_users"]
       interval: 5s
       retries: 12
 
-  db-prenotazioni:
+  db-bookings:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: prenotazione_aule
+      POSTGRES_DB: classroom
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - dati-prenotazioni:/var/lib/postgresql/data
+      - data-bookings:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom"]
       interval: 5s
       retries: 12
 
-  db-notifiche:
+  db-notifications:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: prenotazione_aule_notifiche
+      POSTGRES_DB: classroom_notifications
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - dati-notifiche:/var/lib/postgresql/data
+      - data-notifications:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule_notifiche"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_notifications"]
       interval: 5s
       retries: 12
 
@@ -61,7 +61,7 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     volumes:
-      - dati-broker:/var/lib/rabbitmq
+      - data-broker:/var/lib/rabbitmq
     healthcheck:
       # Stessa ragione dei database: i servizi partono prima del broker e senza
       # questo controllo entrerebbero in restart loop al primo tentativo.
@@ -75,20 +75,20 @@ services:
       args:
         MODULO: auth-service
     depends_on:
-      db-utenti: *attesa-db
+      db-users: *attesa-db
     environment:
       # prod contiene SOLO irrobustimento - Swagger spento, pool piu' largo, CORS
       # senza ripiego. Senza questa riga il servizio parte lo stesso, solo meno
       # protetto: e' voluto, cosi' dimenticarla degrada invece di rompere.
       SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: db-utenti
-      DB_NAME: prenotazione_aule_utenti
+      DB_HOST: db-users
+      DB_NAME: classroom_users
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       # Lo STESSO segreto per tutti: e' cio' che permette a ogni servizio di
       # verificare da solo i token che questo firma, senza chiamarlo.
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
-      NOTIFICA_SERVICE_URL: http://notifica-service:17104
-      PRENOTAZIONE_SERVICE_URL: http://prenotazione-service:17103
+      NOTIFICATION_SERVICE_URL: http://notification-service:17104
+      BOOKING_SERVICE_URL: http://booking-service:17103
       # Primo amministratore, usato SOLO se la tabella utenti e' vuota. Senza, su un
       # database nuovo non ci sarebbe modo di crearne uno: /api/admin/users richiede
       # gia' un token da amministratore. I default vuoti rendono il meccanismo inattivo
@@ -97,15 +97,15 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Amministratore}
 
-  prenotazione-service:
+  booking-service:
     build:
       context: .
       args:
-        MODULO: prenotazione-service
+        MODULO: booking-service
     depends_on:
       broker:
         condition: service_healthy
-      db-prenotazioni: *attesa-db
+      db-bookings: *attesa-db
     environment:
       # prod contiene SOLO irrobustimento, come per gli altri due. Non e' piu' una
       # necessita': la connessione sta in application.properties con i segnaposto, quindi
@@ -119,34 +119,34 @@ services:
       # Questo servizio e' l'unico il cui prod pretende le origini CORS senza ripiego,
       # quindi qui vanno passate esplicitamente.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
-      DB_HOST: db-prenotazioni
+      DB_HOST: db-bookings
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DB_NAME: prenotazione_aule
+      DB_NAME: classroom
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
-      NOTIFICA_SERVICE_URL: http://notifica-service:17104
+      NOTIFICATION_SERVICE_URL: http://notification-service:17104
 
-  notifica-service:
+  notification-service:
     build:
       context: .
       args:
-        MODULO: notifica-service
+        MODULO: notification-service
     depends_on:
       broker:
         condition: service_healthy
-      db-notifiche: *attesa-db
+      db-notifications: *attesa-db
     environment:
       # prod contiene SOLO irrobustimento - Swagger spento, pool piu' largo, CORS
       # senza ripiego. Senza questa riga il servizio parte lo stesso, solo meno
       # protetto: e' voluto, cosi' dimenticarla degrada invece di rompere.
       SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: db-notifiche
+      DB_HOST: db-notifications
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DB_NAME: prenotazione_aule_notifiche
+      DB_NAME: classroom_notifications
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
 
@@ -162,16 +162,16 @@ services:
       - "17102:17102"
     depends_on:
       - auth-service
-      - prenotazione-service
-      - notifica-service
+      - booking-service
+      - notification-service
     environment:
       AUTH_SERVICE_URL: http://auth-service:17105
-      PRENOTAZIONE_SERVICE_URL: http://prenotazione-service:17103
-      NOTIFICA_SERVICE_URL: http://notifica-service:17104
+      BOOKING_SERVICE_URL: http://booking-service:17103
+      NOTIFICATION_SERVICE_URL: http://notification-service:17104
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
 
 volumes:
-  dati-broker:
-  dati-utenti:
-  dati-prenotazioni:
-  dati-notifiche:
+  data-broker:
+  data-users:
+  data-bookings:
+  data-notifications:

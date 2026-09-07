@@ -2,11 +2,11 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.prenotazioni</groupId>
-    <artifactId>prenotazioni-aule-parent</artifactId>
+    <groupId>com.classroom</groupId>
+    <artifactId>classroom-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>PrenotazioniAule (aggregatore)</name>
+    <name>Classroom (aggregator)</name>
     <description>Aggregatore dei moduli: shared e applicazione</description>
 
     <parent>
@@ -24,9 +24,9 @@
     -->
     <modules>
         <module>shared</module>
-        <module>services/notifica-service</module>
+        <module>services/notification-service</module>
         <module>services/auth-service</module>
-        <module>services/prenotazione-service</module>
+        <module>services/booking-service</module>
         <module>services/gateway</module>
     </modules>
 
@@ -42,7 +42,7 @@
 
              SENZA DOCKER QUESTO GATE FALLISCE, ed e' corretto che lo faccia. Le classi
              @Testcontainers si saltano da sole quando Docker non c'e' (skipped, non errore),
-             ma il codice che coprivano resta scoperto: notifica-service scende a 0.67 perche'
+             ma il codice che coprivano resta scoperto: notification-service scende a 0.67 perche'
              MessaggisticaCancellazioniTest e' l'unica a esercitare la topologia AMQP. Il gate
              certifica che il codice sia provato, e non puo' certificare cio' che non ha girato.
 
@@ -66,7 +66,7 @@
     <build>
         <plugins>
             <!--
-                "mvn spring-boot:run -pl prenotazione-service -am" applica il goal a ogni progetto del
+                "mvn spring-boot:run -pl booking-service -am" applica il goal a ogni progetto del
                 reattore, aggregatore e shared inclusi, che non hanno una main class e
                 farebbero fallire il comando. Qui il goal diventa un no-op; app lo
                 riabilita esplicitamente.
@@ -96,7 +96,7 @@
                     gia' da Engine 19.03, quindi copre la banda piu' ampia di daemon.
 
                     Sta in pluginManagement perche' vale per ogni modulo che ospiti test
-                    Testcontainers: oggi solo app, domani prenotazione-service.
+                    Testcontainers: oggi solo app, domani booking-service.
 
                     ATTENZIONE: non aggiungere qui un <argLine>. La property "argLine" e'
                     impostata da jacoco:prepare-agent; sovrascriverla senza @{argLine} manda

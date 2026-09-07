@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Lo schema degli utenti passa all'inglese, per combaciare con il codice.
--- Stessa ragione e stesse cautele della V6 di prenotazione-service: migrazione
+-- Stessa ragione e stesse cautele della V6 di booking-service: migrazione
 -- nuova e non modifica alla V1, perche' Flyway ne verifica il checksum; RENAME e
 -- non DROP/CREATE, perche' i dati restano dove sono.
 -- ============================================================================

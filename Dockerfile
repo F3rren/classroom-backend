@@ -1,7 +1,7 @@
 # ============================================================================
 # Un solo Dockerfile per tutti e quattro i servizi: cambia solo il modulo.
 #
-#     docker build --build-arg MODULO=auth-service -t prenotazioni/auth .
+#     docker build --build-arg MODULO=auth-service -t classroom/auth .
 #
 # Il build e' multi-stage perche' l'immagine finale non deve contenere Maven ne'
 # i sorgenti: solo un JRE e il jar.
@@ -17,8 +17,8 @@ WORKDIR /sorgenti
 COPY pom.xml .
 COPY shared/pom.xml shared/
 COPY services/auth-service/pom.xml services/auth-service/
-COPY services/notifica-service/pom.xml services/notifica-service/
-COPY services/prenotazione-service/pom.xml services/prenotazione-service/
+COPY services/notification-service/pom.xml services/notification-service/
+COPY services/booking-service/pom.xml services/booking-service/
 COPY services/gateway/pom.xml services/gateway/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
 
@@ -35,11 +35,11 @@ RUN mvn -B -q package -pl services/${MODULO} -am -DskipTests
 RUN cp services/${MODULO}/target/*.jar /applicazione.jar
 
 FROM eclipse-temurin:17-jre
-WORKDIR /opt/prenotazioni
+WORKDIR /opt/classroom
 
 # Utente non privilegiato: un processo che non ha bisogno di root non deve averlo.
-RUN useradd --system --create-home --shell /usr/sbin/nologin prenotazioni
-USER prenotazioni
+RUN useradd --system --create-home --shell /usr/sbin/nologin classroom
+USER classroom
 
 COPY --from=build /applicazione.jar applicazione.jar
 
