@@ -7,7 +7,7 @@
 -- behind the bigserial id, both still carrying "notifiche".
 --
 -- There is no foreign key to move: this table dropped its REFERENCES to
--- utenti when notifications became a service of their own, which is why
+-- the users table when notifications became a service of their own, which is why
 -- user_id here is a plain bigint.
 -- ============================================================================
 

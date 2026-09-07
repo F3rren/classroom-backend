@@ -1,14 +1,13 @@
 -- ============================================================================
--- V1 - Schema di base.
+-- V1 - the baseline schema.
 --
--- Riproduce lo schema che finora veniva creato da Hibernate con ddl-auto=update.
--- Sui database GIA' esistenti questa migrazione NON viene eseguita: la property
--- spring.flyway.baseline-on-migrate=true con baseline-version=1 la marca come
--- gia' applicata. Viene eseguita solo sui database nuovi, che cosi' ottengono
--- esattamente la stessa struttura invece di dipendere da ddl-auto.
+-- It reproduces the schema Hibernate used to create with ddl-auto=update. On databases that
+-- ALREADY exist this migration is NOT executed: spring.flyway.baseline-on-migrate=true with
+-- baseline-version=1 marks it as already applied. It runs only on new databases, which
+-- therefore get exactly the same structure instead of depending on ddl-auto.
 --
--- I vincoli di dominio (CHECK su stato e ruolo) NON stanno qui ma in V2, proprio
--- perche' devono essere applicati anche ai database esistenti, dove mancano.
+-- The domain constraints (the CHECKs on status and role) are NOT here but in V2, precisely
+-- because they have to be applied to existing databases too, where they are missing.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS utenti (
@@ -66,12 +65,12 @@ CREATE TABLE IF NOT EXISTS notifiche (
     admin_nome        varchar(100)
 );
 
--- Protezione contro la doppia prenotazione concorrente.
--- Il controllo applicativo isAulaDisponibile() non basta: fra la verifica e il
--- salvataggio un'altra transazione puo' inserire una prenotazione sovrapposta.
--- Questo vincolo la rifiuta a livello di database; i controller traducono la
--- DataIntegrityViolationException risultante in un 409 BookingConflictException.
--- Le prenotazioni annullate sono escluse: non occupano piu' l'aula.
+-- The protection against concurrent double booking.
+-- The application check isRoomAvailable() is not enough: between the check and the save,
+-- another transaction can insert an overlapping booking. This constraint refuses it at the
+-- database level; the controllers translate the resulting DataIntegrityViolationException
+-- into a 409 BookingConflictException.
+-- Cancelled bookings are excluded: they no longer hold the room.
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 ALTER TABLE prenotazioni

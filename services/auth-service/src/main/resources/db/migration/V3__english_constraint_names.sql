@@ -4,7 +4,7 @@
 --
 -- V2 renamed the table, the columns and utente_ruolo_check, which V1 had named
 -- explicitly. The primary key, the two unique keys and the sequence were never
--- written down anywhere: they took their name from "utenti" and stayed behind
+-- written down anywhere: they took their name from the old table and stayed behind
 -- when the table became "users".
 --
 -- The guard matters more here than anywhere else: a duplicate email is a case

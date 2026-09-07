@@ -1,11 +1,11 @@
 -- ============================================================================
--- Lo schema delle notifiche passa all'inglese, per combaciare con il codice.
--- Stessa ragione e stesse cautele della V6 di booking-service.
+-- The notification schema moves to English, to line up with the code.
+-- Same reasoning and same caution as booking-service's V6.
 -- ============================================================================
 
--- "letta" diventa is_read e non read: READ e' una parola chiave in SQL, e una
--- colonna che va sempre virgolettata e' una trappola per la prossima query scritta
--- a mano. is_read segue anche la forma che la tabella aule usava gia' per is_virtual.
+-- "letta" becomes is_read and not read: READ is a keyword in SQL, and a column that always
+-- has to be quoted is a trap for the next query written by hand. is_read also follows the
+-- shape the rooms table already used for is_virtual.
 ALTER TABLE notifiche RENAME COLUMN utente_id         TO user_id;
 ALTER TABLE notifiche RENAME COLUMN titolo            TO title;
 ALTER TABLE notifiche RENAME COLUMN messaggio         TO message;
@@ -19,6 +19,6 @@ ALTER TABLE notifiche RENAME COLUMN data_prenotazione TO booking_date;
 ALTER TABLE notifiche RENAME COLUMN admin_nome        TO admin_name;
 ALTER TABLE notifiche RENAME TO notifications;
 
--- Gli indici sopravvivono al rename delle colonne, ma conservano il proprio nome.
+-- Indexes survive a column rename, but they keep their own name.
 ALTER INDEX idx_notifiche_utente           RENAME TO idx_notifications_user;
 ALTER INDEX idx_notifiche_utente_non_lette RENAME TO idx_notifications_user_unread;

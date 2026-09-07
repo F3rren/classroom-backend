@@ -1,13 +1,13 @@
 -- ============================================================================
--- Lo schema del servizio utenti: una tabella sola.
+-- The user service's schema: a single table.
 --
--- E' la stessa definizione che stava nella V1 del monolite, portata qui insieme
--- al CHECK sul ruolo che stava nella V2. Non e' una copia da tenere allineata:
--- da adesso questa e' l'unica definizione, e la tabella utenti sparisce dallo
+-- It is the same definition that lived in the monolith's V1, brought here together with the
+-- CHECK on the role that lived in V2. It is not a copy to be kept in step: from now on this
+-- is the only definition, and the users table disappears from the
 -- schema di booking-service.
 --
--- Le prenotazioni e le notifiche conservano un utente_id senza chiave esterna,
--- perche' vivono in altri database. Nessuna FK puo' attraversare quel confine.
+-- Bookings and notifications keep a user id with no foreign key, because they live in other
+-- databases. No FK can cross that boundary.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS utenti (
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS utenti (
     ultimo_accesso     timestamp
 );
 
--- Tiene il dominio del ruolo allineato all'enum Ruolo. RuoloTest cicla i valori
--- dell'enum proprio per intercettare una costante aggiunta senza migrazione.
+-- Keeps the role's domain in step with the Role enum. RoleTest loops over the enum's values
+-- precisely to catch a constant added without a matching migration.
 ALTER TABLE utenti
     DROP CONSTRAINT IF EXISTS utente_ruolo_check;
 

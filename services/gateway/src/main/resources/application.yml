@@ -1,21 +1,21 @@
 # ============================================================================
 # GATEWAY
 #
-# Il frontend conosce questo indirizzo e nessun altro.
+# The frontend knows this address and no other.
 #
-# PORTE. Il gateway occupa 17102, ed e' l'unica che il frontend deve conoscere. I
-# servizi prendono le successive, in modo che aggiungerne uno non richieda di
+# PORTS. The gateway takes 17102, and it is the only one the frontend has to know. The
+# services take the ones after it, so that adding another does not mean
 # ripensare l'assegnazione:
 #
-#     17102  gateway            <-- il frontend parla solo con questa
-#     17103  app                (aule, prenotazioni, corsi)
+#     17102  gateway            <-- the frontend talks only to this one
+#     17103  booking-service    (rooms, bookings, courses)
 #     17104  notification-service
-#     17105  auth-service       (utenti, emissione dei token)
+#     17105  auth-service       (users, token issuing)
 #
-# La 8080 e' volutamente evitata: e' troppo comune e finisce per collidere con
+# 8080 is deliberately avoided: it is too common and ends up colliding with
 # altri progetti sulla stessa macchina.
 #
-# Ogni porta resta sovrascrivibile da variabile d'ambiente, senza toccare codice.
+# Every port stays overridable from an environment variable, with no code to touch.
 # ============================================================================
 
 server:
@@ -27,41 +27,41 @@ spring:
 
   cloud:
     gateway:
-      # La CORS sta qui perche' e' il gateway a parlare col browser: i servizi dietro
-      # ricevono solo richieste server-to-server. Ognuno mantiene comunque la propria
-      # configurazione, che serve quando lo si interroga direttamente in sviluppo.
-      # QUALE indirizzo arriva ai servizi come indirizzo del chiamante.
+      # CORS lives here because the gateway is what talks to the browser: the services
+      # behind it receive only server-to-server requests. Each keeps its own configuration
+      # all the same, which is what you need when querying it directly in development.
+      # WHICH address reaches the services as the caller's address.
       #
-      # Il default e' AGGIUNGERE in coda a un X-Forwarded-For gia' presente invece di
-      # sostituirlo. Siccome ForwardedHeaderFilter, a valle, legge il PRIMO valore, quel
-      # default lascia scegliere al chiamante il proprio indirizzo apparente: chi manda
-      # "X-Forwarded-For: 9.9.9.9" fa arrivare "9.9.9.9,<indirizzo reale>" e viene letto
+      # The default is to APPEND to an existing X-Forwarded-For rather than replace it.
+      # Since ForwardedHeaderFilter downstream reads the FIRST value, that default lets the
+      # caller choose their own apparent address: sending "X-Forwarded-For: 9.9.9.9" makes
+      # "9.9.9.9,<real address>" arrive, and what gets read is
       # come 9.9.9.9.
       #
-      # Non e' teorico: auth-service limita i tentativi di login su una chiave che comincia
-      # con quell'indirizzo. Col default, cambiarlo a ogni richiesta evita del tutto il
-      # limite. Con for-append: false il gateway scrive solo il proprio interlocutore
-      # diretto e scarta cio' che il client dichiara.
+      # This is not theoretical: auth-service rate-limits login attempts on a key that
+      # starts with that address. With the default, changing it on every request sidesteps
+      # the limit entirely. With for-append: false the gateway writes only its own direct
+      # peer and discards whatever the client declares.
       #
       # QUESTA RIGA E "server.forward-headers-strategy=framework" NEI TRE SERVIZI SI
-      # REGGONO A VICENDA: la' ci si fida dell'intestazione, qui la si rende affidabile.
-      # Togliendone una senza sapere dell'altra il buco si riapre in silenzio.
+      # THEY HOLD EACH OTHER UP: there the header is trusted, here it is made trustworthy.
+      # Removing one without knowing about the other reopens the hole in silence.
       # Fissata da IndirizzoDelChiamanteTest.
       #
-      # Se un giorno davanti al gateway ci fosse un proxy vero, questa scelta va rifatta:
-      # li' l'intestazione in arrivo sarebbe legittima e andrebbe conservata, fidandosi del
-      # proxy - non del client.
+      # If one day there were a real proxy in front of the gateway, this choice would have
+      # to be revisited: there the incoming header would be legitimate and should be kept,
+      # trusting the proxy - not the client.
       x-forwarded:
         for-append: false
 
-      # Senza questi due, il gateway aspetta un servizio a valle SENZA LIMITE. Un servizio
-      # spento e' gestito bene - la connessione viene rifiutata e si risponde 503 - ma un
-      # servizio LENTO, che accetta la connessione e non risponde, tiene occupate le
-      # risorse del gateway finche' non si arrende da solo. Ed essendo il gateway l'unico
-      # ingresso, un servizio lento diventa un sistema lento.
+      # Without these two, the gateway waits on a downstream service WITHOUT LIMIT. A
+      # service that is down is handled well - the connection is refused and 503 comes back
+      # - but a SLOW service, one that accepts the connection and does not answer, ties up
+      # the gateway's resources until it gives up on its own. And since the gateway is the
+      # only way in, one slow service becomes a slow system.
       #
-      # 10 secondi e' largo per queste API, dove la richiesta piu' pesante e' un elenco di
-      # prenotazioni: se ci mette di piu' e' rotta, non lenta.
+      # 10 seconds is generous for these APIs, where the heaviest request is a list of
+      # bookings: if it takes longer than that it is broken, not slow.
       httpclient:
         connect-timeout: 2000
         response-timeout: 10s
@@ -77,24 +77,23 @@ spring:
 
       routes:
         # ------------------------------------------------------------------
-        # PRIMA REGOLA, E L'ORDINE CONTA: le rotte interne di notification-service
-        # sono chiamate da altri servizi, non dal browser. Esporle attraverso il
-        # gateway darebbe a chiunque abbia un token admin la possibilita' di
-        # fabbricare notifiche arbitrarie. Spring Cloud Gateway valuta le rotte
-        # nell'ordine dichiarato: questa deve precedere quella generica sulle
-        # notifiche, altrimenti non verrebbe mai raggiunta.
+        # FIRST RULE, AND THE ORDER MATTERS: notification-service's internal routes are
+        # called by other services, not by the browser. Exposing them through the gateway
+        # would let anybody holding an admin token fabricate arbitrary notifications.
+        # Spring Cloud Gateway evaluates routes in declaration order: this one has to come
+        # before the generic notifications route, or it would never be reached.
         # ------------------------------------------------------------------
-        # forward: e non un filtro SetStatus, che imposterebbe lo stato della risposta
-        # ricevuta dal servizio a valle DOPO averlo interrogato: la richiesta arriverebbe
-        # comunque. forward: la dirotta sul gateway stesso, che non ha alcun handler per
-        # quel percorso e risponde 404 senza inoltrare nulla.
+        # forward: and not a SetStatus filter, which would set the status of the response
+        # received from the downstream service AFTER querying it: the request would arrive
+        # all the same. forward: diverts it onto the gateway itself, which has no handler
+        # for that path and answers 404 without forwarding anything.
         - id: notifications-internal-blocked
           uri: forward:/route-not-exposed
           predicates:
             - Path=/api/notifications/internal/**
 
-        # Anche le prenotazioni hanno rotte interne fra servizi: auth-service le chiama
-        # per cancellare le prenotazioni di un utente rimosso. Stessa regola, stesso ordine.
+        # The bookings have internal service-to-service routes too: auth-service calls them
+        # to delete the bookings of a removed user. Same rule, same ordering.
         - id: bookings-internal-blocked
           uri: forward:/route-not-exposed
           predicates:
@@ -105,14 +104,14 @@ spring:
           predicates:
             - Path=/api/notifications/**
 
-        # Login, profilo e amministrazione utenti: auth-service.
+        # Login, profile and user administration: auth-service.
         - id: authentication
           uri: ${AUTH_SERVICE_URL:http://localhost:17105}
           predicates:
-            # Un prefisso, non un elenco. Prima qui c'era la lista degli endpoint admin di
-            # auth-service, copiata dal controller: aggiungerne uno la' senza toccare
-            # questa riga lo avrebbe mandato a booking-service, con un 404 e niente
-            # che indicasse il perche'. Ora la rotta descrive un confine fra servizi.
+            # A prefix, not a list. This used to hold the list of auth-service's admin
+            # endpoints, copied from the controller: adding one there without touching this
+            # line would have sent it to booking-service, with a 404 and nothing to say
+            # why. The route now describes a boundary between services.
             - Path=/api/auth/**,/api/me/**,/api/admin/users,/api/admin/users/**
 
         # Aule, prenotazioni e amministrazione delle stesse.

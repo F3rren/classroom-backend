@@ -1,39 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copia della configurazione dei log di shared, con una differenza dichiarata sotto.
+  A copy of shared's logging configuration, with one difference stated below.
 
-  E' una copia e non un riferimento perche' il gateway NON dipende da shared: shared porta
-  spring-boot-starter-web, cioe' Tomcat, che in un'applicazione WebFlux non ci puo' stare
-  (il pom lo dice esplicitamente). La duplicazione e' voluta, ed e' il prezzo di quella
-  separazione.
+  It is a copy and not a reference because the gateway does NOT depend on shared: shared
+  brings spring-boot-starter-web, meaning Tomcat, which has no place in a WebFlux application
+  (the pom says so explicitly). The duplication is deliberate, and it is the price of that
+  separation.
 
-  LA DIFFERENZA: qui %X{requestId} resta quasi sempre vuoto.
+  THE DIFFERENCE: here %X{requestId} is almost always empty.
 
-  Non e' una dimenticanza. MDC e' legato al thread, e WebFlux non tratta una richiesta su un
-  thread solo: il valore messo all'ingresso non si ritrova piu' due operatori dopo. Fingere
-  il contrario - stampare un campo che resta vuoto - sarebbe peggio che non averlo, quindi
-  la colonna c'e' per tenere le righe allineate a quelle dei servizi, ma non promette nulla.
+  That is not an oversight. The MDC is bound to a thread, and WebFlux does not handle a
+  request on a single thread: the value put in at the entrance is no longer there two
+  operators later. Pretending otherwise - printing a field that stays empty - would be worse
+  than not having it, so the column is here to keep the lines aligned with the services', but
+  it promises nothing.
 
-  Il gateway l'identificativo lo tratta dove serve davvero: lo conia in EdgeCorrelationFilter,
-  lo mette nell'intestazione X-Request-Id e lo passa ai servizi a
-  valle, che essendo servlet lo mettono in MDC e lo stampano su ogni riga. GatewayErrorHandler
-  lo scrive a mano nelle proprie righe, che sono le uniche del gateway a citarlo.
+  The gateway handles the id where it actually matters: it mints it in EdgeCorrelationFilter,
+  puts it in the X-Request-Id header and passes it to the downstream services, which being
+  servlet-based put it in their MDC and print it on every line. GatewayErrorHandler writes it
+  by hand into its own lines, which are the only ones in the gateway that quote it.
 
-  Per la scala dei livelli - DEBUG narrazione, INFO cambiamenti, WARN rifiuti previsti,
-  ERROR nessuno sa cosa e' successo - vale quanto scritto in
-  shared/src/main/resources/logback-spring.xml, che e' l'unico posto dove quella regola e'
-  spiegata per esteso.
+  For the scale of levels - DEBUG narration, INFO changes, WARN expected refusals, ERROR
+  nobody knows what happened - what applies is written in
+  shared/src/main/resources/logback-spring.xml, which is the only place that rule is spelled
+  out in full.
 -->
 <configuration>
 
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <property name="TRACCIATO"
+    <property name="LOG_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %-12X{requestId:--} %-34.34logger{0} : %msg%n%wEx"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>${TRACCIATO}</pattern>
+            <pattern>${LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>

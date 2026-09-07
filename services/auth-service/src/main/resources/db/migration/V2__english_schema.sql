@@ -1,8 +1,8 @@
 -- ============================================================================
--- Lo schema degli utenti passa all'inglese, per combaciare con il codice.
--- Stessa ragione e stesse cautele della V6 di booking-service: migrazione
--- nuova e non modifica alla V1, perche' Flyway ne verifica il checksum; RENAME e
--- non DROP/CREATE, perche' i dati restano dove sono.
+-- The user schema moves to English, to line up with the code.
+-- Same reasoning and same caution as booking-service's V6: a new migration rather than a
+-- change to V1, because Flyway checks its checksum; RENAME and not DROP/CREATE, because the
+-- data stays where it is.
 -- ============================================================================
 
 ALTER TABLE utenti RENAME COLUMN nome               TO name;
@@ -11,5 +11,5 @@ ALTER TABLE utenti RENAME COLUMN data_registrazione TO registered_at;
 ALTER TABLE utenti RENAME COLUMN ultimo_accesso     TO last_login;
 ALTER TABLE utenti RENAME TO users;
 
--- Il nome del vincolo non segue quello della colonna.
+-- A constraint's name does not follow its column's.
 ALTER TABLE users RENAME CONSTRAINT utente_ruolo_check TO user_role_check;
