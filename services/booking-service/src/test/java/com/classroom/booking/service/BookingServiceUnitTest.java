@@ -95,6 +95,7 @@ class BookingServiceUnitTest {
                 .thenReturn(List.of());
     }
 
+    @SuppressWarnings("null")
     private void saveAsGiven() {
         when(bookingRepository.save(any(Booking.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

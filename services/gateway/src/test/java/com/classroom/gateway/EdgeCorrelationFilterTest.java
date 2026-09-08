@@ -1,5 +1,6 @@
 package com.classroom.gateway;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +33,7 @@ class EdgeCorrelationFilterTest {
     private WebTestClient client;
 
     @Test
+    @SuppressWarnings("null")
     void mintsAnIdWhenTheCallerSendsNone() {
         client.get().uri("/api/rooms")
                 .exchange()
@@ -40,7 +42,7 @@ class EdgeCorrelationFilterTest {
                 .expectBody()
                 // The same value in the body: whoever opens a report quotes a single id, and
                 // that id is searchable in the logs of every service involved.
-                .jsonPath("$.sessionId").value(org.hamcrest.Matchers.startsWith("REQ_"));
+                .jsonPath("$.sessionId").value(Matchers.startsWith("REQ_"));
     }
 
     @Test

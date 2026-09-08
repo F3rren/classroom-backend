@@ -62,6 +62,7 @@ class RoutingTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void theMainApplicationRoutesAreRouted() {
         for (String path : new String[]{"/api/rooms", "/api/bookings", "/api/me", "/api/admin/users"}) {
             client.get().uri(path)

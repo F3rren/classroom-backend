@@ -4,6 +4,7 @@ import com.classroom.notification.model.Notification;
 import com.classroom.notification.repository.NotificationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,8 +29,9 @@ class NotificationServiceUnitTest {
         return new NotificationService(notificationRepository);
     }
 
+    @SuppressWarnings("null")
     private void stubSaveToReturnItsArgument() {
-        when(notificationRepository.save(org.mockito.ArgumentMatchers.any(Notification.class)))
+        when(notificationRepository.save(ArgumentMatchers.any(Notification.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
 

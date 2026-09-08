@@ -81,6 +81,7 @@ class ErrorResponsesGatewayTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void theTimestampUsesTheServiceFormatAndNotSpringsIso() {
         // yyyy-MM-dd HH:mm:ss, the same as util.Timestamps. It used to be ISO with an offset,
         // so the same API carried two different formats depending on who answered.
@@ -92,6 +93,7 @@ class ErrorResponsesGatewayTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void theUserMessageExposesNoInternalDetail() {
         // No class name, no address, no stack: what the investigator needs is in the logs
         // alongside the sessionId, not in the response.

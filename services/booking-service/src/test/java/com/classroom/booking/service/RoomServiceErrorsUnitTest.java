@@ -54,6 +54,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void aConstraintViolationOnCreateIsNotSwallowed() {
         when(roomRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
@@ -65,6 +66,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void aDatabaseFailureOnCreateDoesNotBecomeAUserError() {
         when(roomRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
         when(roomRepository.save(any(Room.class)))
@@ -88,6 +90,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void aConstraintViolationOnUpdateIsNotSwallowed() {
         Room existing = new Room();
         existing.setId(1L);

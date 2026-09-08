@@ -181,7 +181,6 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    @SuppressWarnings("null")
     void updateReportsAUsernameBelongingToAnotherUser() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, "mia@test.it")));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(user(1L, "mia@test.it"));

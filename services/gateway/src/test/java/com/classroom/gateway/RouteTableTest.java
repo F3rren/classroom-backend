@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.lang.NonNull;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ServerWebExchange;
@@ -35,7 +36,7 @@ class RouteTableTest {
     private RouteLocator routes;
 
     /** The id of the first route that accepts the path, as the gateway would pick it. */
-    private String firstRouteMatching(String path) {
+    private String firstRouteMatching(@NonNull String path) {
         ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path).build());
         List<Route> ordered = routes.getRoutes().collectList().block();
         assertThat(ordered).as("no route loaded: application.yml was not read").isNotEmpty();
@@ -101,6 +102,7 @@ class RouteTableTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void everyPublicPathFindsARoute() {
         // A path with no route does not produce a configuration error: it produces a 404 for
         // the caller, and that is how a new endpoint stays invisible after being written and
