@@ -16,6 +16,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,20 +58,22 @@ class GlobalExceptionHandlerUnitTest {
                 "UPDATE_CONFLICT", "Impossibile modificare", "Riprova con un altro orario.");
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleBookingConflict(ex);
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(resp.getBody().getError()).isEqualTo("UPDATE_CONFLICT");
-        assertThat(resp.getBody().getUserMessage()).isEqualTo("Riprova con un altro orario.");
-        assertThat(resp.getBody().isSuccess()).isFalse();
+        assertThat(body.getError()).isEqualTo("UPDATE_CONFLICT");
+        assertThat(body.getUserMessage()).isEqualTo("Riprova con un altro orario.");
+        assertThat(body.isSuccess()).isFalse();
     }
 
     @Test
     void anIntegrityViolationBecomesAGeneric409() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDataIntegrityViolation(
                 new DataIntegrityViolationException("vincolo violato"));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(resp.getBody().getError()).isEqualTo("CONFLICT");
+        assertThat(body.getError()).isEqualTo("CONFLICT");
     }
 
     @Test
@@ -79,29 +82,32 @@ class GlobalExceptionHandlerUnitTest {
         // through to handleGeneric, and an unknown path answered 500 INTERNAL_ERROR.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
                 new NoResourceFoundException(HttpMethod.GET, "/v3/api-docs"));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(resp.getBody().getError()).isEqualTo("NOT_FOUND");
+        assertThat(body.getError()).isEqualTo("NOT_FOUND");
     }
 
     @Test
     void anUnexpectedExceptionBecomes500WithoutExposingDetails() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleGeneric(
                 new IllegalStateException("dettaglio interno che non deve uscire"));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(resp.getBody().getError()).isEqualTo("INTERNAL_ERROR");
+        assertThat(body.getError()).isEqualTo("INTERNAL_ERROR");
         // the technical message must not reach the response
-        assertThat(resp.getBody().getUserMessage()).doesNotContain("dettaglio interno");
+        assertThat(body.getUserMessage()).doesNotContain("dettaglio interno");
     }
 
     @Test
     void accessDeniedKeepsAnExplicitMessage() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleAccessDenied(
                 new AccessDeniedException("Puoi vedere solo le tue prenotazioni."));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(resp.getBody().getUserMessage()).isEqualTo("Puoi vedere solo le tue prenotazioni.");
+        assertThat(body.getUserMessage()).isEqualTo("Puoi vedere solo le tue prenotazioni.");
     }
 
     @Test
@@ -113,10 +119,11 @@ class GlobalExceptionHandlerUnitTest {
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleValidation(
                 new MethodArgumentNotValidException(parameter, binding));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resp.getBody().getError()).isEqualTo("VALIDATION_ERROR");
-        assertThat(resp.getBody().getUserMessage()).isEqualTo("I dati inviati non sono validi.");
+        assertThat(body.getError()).isEqualTo("VALIDATION_ERROR");
+        assertThat(body.getUserMessage()).isEqualTo("I dati inviati non sono validi.");
     }
 
     @Test
@@ -131,8 +138,9 @@ class GlobalExceptionHandlerUnitTest {
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleValidation(
                 new MethodArgumentNotValidException(parameter, binding));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
-        assertThat(resp.getBody().getUserMessage()).isEqualTo("La capienza deve essere un numero positivo.");
+        assertThat(body.getUserMessage()).isEqualTo("La capienza deve essere un numero positivo.");
     }
 
     @Test
@@ -140,11 +148,12 @@ class GlobalExceptionHandlerUnitTest {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
                 new ResourceNotFoundException("ROOM_NOT_FOUND", "Room not found with id: 42",
                         "L'aula richiesta non esiste."));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(resp.getBody().getError()).isEqualTo("ROOM_NOT_FOUND");
-        assertThat(resp.getBody().getUserMessage()).isEqualTo("L'aula richiesta non esiste.");
-        assertThat(resp.getBody().isSuccess()).isFalse();
+        assertThat(body.getError()).isEqualTo("ROOM_NOT_FOUND");
+        assertThat(body.getUserMessage()).isEqualTo("L'aula richiesta non esiste.");
+        assertThat(body.isSuccess()).isFalse();
     }
 
     @Test
@@ -170,9 +179,10 @@ class GlobalExceptionHandlerUnitTest {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleDomainConflict(
                 new DomainConflictException("ROOM_NAME_TAKEN", "Room name already taken: Aula Magna",
                         "Esiste gia' un'aula con questo nome."));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(resp.getBody().getError()).isEqualTo("ROOM_NAME_TAKEN");
+        assertThat(body.getError()).isEqualTo("ROOM_NAME_TAKEN");
     }
 
     @Test
@@ -192,9 +202,10 @@ class GlobalExceptionHandlerUnitTest {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleInvalidRequest(
                 new InvalidRequestException("INVALID_STATE", "Invalid status: inventato",
                         "Stato non riconosciuto."));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resp.getBody().getError()).isEqualTo("INVALID_STATE");
+        assertThat(body.getError()).isEqualTo("INVALID_STATE");
     }
 
     @Test
@@ -216,8 +227,9 @@ class GlobalExceptionHandlerUnitTest {
         // answered 500 "internal error" to any wrong address.
         var response = handler.handleNoHandler(
                 new NoHandlerFoundException("GET", "/percorso/inventato", new HttpHeaders()));
+        var body = Objects.requireNonNull(response.getBody());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(response.getBody().getError()).isEqualTo("NOT_FOUND");
+        assertThat(body.getError()).isEqualTo("NOT_FOUND");
     }
 }

@@ -19,6 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -77,7 +78,7 @@ class AuthValidationTest {
         ResponseEntity<Map> resp = rest.postForEntity(
                 "/api/auth/login", Map.of("email", email, "password", password), Map.class);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) resp.getBody().get("token");
+        return (String) Objects.requireNonNull(resp.getBody()).get("token");
     }
 
     private HttpHeaders bearer(String token) {
