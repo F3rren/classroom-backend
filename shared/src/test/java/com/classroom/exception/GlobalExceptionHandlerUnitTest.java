@@ -419,6 +419,36 @@ class GlobalExceptionHandlerUnitTest {
     }
 
     @Test
+    void wrongCredentialsBecome401WithNoMisleadingChallenge() {
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleAuthenticationFailed(
+                new AuthenticationFailedException("INVALID_CREDENTIALS", "Invalid credentials",
+                        "Email o password non corretti."));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(body.getError()).isEqualTo("INVALID_CREDENTIALS");
+        // No WWW-Authenticate, although RFC 9110 asks a 401 to carry one. The login endpoint
+        // does not use HTTP authentication - it reads a JSON body - so a "Bearer" challenge
+        // would tell the caller to do the one thing that cannot help. Deliberate, and not the
+        // same case as ApiAuthenticationEntryPoint, which does send one.
+        assertThat(resp.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE)).isNull();
+    }
+
+    @Test
+    void aRateLimitBecomes429AndSaysHowLongToWait() {
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleTooManyRequests(
+                new TooManyRequestsException("TOO_MANY_ATTEMPTS", "Too many login attempts",
+                        "Riprova tra qualche minuto.", 42L));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(body.getError()).isEqualTo("TOO_MANY_ATTEMPTS");
+        // The delay is known only to whoever threw, so it travels on the exception. Without
+        // it a client guesses, and usually guesses too soon. RFC 9110 section 10.2.3.
+        assertThat(resp.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("42");
+    }
+
+    @Test
     void aDownstreamFailureBecomes503() {
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleServiceUnavailable(
                 new ServiceUnavailableException("SERVICE_UNAVAILABLE", "notification-service did not answer",

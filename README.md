@@ -492,6 +492,8 @@ status once:
 | `InvalidRequestException` | 400 | the request asks for something that makes no sense |
 | `MethodArgumentNotValidException` | 400 | Bean Validation rejected the body |
 | `HandlerMethodValidationException` | 400 | a constraint on a parameter said no (`@Positive` on a path variable) |
+| `AuthenticationFailedException` | 401 | a login with the wrong credentials |
+| `TooManyRequestsException` | 429 | refused for asking too often, and carries the `Retry-After` delay |
 | `AccessDeniedException` | 403 | authenticated, but not theirs and not an admin |
 | `ResourceNotFoundException` | 404 | the object named does not exist |
 | `DomainConflictException` | 409 | it exists, but its state does not admit the operation |
@@ -540,9 +542,15 @@ sentence in Italian meant for a person:
 
 | Response | Header | Why |
 |---|---|---|
-| 401 | `WWW-Authenticate: Bearer realm="classroom"` | mandatory per RFC 9110 §11.6.1. When a token *was* sent and refused it becomes `error="invalid_token"` (RFC 6750 §3.1): without a token you log in, with an expired one you refresh — opposite moves, and previously indistinguishable. This is also the case the README warns about below, where changing `JWT_SECRET` starts refusing every existing token "for no visible reason" |
-| 429 | `Retry-After` | `LoginAttemptLimiter` is the only thing that knows when the window reopens, so it is the only thing that can say. Advisory: it is read separately from the check, so the window can roll over in between |
+| 401 (protected resource) | `WWW-Authenticate: Bearer realm="classroom"` | mandatory per RFC 9110 §11.6.1. When a token *was* sent and refused it becomes `error="invalid_token"` (RFC 6750 §3.1): without a token you log in, with an expired one you refresh — opposite moves, and previously indistinguishable. This is also the case the README warns about below, where changing `JWT_SECRET` starts refusing every existing token "for no visible reason" |
+| 429 | `Retry-After` | `LoginAttemptLimiter` is the only thing that knows when the window reopens, so it is the only thing that can say — the delay travels on `TooManyRequestsException`. Advisory: it is read separately from the check, so the window can roll over in between |
 | 503 | `Retry-After` | at the gateway. A constant, and it has to be — nothing knows when a service that is not answering will be back |
+
+The **401 of a failed login carries no challenge**, and that is deliberate rather than an
+oversight: `/api/auth/login` does not use HTTP authentication, it reads a JSON body, so a
+`Bearer` challenge would tell the caller to do the one thing that cannot help. A misleading
+challenge is worse than an absent one. The two 401s are different cases, and only the one
+above — a protected resource refusing a request — has something to challenge with.
 
 The distinction between 500 and 503 is not formal: they suggest two different actions. A 500
 says "something is broken", a 503 says "try again". `ServiceUnavailableException` still

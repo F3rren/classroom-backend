@@ -1,6 +1,5 @@
 package com.classroom.auth.controller;
 
-import com.classroom.dto.ApiEnvelope;
 import com.classroom.auth.dto.LoginRequest;
 import com.classroom.auth.dto.LoginResponse;
 import com.classroom.auth.model.User;
@@ -11,14 +10,21 @@ import com.classroom.auth.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+import com.classroom.exception.ApplicationException;
+import com.classroom.exception.AuthenticationFailedException;
+import com.classroom.exception.InvalidRequestException;
+import com.classroom.exception.TooManyRequestsException;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -74,9 +80,18 @@ class AuthControllerUnitTest {
         return u;
     }
 
-    @SuppressWarnings("unchecked")
-    private String errorCode(ResponseEntity<?> resp) {
-        return ((ApiEnvelope<Object>) Objects.requireNonNull(resp.getBody())).getError();
+    /**
+     * The controller no longer builds error responses: it throws, and
+     * GlobalExceptionHandler decides the status once. Called directly, as here, the
+     * exception is what comes out - and the status each type becomes is pinned next to the
+     * handler, in shared.
+     */
+    private void assertRefusedWith(Class<? extends ApplicationException> type,
+                                   String expectedCode, ThrowingCallable call) {
+        assertThatThrownBy(call)
+                .isInstanceOf(type)
+                .satisfies(e -> assertThat(((ApplicationException) e).getErrorCode())
+                        .isEqualTo(expectedCode));
     }
 
     // ==================== rate limiting ====================
@@ -88,19 +103,20 @@ class AuthControllerUnitTest {
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         // first attempt: uses up the quota and fails on wrong credentials
-        ResponseEntity<?> first = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
-        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",
+                () -> controller.login(credentials("u@test.it", "sbagliata"), httpRequest));
 
         // second attempt: over the threshold
-        ResponseEntity<?> second = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
-        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-        assertThat(errorCode(second)).isEqualTo("TOO_MANY_ATTEMPTS");
-        // Retry-After turns the refusal into something a client can act on: the userMessage
-        // says "tra qualche minuto" to a person, this says how many seconds to the code.
-        // RFC 9110 section 10.2.3.
-        assertThat(second.getHeaders().getFirst(HttpHeaders.RETRY_AFTER))
-                .isNotNull()
-                .satisfies(value -> assertThat(Long.parseLong(value)).isBetween(1L, 60L));
+        TooManyRequestsException refusal = catchThrowableOfType(
+                () -> controller.login(credentials("u@test.it", "sbagliata"), httpRequest),
+                TooManyRequestsException.class);
+
+        assertThat(refusal.getErrorCode()).isEqualTo("TOO_MANY_ATTEMPTS");
+        // The delay travels on the exception because only the limiter knows it. The handler
+        // turns it into Retry-After, which is what makes the refusal actionable: the
+        // userMessage says "tra qualche minuto" to a person, the header says how many
+        // seconds to the code. RFC 9110 section 10.2.3.
+        assertThat(refusal.getRetryAfterSeconds()).isBetween(1L, 60L);
     }
 
     @Test
@@ -111,11 +127,13 @@ class AuthControllerUnitTest {
                 new LoginAttemptLimiter(1, -1L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
-        controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
-        ResponseEntity<?> second = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
+        assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",
+                () -> controller.login(credentials("u@test.it", "sbagliata"), httpRequest));
 
-        // no 429: the window has expired and the counter was reset
-        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // no 429: the window has expired and the counter was reset, so the second attempt
+        // is refused on the credentials again rather than on the limit
+        assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",
+                () -> controller.login(credentials("u@test.it", "sbagliata"), httpRequest));
     }
 
     @Test
@@ -124,101 +142,96 @@ class AuthControllerUnitTest {
                 new LoginAttemptLimiter(1, 60_000L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
-        controller.login(credentials("primo@test.it", "password"), httpRequest);
-        controller.login(credentials("primo@test.it", "password"), httpRequest); // primo utente in 429
+        assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",
+                () -> controller.login(credentials("primo@test.it", "password"), httpRequest));
+        assertRefusedWith(TooManyRequestsException.class, "TOO_MANY_ATTEMPTS",
+                () -> controller.login(credentials("primo@test.it", "password"), httpRequest));
 
-        ResponseEntity<?> other = controller.login(credentials("secondo@test.it", "password"), httpRequest);
-        assertThat(other.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // a different email has a counter of its own
+        assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",
+                () -> controller.login(credentials("secondo@test.it", "password"), httpRequest));
     }
 
     // ==================== validation ====================
 
     @Test
     void rejectsAMissingEmail() {
-        ResponseEntity<?> resp = controller.login(credentials(null, "password"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("MISSING_EMAIL");
+        assertRefusedWith(InvalidRequestException.class, "MISSING_EMAIL",
+                () -> controller.login(credentials(null, "password"), httpRequest));
     }
 
     @Test
     void rejectsAMalformedEmail() {
-        ResponseEntity<?> resp = controller.login(credentials("non-una-email", "password"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_EMAIL_FORMAT");
+        assertRefusedWith(InvalidRequestException.class, "INVALID_EMAIL_FORMAT",
+                () -> controller.login(credentials("non-una-email", "password"), httpRequest));
     }
 
     @Test
     void rejectsAMissingPassword() {
-        ResponseEntity<?> resp = controller.login(credentials("u@test.it", ""), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("MISSING_PASSWORD");
+        assertRefusedWith(InvalidRequestException.class, "MISSING_PASSWORD",
+                () -> controller.login(credentials("u@test.it", ""), httpRequest));
     }
 
     @Test
     void rejectsATooShortPassword() {
-        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "ab"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("PASSWORD_TOO_SHORT");
+        assertRefusedWith(InvalidRequestException.class, "PASSWORD_TOO_SHORT",
+                () -> controller.login(credentials("u@test.it", "ab"), httpRequest));
     }
 
     @Test
     void rejectsWrongCredentials() {
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
-        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_CREDENTIALS");
+        assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",
+                () -> controller.login(credentials("u@test.it", "sbagliata"), httpRequest));
     }
 
     // ==================== internal errors ====================
 
     @Test
-    void returns500WhenTheServiceBlowsUp() {
+    void aFailureInTheServiceIsNotSwallowed() {
         when(authService.login(anyString(), anyString())).thenThrow(new RuntimeException("DB giu'"));
 
-        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(errorCode(resp)).isEqualTo("AUTHENTICATION_ERROR");
+        // It used to be caught here and answered 500 AUTHENTICATION_ERROR. That catch took
+        // Exception, so it also flattened what the handler maps properly - a database
+        // constraint violation, for one, which is a 409. Now it rises: handleGeneric answers
+        // 500 for a genuine unknown, and anything with a handler of its own reaches it.
+        assertThatThrownBy(() -> controller.login(credentials("u@test.it", "password"), httpRequest))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("DB giu'");
     }
 
     @Test
-    void returns500WhenTheUserHasNoId() {
+    void noTokenIsIssuedForAUserWithoutAnId() {
         User corrupted = validUser();
         corrupted.setId(null);
         when(authService.login(anyString(), anyString())).thenReturn(corrupted);
 
-        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(errorCode(resp)).isEqualTo("USER_DATA_CORRUPTION");
+        // IllegalStateException and not a hand-built 500: this is a state the database cannot
+        // produce - the id is a primary key - so it is a defect of ours, and this codebase
+        // answers those with the generic 500 rather than dressing them up as the caller's
+        // fault. The check stays because it guards the moment a token is handed out.
+        assertThatThrownBy(() -> controller.login(credentials("u@test.it", "password"), httpRequest))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void returns500WhenTheGeneratedTokenIsEmpty() {
+    void anEmptyTokenIsNeverHandedOut() {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("   ");
 
-        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(errorCode(resp)).isEqualTo("TOKEN_GENERATION_FAILED");
+        assertThatThrownBy(() -> controller.login(credentials("u@test.it", "password"), httpRequest))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void returns500WhenTokenGenerationFails() {
+    void aFailureGeneratingTheTokenIsNotSwallowedEither() {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenThrow(new IllegalStateException("chiave assente"));
 
-        ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(errorCode(resp)).isEqualTo("TOKEN_GENERATION_ERROR");
+        assertThatThrownBy(() -> controller.login(credentials("u@test.it", "password"), httpRequest))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("chiave assente");
     }
 
     @Test

@@ -282,6 +282,39 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
+     * Wrong credentials on a login. 401, and deliberately without a WWW-Authenticate header -
+     * see the exception's own javadoc for why a Bearer challenge here would mislead.
+     */
+    @ExceptionHandler(AuthenticationFailedException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleAuthenticationFailed(AuthenticationFailedException ex) {
+        // WARN, like the other refusals: one line says little, many identical ones are a
+        // brute-force attempt. The email is not repeated here - AuthService already logged
+        // it, masked.
+        logger.warn("Authentication failed: {}", ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), currentSessionId()),
+                HttpStatus.UNAUTHORIZED
+        );
+    }
+
+    /**
+     * Refused for asking too often.
+     *
+     * Retry-After is the whole reason this has a handler of its own rather than joining the
+     * others: the delay is known only to whoever threw, travels on the exception, and is
+     * what turns "riprova tra qualche minuto" - addressed to a person - into something a
+     * client can act on. RFC 9110 §10.2.3.
+     */
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleTooManyRequests(TooManyRequestsException ex) {
+        logger.warn("Rate limit hit: {}, retry in {}s", ex.getMessage(), ex.getRetryAfterSeconds());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(),
+                        currentSessionId()));
+    }
+
+    /**
      * A conflict with the current state of the data. This also catches BookingConflictException,
      * which is a subtype: the more specific handler below is still preferred by Spring, and it
      * exists to tell the case apart in the logs.
