@@ -231,7 +231,7 @@ class BookingControllerTest {
                 new HttpEntity<>(bearer(tokenOwner)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(bookingRepository.findById(ownerBookingId).orElseThrow().getStatus())
+        assertThat(bookingRepository.findById(Objects.requireNonNull(ownerBookingId)).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.CANCELLED);
     }
 
@@ -257,7 +257,7 @@ class BookingControllerTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("ACCESS_DENIED");
         // the booking is left untouched
-        assertThat(bookingRepository.findById(ownerBookingId).orElseThrow().getStatus())
+        assertThat(bookingRepository.findById(Objects.requireNonNull(ownerBookingId)).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.BOOKED);
     }
 

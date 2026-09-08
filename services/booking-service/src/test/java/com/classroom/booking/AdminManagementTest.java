@@ -162,7 +162,7 @@ class AdminManagementTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(dataOf(resp).get("name")).isEqualTo("Aula Rinominata");
 
-        Room reloaded = roomRepository.findById(roomId).orElseThrow();
+        Room reloaded = roomRepository.findById(Objects.requireNonNull(roomId)).orElseThrow();
         assertThat(reloaded.getName()).isEqualTo("Aula Rinominata");
         assertThat(reloaded.getCapacity()).isEqualTo(42);
     }
@@ -182,7 +182,7 @@ class AdminManagementTest {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.DELETE, tokenAdmin, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(roomRepository.existsById(roomId)).isFalse();
+        assertThat(roomRepository.existsById(Objects.requireNonNull(roomId))).isFalse();
     }
 
     @Test
@@ -222,7 +222,7 @@ class AdminManagementTest {
         assertThat(data.get("reason")).isEqualTo("Aula richiesta per un esame");
 
         // the booking comes out cancelled and the owner gets a notification
-        Booking after = bookingRepository.findById(bookingId).orElseThrow();
+        Booking after = bookingRepository.findById(Objects.requireNonNull(bookingId)).orElseThrow();
         assertThat(after.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         verify(eventPublisher).publishCancellation(any(BookingCancelledEvent.class));
     }
@@ -241,7 +241,7 @@ class AdminManagementTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         // and the booking must NOT have been cancelled by a request that was refused
-        assertThat(bookingRepository.findById(bookingId).orElseThrow().getStatus())
+        assertThat(bookingRepository.findById(Objects.requireNonNull(bookingId)).orElseThrow().getStatus())
                 .isEqualTo(BookingStatus.BOOKED);
     }
 
@@ -298,7 +298,7 @@ class AdminManagementTest {
         }
 
         // and nothing was changed
-        assertThat(roomRepository.existsById(roomId)).isTrue();
+        assertThat(roomRepository.existsById(Objects.requireNonNull(roomId))).isTrue();
     }
 
 

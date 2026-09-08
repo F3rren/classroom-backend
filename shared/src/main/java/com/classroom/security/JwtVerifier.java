@@ -1,9 +1,7 @@
 package com.classroom.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

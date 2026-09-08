@@ -19,6 +19,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -101,7 +102,7 @@ class RoomDetailsWithBookingsTest {
         return roomRepository.save(a).getId();
     }
 
-    private void book(Long roomId, BookingOwner user, BookingStatus status,
+    private void book(@NonNull Long roomId, BookingOwner user, BookingStatus status,
                          LocalDateTime startTime, LocalDateTime endTime, String description) {
         Booking p = new Booking();
         p.setRoom(roomRepository.findById(roomId).orElseThrow());

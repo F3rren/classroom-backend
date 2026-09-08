@@ -9,10 +9,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -61,9 +63,10 @@ class BookingRepositoryStatusFilterTest {
         end = start.plusHours(2);
     }
 
+    @NonNull
     private Long save(BookingStatus status) {
         Booking booking = new Booking();
-        booking.setRoom(roomRepository.findById(roomId).orElseThrow());
+        booking.setRoom(roomRepository.findById(Objects.requireNonNull(roomId)).orElseThrow());
         booking.setUser(new BookingOwner(1L, "filter-user", "Filter User"));
         booking.setStartTime(start);
         booking.setEndTime(end);

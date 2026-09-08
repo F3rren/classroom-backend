@@ -116,7 +116,7 @@ class BookingQueryTest {
 
     @Test
     void mineExcludesCancelledBookings() throws Exception {
-        Booking p = bookingRepository.findById(bookingId).orElseThrow();
+        Booking p = bookingRepository.findById(Objects.requireNonNull(bookingId)).orElseThrow();
         p.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(p);
 

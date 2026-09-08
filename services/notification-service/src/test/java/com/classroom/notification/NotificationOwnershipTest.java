@@ -94,7 +94,7 @@ class NotificationOwnershipTest {
                 new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(notificationRepository.existsById(ownerNotificationId)).isTrue();
+        assertThat(notificationRepository.existsById(Objects.requireNonNull(ownerNotificationId))).isTrue();
     }
 
     @Test

@@ -15,6 +15,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.lang.NonNull;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -27,6 +28,7 @@ import org.testcontainers.utility.DockerImageName;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -96,9 +98,10 @@ class UserDeletionMessagingTest {
         roomId = roomRepository.save(room).getId();
     }
 
+    @NonNull
     private Long bookRoomFor(Long userId) {
         Booking booking = new Booking();
-        booking.setRoom(roomRepository.findById(roomId).orElseThrow());
+        booking.setRoom(roomRepository.findById(Objects.requireNonNull(roomId)).orElseThrow());
         booking.setUser(new BookingOwner(userId, "user-" + userId, "User " + userId));
         booking.setStartTime(LocalDateTime.now().plusDays(1));
         booking.setEndTime(LocalDateTime.now().plusDays(1).plusHours(1));
