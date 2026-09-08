@@ -3,6 +3,7 @@ package com.classroom.booking.security;
 import com.classroom.booking.model.Booking;
 import com.classroom.security.AppPrincipal;
 import com.classroom.booking.service.BookingService;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,7 +20,7 @@ public class BookingAuthorizationService {
         this.bookingService = bookingService;
     }
 
-    public boolean isOwnerOrAdmin(Long bookingId, AppPrincipal principal) {
+    public boolean isOwnerOrAdmin(@NonNull Long bookingId, AppPrincipal principal) {
         // false here is not a disguised error: this method IS a predicate, and answering
         // "no" to "may you act?" is exactly its job.
         if (principal == null) {
