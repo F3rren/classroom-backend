@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The logging configuration shared by the three services that depend on shared.
+
+  It lives here rather than in each module for the same reason as SecurityConfig and
+  GlobalExceptionHandler: the log format is a contract between services, and three copies
+  drift apart. The gateway has a copy of its own because it does NOT depend on shared -
+  shared brings Tomcat, which has no place in a WebFlux application.
+
+  ============================================================================
+  WHY IT EXISTS: the request id was invisible
+  ============================================================================
+
+  RequestCorrelationFilter had always been putting the id into the MDC, but without a pattern
+  to print it that value appeared nowhere. Meanwhile 127 calls out of 322 were passing it
+  around by hand inside the message - and the other 195 had no way of being traced back to a
+  request at all.
+
+  %X{requestId} puts it on EVERY line, including Spring's, Hibernate's and Flyway's, without
+  anybody having to remember it.
+
+  ============================================================================
+  WHICH LEVEL FOR WHICH CASE
+  ============================================================================
+
+  There is one rule: THE LEVEL SAYS WHO HAS TO DO SOMETHING, not how serious it is.
+
+  DEBUG  The narration of what a request is doing, step by step.
+         Nobody has to do anything: it is for whoever is watching right now.
+         OFF in production (logging.level.com.classroom=INFO).
+         For example: "START login", "room 3 is free over the requested period".
+
+  INFO   Something has CHANGED and it still matters tomorrow: a user created, a login
+         succeeded, a booking cancelled, the first administrator generated.
+         Nobody has to act now, but somebody may have to reconstruct it later.
+         ON in production. It is the record of what happened.
+
+  WARN   The request was REFUSED, and the refusal says something: an access denied, a
+         conflict, too many attempts, an unreachable downstream service, a body that does
+         not honour the contract.
+         The system did the right thing: nobody needs to act on a single line, but many
+         identical lines are a signal.
+         It corresponds to 400, 401, 403, 409, 429 and 503.
+
+  ERROR  NOBODY KNOWS WHAT HAPPENED, and somebody has to look.
+         It is the only level that asks for a human, and that is why it is rare in the code:
+         14 calls out of 322. It always goes with the stack trace.
+         It corresponds to 500, that is, to handleGeneric in GlobalExceptionHandler.
+
+  The practical consequence of this scale: an ERROR in the production logs is a fact, not
+  noise. If ERROR were used for expected refusals too, finding the real failures would mean
+  filtering them out - and at that point you may as well not have the level.
+
+  TRACE is not used: when that much detail is needed, what is needed is a debugger.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!--
+      requestId padded to 12 characters (REQ_XXXXXXXX occupies exactly 12), so the lines stay
+      in columns and can be read at a glance.
+
+      A MINIMUM width and not a maximum: %-12X pads, %-12.12X would TRUNCATE - and Logback
+      truncates from the left. A longer id, such as the one a client can send in the
+      X-Request-Id header, would arrive mutilated and two different values could come out
+      looking identical. A crooked column beats an id you cannot trust.
+
+      The dash marks the lines born outside a request: startup, scheduled jobs, message
+      consumption before the id is applied.
+
+      %wEx and not %ex: it is Spring Boot's converter, which shortens stack traces by
+      dropping the framework frames and keeping the project's.
+    -->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %-12X{requestId:--} %-34.34logger{0} : %msg%n%wEx"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+      The file exists ONLY in development. In a container you would be writing inside the
+      image, where nobody reads it and nobody rotates it: there the logs go to stdout and
+      Docker collects them. The rotation policy sits here, next to the file it applies to -
+      it used to be declared in the prod profile, which has no file.
+    -->
+    <springProfile name="dev">
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/application.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>10MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>500MB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>${LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

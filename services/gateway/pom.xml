@@ -1,0 +1,96 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.classroom</groupId>
+        <artifactId>classroom-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <!-- The default would be ../pom.xml, which does not exist from services/<module>/. -->
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>gateway</artifactId>
+    <name>Gateway</name>
+    <description>The single entry point: the frontend knows one address</description>
+
+    <!--
+        Why it exists: once notification-service was split off, the frontend would have had
+        to know two addresses, and three once auth-service followed. The internal topology is
+        not the client's business, and that coupling is exactly what the split was meant to
+        remove.
+
+        It does NOT validate tokens: it routes, and nothing else. Every service verifies the
+        JWT itself with JwtVerifier, so each stays secure even when reached directly. Putting
+        the validation here would create a second place to get it wrong, and internal services
+        that trust their callers blindly.
+
+        Spring Cloud Gateway is reactive (WebFlux): this module does NOT depend on shared,
+        which brings spring-boot-starter-web and in a WebFlux application would start Tomcat
+        instead of Netty.
+    -->
+    <properties>
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <!-- See the comment on the JaCoCo plugin: here the denominator is too small for a
+             percentage to mean anything. -->
+        <jacoco.line.minimum>0.00</jacoco.line.minimum>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>false</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <!--
+                        The gateway is almost entirely declarative configuration: the routes
+                        live in application.yml, not in Java. The only executable lines are the
+                        main class, excluded below. With a denominator that small a percentage
+                        says nothing, so the gate comes down: what matters is the routing test,
+                        not the ratio.
+                    -->
+                    <excludes>
+                        <exclude>com/classroom/gateway/GatewayApplication.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

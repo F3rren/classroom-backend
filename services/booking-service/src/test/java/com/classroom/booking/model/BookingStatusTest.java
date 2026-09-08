@@ -1,0 +1,61 @@
+package com.classroom.booking.model;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * The enum's external contract. These tests are not cosmetic: a client compares the exact
+ * lowercase strings ("cancelled", "blocked", "booked", "free") and the database column has a
+ * CHECK constraint on the same values. If somebody renamed the constants or removed
+ * @JsonValue, the JSON would turn uppercase and break both. These tests pin that
+ * behaviour down.
+ */
+class BookingStatusTest {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    void serializesToLowercaseForTheFrontend() throws Exception {
+        assertThat(objectMapper.writeValueAsString(BookingStatus.BOOKED)).isEqualTo("\"booked\"");
+        assertThat(objectMapper.writeValueAsString(BookingStatus.CANCELLED)).isEqualTo("\"cancelled\"");
+        assertThat(objectMapper.writeValueAsString(BookingStatus.BLOCKED)).isEqualTo("\"blocked\"");
+        assertThat(objectMapper.writeValueAsString(BookingStatus.MAINTENANCE)).isEqualTo("\"maintenance\"");
+    }
+
+    @Test
+    void everyConstantMatchesTheDatabaseCheckConstraint() {
+        // booking_status_check admits exactly these five values
+        assertThat(java.util.Arrays.stream(BookingStatus.values()).map(s -> s.getValue()))
+                .containsExactlyInAnyOrder("booked", "confirmed", "blocked", "maintenance", "cancelled");
+    }
+
+    @Test
+    void parsingIsCaseInsensitiveLikeTheOldStringComparisons() {
+        assertThat(BookingStatus.from("CANCELLED")).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(BookingStatus.from("  Booked  ")).isEqualTo(BookingStatus.BOOKED);
+        assertThat(BookingStatus.from(null)).isNull();
+    }
+
+    @Test
+    void anUnknownValueIsRejected() {
+        assertThatThrownBy(() -> BookingStatus.from("inventato"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void onlyBookedIsConsideredActive() {
+        assertThat(BookingStatus.BOOKED.isActive()).isTrue();
+        assertThat(BookingStatus.CANCELLED.isActive()).isFalse();
+        assertThat(BookingStatus.BLOCKED.isActive()).isFalse();
+    }
+
+    @Test
+    void theAdminInterventionsAreBlockAndMaintenance() {
+        assertThat(BookingStatus.BLOCKED.isAdminIntervention()).isTrue();
+        assertThat(BookingStatus.MAINTENANCE.isAdminIntervention()).isTrue();
+        assertThat(BookingStatus.BOOKED.isAdminIntervention()).isFalse();
+    }
+}

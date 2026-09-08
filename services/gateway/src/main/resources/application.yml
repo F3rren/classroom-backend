@@ -1,0 +1,127 @@
+# ============================================================================
+# GATEWAY
+#
+# The frontend knows this address and no other.
+#
+# PORTS. The gateway takes 17102, and it is the only one the frontend has to know. The
+# services take the ones after it, so that adding another does not mean
+# ripensare l'assegnazione:
+#
+#     17102  gateway            <-- the frontend talks only to this one
+#     17103  booking-service    (rooms, bookings, courses)
+#     17104  notification-service
+#     17105  auth-service       (users, token issuing)
+#
+# 8080 is deliberately avoided: it is too common and ends up colliding with other
+# projects on the same machine.
+#
+# Every port stays overridable from an environment variable, with no code to touch.
+# ============================================================================
+
+server:
+  port: ${GATEWAY_PORT:17102}
+
+spring:
+  application:
+    name: Gateway
+
+  cloud:
+    gateway:
+      # CORS lives here because the gateway is what talks to the browser: the services
+      # behind it receive only server-to-server requests. Each keeps its own configuration
+      # all the same, which is what you need when querying it directly in development.
+      #
+      # x-forwarded.for-append below decides WHICH address reaches the services as the
+      # caller's address.
+      #
+      # The default is to APPEND to an existing X-Forwarded-For rather than replace it.
+      # Since ForwardedHeaderFilter downstream reads the FIRST value, that default lets the
+      # caller choose their own apparent address: sending "X-Forwarded-For: 9.9.9.9" makes
+      # "9.9.9.9,<real address>" arrive, and what gets read is 9.9.9.9.
+      #
+      # This is not theoretical: auth-service rate-limits login attempts on a key that
+      # starts with that address. With the default, changing it on every request sidesteps
+      # the limit entirely. With for-append: false the gateway writes only its own direct
+      # peer and discards whatever the client declares.
+      #
+      # THIS LINE AND "server.forward-headers-strategy=framework" IN THE THREE SERVICES
+      # THEY HOLD EACH OTHER UP: there the header is trusted, here it is made trustworthy.
+      # Removing one without knowing about the other reopens the hole in silence.
+      # Pinned down by CallerAddressTest.
+      #
+      # If one day there were a real proxy in front of the gateway, this choice would have
+      # to be revisited: there the incoming header would be legitimate and should be kept,
+      # trusting the proxy - not the client.
+      x-forwarded:
+        for-append: false
+
+      # Without these two, the gateway waits on a downstream service WITHOUT LIMIT. A
+      # service that is down is handled well - the connection is refused and 503 comes back
+      # - but a SLOW service, one that accepts the connection and does not answer, ties up
+      # the gateway's resources until it gives up on its own. And since the gateway is the
+      # only way in, one slow service becomes a slow system.
+      #
+      # 10 seconds is generous for these APIs, where the heaviest request is a list of
+      # bookings: if it takes longer than that it is broken, not slow.
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 10s
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+            allowedMethods: [GET, POST, PUT, DELETE, OPTIONS, PATCH]
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      routes:
+        # ------------------------------------------------------------------
+        # FIRST RULE, AND THE ORDER MATTERS: notification-service's internal routes are
+        # called by other services, not by the browser. Exposing them through the gateway
+        # would let anybody holding an admin token fabricate arbitrary notifications.
+        # Spring Cloud Gateway evaluates routes in declaration order: this one has to come
+        # before the generic notifications route, or it would never be reached.
+        # ------------------------------------------------------------------
+        # forward: and not a SetStatus filter, which would set the status of the response
+        # received from the downstream service AFTER querying it: the request would arrive
+        # all the same. forward: diverts it onto the gateway itself, which has no handler
+        # for that path and answers 404 without forwarding anything.
+        - id: notifications-internal-blocked
+          uri: forward:/route-not-exposed
+          predicates:
+            - Path=/api/notifications/internal/**
+
+        # The bookings have internal service-to-service routes too: auth-service calls them
+        # to delete the bookings of a removed user. Same rule, same ordering.
+        - id: bookings-internal-blocked
+          uri: forward:/route-not-exposed
+          predicates:
+            - Path=/api/bookings/internal/**
+
+        - id: notifications
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:17104}
+          predicates:
+            - Path=/api/notifications/**
+
+        # Login, profile and user administration: auth-service.
+        - id: authentication
+          uri: ${AUTH_SERVICE_URL:http://localhost:17105}
+          predicates:
+            # A prefix, not a list. This used to hold the list of auth-service's admin
+            # endpoints, copied from the controller: adding one there without touching this
+            # line would have sent it to booking-service, with a 404 and nothing to say
+            # why. The route now describes a boundary between services.
+            - Path=/api/auth/**,/api/me/**,/api/admin/users,/api/admin/users/**
+
+        # Rooms, bookings, and the administration of both.
+        - id: application
+          uri: ${BOOKING_SERVICE_URL:http://localhost:17103}
+          predicates:
+            - Path=/api/rooms/**,/api/bookings/**,/api/admin/**
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO

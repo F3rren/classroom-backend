@@ -1,14 +1,14 @@
 # ============================================================================
-# Un solo Dockerfile per tutti e quattro i servizi: cambia solo il modulo.
+# One Dockerfile for all four services: only the module changes.
 #
-#     docker build --build-arg MODULO=auth-service -t prenotazioni/auth .
+#     docker build --build-arg MODULE=auth-service -t classroom/auth .
 #
-# Il build e' multi-stage perche' l'immagine finale non deve contenere Maven ne'
-# i sorgenti: solo un JRE e il jar.
+# The build is multi-stage because the final image must contain neither Maven nor the
+# sources: just a JRE and the jar.
 #
-# NOTA: il primo stage copia TUTTI i pom prima dei sorgenti. Serve a far usare a
-# Docker la cache: finche' le dipendenze non cambiano, "mvn dependency:go-offline"
-# non viene rieseguito e una modifica al codice non riscarica mezzo repository.
+# NOTE: the first stage copies ALL the poms before the sources. That is what lets Docker use
+# its cache: as long as the dependencies do not change, "mvn dependency:go-offline" is not
+# re-run and a code change does not re-download half a repository.
 # ============================================================================
 
 FROM maven:3.9-eclipse-temurin-17 AS build
@@ -16,34 +16,31 @@ WORKDIR /sorgenti
 
 COPY pom.xml .
 COPY shared/pom.xml shared/
-COPY auth-service/pom.xml auth-service/
-COPY notifica-service/pom.xml notifica-service/
-COPY app/pom.xml app/
-COPY gateway/pom.xml gateway/
+COPY services/auth-service/pom.xml services/auth-service/
+COPY services/notification-service/pom.xml services/notification-service/
+COPY services/booking-service/pom.xml services/booking-service/
+COPY services/gateway/pom.xml services/gateway/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
 
 COPY shared shared
-COPY auth-service auth-service
-COPY notifica-service notifica-service
-COPY app app
-COPY gateway gateway
+COPY services services
 
-ARG MODULO
-# -am costruisce anche shared, da cui tutti dipendono. I test girano nella pipeline
-# di CI, non qui: un'immagine non e' il posto dove scoprire che la suite fallisce.
-RUN mvn -B -q package -pl ${MODULO} -am -DskipTests
+ARG MODULE
+# -am builds shared too, which everything depends on. The tests run in the CI pipeline, not
+# here: an image is not the place to discover that the suite fails.
+RUN mvn -B -q package -pl services/${MODULE} -am -DskipTests
 
-# Il nome del jar cambia da modulo a modulo, quindi si isola qui invece di
-# ripeterlo nel comando di avvio.
-RUN cp ${MODULO}/target/*.jar /applicazione.jar
+# The jar's name changes from module to module, so it is isolated here rather than repeated
+# in the start command.
+RUN cp services/${MODULE}/target/*.jar /application.jar
 
 FROM eclipse-temurin:17-jre
-WORKDIR /opt/prenotazioni
+WORKDIR /opt/classroom
 
-# Utente non privilegiato: un processo che non ha bisogno di root non deve averlo.
-RUN useradd --system --create-home --shell /usr/sbin/nologin prenotazioni
-USER prenotazioni
+# An unprivileged user: a process that does not need root must not have it.
+RUN useradd --system --create-home --shell /usr/sbin/nologin classroom
+USER classroom
 
-COPY --from=build /applicazione.jar applicazione.jar
+COPY --from=build /application.jar application.jar
 
-ENTRYPOINT ["java", "-jar", "applicazione.jar"]
+ENTRYPOINT ["java", "-jar", "application.jar"]

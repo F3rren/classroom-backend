@@ -1,0 +1,44 @@
+{
+  "properties": [
+    {
+      "name": "jwt.secret",
+      "type": "java.lang.String",
+      "description": "The HMAC secret every service shares. Only auth-service signs with it (JwtService); every service, including auth-service itself, verifies with it offline (JwtVerifier). Base64 or base64url, with or without padding."
+    },
+    {
+      "name": "classroom.security.public-paths",
+      "type": "java.lang.String",
+      "description": "Comma-separated paths JwtAuthFilter lets through without a token. Each service declares its own: only auth-service's list needs to include the login route.",
+      "defaultValue": "/v3/api-docs,/v3/api-docs/**,/swagger-ui/**,/swagger-ui.html"
+    },
+    {
+      "name": "classroom.cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Comma-separated origins SecurityConfig's CORS filter admits. No default on purpose: shipping a fallback would mean a forgotten override silently trusts an origin nobody chose."
+    },
+    {
+      "name": "classroom.cors.allowed-methods",
+      "type": "java.lang.String",
+      "description": "Comma-separated HTTP methods CORS admits.",
+      "defaultValue": "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+    },
+    {
+      "name": "classroom.cors.allowed-headers",
+      "type": "java.lang.String",
+      "description": "Comma-separated request headers CORS admits.",
+      "defaultValue": "*"
+    },
+    {
+      "name": "classroom.cors.allow-credentials",
+      "type": "java.lang.Boolean",
+      "description": "Whether CORS admits cookies/credentials on cross-origin requests.",
+      "defaultValue": true
+    },
+    {
+      "name": "classroom.cors.max-age",
+      "type": "java.lang.Long",
+      "description": "How long, in seconds, a browser may cache a CORS preflight response.",
+      "defaultValue": 3600
+    }
+  ]
+}

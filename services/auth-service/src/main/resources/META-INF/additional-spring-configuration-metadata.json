@@ -1,0 +1,22 @@
+{
+  "properties": [
+    {
+      "name": "auth.rate-limit.max-attempts",
+      "type": "java.lang.Integer",
+      "description": "How many login attempts LoginAttemptLimiter allows per key (IP|email) inside one window before refusing with 429.",
+      "defaultValue": 5
+    },
+    {
+      "name": "auth.rate-limit.window-ms",
+      "type": "java.lang.Long",
+      "description": "The length, in milliseconds, of LoginAttemptLimiter's sliding window: how long a refused key stays capped before it resets.",
+      "defaultValue": 60000
+    },
+    {
+      "name": "auth.rate-limit.max-entries",
+      "type": "java.lang.Integer",
+      "description": "The cap on distinct keys LoginAttemptLimiter tracks at once, so an attacker cycling through addresses cannot grow the map without bound.",
+      "defaultValue": 50000
+    }
+  ]
+}

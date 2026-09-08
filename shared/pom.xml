@@ -4,23 +4,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.prenotazioni</groupId>
-        <artifactId>prenotazioni-aule-parent</artifactId>
+        <groupId>com.classroom</groupId>
+        <artifactId>classroom-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>shared</artifactId>
     <name>Shared</name>
-    <description>Codice comune a tutti i servizi: envelope di risposta, gestione errori, principal, utility</description>
+    <description>Code common to every service: the response envelope, error handling, the principal, utilities</description>
 
     <!--
-        Libreria, non applicazione: niente spring-boot-maven-plugin, altrimenti il jar
-        verrebbe ripacchettato come eseguibile e non sarebbe piu' usabile come dipendenza.
+        A library, not an application: no spring-boot-maven-plugin, or the jar would be
+        repackaged as an executable and would no longer be usable as a dependency.
 
-        Cosa entra qui: solo cio' la cui chiusura transitiva non tocca il dominio. E'
-        stato verificato file per file. Restano fuori JwtAuthFilter e SecurityConfig,
-        che dipendono da JwtService: si spostano quando JwtService verra' diviso fra
-        emissione (auth-service) e sola validazione (shared).
+        What belongs here: only what has a transitive closure that does not touch the domain.
+        That was checked file by file.
     -->
     <dependencies>
         <dependency>
@@ -35,14 +33,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <!-- Ruolo porta un AttributeConverter JPA: serve la sola API, non l'ORM -->
+        <!-- Role carries a JPA AttributeConverter: only the API is needed, not the ORM -->
         <dependency>
             <groupId>jakarta.persistence</groupId>
             <artifactId>jakarta.persistence-api</artifactId>
         </dependency>
-        <!-- GlobalExceptionHandler traduce DataIntegrityViolationException in un 409.
-             Vive in org.springframework.dao, che sta in spring-tx: si prende quella e
-             non l'intero starter data-jpa, perche' shared non deve conoscere l'ORM. -->
+        <!-- GlobalExceptionHandler turns DataIntegrityViolationException into a 409. That
+             class lives in org.springframework.dao, which is in spring-tx: take that and
+             not the whole data-jpa starter, because shared must not know about the ORM. -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-tx</artifactId>
@@ -51,8 +49,8 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
-        <!-- JwtVerifier: ogni servizio valida i token da se', quindi la libreria e'
-             comune. L'emissione resta al solo servizio che possiede gli utenti. -->
+        <!-- JwtVerifier: every service validates tokens on its own, so the library is
+             common. Issuing them stays with the one service that owns the users. -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -77,6 +75,18 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Generates META-INF/spring-configuration-metadata.json from
+             additional-spring-configuration-metadata.json at compile time: without it the
+             custom keys below (jwt.secret, classroom.*) show up in every service's IDE as
+             "unknown property", even though the services only ever set them because a class
+             in this module reads them with @Value. Compile-time only, never on the runtime
+             classpath of anything that depends on shared. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -91,15 +101,15 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <configuration>
                     <excludes>
-                        <!-- Helper per i test degli altri moduli: non e' codice di produzione
-                             e non ha test propri, quindi falserebbe la copertura di shared. -->
-                        <exclude>com/prenotazioni/testsupport/**</exclude>
+                        <!-- Helpers for the other modules' tests: this is not production code and
+                             has no tests of its own, so it would distort shared's coverage. -->
+                        <exclude>com/classroom/testsupport/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>
             <!--
-                Pubblica i sorgenti di test come artefatto separato, cosi' gli altri moduli
-                possono usare TestJwt senza che finisca nel jar di produzione.
+                Publishes the test sources as a separate artefact, so the other modules can
+                use TestJwt without it ending up in the production jar.
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

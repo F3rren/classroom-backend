@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A copy of shared's logging configuration, with one difference stated below.
+
+  It is a copy and not a reference because the gateway does NOT depend on shared: shared
+  brings spring-boot-starter-web, meaning Tomcat, which has no place in a WebFlux application
+  (the pom says so explicitly). The duplication is deliberate, and it is the price of that
+  separation.
+
+  THE DIFFERENCE: here %X{requestId} is almost always empty.
+
+  That is not an oversight. The MDC is bound to a thread, and WebFlux does not handle a
+  request on a single thread: the value put in at the entrance is no longer there two
+  operators later. Pretending otherwise - printing a field that stays empty - would be worse
+  than not having it, so the column is here to keep the lines aligned with the services', but
+  it promises nothing.
+
+  The gateway handles the id where it actually matters: it mints it in EdgeCorrelationFilter,
+  puts it in the X-Request-Id header and passes it to the downstream services, which being
+  servlet-based put it in their MDC and print it on every line. GatewayErrorHandler writes it
+  by hand into its own lines, which are the only ones in the gateway that quote it.
+
+  For the scale of levels - DEBUG narration, INFO changes, WARN expected refusals, ERROR
+  nobody knows what happened - what applies is written in
+  shared/src/main/resources/logback-spring.xml, which is the only place that rule is spelled
+  out in full.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %-12X{requestId:--} %-34.34logger{0} : %msg%n%wEx"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

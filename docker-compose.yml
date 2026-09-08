@@ -1,57 +1,57 @@
 # ============================================================================
-# L'intero sistema con un comando:
+# The whole system with one command:
 #
 #     JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 #
-# Poi il frontend punta a http://localhost:17102 e nient'altro.
+# The frontend then points at http://localhost:17102 and nothing else.
 #
-# UN DATABASE PER SERVIZIO, e non uno con tre schemi: e' il punto della
-# separazione. Ogni servizio puo' raggiungere solo il proprio, quindi una query
-# che attraversa il confine non fallisce a runtime - non compila proprio.
+# ONE DATABASE PER SERVICE, rather than one with three schemas: that is the point of the
+# split. Each service can reach only its own, so a query that crosses the boundary does not
+# fail at runtime - it does not compile at all.
 # ============================================================================
 
-name: prenotazioni-aule
+name: classroom
 
 x-attesa-db: &attesa-db
   condition: service_healthy
 
 services:
 
-  db-utenti:
+  db-users:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: prenotazione_aule_utenti
+      POSTGRES_DB: classroom_users
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - dati-utenti:/var/lib/postgresql/data
+      - data-users:/var/lib/postgresql/data
     healthcheck:
-      # I servizi partono piu' in fretta di PostgreSQL: senza questo controllo
-      # fallirebbero all'avvio con "connection refused" e andrebbero in restart loop.
-      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule_utenti"]
+      # The services start faster than PostgreSQL: without this check they would fail at
+      # startup with "connection refused" and go into a restart loop.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_users"]
       interval: 5s
       retries: 12
 
-  db-prenotazioni:
+  db-bookings:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: prenotazione_aule
+      POSTGRES_DB: classroom
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - dati-prenotazioni:/var/lib/postgresql/data
+      - data-bookings:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom"]
       interval: 5s
       retries: 12
 
-  db-notifiche:
+  db-notifications:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: prenotazione_aule_notifiche
+      POSTGRES_DB: classroom_notifications
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - dati-notifiche:/var/lib/postgresql/data
+      - data-notifications:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d prenotazione_aule_notifiche"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_notifications"]
       interval: 5s
       retries: 12
 
@@ -61,10 +61,10 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     volumes:
-      - dati-broker:/var/lib/rabbitmq
+      - data-broker:/var/lib/rabbitmq
     healthcheck:
-      # Stessa ragione dei database: i servizi partono prima del broker e senza
-      # questo controllo entrerebbero in restart loop al primo tentativo.
+      # Same reason as the databases: the services start before the broker, and without
+      # this check they would go into a restart loop on their first attempt.
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
       retries: 12
@@ -73,86 +73,109 @@ services:
     build:
       context: .
       args:
-        MODULO: auth-service
-    depends_on:
-      db-utenti: *attesa-db
-    environment:
-      DB_HOST: db-utenti
-      DB_NAME: prenotazione_aule_utenti
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
-      # Lo STESSO segreto per tutti: e' cio' che permette a ogni servizio di
-      # verificare da solo i token che questo firma, senza chiamarlo.
-      JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
-      NOTIFICA_SERVICE_URL: http://notifica-service:17104
-      BOOKING_SERVICE_URL: http://app:17103
-
-  app:
-    build:
-      context: .
-      args:
-        MODULO: app
+        MODULE: auth-service
     depends_on:
       broker:
         condition: service_healthy
-      db-prenotazioni: *attesa-db
+      db-users: *attesa-db
     environment:
-      # In container serve il profilo prod, ed e' una necessita' non una preferenza:
-      # application-dev.properties ha l'URL del database scritto su localhost, quindi
-      # con il profilo predefinito DB_HOST verrebbe ignorato e il servizio morirebbe
-      # al primo tentativo di connessione. Solo prod legge le variabili d'ambiente.
+      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
+      # Without this line the service still starts, merely less protected: that is
+      # deliberate, so that forgetting it degrades rather than breaks.
       SPRING_PROFILES_ACTIVE: prod
-      # prod pretende questa variabile senza default, per non spedire in produzione
-      # le origini di localhost: qui va quindi passata esplicitamente.
-      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
-      DB_HOST: db-prenotazioni
+      DB_HOST: db-users
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DB_NAME: prenotazione_aule
+      DB_NAME: classroom_users
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
-      JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
-      NOTIFICA_SERVICE_URL: http://notifica-service:17104
+      # The SAME secret for all of them: that is what lets every service verify on its own
+      # the tokens this one signs, without calling it.
+      JWT_SECRET: "${JWT_SECRET:?generate one with: openssl rand -base64 48}"
+      # The first administrator, used ONLY if the users table is empty. Without it, on a new
+      # database there would be no way to create one: /api/admin/users already requires an
+      # administrator token. The empty defaults leave the mechanism inert for anybody who does
+      # not want it, instead of forcing the variables to be declared in .env.
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Amministratore}
 
-  notifica-service:
+  booking-service:
     build:
       context: .
       args:
-        MODULO: notifica-service
+        MODULE: booking-service
     depends_on:
       broker:
         condition: service_healthy
-      db-notifiche: *attesa-db
+      db-bookings: *attesa-db
     environment:
-      DB_HOST: db-notifiche
+      # prod holds hardening ONLY, as for the other two. It is no longer a necessity: the
+      # connection lives in application.properties with placeholders, so without this line the
+      # service still starts, merely less protected.
+      #
+      # It was not always so, and that cost dearly: the URL lived only in
+      # application-dev.properties, written against localhost, and with
+      # spring.profiles.default=dev a container without this line started pointing at
+      # localhost and died on its first query. The symptom was a 503 from the gateway, and
+      # the cause sat three files away.
+      SPRING_PROFILES_ACTIVE: prod
+      # This is the only service whose prod profile demands the CORS origins with no
+      # fallback, so they have to be passed explicitly here.
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
+      DB_HOST: db-bookings
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DB_NAME: prenotazione_aule_notifiche
+      DB_NAME: classroom
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
-      JWT_SECRET: "${JWT_SECRET:?generane uno con openssl rand -base64 48}"
+      JWT_SECRET: "${JWT_SECRET:?generate one with: openssl rand -base64 48}"
+      NOTIFICATION_SERVICE_URL: http://notification-service:17104
+
+  notification-service:
+    build:
+      context: .
+      args:
+        MODULE: notification-service
+    depends_on:
+      broker:
+        condition: service_healthy
+      db-notifications: *attesa-db
+    environment:
+      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
+      # Without this line the service still starts, merely less protected: that is
+      # deliberate, so that forgetting it degrades rather than breaks.
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: db-notifications
+      RABBITMQ_HOST: broker
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      DB_NAME: classroom_notifications
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      JWT_SECRET: "${JWT_SECRET:?generate one with: openssl rand -base64 48}"
 
   gateway:
     build:
       context: .
       args:
-        MODULO: gateway
-    # L'unica porta pubblicata. Gli altri servizi si parlano sulla rete interna
-    # di compose e non sono raggiungibili da fuori: le rotte /interne/ restano
-    # cosi' irraggiungibili dall'esterno per costruzione, non solo per regola.
+        MODULE: gateway
+    # The only published port. The other services talk to each other on compose's internal
+    # network and are not reachable from outside: the /internal/ routes are therefore
+    # unreachable from outside by construction, and not merely by rule.
     ports:
       - "17102:17102"
     depends_on:
       - auth-service
-      - app
-      - notifica-service
+      - booking-service
+      - notification-service
     environment:
       AUTH_SERVICE_URL: http://auth-service:17105
-      APP_SERVICE_URL: http://app:17103
-      NOTIFICA_SERVICE_URL: http://notifica-service:17104
+      BOOKING_SERVICE_URL: http://booking-service:17103
+      NOTIFICATION_SERVICE_URL: http://notification-service:17104
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
 
 volumes:
-  dati-broker:
-  dati-utenti:
-  dati-prenotazioni:
-  dati-notifiche:
+  data-broker:
+  data-users:
+  data-bookings:
+  data-notifications:

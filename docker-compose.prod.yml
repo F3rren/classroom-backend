@@ -1,0 +1,68 @@
+# ============================================================================
+# THE PRODUCTION OVERRIDE
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# IT DOES ONE THING: it takes the fallback values away from the secrets.
+#
+# docker-compose.yml has them on purpose - ${DB_PASSWORD:-postgres},
+# ${RABBITMQ_PASSWORD:-guest} - because in development "docker compose up" has to work with
+# nothing prepared. The problem is how that convenience travels elsewhere: silently. No
+# warning, no error, just a database reachable with the password "postgres" and a broker with
+# "guest".
+#
+# Here the same variables become ${...:?}, that is, mandatory: if they are missing, compose
+# refuses to start and says which one. An error before starting, instead of a system that is
+# up and open.
+#
+# JWT_SECRET does not appear: it is already mandatory in the main file, because a signing
+# secret with a convenience value never makes sense, not even in development.
+#
+# WHAT IT DELIBERATELY DOES NOT DO: restart policies, memory limits, replicas, log shipping.
+# Those are decisions that depend on WHERE you deploy, and inventing them here would mean
+# writing them before knowing whether they are needed.
+# ============================================================================
+
+services:
+
+  db-users:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+
+  db-bookings:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+
+  db-notifications:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+
+  broker:
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
+
+  auth-service:
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
+
+  booking-service:
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
+      # No fallback here either: localhost origins in production are not a useful default,
+      # they are a door left open onto an origin that does not exist.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in production the allowed origins have to be declared}
+
+  notification-service:
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+      RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
+
+  gateway:
+    environment:
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in production the allowed origins have to be declared}
