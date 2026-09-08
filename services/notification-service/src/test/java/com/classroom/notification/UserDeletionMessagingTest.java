@@ -57,6 +57,14 @@ class UserDeletionMessagingTest {
         // The test profile switches the listener off so it makes no noise in the other
         // classes: here it is the subject of the test and has to be switched back on.
         registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> "true");
+        // A database of its own, not the shared "notifications" every other class in this
+        // profile uses: @DirtiesContext closes this context after the class, and
+        // ddl-auto=create-drop drops the schema on close. H2's named in-memory databases are
+        // a JVM-wide resource keyed only by name, not by Spring context, so that drop would
+        // reach into "notifications" and pull the tables out from under whichever other test
+        // class's (already-running, cached) context queries it next.
+        registry.add("spring.datasource.url",
+                () -> "jdbc:h2:mem:userdeletionmessagingtest;DB_CLOSE_DELAY=-1;MODE=PostgreSQL");
     }
 
     @Autowired
