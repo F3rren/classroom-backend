@@ -83,6 +83,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void loginReturnsNullWhenThePasswordDoesNotMatch() {
         when(userRepository.findByEmail("u@test.it")).thenReturn(user(1L, "u@test.it"));
         when(passwordEncoder.matches("sbagliata", "hash")).thenReturn(false);
@@ -109,6 +110,7 @@ class AuthServiceUnitTest {
     // ==================== register ====================
 
     @Test
+    @SuppressWarnings("null")
     void registerReportsAnAlreadyRegisteredEmail() {
         when(userRepository.findByEmail("gia@test.it")).thenReturn(user(1L, "gia@test.it"));
 
@@ -118,6 +120,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void registerReportsAnAlreadyRegisteredUsername() {
         when(userRepository.findByEmail("nuova@test.it")).thenReturn(null);
         when(userRepository.findByUsername("occupato")).thenReturn(user(2L, "altro@test.it"));
@@ -166,6 +169,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void updateReportsAnEmailBelongingToAnotherUser() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, "mia@test.it")));
         when(userRepository.findByEmail("altrui@test.it")).thenReturn(user(2L, "altrui@test.it"));

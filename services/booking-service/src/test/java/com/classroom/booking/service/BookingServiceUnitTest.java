@@ -103,6 +103,7 @@ class BookingServiceUnitTest {
     // ==================== bookRoom ====================
 
     @Test
+    @SuppressWarnings("null")
     void bookRoomRefusesWhenTheRoomIsBusy() {
         when(bookingRepository.findConflictingBookings(anyLong(), any(), any()))
                 .thenReturn(List.of(booking(1L, room(10L, RoomStatus.FREE), user(1L), BookingStatus.BOOKED)));
@@ -154,6 +155,7 @@ class BookingServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void bookRoomLeavesTheRoomStateUnchangedWhenTheBookingIsInTheFuture() {
         freeRoom();
         saveAsGiven();
@@ -261,6 +263,7 @@ class BookingServiceUnitTest {
     // apart, because it no longer consults the users table.
 
     @Test
+    @SuppressWarnings("null")
     void cancelRefusesAnUnrelatedUser() {
         Room a = room(10L, RoomStatus.FREE);
         when(bookingRepository.findById(5L))
@@ -300,6 +303,7 @@ class BookingServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void cancelHandlesAMissingRoomDuringTheStateRefresh() {
         // the "room not found" branch inside updateRoomStatus
         Room a = room(10L, RoomStatus.FREE);
@@ -313,6 +317,7 @@ class BookingServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void cancelRefusesAnAlreadyCancelledBooking() {
         // Cancelling twice must not succeed: the caller would get a "cancelled
         // successfully" for an operation that changed nothing.
