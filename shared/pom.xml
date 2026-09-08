@@ -75,6 +75,18 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Generates META-INF/spring-configuration-metadata.json from
+             additional-spring-configuration-metadata.json at compile time: without it the
+             custom keys below (jwt.secret, classroom.*) show up in every service's IDE as
+             "unknown property", even though the services only ever set them because a class
+             in this module reads them with @Value. Compile-time only, never on the runtime
+             classpath of anything that depends on shared. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

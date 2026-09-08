@@ -94,6 +94,16 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
 
+        <!-- Generates META-INF/spring-configuration-metadata.json from
+             additional-spring-configuration-metadata.json at compile time, for the
+             auth.rate-limit.* keys LoginAttemptLimiter reads with @Value. Compile-time
+             only, never on the runtime classpath. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
