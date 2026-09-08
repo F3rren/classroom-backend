@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class UserConstraintsTest {
 
     @Container
+    @SuppressWarnings("resource")
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
                     .withDatabaseName("classroom_users_test")

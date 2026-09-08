@@ -51,6 +51,7 @@ import static org.awaitility.Awaitility.await;
 class UserDeletionMessagingTest {
 
     @Container
+    @SuppressWarnings("resource")
     static final RabbitMQContainer BROKER =
             new RabbitMQContainer(DockerImageName.parse("rabbitmq:3.13-management-alpine"))
                     .withStartupTimeout(Duration.ofMinutes(3));

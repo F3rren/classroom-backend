@@ -66,6 +66,7 @@ class PostgresSchemaConstraintsTest {
      * V1's CREATE EXTENSION works with no adjustment.
      */
     @Container
+    @SuppressWarnings("resource")
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
                     .withDatabaseName("classroom_test")
