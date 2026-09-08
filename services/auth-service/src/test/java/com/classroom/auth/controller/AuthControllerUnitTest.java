@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -74,7 +75,7 @@ class AuthControllerUnitTest {
 
     @SuppressWarnings("unchecked")
     private String errorCode(ResponseEntity<?> resp) {
-        return ((ApiEnvelope<Object>) resp.getBody()).getError();
+        return ((ApiEnvelope<Object>) Objects.requireNonNull(resp.getBody())).getError();
     }
 
     // ==================== rate limiting ====================
@@ -221,7 +222,7 @@ class AuthControllerUnitTest {
         ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        LoginResponse body = (LoginResponse) resp.getBody();
+        LoginResponse body = (LoginResponse) Objects.requireNonNull(resp.getBody());
         assertThat(body.getToken()).isEqualTo("token-valido");
         // the token is duplicated inside "data" too, the historic shape the frontend expects
         assertThat(body.getData().getToken()).isEqualTo("token-valido");
