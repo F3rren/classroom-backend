@@ -94,7 +94,6 @@ class BookingControllerTest {
         return new BookingOwner(id, username, name);
     }
 
-    @SuppressWarnings("unchecked")
     private HttpHeaders bearer(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
@@ -174,6 +173,7 @@ class BookingControllerTest {
     // /api/auth/login: from here that endpoint answers 404.
 
     @Test
+    @SuppressWarnings("unchecked")
     void theBookingSuccessResponseShapeIsLocked() throws Exception {
         HttpHeaders headers = bearer(tokenOwner);
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);

@@ -77,6 +77,7 @@ class RoomControllerTest {
 
 
     @Test
+    @SuppressWarnings("unchecked")
     void theRoomListReturnsATypedList() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
@@ -89,6 +90,7 @@ class RoomControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void theRoomByIdCarriesTheDenormalisedFields() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/" + roomId, HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
@@ -120,6 +122,7 @@ class RoomControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void roomsByFloorIncludeTheFloorField() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/floor/3", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);
@@ -131,6 +134,7 @@ class RoomControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void physicalRoomsIncludeTheTypeField() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/rooms/physical", HttpMethod.GET, new HttpEntity<>(bearer()), String.class);

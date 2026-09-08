@@ -92,6 +92,7 @@ class MeControllerTest {
     // ==================== MeController ====================
 
     @Test
+    @SuppressWarnings("unchecked")
     void returnsTheOwnProfileWithoutThePassword() throws Exception {
         ResponseEntity<String> resp = rest.exchange(
                 "/api/me", HttpMethod.GET, new HttpEntity<>(bearer(tokenOwner)), String.class);
