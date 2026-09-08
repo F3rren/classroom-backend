@@ -72,7 +72,7 @@ class BookingRepositoryStatusFilterTest {
         booking.setEndTime(end);
         booking.setStatus(status);
         booking.setCreatedAt(LocalDateTime.now());
-        return bookingRepository.save(booking).getId();
+        return Objects.requireNonNull(bookingRepository.save(booking).getId());
     }
 
     @Test

@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -386,7 +387,7 @@ public class BookingController {
         // checks in order to interpret a boolean, and a comment warned you to keep their
         // order in step with the service's: two copies of the same rule to synchronise by
         // hand.
-        bookingService.cancelBooking(bookingId, principal.id(), principal.isAdmin());
+        bookingService.cancelBooking(bookingId, Objects.requireNonNull(principal.id()), principal.isAdmin());
 
 
         logger.debug("END cancelBooking - booking cancelled | bookingId: {} | userId: {}", bookingId, principal.id());

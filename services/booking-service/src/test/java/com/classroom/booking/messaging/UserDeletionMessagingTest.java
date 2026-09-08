@@ -107,7 +107,7 @@ class UserDeletionMessagingTest {
         booking.setEndTime(LocalDateTime.now().plusDays(1).plusHours(1));
         booking.setStatus(BookingStatus.BOOKED);
         booking.setCreatedAt(LocalDateTime.now());
-        return bookingRepository.save(booking).getId();
+        return Objects.requireNonNull(bookingRepository.save(booking).getId());
     }
 
     private void publish(UserDeletedEvent event) {

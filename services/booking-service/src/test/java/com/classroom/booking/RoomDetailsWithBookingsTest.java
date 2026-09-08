@@ -74,18 +74,18 @@ class RoomDetailsWithBookingsTest {
         LocalDateTime now = LocalDateTime.now();
 
         busyRoomId = saveRoom("Aula Occupata", 1, 30, false);
-        book(busyRoomId, user, BookingStatus.BOOKED, now.minusHours(1), now.plusHours(1), "Lezione di Analisi");
+        book(Objects.requireNonNull(busyRoomId), user, BookingStatus.BOOKED, now.minusHours(1), now.plusHours(1), "Lezione di Analisi");
 
         blockedRoomId = saveRoom("Aula Bloccata", 1, 30, false);
-        book(blockedRoomId, user, BookingStatus.BLOCKED, now.minusHours(1), now.plusHours(1), "Evento riservato");
+        book(Objects.requireNonNull(blockedRoomId), user, BookingStatus.BLOCKED, now.minusHours(1), now.plusHours(1), "Evento riservato");
 
         maintenanceRoomId = saveRoom("Aula Manutenzione", 2, 20, false);
-        book(maintenanceRoomId, user, BookingStatus.MAINTENANCE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
+        book(Objects.requireNonNull(maintenanceRoomId), user, BookingStatus.MAINTENANCE, now.minusHours(1), now.plusHours(1), "Sostituzione proiettore");
 
         // A virtual room with an IMMINENT booking (within 2 hours, but not yet started):
         // covers the second branch and the virtual side of the third clone.
         upcomingRoomId = saveRoom("Aula Virtuale Imminente", 0, 50, true);
-        book(upcomingRoomId, user, BookingStatus.BOOKED, now.plusMinutes(30), now.plusMinutes(90), null);
+        book(Objects.requireNonNull(upcomingRoomId), user, BookingStatus.BOOKED, now.plusMinutes(30), now.plusMinutes(90), null);
 
         freeRoomId = saveRoom("Aula Libera", 3, 10, false);
 
@@ -115,7 +115,6 @@ class RoomDetailsWithBookingsTest {
         bookingRepository.save(p);
     }
 
-    @SuppressWarnings("unchecked")
     private ResponseEntity<String> get(String url) {
         HttpHeaders h = new HttpHeaders();
         h.setBearerAuth(Objects.requireNonNull(token));
