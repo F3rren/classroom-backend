@@ -20,10 +20,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,9 +96,10 @@ class BookingControllerTest {
         return new BookingOwner(id, username, name);
     }
 
+    @NonNull
     private HttpHeaders bearer(String token) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
+        headers.setBearerAuth(Objects.requireNonNull(token));
         return headers;
     }
 

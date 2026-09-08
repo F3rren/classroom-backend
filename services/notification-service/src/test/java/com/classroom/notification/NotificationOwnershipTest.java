@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Objects;
@@ -59,9 +60,10 @@ class NotificationOwnershipTest {
         tokenOther = TestJwt.forUser(OTHER_ID, "me-other@test.it");
     }
 
+    @NonNull
     private HttpHeaders bearer(String token) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
+        headers.setBearerAuth(Objects.requireNonNull(token));
         return headers;
     }
 

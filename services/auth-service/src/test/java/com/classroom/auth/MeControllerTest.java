@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -82,9 +83,10 @@ class MeControllerTest {
         return (String) Objects.requireNonNull(resp.getBody()).get("token");
     }
 
+    @NonNull
     private HttpHeaders bearer(String token) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
+        headers.setBearerAuth(Objects.requireNonNull(token));
         return headers;
     }
 

@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -73,7 +74,6 @@ class AuthValidationTest {
         userRepository.save(u);
     }
 
-    @SuppressWarnings("unchecked")
     private String login(String email, String password) {
         ResponseEntity<Map> resp = rest.postForEntity(
                 "/api/auth/login", Map.of("email", email, "password", password), Map.class);
@@ -81,18 +81,21 @@ class AuthValidationTest {
         return (String) Objects.requireNonNull(resp.getBody()).get("token");
     }
 
+    @NonNull
     private HttpHeaders bearer(String token) {
         HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(token);
+        h.setBearerAuth(Objects.requireNonNull(token));
         return h;
     }
 
+    @NonNull
     private HttpHeaders jsonHeaders() {
         HttpHeaders h = new HttpHeaders();
         h.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         return h;
     }
 
+    @NonNull
     private HttpHeaders bearerJson(String token) {
         HttpHeaders h = bearer(token);
         h.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);

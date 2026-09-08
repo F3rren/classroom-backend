@@ -19,11 +19,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -89,9 +91,10 @@ class BookingQueryTest {
     }
 
     @SuppressWarnings("unchecked")
+    @NonNull
     private HttpHeaders bearer() {
         HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(token);
+        h.setBearerAuth(Objects.requireNonNull(token));
         return h;
     }
 

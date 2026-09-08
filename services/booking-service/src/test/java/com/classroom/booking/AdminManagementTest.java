@@ -23,10 +23,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -105,9 +107,10 @@ class AdminManagementTest {
 
 
     @SuppressWarnings("unchecked")
+    @NonNull
     private HttpHeaders bearer(String token) {
         HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(token);
+        h.setBearerAuth(Objects.requireNonNull(token));
         h.setContentType(MediaType.APPLICATION_JSON);
         return h;
     }

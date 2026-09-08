@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -71,7 +72,7 @@ class RoomQueryTest {
     @SuppressWarnings("unchecked")
     private ResponseEntity<String> get(String url) {
         HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(token);
+        h.setBearerAuth(Objects.requireNonNull(token));
         return rest.exchange(url, HttpMethod.GET, new HttpEntity<>(h), String.class);
     }
 

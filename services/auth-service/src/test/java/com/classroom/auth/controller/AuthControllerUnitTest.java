@@ -40,7 +40,6 @@ class AuthControllerUnitTest {
     private HttpServletRequest httpRequest;
 
     @BeforeEach
-    @SuppressWarnings("unchecked")
     void setUp() {
         authService = mock(AuthService.class);
         jwtService = mock(JwtService.class);

@@ -17,9 +17,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,9 +71,10 @@ class RoomControllerTest {
     }
 
 
+    @NonNull
     private HttpHeaders bearer() {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
+        headers.setBearerAuth(Objects.requireNonNull(token));
         return headers;
     }
 

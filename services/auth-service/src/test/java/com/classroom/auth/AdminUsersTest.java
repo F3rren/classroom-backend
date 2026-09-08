@@ -15,6 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -70,7 +71,6 @@ class AdminUsersTest {
         return userRepository.save(u).getId();
     }
 
-    @SuppressWarnings("unchecked")
     private String login(String email) {
         ResponseEntity<Map> resp = rest.postForEntity(
                 "/api/auth/login", Map.of("email", email, "password", "password-di-prova"), Map.class);
@@ -78,9 +78,10 @@ class AdminUsersTest {
         return (String) Objects.requireNonNull(resp.getBody()).get("token");
     }
 
+    @NonNull
     private HttpHeaders headers() {
         HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(tokenAdmin);
+        h.setBearerAuth(Objects.requireNonNull(tokenAdmin));
         h.setContentType(MediaType.APPLICATION_JSON);
         return h;
     }
@@ -147,6 +148,6 @@ class AdminUsersTest {
         ResponseEntity<String> resp = call("/api/admin/users/" + regularUserId, HttpMethod.DELETE, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(userRepository.findById(regularUserId)).isEmpty();
+        assertThat(userRepository.findById(Objects.requireNonNull(regularUserId))).isEmpty();
     }
 }

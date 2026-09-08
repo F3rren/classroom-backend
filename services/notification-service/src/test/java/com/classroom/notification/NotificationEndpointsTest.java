@@ -14,7 +14,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
+
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,7 +68,7 @@ class NotificationEndpointsTest {
 
     private ResponseEntity<String> exchange(String url, HttpMethod method, String token) {
         HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(token);
+        h.setBearerAuth(Objects.requireNonNull(token));
         return rest.exchange(url, method, new HttpEntity<>(h), String.class);
     }
 
@@ -117,7 +120,7 @@ class NotificationEndpointsTest {
         assertThat(TestJson.asMap(resp.getBody()).get("message")).isEqualTo("Notifiche lette eliminate con successo");
 
         // only the already-read one disappears; the 2 unread stay
-        assertThat(notificationRepository.existsById(readNotificationId)).isFalse();
+        assertThat(notificationRepository.existsById(Objects.requireNonNull(readNotificationId))).isFalse();
         assertThat(countUnread(OWNER_ID)).isEqualTo(2);
     }
 
@@ -160,9 +163,10 @@ class NotificationEndpointsTest {
         }
     }
 
+    @NonNull
     private HttpHeaders bearerHeaders(String token) {
         HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(token);
+        h.setBearerAuth(Objects.requireNonNull(token));
         return h;
     }
 }

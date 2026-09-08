@@ -15,10 +15,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,10 +57,10 @@ class ValidationAndAdminTest {
         tokenUser = TestJwt.forUser(2L, "user@validation.test", "User Validation");
     }
 
-    @SuppressWarnings("unchecked")
+    @NonNull
     private HttpHeaders bearerJson(String token) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
+        headers.setBearerAuth(Objects.requireNonNull(token));
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }
