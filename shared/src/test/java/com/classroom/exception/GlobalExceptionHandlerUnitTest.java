@@ -81,7 +81,7 @@ class GlobalExceptionHandlerUnitTest {
         // A regression: without a dedicated handler, NoResourceFoundException fell
         // through to handleGeneric, and an unknown path answered 500 INTERNAL_ERROR.
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleResourceNotFound(
-                new NoResourceFoundException(HttpMethod.GET, "/v3/api-docs"));
+                new NoResourceFoundException(Objects.requireNonNull(HttpMethod.GET), "/v3/api-docs"));
         ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
