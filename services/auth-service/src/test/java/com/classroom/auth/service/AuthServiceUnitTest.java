@@ -131,6 +131,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void registerHashesThePasswordAndSetsRegistrationDate() {
         when(userRepository.findByEmail(anyString())).thenReturn(null);
         when(userRepository.findByUsername(anyString())).thenReturn(null);
@@ -180,6 +181,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void updateReportsAUsernameBelongingToAnotherUser() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, "mia@test.it")));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(user(1L, "mia@test.it"));
@@ -190,6 +192,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void updateKeepsExistingPasswordWhenBlank() {
         User existing = user(1L, "mia@test.it");
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
@@ -204,6 +207,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void theUpdateRehashesThePasswordWhenOneIsGiven() {
         User existing = user(1L, "mia@test.it");
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
@@ -218,6 +222,7 @@ class AuthServiceUnitTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void updateFallsBackToExistingRoleWhenNoneGiven() {
         User existing = user(1L, "mia@test.it");
         existing.setRole(Role.ADMIN);
