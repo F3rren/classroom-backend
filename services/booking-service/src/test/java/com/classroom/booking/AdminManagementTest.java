@@ -106,7 +106,6 @@ class AdminManagementTest {
     }
 
 
-    @SuppressWarnings("unchecked")
     @NonNull
     private HttpHeaders bearer(String token) {
         HttpHeaders h = new HttpHeaders();

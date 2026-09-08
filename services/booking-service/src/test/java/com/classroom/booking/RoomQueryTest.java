@@ -69,7 +69,6 @@ class RoomQueryTest {
         return roomRepository.save(a).getId();
     }
 
-    @SuppressWarnings("unchecked")
     private ResponseEntity<String> get(String url) {
         HttpHeaders h = new HttpHeaders();
         h.setBearerAuth(Objects.requireNonNull(token));

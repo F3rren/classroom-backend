@@ -90,7 +90,6 @@ class BookingQueryTest {
         token = TestJwt.forUser(1L, "prenotazionequerytest@test.it", "Utente Test");
     }
 
-    @SuppressWarnings("unchecked")
     @NonNull
     private HttpHeaders bearer() {
         HttpHeaders h = new HttpHeaders();
