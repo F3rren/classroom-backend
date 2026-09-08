@@ -33,7 +33,6 @@ public class BookingDetailDto {
     Integer roomFloor;
     Long userId;
     String username;
-    String userName;
     Long courseId;
     String courseName;
     String teacher;

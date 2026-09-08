@@ -70,7 +70,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "a.floor, " +
            "u.id, " +
            "u.username, " +
-           "u.name, " +
            "c.id, " +
            "c.name, " +
            "c.teacher, " +
@@ -99,7 +98,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "a.floor, " +
            "u.id, " +
            "u.username, " +
-           "u.name, " +
            "c.id, " +
            "c.name, " +
            "c.teacher, " +
@@ -127,7 +125,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "a.floor, " +
            "u.id, " +
            "u.username, " +
-           "u.name, " +
            "c.id, " +
            "c.name, " +
            "c.teacher, " +
