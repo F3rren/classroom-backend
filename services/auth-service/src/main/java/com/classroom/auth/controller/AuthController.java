@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -126,14 +127,18 @@ public class AuthController {
             // stops the header itself from becoming attacker-controlled.
             String rateLimitKey = httpRequest.getRemoteAddr() + "|" + email;
             if (attemptLimiter.tooManyAttempts(rateLimitKey)) {
-                logger.warn("END login - too many attempts for: {}", maskedEmail);
-                return new ResponseEntity<>(
-                    createErrorResponse("TOO_MANY_ATTEMPTS",
+                long retryAfter = attemptLimiter.retryAfterSeconds(rateLimitKey);
+                logger.warn("END login - too many attempts for: {}, retry in {}s", maskedEmail, retryAfter);
+                // Retry-After is what makes the refusal actionable: the sentence below says
+                // "tra qualche minuto" to a person, this says how many seconds to a client,
+                // which would otherwise have to guess and would usually guess too soon.
+                // RFC 9110 §10.2.3.
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter))
+                    .body(createErrorResponse("TOO_MANY_ATTEMPTS",
                                       "Too many login attempts",
                                       "Hai effettuato troppi tentativi di accesso. Riprova tra qualche minuto.",
-                                      sessionId),
-                    HttpStatus.TOO_MANY_REQUESTS
-                );
+                                      sessionId));
             }
 
             // Email shape validation

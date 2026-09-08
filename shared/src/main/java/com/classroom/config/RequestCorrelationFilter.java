@@ -74,10 +74,24 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
      */
     public static String current() {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            Object id = attributes.getRequest().getAttribute(ATTRIBUTE);
-            if (id instanceof String text && !text.isBlank()) {
-                return text;
-            }
+            return current(attributes.getRequest());
+        }
+        return generate();
+    }
+
+    /**
+     * The same id, read straight from a request already in hand.
+     *
+     * For whoever runs BEFORE the dispatch to the controller and therefore cannot rely on
+     * RequestContextHolder being populated: the two security handlers, which answer 401 and
+     * 403 from inside the filter chain and receive the HttpServletRequest as an argument.
+     * They used to mint an id of their own instead, so a refused request carried one id in
+     * the X-Request-Id header and a different one in the body's sessionId.
+     */
+    public static String current(HttpServletRequest request) {
+        Object id = request.getAttribute(ATTRIBUTE);
+        if (id instanceof String text && !text.isBlank()) {
+            return text;
         }
         return generate();
     }

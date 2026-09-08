@@ -112,4 +112,33 @@ class LoginAttemptLimiterUnitTest {
         // but the one already known keeps being limited
         assertThat(l.tooManyAttempts("nota")).isTrue();
     }
+
+    @Test
+    void theRetryDelayIsWhatIsLeftOfTheWindow() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(1, 60_000L, 1000);
+        limiter.tooManyAttempts("chi@test.it");
+
+        // The window has just opened, so what is left of it is essentially all of it. This
+        // is the value a client reads from Retry-After and waits on.
+        assertThat(limiter.retryAfterSeconds("chi@test.it")).isBetween(59L, 60L);
+    }
+
+    @Test
+    void anUnknownKeyIsToldToWaitAWholeWindow() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(1, 60_000L, 1000);
+
+        // The honest upper bound: it is what the caller would wait anyway if the window
+        // started now.
+        assertThat(limiter.retryAfterSeconds("mai-visto")).isEqualTo(60L);
+    }
+
+    @Test
+    void theRetryDelayIsNeverZero() {
+        // A Retry-After of 0 invites the immediate retry the limit exists to refuse, so a
+        // window about to close still answers one second.
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(1, 1L, 1000);
+        limiter.tooManyAttempts("chi@test.it");
+
+        assertThat(limiter.retryAfterSeconds("chi@test.it")).isGreaterThanOrEqualTo(1L);
+    }
 }

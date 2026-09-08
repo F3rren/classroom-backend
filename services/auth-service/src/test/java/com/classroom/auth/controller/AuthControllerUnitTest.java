@@ -11,6 +11,7 @@ import com.classroom.auth.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -94,6 +95,12 @@ class AuthControllerUnitTest {
         ResponseEntity<?> second = controller.login(credentials("u@test.it", "sbagliata"), httpRequest);
         assertThat(second.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(errorCode(second)).isEqualTo("TOO_MANY_ATTEMPTS");
+        // Retry-After turns the refusal into something a client can act on: the userMessage
+        // says "tra qualche minuto" to a person, this says how many seconds to the code.
+        // RFC 9110 section 10.2.3.
+        assertThat(second.getHeaders().getFirst(HttpHeaders.RETRY_AFTER))
+                .isNotNull()
+                .satisfies(value -> assertThat(Long.parseLong(value)).isBetween(1L, 60L));
     }
 
     @Test

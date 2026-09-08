@@ -427,6 +427,15 @@ response header and in the body's `sessionId` field. It crosses the events on Ra
 carried as a message header: it is the only key that lets you reconstruct an operation
 touching three services, three databases and two different threads.
 
+> That sentence used to have an exception nobody had noticed. The two handlers that answer
+> **401 and 403** run inside the security filter chain, before any controller, and each minted
+> an `AUTH_xxxxxxxx` of its own: a refused request came back with one id in the header and a
+> different one in `sessionId`. Measured — header `REQ_852A1225`, body `AUTH_98C52C23` — which
+> is the exact failure the id exists to prevent, and the worst way for a diagnostic tool to
+> break, because it looks like it is working. They now read the id off the request they are
+> handed (`RequestCorrelationFilter.current(request)`, rather than the no-argument version,
+> because `RequestContextHolder` is not guaranteed to be populated that early).
+
 ## Tokens and authentication
 
 **Only `auth-service` issues them.** It is the only module with `jjwt-impl` among its compile
@@ -524,6 +533,16 @@ nothing the service can produce cannot be sent the envelope either. Returning it
 what used to make this case fail twice — the second failure escaped to the container's error
 dispatch, which re-enters the security chain on `/error` unauthenticated, and the caller
 received a **401 telling it to log in** instead of a 406.
+
+**Three responses also carry the header that makes them actionable.** A status alone tells a
+client what happened; these tell it what to do next, and without them the only guidance is a
+sentence in Italian meant for a person:
+
+| Response | Header | Why |
+|---|---|---|
+| 401 | `WWW-Authenticate: Bearer realm="classroom"` | mandatory per RFC 9110 §11.6.1. When a token *was* sent and refused it becomes `error="invalid_token"` (RFC 6750 §3.1): without a token you log in, with an expired one you refresh — opposite moves, and previously indistinguishable. This is also the case the README warns about below, where changing `JWT_SECRET` starts refusing every existing token "for no visible reason" |
+| 429 | `Retry-After` | `LoginAttemptLimiter` is the only thing that knows when the window reopens, so it is the only thing that can say. Advisory: it is read separately from the check, so the window can roll over in between |
+| 503 | `Retry-After` | at the gateway. A constant, and it has to be — nothing knows when a service that is not answering will be back |
 
 The distinction between 500 and 503 is not formal: they suggest two different actions. A 500
 says "something is broken", a 503 says "try again". `ServiceUnavailableException` still

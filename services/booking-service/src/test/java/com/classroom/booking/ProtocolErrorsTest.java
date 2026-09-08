@@ -156,6 +156,43 @@ class ProtocolErrorsTest {
     }
 
     @Test
+    void aRefusalFromTheSecurityChainCarriesTheSameIdAsItsHeader() {
+        // Measured before the fix: the header said REQ_852A1225 and the body said
+        // AUTH_98C52C23 - two ids for one request. The two security handlers answer from
+        // inside the filter chain, before any controller, and used to mint an id of their
+        // own rather than read the one the correlation filter had already put on the
+        // request.
+        ResponseEntity<String> response = call(HttpMethod.GET, "/api/rooms",
+                new HttpEntity<>(new HttpHeaders()));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        String header = response.getHeaders().getFirst("X-Request-Id");
+        assertThat(header).isNotBlank();
+        assertThat(response.getBody()).contains("\"sessionId\":\"" + header + "\"");
+    }
+
+    @Test
+    void a401SaysWhatAuthenticationToAttempt() {
+        // RFC 9110 section 11.6.1 makes WWW-Authenticate mandatory on a 401. It was absent.
+        ResponseEntity<String> noToken = call(HttpMethod.GET, "/api/rooms",
+                new HttpEntity<>(new HttpHeaders()));
+
+        assertThat(noToken.getHeaders().getFirst("WWW-Authenticate"))
+                .isEqualTo("Bearer realm=\"classroom\"");
+
+        HttpHeaders expired = new HttpHeaders();
+        expired.setBearerAuth(TestJwt.expired(1L, "scaduto@test.it"));
+        ResponseEntity<String> withBadToken = call(HttpMethod.GET, "/api/rooms",
+                new HttpEntity<>(expired));
+
+        // RFC 6750 section 3.1: a token that was sent and refused is a different problem
+        // from no token at all, and calls for a different move by the client.
+        assertThat(withBadToken.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(withBadToken.getHeaders().getFirst("WWW-Authenticate"))
+                .contains("error=\"invalid_token\"");
+    }
+
+    @Test
     void anIdThatIsNotPositiveBecomes400WithTheSameSentenceEverywhere() {
         // The rule used to be an if at the top of each method: eight copies across three
         // controllers, in three different Italian wordings of the identical sentence. It is
