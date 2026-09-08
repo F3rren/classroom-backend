@@ -8,6 +8,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * The gateway's error responses, in the same shape as the services' own.
@@ -60,11 +62,12 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
     }
 
     @Override
-    public Mono<Void> handle(ServerWebExchange exchange, Throwable error) {
+    @NonNull
+    public Mono<Void> handle(@NonNull ServerWebExchange exchange, @NonNull Throwable error) {
         if (exchange.getResponse().isCommitted()) {
             // The response has already left: there is nothing useful left to do here except
             // avoid overwriting it halfway.
-            return Mono.error(error);
+            return Objects.requireNonNull(Mono.error(error));
         }
 
         Outcome outcome = classify(error);
@@ -86,7 +89,7 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         DataBuffer body = writeBody(exchange, outcome, sessionId);
-        return exchange.getResponse().writeWith(Mono.just(body));
+        return exchange.getResponse().writeWith(Objects.requireNonNull(Mono.just(body)));
     }
 
     private DataBuffer writeBody(ServerWebExchange exchange, Outcome outcome, String sessionId) {
@@ -101,13 +104,13 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
         envelope.put("sessionId", sessionId);
 
         try {
-            return exchange.getResponse().bufferFactory().wrap(objectMapper.writeValueAsBytes(envelope));
+            return exchange.getResponse().bufferFactory().wrap(Objects.requireNonNull(objectMapper.writeValueAsBytes(envelope)));
         } catch (IOException e) {
             // If even serialisation fails, a minimal hand-written body beats an empty
             // response: the client still has to find the shape it expects.
             logger.error("Envelope not serialisable: {}", e.getMessage());
             String minimal = "{\"success\":false,\"error\":\"INTERNAL_ERROR\"}";
-            return exchange.getResponse().bufferFactory().wrap(minimal.getBytes());
+            return exchange.getResponse().bufferFactory().wrap(Objects.requireNonNull(minimal.getBytes()));
         }
     }
 
