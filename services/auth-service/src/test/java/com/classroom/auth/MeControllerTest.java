@@ -44,14 +44,13 @@ class MeControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private User owner;
     private String tokenOwner;
 
     @BeforeEach
     void setUp() {
         userRepository.deleteAll();
 
-        owner = new User();
+        User owner = new User();
         owner.setEmail("me-owner@test.it");
         owner.setUsername("me-owner");
         owner.setPassword(passwordEncoder.encode("owner-password"));
