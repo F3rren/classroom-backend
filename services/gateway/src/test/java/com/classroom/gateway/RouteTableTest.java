@@ -79,7 +79,7 @@ class RouteTableTest {
                 MockServerHttpRequest.get("/api/admin/users").build());
         List<String> whoAcceptsIt = routes.getRoutes()
                 .filter(r -> Boolean.TRUE.equals(Mono.from(r.getPredicate().apply(exchange)).block()))
-                .map(Route::getId)
+                .map(r -> r.getId())
                 .collectList().block();
 
         assertThat(whoAcceptsIt).containsExactly("authentication", "application");

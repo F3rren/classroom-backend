@@ -64,7 +64,7 @@ public class SecurityConfig {
 
     private static List<String> splitConfigList(String raw) {
         return Arrays.stream(raw.split(","))
-                .map(String::trim)
+                .map(s -> s.trim())
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
     }

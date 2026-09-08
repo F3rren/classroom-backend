@@ -197,7 +197,7 @@ public class RoomController {
                 HttpStatus.OK
             );
         }
-        int maxCapacityFound = rooms.stream().mapToInt(Room::getCapacity).max().orElse(0);
+        int maxCapacityFound = rooms.stream().mapToInt(r -> r.getCapacity()).max().orElse(0);
         return new ResponseEntity<>(
             createSuccessResponse("Aule recuperate con successo", payload.withMaxCapacityFound(maxCapacityFound), sessionId),
             HttpStatus.OK

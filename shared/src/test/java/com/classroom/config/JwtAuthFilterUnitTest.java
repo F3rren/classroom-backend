@@ -59,7 +59,7 @@ class JwtAuthFilterUnitTest {
         AppPrincipal principal = (AppPrincipal) auth.getPrincipal();
         assertThat(principal.id()).isEqualTo(7L);
         assertThat(principal.getName()).isEqualTo("mario@example.it");
-        assertThat(auth.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_USER");
+        assertThat(auth.getAuthorities()).extracting(o -> o.toString()).containsExactly("ROLE_USER");
     }
 
     @Test
@@ -67,7 +67,7 @@ class JwtAuthFilterUnitTest {
         Authentication auth = runWithHeader("Bearer " + TestJwt.forAdmin(1L, "admin@example.it"));
 
         // hasRole('ADMIN') looks for exactly this string
-        assertThat(auth.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_ADMIN");
+        assertThat(auth.getAuthorities()).extracting(o -> o.toString()).containsExactly("ROLE_ADMIN");
     }
 
     @Test

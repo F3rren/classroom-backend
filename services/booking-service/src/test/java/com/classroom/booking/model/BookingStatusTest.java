@@ -28,7 +28,7 @@ class BookingStatusTest {
     @Test
     void everyConstantMatchesTheDatabaseCheckConstraint() {
         // booking_status_check admits exactly these five values
-        assertThat(java.util.Arrays.stream(BookingStatus.values()).map(BookingStatus::getValue))
+        assertThat(java.util.Arrays.stream(BookingStatus.values()).map(s -> s.getValue()))
                 .containsExactlyInAnyOrder("booked", "confirmed", "blocked", "maintenance", "cancelled");
     }
 

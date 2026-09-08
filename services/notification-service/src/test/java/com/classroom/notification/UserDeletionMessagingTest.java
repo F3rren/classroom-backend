@@ -89,7 +89,7 @@ class UserDeletionMessagingTest {
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             List<Notification> remaining = notificationRepository.findAll();
-            assertThat(remaining).extracting(Notification::getUserId).containsExactly(7L);
+            assertThat(remaining).extracting(n -> n.getUserId()).containsExactly(7L);
         });
     }
 

@@ -19,7 +19,7 @@ class RoomStatusTest {
     @Test
     void roomStatusKeepsItsOwnLowercaseVocabulary() {
         // room_status_check: 4 values, different from the booking's
-        assertThat(java.util.Arrays.stream(RoomStatus.values()).map(RoomStatus::getValue))
+        assertThat(java.util.Arrays.stream(RoomStatus.values()).map(s -> s.getValue()))
                 .containsExactlyInAnyOrder("free", "busy", "blocked", "maintenance");
     }
 

@@ -35,7 +35,7 @@ class RoleTest {
     @Test
     void matchesTheDatabaseCheckConstraint() {
         // user_role_check admits exactly 'admin' and 'user'
-        assertThat(java.util.Arrays.stream(Role.values()).map(Role::getValue))
+        assertThat(java.util.Arrays.stream(Role.values()).map(r -> r.getValue()))
                 .containsExactlyInAnyOrder("admin", "user");
     }
 

@@ -252,7 +252,7 @@ public class RoomService {
 
         // One query for all the rooms, not one per room: the listing used to cost 1+N
         // queries, and with Booking's EAGER relations a good deal more than that.
-        List<Long> roomIds = rooms.stream().map(Room::getId).toList();
+        List<Long> roomIds = rooms.stream().map(r -> r.getId()).toList();
         Map<Long, List<Booking>> bookingsByRoom = roomIds.isEmpty()
                 ? Map.of()
                 : bookingRepository.findByRoomIdIn(roomIds).stream()
