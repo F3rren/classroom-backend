@@ -158,7 +158,7 @@ public class BookingController {
     // Updates an existing booking.
     @PutMapping("/{bookingId}")
     @Operation(summary = "Update an existing booking (owner or admin only)")
-    public ResponseEntity<ApiEnvelope<BookingAckPayload>> updateBooking(@PathVariable("bookingId") @NonNull Long bookingId,
+    public ResponseEntity<ApiEnvelope<BookingAckPayload>> updateBooking(@PathVariable @NonNull Long bookingId,
                                                  @Valid @RequestBody BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
@@ -347,7 +347,7 @@ public class BookingController {
     // old path, which is why the rename was safe.
     @GetMapping("/room-status/{roomId}")
     @Operation(summary = "The current status of a room")
-    public ResponseEntity<RoomStatusPayload> getRoomStatus(@PathVariable("roomId") Long roomId) {
+    public ResponseEntity<RoomStatusPayload> getRoomStatus(@PathVariable Long roomId) {
         logger.debug("START getRoomStatus - roomId: {}", roomId);
         String status = bookingService.getRoomStatus(roomId, LocalDateTime.now());
         logger.debug("END getRoomStatus - roomId: {}, status: {}", roomId, status);
@@ -373,7 +373,7 @@ public class BookingController {
     // Cancels a booking.
     @DeleteMapping("/{bookingId}")
     @Operation(summary = "Cancel a booking (owner or admin only)")
-    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("bookingId") @NonNull Long bookingId,
+    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable @NonNull Long bookingId,
                                                 @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START cancelBooking - bookingId: {}", bookingId);
@@ -429,8 +429,7 @@ public class BookingController {
     @Operation(summary = "Fetch a single booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWrapper.class)))
-    public ResponseEntity<?> getBookingById(@PathVariable("id") @NonNull Long id) {
-        String sessionId = generateSessionId();
+    public ResponseEntity<?> getBookingById(@PathVariable @NonNull Long id) {
         logger.debug("START getBookingById - booking ID: {}", id);
 
         Booking booking = bookingService.getBookingById(id);
@@ -451,8 +450,7 @@ public class BookingController {
     @Operation(summary = "Full details of one booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWithDetailsPayload.class)))
-    public ResponseEntity<?> getBookingDetailsById(@PathVariable("id") @NonNull Long id) {
-        String sessionId = generateSessionId();
+    public ResponseEntity<?> getBookingDetailsById(@PathVariable @NonNull Long id) {
         logger.debug("START getBookingDetailsById - booking ID: {}", id);
 
         Booking booking = bookingService.getBookingById(id);
@@ -484,7 +482,7 @@ public class BookingController {
     @Operation(summary = "List the bookings in a given status")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingsByStatusPayload.class)))
-    public ResponseEntity<?> getBookingsByStatus(@PathVariable("status") String status) {
+    public ResponseEntity<?> getBookingsByStatus(@PathVariable String status) {
         logger.debug("START getBookingsByStatus - status: {}", status);
         try {
             List<Booking> bookings = bookingService.getBookingsByStatus(status.toLowerCase())
@@ -501,9 +499,9 @@ public class BookingController {
             throw new InvalidRequestException("INVALID_STATE",
                     "Invalid state: " + status
                             + ". Allowed: " + java.util.Arrays.stream(BookingStatus.values())
-                            .map(BookingStatus::getValue).collect(Collectors.joining(", ")),
+                            .map(s -> s.getValue()).collect(Collectors.joining(", ")),
                     "Stato non riconosciuto. Ammessi: " + java.util.Arrays.stream(BookingStatus.values())
-                            .map(BookingStatus::getValue).collect(Collectors.joining(", ")));
+                            .map(s -> s.getValue()).collect(Collectors.joining(", ")));
         }
     }
 
