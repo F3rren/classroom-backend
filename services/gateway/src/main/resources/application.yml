@@ -121,6 +121,62 @@ spring:
           predicates:
             - Path=/api/rooms/**,/api/bookings/**,/api/admin/**
 
+        # ------------------------------------------------------------------
+        # DOCUMENTATION, AGGREGATED. Each service's own /v3/api-docs is proxied here under a
+        # name that tells them apart - they cannot share the bare path, all three answer to
+        # the same "/v3/api-docs". Only the JSON is proxied, not swagger-ui's own HTML/JS: the
+        # UI that renders it lives in the gateway itself (see springdoc.swagger-ui below), so
+        # there is nothing cross-origin to fetch and no per-service prefix to teach springdoc
+        # about on the other side.
+        #
+        # This does not need its own permitAll or its own "off in prod": each service already
+        # disables its /v3/api-docs outside dev (application-prod.properties), and a route
+        # proxying to a disabled endpoint gets that service's own 404 back. Protection does
+        # not depend on this route table - same reasoning as the services' own comment on the
+        # subject, and for the same reason: the route table changes, the profile does not.
+        # ------------------------------------------------------------------
+        - id: docs-auth
+          uri: ${AUTH_SERVICE_URL:http://localhost:17105}
+          predicates:
+            - Path=/docs/auth-service/v3/api-docs
+          filters:
+            - RewritePath=/docs/auth-service/v3/api-docs, /v3/api-docs
+
+        - id: docs-booking
+          uri: ${BOOKING_SERVICE_URL:http://localhost:17103}
+          predicates:
+            - Path=/docs/booking-service/v3/api-docs
+          filters:
+            - RewritePath=/docs/booking-service/v3/api-docs, /v3/api-docs
+
+        - id: docs-notifications
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:17104}
+          predicates:
+            - Path=/docs/notification-service/v3/api-docs
+          filters:
+            - RewritePath=/docs/notification-service/v3/api-docs, /v3/api-docs
+
+# The gateway's own OpenAPI document is meaningless - it has no REST controllers of its own,
+# only routes - but api-docs.enabled is not just about that document: it is springdoc's own
+# master switch, gating the auto-configuration that registers swagger-ui itself. Set to
+# false, /swagger-ui.html 404s regardless of swagger-ui.enabled, because nothing springdoc
+# ever gets registered to serve it - found the hard way, the first time this was split into
+# two flags. So both ride the same one, which defaults to off for the same reason every
+# service does: a forgotten variable should degrade towards locked down, not towards exposed.
+# docker-compose.yml is where it turns on for local inspection.
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_UI_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_UI_ENABLED:false}
+    urls:
+      - url: /docs/auth-service/v3/api-docs
+        name: Auth
+      - url: /docs/booking-service/v3/api-docs
+        name: Booking
+      - url: /docs/notification-service/v3/api-docs
+        name: Notifications
+
 logging:
   level:
     root: INFO

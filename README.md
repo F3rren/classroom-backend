@@ -69,12 +69,16 @@ name are changed in the profile (see below), not here.
 ## 3. Start it
 
 ```bash
-mvn spring-boot:run -pl booking-service -am
+mvn spring-boot:run -pl booking-service -am -Dspring-boot.run.profiles=dev
 ```
 
 `-pl booking-service` picks the module, `-am` builds `shared` first, which it depends on.
 
-The default profile is `dev`. On the first start Flyway creates the whole schema.
+The default profile is `prod` - locked down, Swagger off, and (for this service) it demands
+`CORS_ALLOWED_ORIGINS` with no fallback, so a bare `mvn spring-boot:run` with no profile at
+all now refuses to start. `-Dspring-boot.run.profiles=dev` opts into the development
+conveniences instead: Swagger UI, DevTools, and the settings this database already relies on.
+On the first start Flyway creates the whole schema.
 
 Check that it works:
 
@@ -221,20 +225,37 @@ It brings up three PostgreSQL instances (one per service), the four services, an
 the `/internal/` routes are therefore unreachable by construction, and not merely by the
 gateway's rule.
 
-> Inside the containers `booking-service` runs with the **`prod`** profile, and that is not a
-> preference: `application-dev.properties` has the database URL written against `localhost`,
-> so with the default profile `DB_HOST` would be ignored and the service would die on its
-> first connection. Only `prod` reads the environment variables.
+> Inside the containers every service stays on its own default, `prod` (see below) - it is
+> NOT switched to `dev`. `dev` also turns on the file log appender in
+> `shared/src/main/resources/logback-spring.xml`, which has nowhere writable to go inside the
+> container (the image runs as an unprivileged user, with no `logs/` directory) and crashes
+> startup; and, for `booking-service`, the Flyway baseline flags meant for one developer's
+> pre-Flyway local database, which have no business running against a container's own,
+> always-empty one.
+>
+> Swagger is turned on WITHOUT any of that, by overriding just the two properties that gate
+> it - `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED` - which
+> `application-prod.properties` on each service reads as `${VAR:false}` for exactly this
+> reason. The database connection is unaffected either way - it lives in
+> `application.properties` with `${DB_HOST}`-style placeholders that take real values in a
+> container and fall back to `localhost` outside one.
+>
+> Swagger for all three APIs is aggregated behind the gateway, on the one port this file
+> publishes: <http://localhost:17102/swagger-ui.html>, with a dropdown to switch between them.
+> Nothing is published per service - the frontend knows only 17102, and so does this.
 
 ### Without Docker
 
-Four processes, each in its own terminal:
+Four processes, each in its own terminal. The three application services default to `prod`
+(locked down, Swagger off); pass `-Dspring-boot.run.profiles=dev` for the development
+conveniences - `booking-service` needs it just to start, since `prod` demands
+`CORS_ALLOWED_ORIGINS` with no fallback:
 
 ```bash
-mvn spring-boot:run -pl booking-service -am        # 17103
-mvn spring-boot:run -pl auth-service -am           # 17105
-mvn spring-boot:run -pl notification-service -am   # 17104
-mvn spring-boot:run -pl gateway -am                # 17102
+mvn spring-boot:run -pl booking-service -am -Dspring-boot.run.profiles=dev        # 17103
+mvn spring-boot:run -pl auth-service -am -Dspring-boot.run.profiles=dev           # 17105
+mvn spring-boot:run -pl notification-service -am -Dspring-boot.run.profiles=dev   # 17104
+mvn spring-boot:run -pl gateway -am                                               # 17102
 ```
 
 The gateway does not validate tokens: it routes, and nothing else. Every service verifies the
@@ -266,20 +287,34 @@ checks the boundary holds.
 |---|---|
 | `application.properties` | everything needed to start, with `${VAR:default}` placeholders |
 | `application-dev.properties` | development conveniences: DevTools, logging to file, the Flyway baseline |
-| `application-prod.properties` | **hardening only**: Swagger off, a wider pool, Flyway made safe |
+| `application-prod.properties` | **hardening only**: Swagger off, a wider pool, Flyway made safe — and each service's own default profile |
 | `.env` | **secrets and environment parameters only**, not versioned |
 
-**No service depends on a profile in order to live.** The connection, the port and CORS live
-in `application.properties` in the `${DB_HOST:localhost}` form, which takes the real values in
-a container and falls back to the development defaults outside one. A profile adds or removes
-behaviour, it does not supply it: forgetting `SPRING_PROFILES_ACTIVE` **degrades** — you end
-up less protected — instead of breaking.
+**The connection and the port never depended on a profile.** They live in
+`application.properties` in the `${DB_HOST:localhost}` form, which takes the real values in a
+container and falls back to the development defaults outside one. **The profile itself now
+does**, though: each service's default profile is `prod`, not `dev`, so forgetting
+`SPRING_PROFILES_ACTIVE` lands you on the locked-down settings — Swagger off, no detail in
+error responses — instead of the permissive ones. `SPRING_PROFILES_ACTIVE=dev` is what opts
+back into development. For `booking-service` specifically, `prod` also demands
+`CORS_ALLOWED_ORIGINS` with no fallback, so forgetting the profile there refuses to start
+rather than merely running less protected.
 
-It was not always so, and it cost dearly: the database URL lived only in
-`application-dev.properties`, written against `localhost`, and with
-`spring.profiles.default=dev` a container without that variable started pointing at localhost
-and died on its first query. The symptom was a 503 from the gateway, and the cause sat three
-files away.
+`docker-compose.yml` leaves all three on `prod` too - it does not switch them to `dev` - and
+still gets Swagger working out of the box (aggregated behind the gateway - see "With Docker"
+below), by overriding just `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED`
+instead of the whole profile. Switching the whole profile was tried first and reverted: `dev`
+also enables a file log appender with nowhere writable to go inside a container, which
+crashed every service's startup.
+
+It was not always so, and getting the connection out of the profiles cost dearly the first
+time: the database URL lived only in `application-dev.properties`, written against
+`localhost`, and with the OLD `spring.profiles.default=dev` a container without that variable
+started pointing at localhost and died on its first query. The symptom was a 503 from the
+gateway, and the cause sat three files away. That is fixed by keeping the connection
+profile-independent, as above — not by which profile is the default, which is a separate
+question the project answered the other way afterwards: default to `prod`, so a forgotten
+profile degrades towards protection, not away from it.
 
 `application-dev.properties` exists only for `booking-service`, and that is deliberate: it is
 the only one with DevTools and file logging. The other two have nothing specific to

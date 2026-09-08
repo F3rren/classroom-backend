@@ -79,10 +79,13 @@ services:
         condition: service_healthy
       db-users: *attesa-db
     environment:
-      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
-      # Without this line the service still starts, merely less protected: that is
-      # deliberate, so that forgetting it degrades rather than breaks.
-      SPRING_PROFILES_ACTIVE: prod
+      # Stays on "prod" (the service's own default - application.properties). Swagger is
+      # turned on with the two SPRINGDOC_* flags below instead of switching the whole profile
+      # to "dev": "dev" also turns on the file log appender in logback-spring.xml, which has
+      # no writable place to go inside the container and crashes startup on its own - the
+      # exact failure this compose file used to hit before these two flags existed.
+      SPRINGDOC_API_DOCS_ENABLED: "true"
+      SPRINGDOC_SWAGGER_UI_ENABLED: "true"
       DB_HOST: db-users
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
@@ -110,18 +113,16 @@ services:
         condition: service_healthy
       db-bookings: *attesa-db
     environment:
-      # prod holds hardening ONLY, as for the other two. It is no longer a necessity: the
-      # connection lives in application.properties with placeholders, so without this line the
-      # service still starts, merely less protected.
-      #
-      # It was not always so, and that cost dearly: the URL lived only in
-      # application-dev.properties, written against localhost, and with
-      # spring.profiles.default=dev a container without this line started pointing at
-      # localhost and died on its first query. The symptom was a 503 from the gateway, and
-      # the cause sat three files away.
-      SPRING_PROFILES_ACTIVE: prod
-      # This is the only service whose prod profile demands the CORS origins with no
-      # fallback, so they have to be passed explicitly here.
+      # Stays on "prod" (the service's own default), for the same reason as the other two:
+      # switching the whole profile to "dev" would also turn on the file log appender in
+      # logback-spring.xml, with no writable place to go inside the container, AND the Flyway
+      # baseline flags meant for one developer's pre-Flyway local database
+      # (application-dev.properties) - neither belongs here. Swagger comes on with the two
+      # SPRINGDOC_* flags below instead.
+      SPRINGDOC_API_DOCS_ENABLED: "true"
+      SPRINGDOC_SWAGGER_UI_ENABLED: "true"
+      # prod has no fallback for this one (application-prod.properties): a real deployment is
+      # forced to set it for real rather than inherit a development value by accident.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
       DB_HOST: db-bookings
       RABBITMQ_HOST: broker
@@ -142,10 +143,13 @@ services:
         condition: service_healthy
       db-notifications: *attesa-db
     environment:
-      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
-      # Without this line the service still starts, merely less protected: that is
-      # deliberate, so that forgetting it degrades rather than breaks.
-      SPRING_PROFILES_ACTIVE: prod
+      # Stays on "prod" (the service's own default - application.properties). Swagger is
+      # turned on with the two SPRINGDOC_* flags below instead of switching the whole profile
+      # to "dev": "dev" also turns on the file log appender in logback-spring.xml, which has
+      # no writable place to go inside the container and crashes startup on its own - the
+      # exact failure this compose file used to hit before these two flags existed.
+      SPRINGDOC_API_DOCS_ENABLED: "true"
+      SPRINGDOC_SWAGGER_UI_ENABLED: "true"
       DB_HOST: db-notifications
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
@@ -173,6 +177,10 @@ services:
       BOOKING_SERVICE_URL: http://booking-service:17103
       NOTIFICATION_SERVICE_URL: http://notification-service:17104
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      # Off by default in application.yml; on here because the three services above have
+      # their own SPRINGDOC_*_ENABLED flags set too. Aggregates their /v3/api-docs into one
+      # Swagger UI, on the one port that matters: http://localhost:17102/swagger-ui.html.
+      SWAGGER_UI_ENABLED: "true"
 
 volumes:
   data-broker:

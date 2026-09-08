@@ -55,6 +55,20 @@
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
 
+        <!--
+            The aggregated Swagger UI (see application.yml): one page, in the gateway, with a
+            dropdown across the three services' specs. The "-webflux-" variant and not
+            "-webmvc-", unlike the three services: this module is reactive, and the parent's
+            dependencyManagement only covers the MVC one, so the version is spelled out here
+            instead of inherited - ${springdoc.version} still comes from the parent, only the
+            <dependency> block does not.
+        -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
