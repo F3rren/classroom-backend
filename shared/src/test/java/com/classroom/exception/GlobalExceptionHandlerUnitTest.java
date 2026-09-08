@@ -114,7 +114,7 @@ class GlobalExceptionHandlerUnitTest {
     void validationWithNoFieldErrorsFallsBackToAGenericMessage() throws Exception {
         // the firstError == null branch: a BindingResult with no field errors
         Method method = getClass().getDeclaredMethod("dummyMethod", String.class);
-        MethodParameter parameter = new MethodParameter(method, 0);
+        MethodParameter parameter = new MethodParameter(Objects.requireNonNull(method), 0);
         BindingResult binding = new BeanPropertyBindingResult(new Object(), "object");
 
         ResponseEntity<ApiEnvelope<Void>> resp = handler.handleValidation(
@@ -129,7 +129,7 @@ class GlobalExceptionHandlerUnitTest {
     @Test
     void validationUsesTheFirstFieldErrorMessage() throws Exception {
         Method method = getClass().getDeclaredMethod("dummyMethod", String.class);
-        MethodParameter parameter = new MethodParameter(method, 0);
+        MethodParameter parameter = new MethodParameter(Objects.requireNonNull(method), 0);
         // the target has to have a real field: rejectValue on a field that does not exist
         // would produce a global error and getFieldError() would return null
         BeanPropertyBindingResult binding =
