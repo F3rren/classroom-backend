@@ -2,6 +2,7 @@ package com.classroom.notification.service;
 
 import com.classroom.notification.model.Notification;
 import com.classroom.notification.repository.NotificationRepository;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -111,7 +112,7 @@ public class NotificationService {
         return notification;
     }
 
-    public Optional<Notification> getNotificationById(Long notificationId) {
+    public Optional<Notification> getNotificationById(@NonNull Long notificationId) {
         logger.debug("START - fetching notification by ID: {}", notificationId);
         Optional<Notification> notification = notificationRepository.findById(notificationId);
         if (notification.isPresent()) {
@@ -122,7 +123,7 @@ public class NotificationService {
         return notification;
     }
 
-    public Optional<Notification> markAsRead(Long notificationId, Long userId) {
+    public Optional<Notification> markAsRead(@NonNull Long notificationId, Long userId) {
         logger.debug("START - marking notification ID: {} as read for user ID: {}", notificationId, userId);
         Optional<Notification> notificationOpt = notificationRepository.findById(notificationId);
 
@@ -152,7 +153,7 @@ public class NotificationService {
     }
 
     @Transactional
-    public void deleteNotification(Long notificationId) {
+    public void deleteNotification(@NonNull Long notificationId) {
         logger.debug("START - deleting notification ID: {}", notificationId);
         notificationRepository.deleteById(notificationId);
         logger.debug("END - deletion complete for notification ID: {}", notificationId);

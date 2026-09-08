@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -157,7 +158,7 @@ public class BookingController {
     // Updates an existing booking.
     @PutMapping("/{bookingId}")
     @Operation(summary = "Update an existing booking (owner or admin only)")
-    public ResponseEntity<ApiEnvelope<BookingAckPayload>> updateBooking(@PathVariable("bookingId") Long bookingId,
+    public ResponseEntity<ApiEnvelope<BookingAckPayload>> updateBooking(@PathVariable("bookingId") @NonNull Long bookingId,
                                                  @Valid @RequestBody BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
@@ -372,7 +373,7 @@ public class BookingController {
     // Cancels a booking.
     @DeleteMapping("/{bookingId}")
     @Operation(summary = "Cancel a booking (owner or admin only)")
-    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("bookingId") Long bookingId,
+    public ResponseEntity<ApiEnvelope<CancellationAckPayload>> cancelBooking(@PathVariable("bookingId") @NonNull Long bookingId,
                                                 @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START cancelBooking - bookingId: {}", bookingId);
@@ -428,7 +429,7 @@ public class BookingController {
     @Operation(summary = "Fetch a single booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWrapper.class)))
-    public ResponseEntity<?> getBookingById(@PathVariable("id") Long id) {
+    public ResponseEntity<?> getBookingById(@PathVariable("id") @NonNull Long id) {
         String sessionId = generateSessionId();
         logger.debug("START getBookingById - booking ID: {}", id);
 
@@ -450,7 +451,7 @@ public class BookingController {
     @Operation(summary = "Full details of one booking (owner or admin only)")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = BookingWithDetailsPayload.class)))
-    public ResponseEntity<?> getBookingDetailsById(@PathVariable("id") Long id) {
+    public ResponseEntity<?> getBookingDetailsById(@PathVariable("id") @NonNull Long id) {
         String sessionId = generateSessionId();
         logger.debug("START getBookingDetailsById - booking ID: {}", id);
 

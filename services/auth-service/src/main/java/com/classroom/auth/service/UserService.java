@@ -4,6 +4,7 @@ import com.classroom.auth.model.User;
 import com.classroom.auth.repository.UserRepository;
 import com.classroom.auth.messaging.EventPublisher;
 import com.classroom.events.UserDeletedEvent;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -23,7 +24,7 @@ public class UserService {
         this.eventPublisher = eventPublisher;
     }
 
-    public User findById(Long id) {
+    public User findById(@NonNull Long id) {
         logger.debug("START - looking up user by ID: {}", id);
         User user = userRepository.findById(id).orElse(null);
         if (user != null) {
@@ -53,7 +54,7 @@ public class UserService {
      * guarantee that the whole deletion succeeded, the way there used to be.
      */
     @Transactional
-    public void deleteById(Long id) {
+    public void deleteById(@NonNull Long id) {
         logger.info("Deleting user ID: {}", id);
         userRepository.deleteById(id);
         eventPublisher.publishUserDeleted(new UserDeletedEvent(id));

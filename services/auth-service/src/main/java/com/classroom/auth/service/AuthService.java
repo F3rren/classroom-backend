@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -84,7 +85,7 @@ public class AuthService {
         return users;
     }
 
-    public User updateUser(Long id, UpdateUserRequest request) {
+    public User updateUser(@NonNull Long id, UpdateUserRequest request) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             throw ResourceType.USER.notFoundById(id);

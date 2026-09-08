@@ -13,6 +13,7 @@ import com.classroom.booking.dto.RoomRequest;
 import com.classroom.booking.dto.RoomDetailsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -57,7 +58,7 @@ public class RoomService {
     }
 
     // A single room by id.
-    public Optional<Room> getRoomById(Long id) {
+    public Optional<Room> getRoomById(@NonNull Long id) {
         logger.debug("getroomById - ID: {}", id);
         Optional<Room> room = roomRepository.findById(id);
         logger.debug("getroomById - room found: {}", room.isPresent());
@@ -102,7 +103,7 @@ public class RoomService {
     }
 
     // Updates an existing room.
-    public Room updateRoom(Long id, RoomRequest request) {
+    public Room updateRoom(@NonNull Long id, RoomRequest request) {
         logger.debug("START updateRoom - ID: {}, data received: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
                    id, request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
         
@@ -135,7 +136,7 @@ public class RoomService {
     }
 
     // Deletes a room.
-    public void deleteRoom(Long id) {
+    public void deleteRoom(@NonNull Long id) {
         logger.debug("START deleteRoom - ID: {}", id);
         
         if (!roomRepository.existsById(id)) {
@@ -175,7 +176,7 @@ public class RoomService {
     }
 
     // Full details of a single room.
-    public RoomDetailsResponse getRoomWithDetails(Long roomId) {
+    public RoomDetailsResponse getRoomWithDetails(@NonNull Long roomId) {
         logger.debug("START getRoomWithDetails - ID room: {}", roomId);
 
         Room room = roomRepository.findById(roomId)

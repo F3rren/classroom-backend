@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -119,7 +120,7 @@ public class RoomController {
     @Operation(summary = "A room together with its detailed bookings")
     @ApiResponse(responseCode = "200",
             content = @Content(schema = @Schema(implementation = RoomWithBookingsPayload.class)))
-    public ResponseEntity<?> getRoomDetailsById(@PathVariable("id") Long id) {
+    public ResponseEntity<?> getRoomDetailsById(@PathVariable("id") @NonNull Long id) {
         logger.debug("START getRoomDetailsById - ID room: {}", id);
 
         Optional<Room> room = roomService.getRoomById(id);

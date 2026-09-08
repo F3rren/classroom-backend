@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
@@ -59,7 +60,7 @@ public class NotificationController {
 
     @PutMapping("/{id}/mark-read")
     @Operation(summary = "Mark one notification as read")
-    public ResponseEntity<Notification> markAsRead(@PathVariable("id") Long id, @AuthenticationPrincipal AppPrincipal principal) {
+    public ResponseEntity<Notification> markAsRead(@PathVariable("id") @NonNull Long id, @AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("START - request to mark notification as read, ID: {}", id);
         Optional<Notification> updatedNotificationOpt = notificationService.markAsRead(id, principal.id());
 
@@ -82,7 +83,7 @@ public class NotificationController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete one of your own notifications")
-    public ResponseEntity<MessageResponse> deleteNotification(@PathVariable("id") Long id, @AuthenticationPrincipal AppPrincipal principal) {
+    public ResponseEntity<MessageResponse> deleteNotification(@PathVariable("id") @NonNull Long id, @AuthenticationPrincipal AppPrincipal principal) {
         logger.debug("START - request to delete notification ID: {}", id);
         Optional<Notification> notificationOpt = notificationService.getNotificationById(id);
         if (notificationOpt.isEmpty()) {

@@ -16,6 +16,7 @@ import com.classroom.booking.repository.BookingRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +44,7 @@ public class BookingService {
 
     // Books a room for a lesson.
     @Transactional
-    public Booking bookRoom(Long roomId, Long courseId, BookingOwner owner, LocalDateTime startTime, LocalDateTime endTime, String description) {
+    public Booking bookRoom(@NonNull Long roomId, Long courseId, BookingOwner owner, LocalDateTime startTime, LocalDateTime endTime, String description) {
         logger.debug("START bookRoom");
         logger.debug("room booking requested - roomId: {}, courseId: {}, userId: {}, period: {} - {}", roomId, courseId, owner.getId(), startTime, endTime);
         
@@ -100,7 +101,7 @@ public class BookingService {
     
     // Blocks a room. Admin only.
     @Transactional
-    public Booking blockRoom(Long roomId, BookingOwner admin, LocalDateTime startTime, LocalDateTime endTime, String reason) {
+    public Booking blockRoom(@NonNull Long roomId, BookingOwner admin, LocalDateTime startTime, LocalDateTime endTime, String reason) {
         logger.debug("START blockRoom");
         logger.debug("room block requested - roomId: {}, AdminId: {}, period: {} - {}", roomId, admin.getId(), startTime, endTime);
         
@@ -226,7 +227,7 @@ public class BookingService {
     
     // Cancels a booking.
     @Transactional
-    public boolean cancelBooking(Long bookingId, Long userId, boolean isAdmin) {
+    public boolean cancelBooking(@NonNull Long bookingId, Long userId, boolean isAdmin) {
         logger.debug("START cancelBooking");
         logger.debug("booking cancellation requested - bookingId: {}, userId: {}", bookingId, userId);
         Optional<Booking> booking = bookingRepository.findById(bookingId);
@@ -312,7 +313,7 @@ public class BookingService {
     }
     
     // A single booking by id.
-    public Booking getBookingById(Long id) {
+    public Booking getBookingById(@NonNull Long id) {
         logger.debug("START getBookingById");
         logger.debug("fetching booking by ID - bookingId: {}", id);
         Optional<Booking> booking = bookingRepository.findById(id);
@@ -346,7 +347,7 @@ public class BookingService {
     
     // The admin path for cancelling any booking at all.
     @Transactional
-    public boolean cancelBookingAsAdmin(Long bookingId, Long adminId, String reason) {
+    public boolean cancelBookingAsAdmin(@NonNull Long bookingId, Long adminId, String reason) {
         logger.debug("START cancelBookingAsAdmin");
         logger.debug("booking cancellation requested by an admin - bookingId: {}, AdminId: {}, reason: {}", bookingId, adminId, reason);
         Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
@@ -384,7 +385,7 @@ public class BookingService {
 
     // Updates an existing booking.
     @Transactional
-    public Booking updateBooking(Long bookingId, Long roomId, Long courseId, Long userId, boolean isAdmin, LocalDateTime startTime, LocalDateTime endTime, String description) {
+    public Booking updateBooking(@NonNull Long bookingId, @NonNull Long roomId, Long courseId, Long userId, boolean isAdmin, LocalDateTime startTime, LocalDateTime endTime, String description) {
         logger.debug("START updateBooking");
         logger.debug("booking update requested - bookingId: {}, roomId: {}, courseId: {}, userId: {}, period: {} - {}", bookingId, roomId, courseId, userId, startTime, endTime);
         

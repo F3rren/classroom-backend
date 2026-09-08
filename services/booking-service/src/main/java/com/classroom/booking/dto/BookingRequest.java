@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.Getter;
+import org.springframework.lang.NonNull;
 
 /**
  * A request to create, update or block a booking.
@@ -18,6 +20,7 @@ public class BookingRequest {
 
     @NotNull(message = "Devi specificare quale aula vuoi prenotare.")
     @Schema(description = "The id of the room to book", example = "3")
+    @Getter(onMethod_ = {@NonNull})
     private Long roomId;
 
     @Schema(description = "The id of the associated course. Optional: absent for a booking with no course", example = "12")
