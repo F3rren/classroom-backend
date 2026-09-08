@@ -11,6 +11,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.FilterChain;
 
+import java.util.Objects;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -69,7 +71,7 @@ class RequestCorrelationFilterUnitTest {
 
         FilterChain insideTheRequest = (req, res) -> {
             RequestContextHolder.setRequestAttributes(
-                    new ServletRequestAttributes((MockHttpServletRequest) req));
+                    new ServletRequestAttributes(Objects.requireNonNull((MockHttpServletRequest) req)));
             reads[0] = RequestCorrelationFilter.current();   // the controller
             reads[1] = RequestCorrelationFilter.current();   // the error handler
         };
