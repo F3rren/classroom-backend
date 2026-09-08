@@ -12,6 +12,7 @@ import com.classroom.booking.dto.*;
 import com.classroom.booking.model.Room;
 import com.classroom.booking.model.Booking;
 import com.classroom.booking.model.BookingOwner;
+import com.classroom.booking.exception.ValidationMessages;
 import com.classroom.booking.model.BookingStatus;
 import com.classroom.security.AppPrincipal;
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -84,18 +86,10 @@ public class AdminController {
 
     @GetMapping("/rooms/{id}")
     @Operation(summary = "Fetch a single room by id (admin only)")
-    public ResponseEntity<ApiEnvelope<RoomWrapper<Room>>> getRoomById(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiEnvelope<RoomWrapper<Room>>> getRoomById(
+            @PathVariable("id") @Positive(message = ValidationMessages.ROOM_ID_POSITIVE) Long id) {
         String sessionId = generateSessionId();
         logger.debug("START getRoomById (admin) - ID room: {}", id);
-
-        if (id == null || id <= 0) {
-            logger.warn("END getRoomById - invalid room ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
-                                  "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         Optional<Room> room = roomService.getRoomById(id);
         if (room.isEmpty()) {
@@ -130,18 +124,11 @@ public class AdminController {
 
     @PutMapping("/rooms/{id}")
     @Operation(summary = "Update an existing room (admin only)")
-    public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(@PathVariable("id") Long id, @Valid @RequestBody RoomRequest roomRequest) {
+    public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(
+            @PathVariable("id") @Positive(message = ValidationMessages.ROOM_ID_POSITIVE) Long id,
+            @Valid @RequestBody RoomRequest roomRequest) {
         String sessionId = generateSessionId();
         logger.debug("START updateRoom | ID room: {} | new name: {} | floor: {} | capacity: {}", id, roomRequest.getName(), roomRequest.getFloor(), roomRequest.getCapacity());
-
-        if (id == null || id <= 0) {
-            logger.warn("END updateRoom - invalid room ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
-                                  "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         Room updatedRoom = roomService.updateRoom(id, roomRequest);
         logger.debug("END updateRoom - room updated | ID: {} | name: {}", updatedRoom.getId(), updatedRoom.getName());
@@ -153,18 +140,10 @@ public class AdminController {
 
     @DeleteMapping("/rooms/{id}")
     @Operation(summary = "Delete a room (admin only)")
-    public ResponseEntity<ApiEnvelope<DeletedRoomResponse>> deleteRoom(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiEnvelope<DeletedRoomResponse>> deleteRoom(
+            @PathVariable("id") @Positive(message = ValidationMessages.ROOM_ID_POSITIVE) Long id) {
         String sessionId = generateSessionId();
         logger.debug("START deleteRoom - ID room: {}", id);
-
-        if (id == null || id <= 0) {
-            logger.warn("END deleteRoom - invalid room ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
-                                  "L'ID dell'aula deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         // No check on the outcome: deleteRoom throws ResourceNotFoundException when the
         // room is not there, and the global handler turns that into a 404. The boolean used
@@ -206,20 +185,12 @@ public class AdminController {
 
     @DeleteMapping("/bookings/{id}")
     @Operation(summary = "Force-delete any booking at all (admin only)")
-    public ResponseEntity<ApiEnvelope<BookingDeletionResponse>> deleteBookingAsAdmin(@PathVariable("id") Long id,
+    public ResponseEntity<ApiEnvelope<BookingDeletionResponse>> deleteBookingAsAdmin(
+                                                      @PathVariable("id") @Positive(message = ValidationMessages.BOOKING_ID_POSITIVE) Long id,
                                                       @AuthenticationPrincipal AppPrincipal principal,
                                                       @Valid @RequestBody(required = false) DeleteReasonRequest requestBody) {
         String sessionId = generateSessionId();
         logger.debug("START deleteBookingAsAdmin - booking ID: {}", id);
-
-        if (id == null || id <= 0) {
-            logger.warn("END deleteBookingAsAdmin - invalid booking ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_BOOKING_ID", "Invalid prenotazione id",
-                                  "L'ID della prenotazione deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         Long adminId = principal.id();
         logger.info("Admin ID: {} is trying to delete booking: {}", adminId, id);

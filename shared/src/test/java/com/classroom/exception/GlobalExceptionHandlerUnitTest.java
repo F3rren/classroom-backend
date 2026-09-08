@@ -2,6 +2,8 @@ package com.classroom.exception;
 
 import com.classroom.dto.ApiEnvelope;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
@@ -15,12 +17,15 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.method.MethodValidationResult;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -244,6 +249,40 @@ class GlobalExceptionHandlerUnitTest {
         ApiEnvelope<?> body = envelopeOf(response);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(body.getError()).isEqualTo("VALIDATION_ERROR");
+        assertThat(body.getUserMessage()).isEqualTo("I dati inviati non sono validi.");
+    }
+
+    @Test
+    void aParameterConstraintUsesTheMessageWrittenOnTheAnnotation() throws Exception {
+        // @Positive(message = "...") on a path variable. The sentence has to survive all the
+        // way to userMessage, otherwise moving the rule from an if to an annotation would
+        // have traded eight duplicated checks for one useless generic message.
+        MessageSourceResolvable violation = new DefaultMessageSourceResolvable(
+                new String[]{"Positive"}, null, "L'ID dell'aula deve essere un numero positivo.");
+        ParameterValidationResult result = new ParameterValidationResult(
+                dummyParameter(), -1L, List.of(violation));
+
+        ApiEnvelope<?> body = envelopeOf(dispatch(new HandlerMethodValidationException(
+                MethodValidationResult.create(this, dummyParameter().getMethod(), List.of(result)))));
+
+        // The same code as a rejected body: from the caller's side the two are one thing.
+        assertThat(body.getError()).isEqualTo("VALIDATION_ERROR");
+        assertThat(body.getUserMessage()).isEqualTo("L'ID dell'aula deve essere un numero positivo.");
+    }
+
+    @Test
+    void aParameterConstraintWithNoMessageFallsBackToTheGenericOne() throws Exception {
+        // ParameterValidationResult refuses an empty error list, so the fallback is reached
+        // by a violation that carries no default message - a constraint declared without one.
+        MessageSourceResolvable unnamed = new DefaultMessageSourceResolvable(
+                new String[]{"Positive"}, null, null);
+        ParameterValidationResult result = new ParameterValidationResult(
+                dummyParameter(), -1L, List.of(unnamed));
+
+        ApiEnvelope<?> body = envelopeOf(dispatch(new HandlerMethodValidationException(
+                MethodValidationResult.create(this, dummyParameter().getMethod(), List.of(result)))));
+
         assertThat(body.getError()).isEqualTo("VALIDATION_ERROR");
         assertThat(body.getUserMessage()).isEqualTo("I dati inviati non sono validi.");
     }

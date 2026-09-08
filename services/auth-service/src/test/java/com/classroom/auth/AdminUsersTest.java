@@ -134,6 +134,26 @@ class AdminUsersTest {
     }
 
     @Test
+    void anIdThatIsNotPositiveBecomes400AndNot404() {
+        // The rule moved from an if at the top of both methods to @Positive on the
+        // parameter. 400 and not 404 is the point: id 0 is not a user that might exist, it
+        // is a request that cannot be honoured, and the two deserve different answers.
+        // Checked on both endpoints, because it used to be written twice and could drift.
+        for (HttpMethod method : List.of(HttpMethod.PUT, HttpMethod.DELETE)) {
+            Object body = method == HttpMethod.PUT
+                    ? Map.of("username", "x", "name", "X", "email", "x@test.it", "role", "user")
+                    : null;
+
+            ResponseEntity<String> resp = call("/api/admin/users/0", method, body);
+
+            assertThat(resp.getStatusCode()).as("status of %s", method).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(TestJson.bodyOf(resp).get("error")).isEqualTo("VALIDATION_ERROR");
+            assertThat(TestJson.bodyOf(resp).get("userMessage"))
+                    .isEqualTo("L'ID dell'utente deve essere un numero positivo.");
+        }
+    }
+
+    @Test
     void deletingAMissingUserAnswers404() {
         ResponseEntity<String> resp = call("/api/admin/users/999999", HttpMethod.DELETE, null);
 

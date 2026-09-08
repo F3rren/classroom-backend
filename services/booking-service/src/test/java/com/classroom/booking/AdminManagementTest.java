@@ -322,7 +322,15 @@ class AdminManagementTest {
         ResponseEntity<String> resp = exchange("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, body);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("INVALID_ROOM_ID");
+        // VALIDATION_ERROR and no longer INVALID_ROOM_ID: the rule moved from an if at the
+        // top of the method to @Positive on the parameter, so it is now Bean Validation
+        // refusing it, exactly as it already did for a body. From the caller's side the two
+        // are one thing - "what you sent was not acceptable, the reason is in userMessage" -
+        // and the sentence is now the same one on every endpoint taking a room id, instead
+        // of three wordings that differed for no reason.
+        assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
+        assertThat(TestJson.asMap(resp.getBody()).get("userMessage"))
+                .isEqualTo("L'ID dell'aula deve essere un numero positivo.");
     }
 
     @Test

@@ -156,6 +156,57 @@ class ProtocolErrorsTest {
     }
 
     @Test
+    void anIdThatIsNotPositiveBecomes400WithTheSameSentenceEverywhere() {
+        // The rule used to be an if at the top of each method: eight copies across three
+        // controllers, in three different Italian wordings of the identical sentence. It is
+        // now @Positive on the parameter, so there is one wording, and it is written next to
+        // the rule it explains.
+        List<String> everyEndpointTakingARoomId = List.of(
+                "/api/rooms/0", "/api/rooms/-1/detailed", "/api/admin/rooms/0");
+
+        for (String path : everyEndpointTakingARoomId) {
+            ResponseEntity<String> response = call(HttpMethod.GET, path,
+                    new HttpEntity<>(authenticated()));
+
+            assertThat(response.getStatusCode()).as("status of %s", path).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertIsTheUsualEnvelope(response, "VALIDATION_ERROR");
+            assertThat(response.getBody()).as("message of %s", path)
+                    .contains("L'ID dell'aula deve essere un numero positivo.");
+        }
+    }
+
+    @Test
+    void aNonPositiveIdIsRefusedBeforeTheServiceIsAskedAnything() {
+        // 400 and not 404: id 0 is not a room that might exist, it is a request that cannot
+        // be honoured. Telling the two apart is the same distinction the domain already
+        // makes between InvalidRequestException and ResourceNotFoundException.
+        ResponseEntity<String> response = call(HttpMethod.DELETE, "/api/admin/bookings/-5",
+                new HttpEntity<>(authenticated()));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertIsTheUsualEnvelope(response, "VALIDATION_ERROR");
+        assertThat(response.getBody()).contains("L'ID della prenotazione deve essere un numero positivo.");
+    }
+
+    @Test
+    void aPathVariableThatIsNotANumberIsADifferentCaseFromOneThatIsNotPositive() {
+        // Both are 400, and they are told apart on purpose: a value that cannot be converted
+        // never reaches the constraint, so it carries the framework's code, while a value
+        // that converts and then breaks the rule carries the rule's own sentence. Spring
+        // makes the same split, and a client reading userMessage gets the useful half either
+        // way.
+        ResponseEntity<String> notANumber = call(HttpMethod.GET, "/api/rooms/abc",
+                new HttpEntity<>(authenticated()));
+        ResponseEntity<String> notPositive = call(HttpMethod.GET, "/api/rooms/0",
+                new HttpEntity<>(authenticated()));
+
+        assertThat(notANumber.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(notPositive.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertIsTheUsualEnvelope(notANumber, "BAD_REQUEST");
+        assertIsTheUsualEnvelope(notPositive, "VALIDATION_ERROR");
+    }
+
+    @Test
     void anAcceptThatExcludesJsonBecomes406() {
         HttpHeaders headers = authenticated();
         headers.setAccept(List.of(MediaType.valueOf("application/vnd.custom+xml")));

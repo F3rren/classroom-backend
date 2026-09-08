@@ -2,6 +2,7 @@ package com.classroom.booking.controller;
 
 import com.classroom.config.RequestCorrelationFilter;
 import com.classroom.booking.exception.ResourceType;
+import com.classroom.booking.exception.ValidationMessages;
 import com.classroom.booking.service.RoomService;
 import com.classroom.booking.service.BookingService;
 import com.classroom.booking.model.Room;
@@ -12,6 +13,7 @@ import com.classroom.booking.dto.*;
 
 import java.util.List;
 import java.util.Optional;
+import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -86,18 +88,10 @@ public class RoomController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Fetch a single room by id")
-    public ResponseEntity<ApiEnvelope<RoomDetailAckPayload>> getRoomById(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiEnvelope<RoomDetailAckPayload>> getRoomById(
+            @PathVariable("id") @Positive(message = ValidationMessages.ROOM_ID_POSITIVE) Long id) {
         String sessionId = generateSessionId();
         logger.debug("START getRoomById - requested room ID: {}", id);
-
-        if (id == null || id <= 0) {
-            logger.warn("END getRoomById - invalid room ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
-                                  "L'ID dell'aula deve essere un numero positivo.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         Optional<Room> room = roomService.getRoomById(id);
         if (room.isEmpty()) {
@@ -221,18 +215,10 @@ public class RoomController {
 
     @GetMapping("/{id}/detailed")
     @Operation(summary = "Fetch a single room with full details")
-    public ResponseEntity<ApiEnvelope<RoomWrapper<RoomDetailsResponse>>> getRoomDetailed(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiEnvelope<RoomWrapper<RoomDetailsResponse>>> getRoomDetailed(
+            @PathVariable("id") @Positive(message = ValidationMessages.ROOM_ID_POSITIVE) Long id) {
         String sessionId = generateSessionId();
         logger.debug("START getRoomDetailed - ID room: {}", id);
-
-        if (id == null || id <= 0) {
-            logger.warn("END getRoomDetailed - invalid room ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_ROOM_ID", "Invalid aula id",
-                                  "L'ID dell'aula deve essere un numero positivo maggiore di 0", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         RoomDetailsResponse roomDetails = roomService.getRoomWithDetails(id);
         logger.debug("END getRoomDetailed - room details fetched: ID: {}, name: {}", roomDetails.getId(), roomDetails.getName());

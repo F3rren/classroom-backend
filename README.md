@@ -482,6 +482,7 @@ status once:
 |---|---|---|
 | `InvalidRequestException` | 400 | the request asks for something that makes no sense |
 | `MethodArgumentNotValidException` | 400 | Bean Validation rejected the body |
+| `HandlerMethodValidationException` | 400 | a constraint on a parameter said no (`@Positive` on a path variable) |
 | `AccessDeniedException` | 403 | authenticated, but not theirs and not an admin |
 | `ResourceNotFoundException` | 404 | the object named does not exist |
 | `DomainConflictException` | 409 | it exists, but its state does not admit the operation |
@@ -533,6 +534,26 @@ call had failed, and that call is gone — see "Communication between services" 
 `IllegalArgumentException` is deliberately **not** mapped to 400: it signals a programming
 error, not a bad request, and turning it into a 400 would hide defects behind a response that
 looks normal.
+
+**A rule about a parameter lives on the parameter.** `@Positive` on a path variable, with the
+sentence to show written on the annotation — not an `if` at the top of the method. That rule
+used to be written the other way, and it is worth saying how it went: `id == null || id <= 0`
+appeared **eight times** across three controllers, in **three different Italian wordings** of
+the identical sentence, and whoever met two of them could not tell whether the difference
+meant anything. The `id == null` half was unreachable into the bargain — Spring never passes
+null for a required path variable, and a non-numeric segment was producing the 500 described
+above, not a null.
+
+> Both halves of Bean Validation answer with the same code, `VALIDATION_ERROR`: from the
+> caller's side a rejected body and a rejected parameter are one thing, and the reason is in
+> `userMessage` either way. The wordings live in `ValidationMessages` (booking-service) and
+> beside the controller that uses them (auth-service), because an annotation attribute has to
+> be a compile-time constant and an enum's fields are not one — which is why they are not in
+> `ResourceType` with the rest of that service's wordings.
+>
+> **Do not annotate those controllers `@Validated`.** With it, Spring runs AOP-based
+> validation instead and throws `ConstraintViolationException`, which nothing maps — the 400
+> would go back to being a 500.
 
 **The gateway has its own handler**, because it is WebFlux and does not share the services'.
 It produces the same envelope — a test keeps the two shapes aligned — and tells an unreachable

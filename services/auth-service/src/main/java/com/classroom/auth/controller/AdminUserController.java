@@ -16,6 +16,7 @@ import com.classroom.util.LogSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -48,6 +49,15 @@ import java.util.stream.Collectors;
 public class AdminUserController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminUserController.class);
+
+    /**
+     * On the annotation and not as an if at the top of each method, which is how it used to
+     * be written - here and in booking-service, eight copies in three different Italian
+     * wordings of the identical rule. A constant because an annotation attribute has to be a
+     * compile-time one; private because this is the only class in this service that takes a
+     * user id from the path.
+     */
+    private static final String USER_ID_POSITIVE = "L'ID dell'utente deve essere un numero positivo.";
 
     private final AuthService authService;
     private final UserService userService;
@@ -106,18 +116,11 @@ public class AdminUserController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing user (admin only)")
-    public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(@PathVariable("id") Long id, @Valid @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(
+            @PathVariable("id") @Positive(message = USER_ID_POSITIVE) Long id,
+            @Valid @RequestBody UpdateUserRequest request) {
         String sessionId = generateSessionId();
         logger.debug("updateUser - userId={} role={}", id, request.getRole());
-
-        if (id == null || id <= 0) {
-            logger.warn("END updateUser - invalid user ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "Invalid user id",
-                                  "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         User updated = authService.updateUser(id, request);
         logger.info("User updated by an admin - userId={}", updated.getId());
@@ -130,18 +133,10 @@ public class AdminUserController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a user and their data (admin only)")
-    public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUser(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUser(
+            @PathVariable("id") @Positive(message = USER_ID_POSITIVE) Long id) {
         String sessionId = generateSessionId();
         logger.debug("START deleteUser - user ID: {}", id);
-
-        if (id == null || id <= 0) {
-            logger.warn("END deleteUser - invalid user ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "Invalid user id",
-                                  "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         if (userService.findById(id) == null) {
             logger.warn("END deleteUser - user not found - ID: {}", id);

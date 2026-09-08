@@ -4,6 +4,7 @@ import com.classroom.config.RequestCorrelationFilter;
 import com.classroom.dto.ApiEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 
@@ -63,6 +65,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // this codebase logs through SLF4J under this name, and the inherited field is never
     // read by the base class itself.
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /** What is said when a rejected value carries no message of its own. */
+    private static final String GENERIC_VALIDATION_MESSAGE = "I dati inviati non sono validi.";
 
     /**
      * The id of the request in flight, not a new one.
@@ -173,9 +178,44 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         FieldError firstError = ex.getBindingResult().getFieldError();
         String userMessage = firstError != null
                 ? firstError.getDefaultMessage()
-                : "I dati inviati non sono validi.";
+                : GENERIC_VALIDATION_MESSAGE;
         return handleExceptionInternal(ex,
                 ApiEnvelope.error("VALIDATION_ERROR", "Request body failed validation",
+                        userMessage, currentSessionId()),
+                headers, status, request);
+    }
+
+    /**
+     * A constraint on a method parameter said no: @Positive on a path variable, say.
+     *
+     * The twin of the override above, for the other half of Bean Validation. It matters
+     * because it is what lets a rule like "an id is a positive number" be written once, on
+     * the parameter it belongs to, instead of as an if at the top of every method that takes
+     * one - which is how it used to be written, in eight copies across three controllers and
+     * in three different Italian wordings of the same sentence.
+     *
+     * The code stays VALIDATION_ERROR, the same as for a rejected body: from the caller's
+     * side the two are one thing, "what you sent was not acceptable, the reason is in
+     * userMessage". The sentence is the message declared on the annotation, so it is written
+     * next to the rule it explains.
+     *
+     * Spring 6.1 raises this only when the controller class is NOT annotated @Validated;
+     * with that annotation the AOP-based validation runs instead and throws
+     * ConstraintViolationException, which nothing here maps. Do not add it.
+     */
+    @Override
+    @Nullable
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            @NonNull HandlerMethodValidationException ex, @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+
+        String userMessage = ex.getAllErrors().stream()
+                .map(MessageSourceResolvable::getDefaultMessage)
+                .filter(message -> message != null && !message.isBlank())
+                .findFirst()
+                .orElse(GENERIC_VALIDATION_MESSAGE);
+        return handleExceptionInternal(ex,
+                ApiEnvelope.error("VALIDATION_ERROR", "Request parameters failed validation",
                         userMessage, currentSessionId()),
                 headers, status, request);
     }
