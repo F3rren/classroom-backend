@@ -132,7 +132,7 @@ services/auth-service/src/main/java/com/classroom/auth/
 
 shared/src/main/java/com/classroom/
   config/         SecurityConfig, JwtAuthFilter, RequestCorrelationFilter, the 401/403 handlers
-  exception/      GlobalExceptionHandler and the domain exceptions
+  exception/      GlobalExceptionHandler, the domain exceptions, ProtocolError
   security/       JwtVerifier, AppPrincipal
   events/         the messages that travel on RabbitMQ, and the queue and exchange names
   dto/            ApiEnvelope, the wrapper around every response
@@ -488,6 +488,41 @@ status once:
 | `BookingConflictException` | 409 | overlapping bookings |
 | `DataIntegrityViolationException` | 409 | a database constraint said no |
 | anything else | 500 | unexpected, with the stack trace in the logs |
+
+**A malformed request is the framework's business, not the domain's.** `GlobalExceptionHandler`
+extends Spring's `ResponseEntityExceptionHandler`, which already knows the right status for
+the twenty-odd exceptions Spring MVC raises when a request does not honour the protocol; the
+only thing overridden is the body, so those answers arrive in the same envelope as every
+other. `ProtocolError` is the catalogue that supplies the code and the Italian sentence, keyed
+by status:
+
+| Case | Status | Header it also sets |
+|---|---|---|
+| body that is not JSON, or a field of the wrong type | 400 | |
+| path variable of the wrong type (`/api/rooms/abc`) | 400 | |
+| missing query parameter | 400 | |
+| method that does not exist on that path | 405 | `Allow` |
+| `Content-Type` nobody reads | 415 | `Accept` |
+| `Accept` the service cannot satisfy | 406 | *(no body: see below)* |
+| path with nothing mapped to it | 404 | |
+
+> This was not so until recently, and the way it failed is worth keeping written down.
+> `@ExceptionHandler(Exception.class)` is consulted **before** Spring's own
+> `DefaultHandlerExceptionResolver`, so it was catching all of those first and answering
+> **500 INTERNAL_ERROR** to every one — each logged at ERROR with a stack trace, in a project
+> whose rule is that an ERROR in production is a fact and not noise. Two cases of the family
+> had already been found and patched one at a time (`NoResourceFoundException`,
+> `NoHandlerFoundException`); inheriting covers the rest, including any Spring adds later.
+>
+> The consequence to remember when adding a handler: an `@ExceptionHandler` for a type the
+> base class already maps is not an override, it is an **ambiguity**, and the context refuses
+> to start. Validation and the two 404s are therefore written as `@Override` methods.
+
+The **406 is the one answer with no body**, and that is deliberate: a client that accepts
+nothing the service can produce cannot be sent the envelope either. Returning it anyway is
+what used to make this case fail twice — the second failure escaped to the container's error
+dispatch, which re-enters the security chain on `/error` unauthenticated, and the caller
+received a **401 telling it to log in** instead of a 406.
 
 The distinction between 500 and 503 is not formal: they suggest two different actions. A 500
 says "something is broken", a 503 says "try again". `ServiceUnavailableException` still
