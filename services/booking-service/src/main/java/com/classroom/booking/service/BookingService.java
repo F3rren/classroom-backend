@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -179,7 +180,7 @@ public class BookingService {
     }
     
     // Refreshes the room status from the bookings active right now.
-    private void updateRoomStatus(Long roomId) {
+    private void updateRoomStatus(@NonNull Long roomId) {
         logger.debug("START updateRoomStatus - roomId: {}", roomId);
         
         Optional<Room> roomOpt = roomRepository.findById(roomId);
@@ -227,7 +228,7 @@ public class BookingService {
     
     // Cancels a booking.
     @Transactional
-    public boolean cancelBooking(@NonNull Long bookingId, Long userId, boolean isAdmin) {
+    public boolean cancelBooking(@NonNull Long bookingId, @NonNull Long userId, boolean isAdmin) {
         logger.debug("START cancelBooking");
         logger.debug("booking cancellation requested - bookingId: {}, userId: {}", bookingId, userId);
         Optional<Booking> booking = bookingRepository.findById(bookingId);
@@ -269,7 +270,7 @@ public class BookingService {
         bookingRepository.save(p);
         
         // Refresh the room status
-        updateRoomStatus(p.getRoom().getId());
+        updateRoomStatus(Objects.requireNonNull(p.getRoom().getId()));
         
         logger.info("booking ID {} cancelled by user ID {}", bookingId, userId);
         logger.debug("END cancelBooking");
@@ -377,7 +378,7 @@ public class BookingService {
         bookingRepository.save(booking);
         
         // Refresh the room status
-        updateRoomStatus(booking.getRoom().getId());
+        updateRoomStatus(Objects.requireNonNull(booking.getRoom().getId()));
         
         logger.debug("END cancelBookingAsAdmin");
         return true;
