@@ -6,6 +6,7 @@ import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpMethod;
@@ -446,6 +447,20 @@ class GlobalExceptionHandlerUnitTest {
         // The delay is known only to whoever threw, so it travels on the exception. Without
         // it a client guesses, and usually guesses too soon. RFC 9110 section 10.2.3.
         assertThat(resp.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("42");
+    }
+
+    @Test
+    void losingAConcurrentEditBecomes409AndNot500() {
+        // The request was well formed and the caller was entitled to make it: it simply
+        // arrived second. Re-reading the row and repeating is the way through, which is what
+        // a conflict means and what an internal error does not.
+        ResponseEntity<ApiEnvelope<Void>> resp = handler.handleOptimisticLockingFailure(
+                new OptimisticLockingFailureException("Row was updated by another transaction"));
+        ApiEnvelope<Void> body = Objects.requireNonNull(resp.getBody());
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(body.getError()).isEqualTo("CONCURRENT_MODIFICATION");
+        assertThat(body.getUserMessage()).contains("Ricarica la pagina");
     }
 
     @Test

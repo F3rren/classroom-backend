@@ -498,6 +498,7 @@ status once:
 | `ResourceNotFoundException` | 404 | the object named does not exist |
 | `DomainConflictException` | 409 | it exists, but its state does not admit the operation |
 | `BookingConflictException` | 409 | overlapping bookings |
+| `OptimisticLockingFailureException` | 409 | somebody else changed the same row first |
 | `DataIntegrityViolationException` | 409 | a database constraint said no |
 | anything else | 500 | unexpected, with the stack trace in the logs |
 
@@ -551,6 +552,19 @@ oversight: `/api/auth/login` does not use HTTP authentication, it reads a JSON b
 `Bearer` challenge would tell the caller to do the one thing that cannot help. A misleading
 challenge is worse than an absent one. The two 401s are different cases, and only the one
 above — a protected resource refusing a request — has something to challenge with.
+
+**Editing a room or a booking is version-checked.** Both are read-modify-write across two
+transactions — load, change some fields, save — so two people editing the same row both used
+to succeed, and the later write silently replaced the earlier one: no error, no trace, the
+first editor's change simply gone. `@Version` on `Room` and `Booking` (migration `V9`) turns
+that into a **409** for whoever arrives second, with `CONCURRENT_MODIFICATION` and an invitation
+to reload and retry.
+
+> `room.status` is refreshed through `RoomRepository.updateStatus`, a targeted column update
+> that deliberately **bypasses** the version. It is a cache of what the bookings say, not
+> anybody's edit: going through `save()` would bump the version and make two people booking
+> *different* slots in the same room at the same moment collide, so one would lose a perfectly
+> valid booking to a 409 raised by bookkeeping neither of them asked for.
 
 The distinction between 500 and 503 is not formal: they suggest two different actions. A 500
 says "something is broken", a 503 says "try again". `ServiceUnavailableException` still

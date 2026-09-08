@@ -166,7 +166,10 @@ class BookingServiceUnitTest {
         when(bookingRepository.findActiveBookings(anyLong(), any())).thenReturn(List.of());
 
         assertThat(service.bookRoom(10L, null, user(1L), startTime, endTime, "x")).isNotNull();
-        verify(roomRepository, never()).save(any());
+        // never() on updateStatus and no longer on save: the derived status is written with a
+        // targeted update now, so that a bookkeeping write cannot fail somebody's booking on
+        // the version. verify(never()).save() would pass here whatever the code did.
+        verify(roomRepository, never()).updateStatus(any(), any());
     }
 
     @Test
@@ -180,8 +183,9 @@ class BookingServiceUnitTest {
 
         service.bookRoom(10L, null, user(1L), startTime, endTime, "x");
 
-        assertThat(a.getStatus()).isEqualTo(RoomStatus.BUSY);
-        verify(roomRepository).save(a);
+        // What was written, rather than what was left on the loaded entity: the refresh is a
+        // targeted column update and does not touch the object in memory.
+        verify(roomRepository).updateStatus(10L, RoomStatus.BUSY);
     }
 
     @Test
@@ -195,7 +199,7 @@ class BookingServiceUnitTest {
 
         service.bookRoom(10L, null, user(1L), startTime, endTime, "x");
 
-        assertThat(a.getStatus()).isEqualTo(RoomStatus.MAINTENANCE);
+        verify(roomRepository).updateStatus(10L, RoomStatus.MAINTENANCE);
     }
 
     @Test
@@ -209,7 +213,7 @@ class BookingServiceUnitTest {
 
         service.bookRoom(10L, null, user(1L), startTime, endTime, "x");
 
-        assertThat(a.getStatus()).isEqualTo(RoomStatus.BLOCKED);
+        verify(roomRepository).updateStatus(10L, RoomStatus.BLOCKED);
     }
 
     // ==================== blockRoom ====================
@@ -286,9 +290,8 @@ class BookingServiceUnitTest {
 
         assertThat(service.cancelBooking(5L, 1L, false)).isTrue();
         assertThat(p.getStatus()).isEqualTo(BookingStatus.CANCELLED);
-        // the room goes back to free and is saved, because its status changed
-        assertThat(a.getStatus()).isEqualTo(RoomStatus.FREE);
-        verify(roomRepository).save(a);
+        // the room goes back to free, because its status changed
+        verify(roomRepository).updateStatus(10L, RoomStatus.FREE);
     }
 
     @Test
@@ -314,7 +317,7 @@ class BookingServiceUnitTest {
         saveAsGiven();
 
         assertThat(service.cancelBooking(5L, 1L, false)).isTrue();
-        verify(roomRepository, never()).save(any());
+        verify(roomRepository, never()).updateStatus(any(), any());
     }
 
     @Test

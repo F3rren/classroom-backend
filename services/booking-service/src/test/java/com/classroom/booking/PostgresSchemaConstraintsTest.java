@@ -153,8 +153,9 @@ class PostgresSchemaConstraintsTest {
         // denormalises the booking's owner. If one were missing, the schema here would be
         // the monolith's and the tests below would be exercising the wrong system.
         // V6 to V8 move the schema itself to English: the tables and columns, then the
-        // names PostgreSQL generated on its own, then the status values.
-        assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
+        // names PostgreSQL generated on its own, then the status values. V9 adds the version
+        // column the two edited entities are locked on.
+        assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
 
         // No BASELINE row: that is what proves V1 was EXECUTED and not merely marked as
         // already applied, which would have skipped the exclusion constraint.

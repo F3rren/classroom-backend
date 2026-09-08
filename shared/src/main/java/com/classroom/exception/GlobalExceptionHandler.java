@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -335,6 +336,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         logger.warn("Booking conflict: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiEnvelope.error(ex.getErrorCode(), ex.getMessage(), ex.getUserMessage(), sessionId),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    /**
+     * Two people changed the same row at once, and this one lost.
+     *
+     * 409 and not 500: the request was well formed and the caller was entitled to make it,
+     * it simply arrived second. Repeating it after re-reading the row is the way through,
+     * which is exactly what a conflict means and what an internal error does not.
+     *
+     * Without it, the endpoints that read-modify-write - editing a room, editing a booking -
+     * let the later save silently replace the earlier one, with no error and no trace. The
+     * first editor's change was just gone.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiEnvelope<Void>> handleOptimisticLockingFailure(OptimisticLockingFailureException ex) {
+        logger.warn("Concurrent modification refused: {}", ex.getMessage());
+        return new ResponseEntity<>(
+                ApiEnvelope.error("CONCURRENT_MODIFICATION",
+                        "The record was modified by somebody else in the meantime",
+                        "Qualcun altro ha modificato questi dati mentre li stavi cambiando. "
+                                + "Ricarica la pagina e riprova.", currentSessionId()),
                 HttpStatus.CONFLICT
         );
     }

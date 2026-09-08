@@ -187,8 +187,10 @@ public class BookingService {
         // Write only if the status changed
         if (newStatus != room.getStatus()) {
             logger.debug("refreshing status of room {} da '{}' a '{}'", roomId, room.getStatus(), newStatus);
-            room.setStatus(newStatus);
-            roomRepository.save(room);
+            // updateStatus and not save(): the room is versioned now, and a bookkeeping
+            // write must never be able to fail somebody's booking with a 409. See the
+            // method's own javadoc in RoomRepository.
+            roomRepository.updateStatus(roomId, newStatus);
         } else {
             logger.debug("room status {} unchanged: '{}'", roomId, room.getStatus());
         }
