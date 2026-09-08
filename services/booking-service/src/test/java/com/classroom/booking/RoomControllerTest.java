@@ -1,7 +1,6 @@
 package com.classroom.booking;
 
 import com.classroom.testsupport.TestJson;
-import com.classroom.booking.model.BookingOwner;
 import com.classroom.testsupport.TestJwt;
 import com.classroom.booking.model.Room;
 import com.classroom.booking.model.RoomStatus;
@@ -56,8 +55,6 @@ class RoomControllerTest {
         // that was removed the defect surfaced immediately, and it had always been there.
         bookingRepository.deleteAll();
         roomRepository.deleteAll();
-
-        BookingOwner user = new BookingOwner(1L, "room-user", "Room User");
 
         Room room = new Room();
         room.setName("Aula Room Test");

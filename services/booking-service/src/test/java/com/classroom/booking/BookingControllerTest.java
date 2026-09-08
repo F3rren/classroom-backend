@@ -65,8 +65,6 @@ class BookingControllerTest {
 
         BookingOwner owner = newUser(1L, "owner", "Owner Test");
 
-        BookingOwner other = newUser(2L, "other", "Other Test");
-
         Room room = new Room();
         room.setName("Aula IT Test");
         room.setFloor(1);

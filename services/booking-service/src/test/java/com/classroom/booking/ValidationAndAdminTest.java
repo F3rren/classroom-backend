@@ -25,10 +25,8 @@ import java.util.Objects;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The regression suite for Bean Validation on the DTOs,
- * (CreateUserRequest/UpdateUserRequest/RoomRequest/BookingRequest), and confirms
- * and that the behaviour of AuthController.login has NOT changed (no @Valid there,
- * deliberately, so as not to disturb the order with respect to the rate limiter).
+ * The regression suite for Bean Validation on the DTOs
+ * (CreateUserRequest/UpdateUserRequest/RoomRequest/BookingRequest).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -44,7 +42,6 @@ class ValidationAndAdminTest {
     private BookingRepository bookingRepository;
 
     private String tokenAdmin;
-    private String tokenUser;
 
     @BeforeEach
     void setUp() {
@@ -54,7 +51,6 @@ class ValidationAndAdminTest {
 
 
         tokenAdmin = TestJwt.forAdmin(1L, "admin@validation.test");
-        tokenUser = TestJwt.forUser(2L, "user@validation.test", "User Validation");
     }
 
     @NonNull
@@ -117,14 +113,6 @@ class ValidationAndAdminTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
-    }
-
-    // ==================== AuthController.login: comportamento invariato (nessun @Valid) ====================
-
-    private HttpHeaders jsonHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        return headers;
     }
 
     // ============ security filter: full 401/403 bodies even without reaching a controller ============
