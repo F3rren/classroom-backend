@@ -1,9 +1,29 @@
 # ============================================================================
-# The whole system with one command:
+# THE WHOLE SYSTEM IN DEVELOPMENT MODE, with one command:
 #
 #     JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 #
 # The frontend then points at http://localhost:17102 and nothing else.
+#
+# THIS FILE IS THE DEVELOPMENT ONE. Not "production with a couple of conveniences": the five
+# services start on SPRING_PROFILES_ACTIVE=dev,docker, so what you get is the SQL Hibernate
+# is running, the DEBUG narration of every request, error responses that say what went wrong,
+# Swagger on, and the three databases published on this machine's loopback for pgAdmin. It is
+# what you want while you are watching, and none of it is what you want in front of users.
+#
+# PRODUCTION IS THE OTHER COMMAND, and it names its files explicitly:
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# See docker-compose.prod.yml: it puts the profile back to "prod", takes the fallback values
+# away from the secrets and unpublishes the databases.
+#
+# The split used to run the other way - this file stayed on "prod" and flipped two Swagger
+# flags to make the documentation reachable - because "dev" in a container failed on two
+# things: a log file with nowhere writable to go, and booking-service's Flyway baseline meant
+# for one developer's pre-Flyway database. Both are fixed where they belong, in
+# logback-spring.xml and in application-docker.properties, so the profile can now say what
+# the environment IS instead of being worked around one flag at a time.
 #
 # ONE DATABASE PER SERVICE, rather than one with three schemas: that is the point of the
 # split. Each service can reach only its own, so a query that crosses the boundary does not
@@ -15,6 +35,16 @@ name: classroom
 x-attesa-db: &attesa-db
   condition: service_healthy
 
+# The profile the five services start on. It is one anchor and not five copies because the
+# five have to agree: a container left on "prod" while the others are on "dev" would differ
+# in its logs, its error responses and its documentation, and nothing would say why.
+#
+#   dev     WHAT behaviour is wanted: SQL, DEBUG, talking errors, Swagger.
+#   docker  WHERE it is running. It holds the short list of things that are true only inside
+#           a container - see application-docker.properties - and logback-spring.xml reads it
+#           to keep the file appender out of the image.
+x-profilo-sviluppo: &profilo "dev,docker"
+
 services:
 
   db-users:
@@ -22,6 +52,20 @@ services:
     environment:
       POSTGRES_DB: classroom_users
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    # PUBLISHED ON THE LOOPBACK, so pgAdmin or psql on the host can reach it. Two choices
+    # inside that one line:
+    #
+    #   127.0.0.1 and not 0.0.0.0: reachable from this machine and no further. Without the
+    #   address Docker publishes on every interface, which on a laptop means the whole
+    #   local network, database password and all.
+    #
+    #   15432 and not 5432: so it does not collide with a PostgreSQL already installed on
+    #   the host - which is exactly the case that makes you want to look at this one.
+    #
+    # docker-compose.prod.yml takes these away again (ports: !reset []): a published database
+    # is a development convenience, and in production it is a door.
+    ports:
+      - "127.0.0.1:15432:5432"
     volumes:
       - data-users:/var/lib/postgresql/data
     healthcheck:
@@ -36,6 +80,8 @@ services:
     environment:
       POSTGRES_DB: classroom
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:15433:5432"
     volumes:
       - data-bookings:/var/lib/postgresql/data
     healthcheck:
@@ -48,6 +94,8 @@ services:
     environment:
       POSTGRES_DB: classroom_notifications
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:15434:5432"
     volumes:
       - data-notifications:/var/lib/postgresql/data
     healthcheck:
@@ -60,6 +108,14 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    # The management UI on http://127.0.0.1:15672 (guest/guest by default). The image already
+    # carries it - that is what "-management-alpine" means - and it answers the question this
+    # architecture actually raises in development: did the event reach the queue, and did
+    # anybody consume it. Same loopback binding and same removal in production as the
+    # databases above. The AMQP port itself (5672) stays unpublished: nothing on the host
+    # speaks it.
+    ports:
+      - "127.0.0.1:15672:15672"
     volumes:
       - data-broker:/var/lib/rabbitmq
     healthcheck:
@@ -79,13 +135,7 @@ services:
         condition: service_healthy
       db-users: *attesa-db
     environment:
-      # Stays on "prod" (the service's own default - application.properties). Swagger is
-      # turned on with the two SPRINGDOC_* flags below instead of switching the whole profile
-      # to "dev": "dev" also turns on the file log appender in logback-spring.xml, which has
-      # no writable place to go inside the container and crashes startup on its own - the
-      # exact failure this compose file used to hit before these two flags existed.
-      SPRINGDOC_API_DOCS_ENABLED: "true"
-      SPRINGDOC_SWAGGER_UI_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: *profilo
       DB_HOST: db-users
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
@@ -113,16 +163,10 @@ services:
         condition: service_healthy
       db-bookings: *attesa-db
     environment:
-      # Stays on "prod" (the service's own default), for the same reason as the other two:
-      # switching the whole profile to "dev" would also turn on the file log appender in
-      # logback-spring.xml, with no writable place to go inside the container, AND the Flyway
-      # baseline flags meant for one developer's pre-Flyway local database
-      # (application-dev.properties) - neither belongs here. Swagger comes on with the two
-      # SPRINGDOC_* flags below instead.
-      SPRINGDOC_API_DOCS_ENABLED: "true"
-      SPRINGDOC_SWAGGER_UI_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: *profilo
       # prod has no fallback for this one (application-prod.properties): a real deployment is
-      # forced to set it for real rather than inherit a development value by accident.
+      # forced to set it for real rather than inherit a development value by accident. Here it
+      # is the two development servers, which is what the profile is for.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
       DB_HOST: db-bookings
       RABBITMQ_HOST: broker
@@ -143,13 +187,7 @@ services:
         condition: service_healthy
       db-notifications: *attesa-db
     environment:
-      # Stays on "prod" (the service's own default - application.properties). Swagger is
-      # turned on with the two SPRINGDOC_* flags below instead of switching the whole profile
-      # to "dev": "dev" also turns on the file log appender in logback-spring.xml, which has
-      # no writable place to go inside the container and crashes startup on its own - the
-      # exact failure this compose file used to hit before these two flags existed.
-      SPRINGDOC_API_DOCS_ENABLED: "true"
-      SPRINGDOC_SWAGGER_UI_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: *profilo
       DB_HOST: db-notifications
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
@@ -163,9 +201,11 @@ services:
       context: .
       args:
         MODULE: gateway
-    # The only published port. The other services talk to each other on compose's internal
-    # network and are not reachable from outside: the /internal/ routes are therefore
-    # unreachable from outside by construction, and not merely by rule.
+    # The only port that the frontend uses. The services behind it talk to each other on
+    # compose's internal network and are not published at all: the /internal/ routes are
+    # therefore unreachable from outside by construction, and not merely by rule. The
+    # loopback ports on the databases and the broker above are development windows onto the
+    # infrastructure, not onto the API - and production takes them away.
     ports:
       - "17102:17102"
     depends_on:
@@ -173,14 +213,16 @@ services:
       - booking-service
       - notification-service
     environment:
+      # Turns on the aggregated Swagger UI - the three services' /v3/api-docs gathered into
+      # one page on the one port that matters, http://localhost:17102/swagger-ui.html - the
+      # same way it turns on each service's own documentation behind it. It used to be a
+      # separate SWAGGER_UI_ENABLED here, which meant this file and the profile could disagree
+      # about whether the documentation exists. See application-dev.yml.
+      SPRING_PROFILES_ACTIVE: *profilo
       AUTH_SERVICE_URL: http://auth-service:17105
       BOOKING_SERVICE_URL: http://booking-service:17103
       NOTIFICATION_SERVICE_URL: http://notification-service:17104
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
-      # Off by default in application.yml; on here because the three services above have
-      # their own SPRINGDOC_*_ENABLED flags set too. Aggregates their /v3/api-docs into one
-      # Swagger UI, on the one port that matters: http://localhost:17102/swagger-ui.html.
-      SWAGGER_UI_ENABLED: "true"
 
 volumes:
   data-broker:

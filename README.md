@@ -220,51 +220,81 @@ every token already issued, and whoever was logged in gets a 401 for no visible 
 
 `.env` is ignored by git; the versioned template is `.env.example`, which holds no values.
 
-#### Inspecting a database from the host
+#### It starts in DEVELOPMENT mode
 
-The three PostgreSQL instances publish no port: they talk on the internal network only, so a
-tool like pgAdmin running on the host cannot reach them. `docker compose exec db-users psql -U
-postgres -d classroom_users` is enough for a look; for a GUI, copy the template that publishes
-the port:
+`docker-compose.yml` is the development file, and not "production with a couple of
+conveniences". The five containers start on `SPRING_PROFILES_ACTIVE=dev,docker`, which is
+what gives you:
+
+| | |
+|---|---|
+| the SQL Hibernate is running | `logging.level.org.hibernate.SQL=DEBUG`, formatted, with the bound parameters — through the logger, so every statement carries the `requestId` of the request that caused it |
+| the DEBUG narration | `START login`, `room 3 is free over the requested period`: written by the code all along, printed by nobody until the profile said so |
+| errors that say what went wrong | `include-message` and `include-binding-errors` on, `?trace=true` for the stack trace — the mirror image of prod's three `never` |
+| Swagger | each service's own, and the aggregated UI on the gateway |
+| the databases and the broker | published on `127.0.0.1`, see below |
+
+Two profiles and not one: `dev` says WHAT behaviour is wanted, `docker` says WHERE it is
+running. The second is a short list — one line for `booking-service`
+(`application-docker.properties`), plus the `springProfile` conditions in
+`logback-spring.xml` — and it is what makes the first usable in a container at all. Switching
+the profile inside a container used to fail on exactly two things: the file log appender,
+which has nowhere writable to go inside the image, and `booking-service`'s Flyway baseline
+flags, meant for one developer's pre-Flyway local database and wrong against a container's
+always-empty one. `docker` answers both, so compose no longer has to avoid the profile and
+flip individual flags instead.
+
+**Production names its files explicitly** and puts all of it back:
 
 ```bash
-cp docker-compose.override.yml.example docker-compose.override.yml
-docker compose up -d db-users
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-`classroom_users` then answers on `localhost:15432` - not 5432, so it does not collide with a
-PostgreSQL already installed on the host, and bound to `127.0.0.1` rather than every
-interface.
+#### Inspecting a database from the host
 
-The port lives in the override and not in `docker-compose.yml` because production starts with
-the two files named explicitly (`-f docker-compose.yml -f docker-compose.prod.yml`), and
-Compose skips the override then. Adding `ports` to the main file would not have worked: the
-production override **adds** ports rather than replacing them, and there is no way to take
-them back out - the database would end up published there too.
+The three PostgreSQL instances are published on the loopback, so pgAdmin or `psql` on the host
+reach them directly:
 
-It brings up three PostgreSQL instances (one per service), the four services, and publishes
-**only 17102**. The others talk on the internal network and are not reachable from outside:
-the `/internal/` routes are therefore unreachable by construction, and not merely by the
+| | | |
+|---|---|---|
+| `classroom_users` | `127.0.0.1:15432` | `auth-service` — users, refresh tokens |
+| `classroom` | `127.0.0.1:15433` | `booking-service` — rooms, bookings, courses |
+| `classroom_notifications` | `127.0.0.1:15434` | `notification-service` |
+
+The user is `postgres` and the password is whatever `DB_PASSWORD` holds (`postgres` if it is
+unset). `1543x` and not `5432`, so they do not collide with a PostgreSQL already installed on
+the host — which is exactly the case that makes you want to look at these. `127.0.0.1` and not
+`0.0.0.0`: reachable from this machine and no further, where without the address Docker would
+publish on every interface, database password and all.
+
+The broker's management UI comes with them, on <http://127.0.0.1:15672> (`guest`/`guest` by
+default): it answers the question this architecture actually raises in development — did the
+event reach the queue, and did anybody consume it.
+
+`docker-compose.prod.yml` takes all four away again with `ports: !reset []`, which **needs
+Compose 2.24 or newer**. The tag exists because compose merges `ports` by APPENDING: without
+it there is no way to take back a port declared in the base file, which is why these used to
+live in a separate override that production simply never loaded. On an older compose the
+command fails loudly rather than deploying a published database — the right way round.
+
+`docker compose exec db-users psql -U postgres -d classroom_users` still works and needs no
+port at all.
+
+#### What is reachable, and what is not
+
+The base file publishes **17102** and the infrastructure ports above. The four application
+services publish nothing in either mode: they talk on the internal network, so the
+`/internal/` routes are unreachable from outside by construction and not merely by the
 gateway's rule.
 
-> Inside the containers every service stays on its own default, `prod` (see below) - it is
-> NOT switched to `dev`. `dev` also turns on the file log appender in
-> `shared/src/main/resources/logback-spring.xml`, which has nowhere writable to go inside the
-> container (the image runs as an unprivileged user, with no `logs/` directory) and crashes
-> startup; and, for `booking-service`, the Flyway baseline flags meant for one developer's
-> pre-Flyway local database, which have no business running against a container's own,
-> always-empty one.
->
-> Swagger is turned on WITHOUT any of that, by overriding just the two properties that gate
-> it - `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED` - which
-> `application-prod.properties` on each service reads as `${VAR:false}` for exactly this
-> reason. The database connection is unaffected either way - it lives in
-> `application.properties` with `${DB_HOST}`-style placeholders that take real values in a
-> container and fall back to `localhost` outside one.
->
-> Swagger for all three APIs is aggregated behind the gateway, on the one port this file
-> publishes: <http://localhost:17102/swagger-ui.html>, with a dropdown to switch between them.
-> Nothing is published per service - the frontend knows only 17102, and so does this.
+Swagger for all three APIs is aggregated behind the gateway, on the one port the frontend
+knows: <http://localhost:17102/swagger-ui.html>, with a dropdown to switch between them.
+Nothing is published per service. In production the gateway is on `prod`, `application-dev.yml`
+is not loaded, and springdoc registers nothing at all — `/swagger-ui.html` 404s.
+
+The database connection never depended on the profile either way: it lives in
+`application.properties` with `${DB_HOST}`-style placeholders that take real values in a
+container and fall back to `localhost` outside one.
 
 ### Without Docker
 
@@ -277,7 +307,7 @@ conveniences - `booking-service` needs it just to start, since `prod` demands
 mvn spring-boot:run -pl booking-service -am -Dspring-boot.run.profiles=dev        # 17103
 mvn spring-boot:run -pl auth-service -am -Dspring-boot.run.profiles=dev           # 17105
 mvn spring-boot:run -pl notification-service -am -Dspring-boot.run.profiles=dev   # 17104
-mvn spring-boot:run -pl gateway -am                                               # 17102
+mvn spring-boot:run -pl gateway -am -Dspring-boot.run.profiles=dev                # 17102
 ```
 
 The gateway does not validate tokens: it routes, and nothing else. Every service verifies the
@@ -308,7 +338,8 @@ checks the boundary holds.
 | File | Contents |
 |---|---|
 | `application.properties` | everything needed to start, with `${VAR:default}` placeholders |
-| `application-dev.properties` | development conveniences: DevTools, logging to file, the Flyway baseline |
+| `application-dev.properties` | what a development run looks like: the SQL, the DEBUG narration, talking errors, Swagger on, a small pool |
+| `application-docker.properties` | the short list of things that are true only inside a container — `booking-service` only |
 | `application-prod.properties` | **hardening only**: Swagger off, a wider pool, Flyway made safe — and each service's own default profile |
 | `.env` | **secrets and environment parameters only**, not versioned |
 
@@ -322,12 +353,19 @@ back into development. For `booking-service` specifically, `prod` also demands
 `CORS_ALLOWED_ORIGINS` with no fallback, so forgetting the profile there refuses to start
 rather than merely running less protected.
 
-`docker-compose.yml` leaves all three on `prod` too - it does not switch them to `dev` - and
-still gets Swagger working out of the box (aggregated behind the gateway - see "With Docker"
-below), by overriding just `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED`
-instead of the whole profile. Switching the whole profile was tried first and reverted: `dev`
-also enables a file log appender with nowhere writable to go inside a container, which
-crashed every service's startup.
+`docker-compose.yml` sets `SPRING_PROFILES_ACTIVE=dev,docker` on all five containers, and
+`docker-compose.prod.yml` puts them back to `prod`: the file you run says which environment
+you are in, once, instead of each service being nudged one flag at a time.
+
+That is a reversal. The base file used to leave everything on `prod` and override just
+`SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED`, because switching the whole
+profile in a container had been tried and reverted twice: `dev` turns on a file log appender
+with nowhere writable to go inside the image, and for `booking-service` a Flyway baseline
+meant for one developer's pre-Flyway database. Both were worked around by not using the
+profile; both are now fixed where they belong — a `docker` condition on the appender in
+`logback-spring.xml`, and `application-docker.properties` for the baseline — so the profile
+can say what the environment IS. The two `SPRINGDOC_*` variables are still read, and still
+default to off under `prod`: what changed is that nothing has to remember to pass them.
 
 It was not always so, and getting the connection out of the profiles cost dearly the first
 time: the database URL lived only in `application-dev.properties`, written against
@@ -338,10 +376,16 @@ profile-independent, as above — not by which profile is the default, which is 
 question the project answered the other way afterwards: default to `prod`, so a forgotten
 profile degrades towards protection, not away from it.
 
-`application-dev.properties` exists only for `booking-service`, and that is deliberate: it is
-the only one with DevTools and file logging. The other two have nothing specific to
-development, and an empty file would not be consistency — it would be a file to read in order
-to discover it says nothing.
+All four modules have a development profile now (`application-dev.yml` for the gateway, which
+is `.yml` for the reason below). They used not to: `dev` meant only "prod's hardening does not
+apply", which left the visible behaviour of a development run to whatever the base file's
+defaults happened to be — the DEBUG narration the code writes was printed by nobody, and
+`booking-service`'s `dev` profile declared exactly the same log levels as its `prod` one.
+
+`application-docker.properties` exists only for `booking-service`, and that one is deliberate:
+it holds a single line, the Flyway baseline put back to `false`, because a container's database
+is always new. The other three have nothing that depends on being in a container, and an empty
+file would not be consistency — it would be a file to read in order to discover it says nothing.
 
 ### Why one file is .yml and ten are .properties
 
@@ -375,14 +419,23 @@ mistake does not fail the build, it shows up at startup or not at all.
 
 ### Production
 
-The secrets that have a fallback in development — `DB_PASSWORD`, `RABBITMQ_USER`,
-`RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — become **mandatory** in production:
-
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-That file does one thing: it replaces `${DB_PASSWORD:-postgres}` with `${DB_PASSWORD:?...}`.
+`docker-compose.prod.yml` does three things, and all three undo a convenience that
+`docker-compose.yml` has on purpose, because that file is the development one:
+
+1. **it puts the profile back** to `prod` on all five containers — no SQL, no DEBUG, no detail
+   in the error responses, no Swagger;
+2. **it takes the fallback values away from the secrets**, described below;
+3. **it unpublishes the databases and the broker** with `ports: !reset []`, which needs
+   Compose 2.24 or newer — compose merges `ports` by appending, so an ordinary override could
+   only add to them.
+
+On the second: the secrets that have a fallback in development — `DB_PASSWORD`,
+`RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — become **mandatory** there,
+`${DB_PASSWORD:-postgres}` becoming `${DB_PASSWORD:?...}`.
 The fallback in `docker-compose.yml` is there on purpose, because in development
 `docker compose up` has to work with nothing prepared; the problem is **how that convenience
 travels elsewhere**, which is silently. No warning, no error, just a database reachable with
@@ -701,9 +754,16 @@ To **stdout**, always. In a container Docker collects them (`docker compose logs
 them to a file inside the image would mean producing them where nobody reads them and nobody
 rotates them.
 
-The one exception is the `dev` profile, which adds an appender on `logs/application.log` with
-rotation at 10 MB, 30 days and 500 MB in total. It sits inside `<springProfile name="dev">`,
-next to the file it applies to.
+The one exception is a development run **outside** a container, which adds an appender on
+`logs/application.log` with rotation at 10 MB, 30 days and 500 MB in total. It sits inside
+`<springProfile name="dev &amp; !docker">`, next to the file it applies to.
+
+The `!docker` half is what lets `docker-compose.yml` use the `dev` profile at all. The path is
+relative, so inside the image it resolves somewhere unwritable and the service dies at
+startup — which is why compose used to avoid the profile entirely and flip individual flags
+instead. The condition is stated twice, as `dev &amp; !docker` on the file appender and
+`!dev | docker` on the console-only root, because logback needs the two to cover every case
+between them: exactly one `<root>` has to apply, whichever profiles are active.
 
 ## Communication between services
 
