@@ -18,10 +18,12 @@ import com.classroom.auth.service.JwtService;
 import com.classroom.auth.service.RefreshTokenService;
 import com.classroom.auth.service.UserService;
 import com.classroom.dto.ApiEnvelope;
+import com.classroom.security.SessionCookies;
 import com.classroom.util.LogSanitizer;
 
 import com.classroom.util.Timestamps;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +35,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,6 +62,20 @@ public class AuthController {
     // The attempt counting lives in LoginAttemptLimiter and no longer here: it used to be a
     // static field inside the controller, and the map was never emptied.
     private final LoginAttemptLimiter attemptLimiter;
+
+    // Le stesse durate con cui i token vengono emessi: un cookie che sopravvive al proprio
+    // token lascerebbe il browser a presentare una credenziale gia' morta a ogni richiesta.
+    @Value("${jwt.access-token-expiration-ms:3600000}")
+    private long accessTokenTtlMs;
+
+    @Value("${jwt.refresh-token-expiration-ms:2592000000}")
+    private long refreshTokenTtlMs;
+
+    // Normalmente non serve toccarlo: il flag Secure segue gia' il protocollo della
+    // richiesta. Serve solo dove il TLS termina altrove e l'inoltro di X-Forwarded-Proto non
+    // e' configurato, perche' li' isSecure() direbbe falso anche su HTTPS.
+    @Value("${classroom.auth.cookies.force-secure:false}")
+    private boolean forceSecureCookies;
 
     AuthController(AuthService authService, JwtService jwtService, RefreshTokenService refreshTokenService,
                    UserService userService, LoginAttemptLimiter attemptLimiter) {
@@ -95,6 +113,75 @@ public class AuthController {
      */
     private <T> ApiEnvelope<T> createSuccessResponse(String message, T data, String sessionId) {
         return ApiEnvelope.success(message, data, sessionId);
+    }
+
+    // ==================== session cookies ====================
+
+    /**
+     * Whether the session cookies must carry the Secure flag.
+     *
+     * It follows the protocol of the request being served, so it is right on its own in both
+     * plain HTTP during development and HTTPS in production - provided the proxy forwards
+     * X-Forwarded-Proto, which server.forward-headers-strategy=framework already relies on.
+     * The property only forces it on where that inference cannot work.
+     */
+    private boolean useSecureCookies(HttpServletRequest request) {
+        return forceSecureCookies || request.isSecure();
+    }
+
+    /**
+     * Adds the pair of session cookies to a response.
+     *
+     * The tokens stay in the body as well: a non-browser client keeps working exactly as
+     * before, while a browser gains a copy it cannot read from JavaScript.
+     */
+    private <T> ResponseEntity<T> withSessionCookies(ResponseEntity<T> response, String accessToken,
+                                                     String refreshToken, HttpServletRequest request) {
+        boolean secure = useSecureCookies(request);
+
+        ResponseCookie access = SessionCookies.build(SessionCookies.ACCESS_TOKEN, accessToken,
+                Duration.ofMillis(accessTokenTtlMs), secure);
+        ResponseCookie refresh = SessionCookies.build(SessionCookies.REFRESH_TOKEN, refreshToken,
+                Duration.ofMillis(refreshTokenTtlMs), secure);
+
+        return ResponseEntity.status(response.getStatusCode())
+                .headers(response.getHeaders())
+                .header(SessionCookies.header(), access.toString())
+                .header(SessionCookies.header(), refresh.toString())
+                .body(response.getBody());
+    }
+
+    /**
+     * Adds the cookies that delete the session pair.
+     *
+     * Only the server can do this: an HttpOnly cookie is not removable from the page, which
+     * is why a logout that skipped this would leave the browser holding a live session.
+     */
+    private <T> ResponseEntity<T> withClearedSessionCookies(ResponseEntity<T> response, HttpServletRequest request) {
+        boolean secure = useSecureCookies(request);
+
+        return ResponseEntity.status(response.getStatusCode())
+                .headers(response.getHeaders())
+                .header(SessionCookies.header(),
+                        SessionCookies.expire(SessionCookies.ACCESS_TOKEN, secure).toString())
+                .header(SessionCookies.header(),
+                        SessionCookies.expire(SessionCookies.REFRESH_TOKEN, secure).toString())
+                .body(response.getBody());
+    }
+
+    /**
+     * The refresh token presented by the caller: from the request body, or from the session
+     * cookie when the body does not carry it.
+     *
+     * A browser using the cookie flow has nothing to put in the body - the token is HttpOnly
+     * and the page cannot read it - so requiring it there would make refresh and logout
+     * unreachable for exactly the clients the cookies are meant to protect.
+     */
+    private String presentedRefreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest) {
+        if (request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+            return request.getRefreshToken();
+        }
+        return SessionCookies.read(httpRequest, SessionCookies.REFRESH_TOKEN);
     }
 
     /** Checks the shape of an email address, with basic checks only. */
@@ -214,9 +301,13 @@ public class AuthController {
         LoginPayload authData = new LoginPayload(token, refreshToken, UserSummaryDto.basic(user), formatTimestamp(LocalDateTime.now()));
 
         // Shape kept for the existing frontend: the token is duplicated at the root
-        return new ResponseEntity<>(
+        ResponseEntity<LoginResponse> response = new ResponseEntity<>(
                 new LoginResponse("Login effettuato con successo", token, authData, sessionId),
                 HttpStatus.OK);
+
+        // The same pair, also as HttpOnly cookies: a browser can then hold the session
+        // without the page ever being able to read it.
+        return withSessionCookies(response, token, refreshToken, httpRequest);
     }
 
     /**
@@ -231,11 +322,14 @@ public class AuthController {
     @PostMapping("/refresh")
     @Operation(summary = "Exchange a refresh token for a new access token")
     @SecurityRequirements
-    public ResponseEntity<ApiEnvelope<RefreshPayload>> refresh(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<ApiEnvelope<RefreshPayload>> refresh(
+            @RequestBody(required = false) RefreshTokenRequest request, HttpServletRequest httpRequest) {
         String sessionId = generateSessionId();
         logger.debug("START refresh");
 
-        if (request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
+        // The body is no longer required: a browser on the cookie flow cannot fill it in.
+        String presented = presentedRefreshToken(request, httpRequest);
+        if (presented == null) {
             logger.warn("END refresh - refresh token missing");
             throw new InvalidRequestException("MISSING_REFRESH_TOKEN", "Missing refresh token",
                     "Il token di aggiornamento e' obbligatorio.");
@@ -244,7 +338,7 @@ public class AuthController {
         // rotate() throws AuthenticationFailedException for anything not found, expired or
         // already used - nothing more specific is asked of it here on purpose (see its own
         // javadoc on why the three cases are not told apart).
-        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(request.getRefreshToken());
+        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(presented);
 
         User user = userService.findById(rotation.userId());
         if (user == null) {
@@ -259,10 +353,14 @@ public class AuthController {
         String newAccessToken = jwtService.generateToken(user);
 
         logger.debug("END refresh - new access token issued | userId: {}", user.getId());
-        return new ResponseEntity<>(
+        ResponseEntity<ApiEnvelope<RefreshPayload>> response = new ResponseEntity<>(
                 createSuccessResponse("Token aggiornato con successo",
                         new RefreshPayload(newAccessToken, rotation.refreshToken()), sessionId),
                 HttpStatus.OK);
+
+        // The rotation invalidated the token the browser was holding: without replacing both
+        // cookies here, the next refresh would present the consumed one and end the session.
+        return withSessionCookies(response, newAccessToken, rotation.refreshToken(), httpRequest);
     }
 
     /**
@@ -278,17 +376,23 @@ public class AuthController {
     @PostMapping("/logout")
     @Operation(summary = "Revoke a refresh token, ending that session")
     @SecurityRequirements
-    public ResponseEntity<ApiEnvelope<LogoutAck>> logout(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<ApiEnvelope<LogoutAck>> logout(
+            @RequestBody(required = false) RefreshTokenRequest request, HttpServletRequest httpRequest) {
         String sessionId = generateSessionId();
         logger.debug("START logout");
 
-        if (request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
-            refreshTokenService.revoke(request.getRefreshToken());
+        String presented = presentedRefreshToken(request, httpRequest);
+        if (presented != null) {
+            refreshTokenService.revoke(presented);
         }
 
         logger.debug("END logout");
-        return new ResponseEntity<>(
+        ResponseEntity<ApiEnvelope<LogoutAck>> response = new ResponseEntity<>(
                 createSuccessResponse("Logout effettuato con successo", new LogoutAck(), sessionId),
                 HttpStatus.OK);
+
+        // Deleting the cookies is the server's job: the page cannot remove an HttpOnly
+        // cookie, so a logout that skipped this would leave the browser logged in.
+        return withClearedSessionCookies(response, httpRequest);
     }
 }

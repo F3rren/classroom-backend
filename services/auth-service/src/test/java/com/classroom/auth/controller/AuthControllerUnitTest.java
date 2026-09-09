@@ -275,9 +275,9 @@ class AuthControllerUnitTest {
     @Test
     void rejectsARefreshCallWithAMissingToken() {
         assertRefusedWith(InvalidRequestException.class, "MISSING_REFRESH_TOKEN",
-                () -> controller.refresh(refreshRequest(null)));
+                () -> controller.refresh(refreshRequest(null), httpRequest));
         assertRefusedWith(InvalidRequestException.class, "MISSING_REFRESH_TOKEN",
-                () -> controller.refresh(refreshRequest("  ")));
+                () -> controller.refresh(refreshRequest("  "), httpRequest));
     }
 
     @Test
@@ -290,7 +290,7 @@ class AuthControllerUnitTest {
                         "La sessione e' scaduta. Effettua di nuovo il login."));
 
         assertRefusedWith(AuthenticationFailedException.class, "INVALID_REFRESH_TOKEN",
-                () -> controller.refresh(refreshRequest("scaduto")));
+                () -> controller.refresh(refreshRequest("scaduto"), httpRequest));
     }
 
     @Test
@@ -300,7 +300,7 @@ class AuthControllerUnitTest {
         when(userService.findById(1L)).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("nuovo-token");
 
-        ResponseEntity<ApiEnvelope<RefreshPayload>> resp = controller.refresh(refreshRequest("valido"));
+        ResponseEntity<ApiEnvelope<RefreshPayload>> resp = controller.refresh(refreshRequest("valido"), httpRequest);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         RefreshPayload data = Objects.requireNonNull(resp.getBody()).getData();
@@ -317,7 +317,7 @@ class AuthControllerUnitTest {
                 .thenReturn(new RefreshTokenService.Rotation(999L, "nuovo-refresh"));
         when(userService.findById(999L)).thenReturn(null);
 
-        assertThatThrownBy(() -> controller.refresh(refreshRequest("valido")))
+        assertThatThrownBy(() -> controller.refresh(refreshRequest("valido"), httpRequest))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -325,7 +325,7 @@ class AuthControllerUnitTest {
 
     @Test
     void logoutRevokesTheTokenItWasGiven() {
-        ResponseEntity<ApiEnvelope<LogoutAck>> resp = controller.logout(refreshRequest("un-token"));
+        ResponseEntity<ApiEnvelope<LogoutAck>> resp = controller.logout(refreshRequest("un-token"), httpRequest);
 
         verify(refreshTokenService).revoke("un-token");
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -337,7 +337,7 @@ class AuthControllerUnitTest {
         // Deliberately not an error: see RefreshTokenService.revoke and LogoutAck's own
         // javadoc on why logout never distinguishes "there was nothing to revoke" from
         // "revoked".
-        ResponseEntity<ApiEnvelope<LogoutAck>> resp = controller.logout(refreshRequest(null));
+        ResponseEntity<ApiEnvelope<LogoutAck>> resp = controller.logout(refreshRequest(null), httpRequest);
 
         verify(refreshTokenService, never()).revoke(anyString());
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);

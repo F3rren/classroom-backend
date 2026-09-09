@@ -3,6 +3,7 @@ package com.classroom.config;
 import com.classroom.model.Role;
 import com.classroom.security.AppPrincipal;
 import com.classroom.security.JwtVerifier;
+import com.classroom.security.SessionCookies;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,11 +51,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         
-        String authHeader = request.getHeader("Authorization");
-        String token = null;
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-        }
+        String token = readAccessToken(request);
         if (token != null && jwtVerifier.validateToken(token)) {
             String email = jwtVerifier.getEmailFromToken(token);
             Long id = jwtVerifier.getUserIdFromToken(token);
@@ -91,5 +88,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             logger.warn("JWT filter - invalid or expired token on {} {}", method, path);
         }
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Finds the access token, from the Authorization header or from the session cookie.
+     *
+     * The header comes first so nothing that works today changes behaviour: a client sending
+     * both keeps being authenticated by the header exactly as before. The cookie is the
+     * fallback, and it is what lets a browser hold the token out of JavaScript's reach - see
+     * SessionCookies.
+     *
+     * @param request the incoming request
+     * @return the token, or null when the request carries neither
+     */
+    private String readAccessToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String fromHeader = authHeader.substring(7);
+            if (!fromHeader.isBlank()) {
+                return fromHeader;
+            }
+        }
+
+        return SessionCookies.read(request, SessionCookies.ACCESS_TOKEN);
     }
 }
