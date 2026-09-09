@@ -230,6 +230,38 @@ class SessionCookieTest {
     }
 
     @Test
+    void refreshAcceptsAnEmptyBodyAlongsideTheCookie() {
+        // This is exactly what the browser client sends: it has no token to put in the body,
+        // so it posts {} and relies on the cookie. Deserialising that yields a request object
+        // with a null token, a different path from sending no body at all.
+        String refresh = cookieValue(login(), SessionCookies.REFRESH_TOKEN);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        headers.add(HttpHeaders.COOKIE, cookiePair(SessionCookies.REFRESH_TOKEN, refresh));
+
+        ResponseEntity<String> resp = httpClient.exchange(rest.getRootUri() + "/api/auth/refresh",
+                HttpMethod.POST, new HttpEntity<>("{}", headers), String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void logoutAcceptsAnEmptyBodyAlongsideTheCookie() {
+        String refresh = cookieValue(login(), SessionCookies.REFRESH_TOKEN);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        headers.add(HttpHeaders.COOKIE, cookiePair(SessionCookies.REFRESH_TOKEN, refresh));
+
+        ResponseEntity<String> resp = httpClient.exchange(rest.getRootUri() + "/api/auth/logout",
+                HttpMethod.POST, new HttpEntity<>("{}", headers), String.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(setCookie(resp, SessionCookies.REFRESH_TOKEN)).contains("Max-Age=0");
+    }
+
+    @Test
     void aRefreshWithNeitherBodyNorCookieIsStillRejected() {
         ResponseEntity<String> resp = httpClient.postForEntity(
                 rest.getRootUri() + "/api/auth/refresh", new HttpEntity<>(new HttpHeaders()), String.class);
