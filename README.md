@@ -220,6 +220,28 @@ every token already issued, and whoever was logged in gets a 401 for no visible 
 
 `.env` is ignored by git; the versioned template is `.env.example`, which holds no values.
 
+#### Inspecting a database from the host
+
+The three PostgreSQL instances publish no port: they talk on the internal network only, so a
+tool like pgAdmin running on the host cannot reach them. `docker compose exec db-users psql -U
+postgres -d classroom_users` is enough for a look; for a GUI, copy the template that publishes
+the port:
+
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml
+docker compose up -d db-users
+```
+
+`classroom_users` then answers on `localhost:15432` - not 5432, so it does not collide with a
+PostgreSQL already installed on the host, and bound to `127.0.0.1` rather than every
+interface.
+
+The port lives in the override and not in `docker-compose.yml` because production starts with
+the two files named explicitly (`-f docker-compose.yml -f docker-compose.prod.yml`), and
+Compose skips the override then. Adding `ports` to the main file would not have worked: the
+production override **adds** ports rather than replacing them, and there is no way to take
+them back out - the database would end up published there too.
+
 It brings up three PostgreSQL instances (one per service), the four services, and publishes
 **only 17102**. The others talk on the internal network and are not reachable from outside:
 the `/internal/` routes are therefore unreachable by construction, and not merely by the

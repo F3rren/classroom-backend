@@ -1,0 +1,34 @@
+# ============================================================================
+# COMODITA' DI SVILUPPO - MODELLO DA COPIARE
+#
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#
+# Il file vero e' in .gitignore di proposito: e' un override personale, e
+# versionarlo trasformerebbe la scelta di uno nel default di tutti. Qui resta il
+# modello, come per .env.example.
+#
+#     docker compose up -d
+#
+# Compose carica questo file DA SOLO quando non gli si passa nessun -f, e NON lo
+# carica quando i file sono espliciti:
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# E' il motivo per cui la porta sta qui e non in docker-compose.yml: in
+# produzione i due file vengono elencati a mano, quindi questo resta fuori e
+# nessun database finisce esposto per errore. Aggiungere "ports" al file
+# principale non avrebbe avuto lo stesso effetto - l'override di produzione
+# somma le porte, non le sostituisce, e non c'e' modo di toglierle da li'.
+# ============================================================================
+
+services:
+
+  db-users:
+    ports:
+      # 127.0.0.1 e non 0.0.0.0: il database e' raggiungibile da questa macchina
+      # e basta, non da tutta la rete locale. Senza l'indirizzo, Docker pubblica
+      # su tutte le interfacce.
+      #
+      # 15432 e non 5432 per non scontrarsi con un PostgreSQL gia' installato
+      # sull'host, che e' esattamente il caso da cui nasce questo file.
+      - "127.0.0.1:15432:5432"
