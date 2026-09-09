@@ -2,6 +2,7 @@ package com.classroom.booking;
 
 import com.classroom.testsupport.TestJson;
 import com.classroom.testsupport.TestJwt;
+import com.classroom.testsupport.TestQuery;
 import com.classroom.booking.model.Room;
 import com.classroom.booking.model.RoomStatus;
 import com.classroom.booking.model.Booking;
@@ -26,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
@@ -118,7 +120,22 @@ class AdminManagementTest {
         HttpEntity<Object> entity = body == null
                 ? new HttpEntity<>(bearer(token))
                 : new HttpEntity<>(body, bearer(token));
-        return rest.exchange(url, method, entity, String.class);
+        // URI.create, not the String overload: several calls below already carry a
+        // pre-encoded query string (TestQuery, see exchangeQuery), and TestRestTemplate's
+        // String-based exchange() would encode it a second time. Harmless for the plain
+        // paths the rest of this file uses, so it is done here once rather than only where
+        // it matters.
+        return rest.exchange(URI.create(rest.getRootUri() + url), method, entity, String.class);
+    }
+
+    /**
+     * createRoom(), updateRoom() and deleteBookingAsAdmin() moved their request data from a
+     * JSON @RequestBody to @ModelAttribute / query parameters, so Swagger UI can offer real
+     * fillable inputs instead of a JSON box. This sends the same shape a browser or curl
+     * would - a query string - instead of a body the controller no longer reads.
+     */
+    private ResponseEntity<String> exchangeQuery(String url, HttpMethod method, String token, Map<String, ?> params) {
+        return exchange(url + TestQuery.of(params), method, token, null);
     }
 
 
@@ -155,8 +172,8 @@ class AdminManagementTest {
 
     @Test
     void adminUpdatesRoomAndChangeIsPersisted() throws Exception {
-        Map<String, Object> body = Map.of("name", "Aula Rinominata", "capacity", 42, "floor", 4);
-        ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, body);
+        Map<String, Object> params = Map.of("name", "Aula Rinominata", "capacity", 42, "floor", 4);
+        ResponseEntity<String> resp = exchangeQuery("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(dataOf(resp).get("name")).isEqualTo("Aula Rinominata");
@@ -169,8 +186,8 @@ class AdminManagementTest {
     @Test
     void updatingARoomRejectsAnInvalidBody() {
         // a negative capacity violates @Positive on RoomRequest
-        Map<String, Object> body = Map.of("name", "X", "capacity", -5, "floor", 1);
-        ResponseEntity<String> resp = exchange("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, body);
+        Map<String, Object> params = Map.of("name", "X", "capacity", -5, "floor", 1);
+        ResponseEntity<String> resp = exchangeQuery("/api/admin/rooms/" + roomId, HttpMethod.PUT, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
@@ -211,7 +228,7 @@ class AdminManagementTest {
 
     @Test
     void adminForceDeletesAnyBookingAndNotifiesOwner() throws Exception {
-        ResponseEntity<String> resp = exchange(
+        ResponseEntity<String> resp = exchangeQuery(
                 "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
                 Map.of("reason", "Aula richiesta per un esame"));
 
@@ -234,7 +251,7 @@ class AdminManagementTest {
         // comes out cancelled but the owner is NEVER told, silently.
         String hugeReason = "x".repeat(1500);
 
-        ResponseEntity<String> resp = exchange(
+        ResponseEntity<String> resp = exchangeQuery(
                 "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
                 Map.of("reason", hugeReason));
 
@@ -248,7 +265,7 @@ class AdminManagementTest {
     void aReasonWithinTheLimitStillNotifiesTheOwner() {
         String longButValidReason = "y".repeat(400);
 
-        ResponseEntity<String> resp = exchange(
+        ResponseEntity<String> resp = exchangeQuery(
                 "/api/admin/bookings/" + bookingId, HttpMethod.DELETE, tokenAdmin,
                 Map.of("reason", longButValidReason));
 
@@ -304,9 +321,9 @@ class AdminManagementTest {
 
     @Test
     void adminCreateRoomRejectsDuplicateName() throws Exception {
-        Map<String, Object> body = Map.of("name", "Aula Admin", "capacity", 10, "floor", 1);
+        Map<String, Object> params = Map.of("name", "Aula Admin", "capacity", 10, "floor", 1);
 
-        ResponseEntity<String> resp = exchange("/api/admin/rooms", HttpMethod.POST, tokenAdmin, body);
+        ResponseEntity<String> resp = exchangeQuery("/api/admin/rooms", HttpMethod.POST, tokenAdmin, params);
 
         // 409 and no longer 400: a name already taken is not a malformed request, and the
         // caller does not fix it by correcting the syntax. The code now says which of the
@@ -317,9 +334,9 @@ class AdminManagementTest {
 
     @Test
     void updatingWithAnInvalidIdIsRejected() throws Exception {
-        Map<String, Object> body = Map.of("name", "Qualsiasi", "capacity", 10, "floor", 1);
+        Map<String, Object> params = Map.of("name", "Qualsiasi", "capacity", 10, "floor", 1);
 
-        ResponseEntity<String> resp = exchange("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, body);
+        ResponseEntity<String> resp = exchangeQuery("/api/admin/rooms/0", HttpMethod.PUT, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         // VALIDATION_ERROR and no longer INVALID_ROOM_ID: the rule moved from an if at the
@@ -335,9 +352,9 @@ class AdminManagementTest {
 
     @Test
     void updatingAMissingRoomAnswers404() throws Exception {
-        Map<String, Object> body = Map.of("name", "Inesistente", "capacity", 10, "floor", 1);
+        Map<String, Object> params = Map.of("name", "Inesistente", "capacity", 10, "floor", 1);
 
-        ResponseEntity<String> resp = exchange("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, body);
+        ResponseEntity<String> resp = exchangeQuery("/api/admin/rooms/999999", HttpMethod.PUT, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         // ROOM_NOT_FOUND and not ROOM_UPDATE_FAILED: the status was already 404, but the

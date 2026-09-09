@@ -80,9 +80,15 @@ public class AdminUserController {
         return ApiEnvelope.success(message, data, sessionId);
     }
 
+    // @ModelAttribute, not @RequestBody: query parameters, one per field, is what turns this
+    // into fillable inputs in Swagger UI instead of a JSON box to type by hand. Springdoc
+    // reads the same @Schema on CreateUserRequest's fields either way, so nothing there
+    // changed - only how the values arrive. Login stays JSON-bodied on purpose: unlike this
+    // one, its password must never sit in a URL, where it would reach access logs, browser
+    // history and any Referer header sent afterwards.
     @PostMapping
     @Operation(summary = "Create a new user (admin only)")
-    public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
+    public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @ModelAttribute CreateUserRequest request) {
         String sessionId = generateSessionId();
         logger.debug("register - user created by an admin | {} | role={}", LogSanitizer.maskEmail(request.getEmail()), request.getRole());
 
@@ -114,11 +120,16 @@ public class AdminUserController {
         );
     }
 
+    // Same reasoning as register(): query parameters instead of a JSON body, for real form
+    // fields in Swagger UI. The password field stays here too, but it is OPTIONAL for an
+    // update (empty means "leave it unchanged" - see UpdateUserRequest) and this is an
+    // admin-only, ADMIN-INITIATED action, not the credential a user types to log themselves
+    // in - the login endpoint is the one this project keeps out of any URL.
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing user (admin only)")
     public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(
             @PathVariable("id") @Positive(message = USER_ID_POSITIVE) Long id,
-            @Valid @RequestBody UpdateUserRequest request) {
+            @Valid @ModelAttribute UpdateUserRequest request) {
         String sessionId = generateSessionId();
         logger.debug("updateUser - userId={} role={}", id, request.getRole());
 

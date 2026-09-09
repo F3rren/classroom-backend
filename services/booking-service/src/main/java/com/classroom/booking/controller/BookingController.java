@@ -83,9 +83,14 @@ public class BookingController {
     }
 
     // Books a room.
+    //
+    // @ModelAttribute, not @RequestBody: query parameters, one per field, is what turns this
+    // into fillable inputs in Swagger UI instead of a JSON box to type by hand every time.
+    // Springdoc reads the same @Schema already on BookingRequest's fields either way, so
+    // nothing there changed - only how the values arrive, and none of them are secret.
     @PostMapping("/book")
     @Operation(summary = "Book a room")
-    public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @RequestBody BookingRequest request,
+    public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @ModelAttribute BookingRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START bookRoom - roomId: {}, courseId: {}, period: {} - {}", request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
@@ -116,11 +121,12 @@ public class BookingController {
         );
     }
 
-    // Updates an existing booking.
+    // Updates an existing booking. Same reasoning as bookRoom(): query parameters instead of
+    // a JSON body, for real form fields in Swagger UI.
     @PutMapping("/{bookingId}")
     @Operation(summary = "Update an existing booking (owner or admin only)")
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> updateBooking(@PathVariable @NonNull Long bookingId,
-                                                 @Valid @RequestBody BookingRequest request,
+                                                 @Valid @ModelAttribute BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START updateBooking - bookingId: {}, roomId: {}, courseId: {}, period: {} - {}", bookingId, request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
@@ -151,11 +157,12 @@ public class BookingController {
         );
     }
 
-    // Blocks a room. Admin only.
+    // Blocks a room. Admin only. Same reasoning as bookRoom(): query parameters instead of a
+    // JSON body, for real form fields in Swagger UI.
     @PostMapping("/block")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Block a room for a period (admin only)")
-    public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @RequestBody BookingRequest request,
+    public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @ModelAttribute BookingRequest request,
                                        @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START blockRoom - roomId: {}, period: {} - {}", request.getRoomId(), request.getStartTime(), request.getEndTime());

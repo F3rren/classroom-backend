@@ -27,7 +27,13 @@ public class JwtService {
 
     private SecretKey key;
 
-    private final long expiration = 1000 * 60 * 60; // 1 hour
+    // Same 1-hour value as before this became a property: nobody's behaviour changes by
+    // default. It is a property now, not a hardcoded field, specifically so it can be
+    // shortened later without a code change - the natural next step once /api/auth/refresh
+    // (RefreshTokenService) is confirmed working end to end, since a short access token plus
+    // silent refresh is the point of having a refresh token at all.
+    @Value("${jwt.access-token-expiration-ms:3600000}")
+    private long expiration;
 
     @PostConstruct
     public void init() {

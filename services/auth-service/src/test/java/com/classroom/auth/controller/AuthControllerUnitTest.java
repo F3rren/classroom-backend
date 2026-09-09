@@ -2,11 +2,17 @@ package com.classroom.auth.controller;
 
 import com.classroom.auth.dto.LoginRequest;
 import com.classroom.auth.dto.LoginResponse;
+import com.classroom.auth.dto.LogoutAck;
+import com.classroom.auth.dto.RefreshPayload;
+import com.classroom.auth.dto.RefreshTokenRequest;
 import com.classroom.auth.model.User;
+import com.classroom.dto.ApiEnvelope;
 import com.classroom.model.Role;
 import com.classroom.auth.service.AuthService;
 import com.classroom.auth.service.LoginAttemptLimiter;
 import com.classroom.auth.service.JwtService;
+import com.classroom.auth.service.RefreshTokenService;
+import com.classroom.auth.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +33,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -43,6 +51,8 @@ class AuthControllerUnitTest {
 
     private AuthService authService;
     private JwtService jwtService;
+    private RefreshTokenService refreshTokenService;
+    private UserService userService;
     private AuthController controller;
     private LoginAttemptLimiter attemptLimiter;
     private HttpServletRequest httpRequest;
@@ -51,12 +61,14 @@ class AuthControllerUnitTest {
     void setUp() {
         authService = mock(AuthService.class);
         jwtService = mock(JwtService.class);
+        refreshTokenService = mock(RefreshTokenService.class);
+        userService = mock(UserService.class);
         // The limiter is a component of its own: it is built with its parameters instead of
         // having them injected by reflection, and every test gets a clean one. The counter
         // used to be static and had to be cleared by hand between cases, because surefire
         // reuses the JVM across contexts.
         attemptLimiter = new LoginAttemptLimiter(100, 60_000L, 1000);
-        controller = new AuthController(authService, jwtService, attemptLimiter);
+        controller = new AuthController(authService, jwtService, refreshTokenService, userService, attemptLimiter);
 
         httpRequest = mock(HttpServletRequest.class);
         when(httpRequest.getRemoteAddr()).thenReturn("10.0.0.1");
@@ -98,7 +110,7 @@ class AuthControllerUnitTest {
 
     @Test
     void blocksWithTooManyRequestsOnceTheAttemptLimitIsExceeded() {
-        controller = new AuthController(authService, jwtService,
+        controller = new AuthController(authService, jwtService, refreshTokenService, userService,
                 new LoginAttemptLimiter(1, 60_000L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
@@ -123,7 +135,7 @@ class AuthControllerUnitTest {
     void countersResetAfterTheWindowExpires() {
         // A negative window: every call lands outside it, so the counter starts over. It is
         // a constructor parameter now, instead of a field to force by reflection.
-        controller = new AuthController(authService, jwtService,
+        controller = new AuthController(authService, jwtService, refreshTokenService, userService,
                 new LoginAttemptLimiter(1, -1L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
@@ -138,7 +150,7 @@ class AuthControllerUnitTest {
 
     @Test
     void rateLimitIsPerEmailNotGlobal() {
-        controller = new AuthController(authService, jwtService,
+        controller = new AuthController(authService, jwtService, refreshTokenService, userService,
                 new LoginAttemptLimiter(1, 60_000L, 1000));
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
@@ -238,6 +250,7 @@ class AuthControllerUnitTest {
     void returns200WithATokenOnSuccess() {
         when(authService.login(anyString(), anyString())).thenReturn(validUser());
         when(jwtService.generateToken(any())).thenReturn("token-valido");
+        when(refreshTokenService.issue(1L)).thenReturn("refresh-valido");
 
         ResponseEntity<?> resp = controller.login(credentials("u@test.it", "password"), httpRequest);
 
@@ -247,6 +260,87 @@ class AuthControllerUnitTest {
         // the token is duplicated inside "data" too, the historic shape the frontend expects
         assertThat(body.getData().getToken()).isEqualTo("token-valido");
         assertThat(body.isSuccess()).isTrue();
+        // without this, the client would have no way to ever call /refresh or /logout
+        assertThat(body.getData().getRefreshToken()).isEqualTo("refresh-valido");
+    }
+
+    // ==================== refresh ====================
+
+    private RefreshTokenRequest refreshRequest(String token) {
+        RefreshTokenRequest r = new RefreshTokenRequest();
+        r.setRefreshToken(token);
+        return r;
+    }
+
+    @Test
+    void rejectsARefreshCallWithAMissingToken() {
+        assertRefusedWith(InvalidRequestException.class, "MISSING_REFRESH_TOKEN",
+                () -> controller.refresh(refreshRequest(null)));
+        assertRefusedWith(InvalidRequestException.class, "MISSING_REFRESH_TOKEN",
+                () -> controller.refresh(refreshRequest("  ")));
+    }
+
+    @Test
+    void aRefreshTokenTheServiceRejectsBecomesAnAuthenticationFailure() {
+        // rotate() itself is what tells apart not-found/expired/already-used - see
+        // RefreshTokenServiceUnitTest - the controller only has to let the exception through.
+        when(refreshTokenService.rotate("scaduto"))
+                .thenThrow(new AuthenticationFailedException("INVALID_REFRESH_TOKEN",
+                        "Invalid, expired or already-used refresh token",
+                        "La sessione e' scaduta. Effettua di nuovo il login."));
+
+        assertRefusedWith(AuthenticationFailedException.class, "INVALID_REFRESH_TOKEN",
+                () -> controller.refresh(refreshRequest("scaduto")));
+    }
+
+    @Test
+    void aSuccessfulRefreshReturnsANewTokenPair() {
+        when(refreshTokenService.rotate("valido"))
+                .thenReturn(new RefreshTokenService.Rotation(1L, "nuovo-refresh"));
+        when(userService.findById(1L)).thenReturn(validUser());
+        when(jwtService.generateToken(any())).thenReturn("nuovo-token");
+
+        ResponseEntity<ApiEnvelope<RefreshPayload>> resp = controller.refresh(refreshRequest("valido"));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        RefreshPayload data = Objects.requireNonNull(resp.getBody()).getData();
+        assertThat(data.getToken()).isEqualTo("nuovo-token");
+        assertThat(data.getRefreshToken()).isEqualTo("nuovo-refresh");
+    }
+
+    @Test
+    void refreshRefusesToIssueATokenForAUserThatNoLongerExists() {
+        // Should not be reachable in production - see the comment on this check in
+        // AuthController.refresh - but it is exactly the kind of state this codebase treats
+        // as its own defect (IllegalStateException) rather than the caller's fault.
+        when(refreshTokenService.rotate("valido"))
+                .thenReturn(new RefreshTokenService.Rotation(999L, "nuovo-refresh"));
+        when(userService.findById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> controller.refresh(refreshRequest("valido")))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    // ==================== logout ====================
+
+    @Test
+    void logoutRevokesTheTokenItWasGiven() {
+        ResponseEntity<ApiEnvelope<LogoutAck>> resp = controller.logout(refreshRequest("un-token"));
+
+        verify(refreshTokenService).revoke("un-token");
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(Objects.requireNonNull(resp.getBody()).getData().isLoggedOut()).isTrue();
+    }
+
+    @Test
+    void logoutSucceedsEvenWithAMissingToken() {
+        // Deliberately not an error: see RefreshTokenService.revoke and LogoutAck's own
+        // javadoc on why logout never distinguishes "there was nothing to revoke" from
+        // "revoked".
+        ResponseEntity<ApiEnvelope<LogoutAck>> resp = controller.logout(refreshRequest(null));
+
+        verify(refreshTokenService, never()).revoke(anyString());
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     private static <T> T any() {

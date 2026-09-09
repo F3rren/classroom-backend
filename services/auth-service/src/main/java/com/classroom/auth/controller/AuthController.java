@@ -7,11 +7,17 @@ import com.classroom.exception.TooManyRequestsException;
 import com.classroom.auth.dto.LoginPayload;
 import com.classroom.auth.dto.LoginRequest;
 import com.classroom.auth.dto.LoginResponse;
+import com.classroom.auth.dto.LogoutAck;
+import com.classroom.auth.dto.RefreshPayload;
+import com.classroom.auth.dto.RefreshTokenRequest;
 import com.classroom.auth.dto.UserSummaryDto;
 import com.classroom.auth.model.User;
 import com.classroom.auth.service.AuthService;
 import com.classroom.auth.service.LoginAttemptLimiter;
 import com.classroom.auth.service.JwtService;
+import com.classroom.auth.service.RefreshTokenService;
+import com.classroom.auth.service.UserService;
+import com.classroom.dto.ApiEnvelope;
 import com.classroom.util.LogSanitizer;
 
 import com.classroom.util.Timestamps;
@@ -42,19 +48,29 @@ public class AuthController {
 
     private final JwtService jwtService;
 
+    private final RefreshTokenService refreshTokenService;
+
+    // Only for refresh(): rotating a refresh token yields a userId, and issuing a new access
+    // token needs the full User - name, username, role - the same lookup AdminUserController
+    // already does before a delete.
+    private final UserService userService;
+
     // The attempt counting lives in LoginAttemptLimiter and no longer here: it used to be a
     // static field inside the controller, and the map was never emptied.
     private final LoginAttemptLimiter attemptLimiter;
 
-    AuthController(AuthService authService, JwtService jwtService, LoginAttemptLimiter attemptLimiter) {
+    AuthController(AuthService authService, JwtService jwtService, RefreshTokenService refreshTokenService,
+                   UserService userService, LoginAttemptLimiter attemptLimiter) {
         this.authService = authService;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
+        this.userService = userService;
         this.attemptLimiter = attemptLimiter;
     }
 
 
     // ==================== utility methods ====================
-    
+
     /**
      * The id of the request in flight, not a new one: it is the same one
      * GlobalExceptionHandler will put in the response and in the stack trace log.
@@ -64,12 +80,23 @@ public class AuthController {
     private String generateSessionId() {
         return RequestCorrelationFilter.current();
     }
-    
+
     /** Formats a timestamp the same way everywhere. */
     private String formatTimestamp(LocalDateTime timestamp) {
         return Timestamps.format(timestamp);
     }
-    
+
+    /**
+     * Wraps a success payload in the standard envelope - the pattern every OTHER controller
+     * in this project already uses (see AdminUserController). login() alone stays on its own
+     * bespoke LoginResponse, kept for an existing frontend that already reads that exact
+     * shape; refresh() and logout() are new endpoints with nothing legacy to match, so they
+     * follow the standard instead of extending the exception.
+     */
+    private <T> ApiEnvelope<T> createSuccessResponse(String message, T data, String sessionId) {
+        return ApiEnvelope.success(message, data, sessionId);
+    }
+
     /** Checks the shape of an email address, with basic checks only. */
     private boolean isValidEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
@@ -175,16 +202,93 @@ public class AuthController {
                     "Token generation produced nothing for userId=" + user.getId());
         }
 
+        // Issued alongside the access token, not instead of it: without this, the client has
+        // no way to ever call POST /refresh or POST /logout - see LoginPayload.
+        String refreshToken = refreshTokenService.issue(user.getId());
+
         logger.debug("END login - login succeeded | user ID: {} | username: {} | role: {}", user.getId(),
                    user.getUsername() != null ? user.getUsername() : "N/A",
                    user.getRole() != null ? user.getRole().getValue() : "USER");
 
         // Building the response payload, with nothing sensitive in it
-        LoginPayload authData = new LoginPayload(token, UserSummaryDto.basic(user), formatTimestamp(LocalDateTime.now()));
+        LoginPayload authData = new LoginPayload(token, refreshToken, UserSummaryDto.basic(user), formatTimestamp(LocalDateTime.now()));
 
         // Shape kept for the existing frontend: the token is duplicated at the root
         return new ResponseEntity<>(
                 new LoginResponse("Login effettuato con successo", token, authData, sessionId),
+                HttpStatus.OK);
+    }
+
+    /**
+     * Exchanges a refresh token for a new access token (and a new refresh token: see
+     * RefreshTokenService.rotate - the one presented here stops working the moment this call
+     * succeeds).
+     *
+     * Public, like login: whoever calls this by definition might not be holding a valid
+     * access token any more (that is the whole point of refreshing), so it cannot require
+     * one.
+     */
+    @PostMapping("/refresh")
+    @Operation(summary = "Exchange a refresh token for a new access token")
+    @SecurityRequirements
+    public ResponseEntity<ApiEnvelope<RefreshPayload>> refresh(@RequestBody RefreshTokenRequest request) {
+        String sessionId = generateSessionId();
+        logger.debug("START refresh");
+
+        if (request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
+            logger.warn("END refresh - refresh token missing");
+            throw new InvalidRequestException("MISSING_REFRESH_TOKEN", "Missing refresh token",
+                    "Il token di aggiornamento e' obbligatorio.");
+        }
+
+        // rotate() throws AuthenticationFailedException for anything not found, expired or
+        // already used - nothing more specific is asked of it here on purpose (see its own
+        // javadoc on why the three cases are not told apart).
+        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(request.getRefreshToken());
+
+        User user = userService.findById(rotation.userId());
+        if (user == null) {
+            // The foreign key (ON DELETE CASCADE, see V4__refresh_tokens.sql) means a
+            // deleted user's tokens are deleted with them - rotate() could not have returned
+            // this userId if the row were gone. Reaching here would mean that guarantee
+            // broke, which is this codebase's own defect, not the caller's.
+            throw new IllegalStateException(
+                    "Refresh token rotation pointed at a user that no longer exists: userId=" + rotation.userId());
+        }
+
+        String newAccessToken = jwtService.generateToken(user);
+
+        logger.debug("END refresh - new access token issued | userId: {}", user.getId());
+        return new ResponseEntity<>(
+                createSuccessResponse("Token aggiornato con successo",
+                        new RefreshPayload(newAccessToken, rotation.refreshToken()), sessionId),
+                HttpStatus.OK);
+    }
+
+    /**
+     * Revokes a refresh token, ending that session early. Always succeeds - see
+     * RefreshTokenService.revoke on why a missing, unknown or already-revoked token is not an
+     * error here.
+     *
+     * Public, like login and refresh: it takes the refresh token itself as its only proof,
+     * not a still-valid access token, since the two can legitimately go out of sync (the
+     * access token can still be live for up to an hour after this call, per this feature's
+     * documented trade-off - see the plan/README on instant access-token revocation).
+     */
+    @PostMapping("/logout")
+    @Operation(summary = "Revoke a refresh token, ending that session")
+    @SecurityRequirements
+    public ResponseEntity<ApiEnvelope<LogoutAck>> logout(@RequestBody RefreshTokenRequest request) {
+        String sessionId = generateSessionId();
+        logger.debug("START logout");
+
+        if (request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+            refreshTokenService.revoke(request.getRefreshToken());
+        }
+
+        logger.debug("END logout");
+        return new ResponseEntity<>(
+                createSuccessResponse("Logout effettuato con successo", new LogoutAck(), sessionId),
                 HttpStatus.OK);
     }
 }

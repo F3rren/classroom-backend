@@ -169,6 +169,16 @@ springdoc:
     enabled: ${SWAGGER_UI_ENABLED:false}
   swagger-ui:
     enabled: ${SWAGGER_UI_ENABLED:false}
+    # A JSON body can only ever be a JSON editor here - swagger-ui builds real per-field
+    # inputs solely for form-urlencoded/multipart bodies, and none of these APIs are that -
+    # so the improvement available without touching any controller is arriving at an editor
+    # that already has something in it. try-it-out-enabled skips the extra click that puts
+    # the box into edit mode; default-model-rendering shows the filled-in example instead of
+    # the bare schema even before that click. Every request DTO already carries
+    # @Schema(example = ...) on each field (see the three services' dto packages), which is
+    # what actually populates both with realistic values instead of empty ones.
+    try-it-out-enabled: true
+    default-model-rendering: example
     urls:
       - url: /docs/auth-service/v3/api-docs
         name: Auth

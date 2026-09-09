@@ -108,9 +108,13 @@ public class AdminController {
         );
     }
 
+    // @ModelAttribute, not @RequestBody: query parameters, one per field, is what turns this
+    // into fillable inputs in Swagger UI instead of a JSON box to type by hand every time.
+    // Springdoc reads the same @Schema already on RoomRequest's fields either way, so
+    // nothing there changed - only how the values arrive, and none of them are secret.
     @PostMapping("/rooms")
     @Operation(summary = "Create a room (admin only)")
-    public ResponseEntity<ApiEnvelope<RoomAckPayload>> createRoom(@Valid @RequestBody RoomRequest roomRequest) {
+    public ResponseEntity<ApiEnvelope<RoomAckPayload>> createRoom(@Valid @ModelAttribute RoomRequest roomRequest) {
         String sessionId = generateSessionId();
         logger.debug("START createRoom | name: {} | floor: {} | capacity: {}", roomRequest.getName(), roomRequest.getFloor(), roomRequest.getCapacity());
 
@@ -122,11 +126,13 @@ public class AdminController {
         );
     }
 
+    // Same reasoning as createRoom(): query parameters instead of a JSON body, for real form
+    // fields in Swagger UI.
     @PutMapping("/rooms/{id}")
     @Operation(summary = "Update an existing room (admin only)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> updateRoom(
             @PathVariable("id") @Positive(message = ValidationMessages.ROOM_ID_POSITIVE) Long id,
-            @Valid @RequestBody RoomRequest roomRequest) {
+            @Valid @ModelAttribute RoomRequest roomRequest) {
         String sessionId = generateSessionId();
         logger.debug("START updateRoom | ID room: {} | new name: {} | floor: {} | capacity: {}", id, roomRequest.getName(), roomRequest.getFloor(), roomRequest.getCapacity());
 
@@ -183,12 +189,16 @@ public class AdminController {
         );
     }
 
+    // @ModelAttribute, not an optional @RequestBody: a query parameter, filled in or left out,
+    // gives the same "the reason is optional" behaviour DeleteReasonRequest always had - it
+    // is never null now, just a reason field that is null when nobody passed one - while
+    // showing up as a real input field in Swagger UI instead of a JSON box.
     @DeleteMapping("/bookings/{id}")
     @Operation(summary = "Force-delete any booking at all (admin only)")
     public ResponseEntity<ApiEnvelope<BookingDeletionResponse>> deleteBookingAsAdmin(
                                                       @PathVariable("id") @Positive(message = ValidationMessages.BOOKING_ID_POSITIVE) Long id,
                                                       @AuthenticationPrincipal AppPrincipal principal,
-                                                      @Valid @RequestBody(required = false) DeleteReasonRequest requestBody) {
+                                                      @Valid @ModelAttribute DeleteReasonRequest requestBody) {
         String sessionId = generateSessionId();
         logger.debug("START deleteBookingAsAdmin - booking ID: {}", id);
 
@@ -208,7 +218,9 @@ public class AdminController {
         BookingOwner bookingUser = booking.getUser();
         Room bookingRoom = booking.getRoom();
 
-        String reason = (requestBody != null && requestBody.getReason() != null)
+        // requestBody itself is never null with @ModelAttribute (unlike the optional
+        // @RequestBody this used to be) - only its reason field can be, when nobody passed one.
+        String reason = (requestBody.getReason() != null)
             ? requestBody.getReason()
             : "Eliminazione da parte dell'amministratore";
         logger.debug("deletion reason: {}", reason);

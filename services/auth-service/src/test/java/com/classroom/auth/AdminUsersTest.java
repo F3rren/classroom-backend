@@ -1,6 +1,7 @@
 package com.classroom.auth;
 
 import com.classroom.testsupport.TestJson;
+import com.classroom.testsupport.TestQuery;
 import com.classroom.auth.model.User;
 import com.classroom.auth.repository.UserRepository;
 import com.classroom.model.Role;
@@ -19,6 +20,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +89,14 @@ class AdminUsersTest {
     }
 
     private ResponseEntity<String> call(String url, HttpMethod method, Object body) {
-        return rest.exchange(url, method, new HttpEntity<>(body, headers()), String.class);
+        // URI.create, not the String overload: several calls below already carry a
+        // pre-encoded query string (TestQuery), and TestRestTemplate's String-based exchange()
+        // treats its argument as a URI TEMPLATE and encodes it AGAIN - turning "%40" into
+        // "%2540" and reaching the controller as the literal text "user%40example.com"
+        // instead of an email with an @ in it. A java.net.URI is used as-is, encoded exactly
+        // once. rest.getRootUri() supplies what the String overload would have added on its
+        // own for a relative path.
+        return rest.exchange(URI.create(rest.getRootUri() + url), method, new HttpEntity<>(body, headers()), String.class);
     }
 
 
@@ -105,10 +114,13 @@ class AdminUsersTest {
 
     @Test
     void registeringWithAnAlreadyUsedEmailIsRejected() throws Exception {
-        Map<String, String> body = Map.of("username", "nuovo", "name", "Nuovo",
-                "email", "normale@test.it", "password", "password-lunga", "role", "user");
+        // register() and updateUser() moved from a JSON @RequestBody to @ModelAttribute (one
+        // query parameter per field), so Swagger UI can offer real inputs instead of a JSON
+        // box - TestQuery builds the same query string a browser or curl would send.
+        String query = TestQuery.of(Map.of("username", "nuovo", "name", "Nuovo",
+                "email", "normale@test.it", "password", "password-lunga", "role", "user"));
 
-        ResponseEntity<String> resp = call("/api/admin/users", HttpMethod.POST, body);
+        ResponseEntity<String> resp = call("/api/admin/users" + query, HttpMethod.POST, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(TestJson.bodyOf(resp).get("success")).isEqualTo(false);
@@ -116,19 +128,19 @@ class AdminUsersTest {
 
     @Test
     void registeringWithAnAlreadyUsedUsernameIsRejected() throws Exception {
-        Map<String, String> body = Map.of("username", "normale", "name", "Nuovo",
-                "email", "un-altra@test.it", "password", "password-lunga", "role", "user");
+        String query = TestQuery.of(Map.of("username", "normale", "name", "Nuovo",
+                "email", "un-altra@test.it", "password", "password-lunga", "role", "user"));
 
-        ResponseEntity<String> resp = call("/api/admin/users", HttpMethod.POST, body);
+        ResponseEntity<String> resp = call("/api/admin/users" + query, HttpMethod.POST, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test
     void updatingAMissingUserAnswers404() {
-        Map<String, String> body = Map.of("username", "x", "name", "X", "email", "x@test.it");
+        String query = TestQuery.of(Map.of("username", "x", "name", "X", "email", "x@test.it"));
 
-        ResponseEntity<String> resp = call("/api/admin/users/999999", HttpMethod.PUT, body);
+        ResponseEntity<String> resp = call("/api/admin/users/999999" + query, HttpMethod.PUT, null);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -140,11 +152,11 @@ class AdminUsersTest {
         // is a request that cannot be honoured, and the two deserve different answers.
         // Checked on both endpoints, because it used to be written twice and could drift.
         for (HttpMethod method : List.of(HttpMethod.PUT, HttpMethod.DELETE)) {
-            Object body = method == HttpMethod.PUT
-                    ? Map.of("username", "x", "name", "X", "email", "x@test.it", "role", "user")
-                    : null;
+            String query = method == HttpMethod.PUT
+                    ? TestQuery.of(Map.of("username", "x", "name", "X", "email", "x@test.it", "role", "user"))
+                    : "";
 
-            ResponseEntity<String> resp = call("/api/admin/users/0", method, body);
+            ResponseEntity<String> resp = call("/api/admin/users/0" + query, method, null);
 
             assertThat(resp.getStatusCode()).as("status of %s", method).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(TestJson.bodyOf(resp).get("error")).isEqualTo("VALIDATION_ERROR");
