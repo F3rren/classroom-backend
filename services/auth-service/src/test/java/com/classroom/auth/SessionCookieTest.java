@@ -116,6 +116,21 @@ class SessionCookieTest {
         return name + "=" + value;
     }
 
+    /** Logs in, optionally with X-Auth-Mode set - null sends no such header at all. */
+    private ResponseEntity<String> loginWithAuthMode(String authModeValue) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        if (authModeValue != null) {
+            headers.add(SessionCookies.AUTH_MODE_HEADER, authModeValue);
+        }
+        Map<String, String> body = Map.of("email", "cookie@test.it", "password", "password-di-prova");
+
+        ResponseEntity<String> resp = rest.exchange("/api/auth/login", HttpMethod.POST,
+                new HttpEntity<>(body, headers), String.class);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return resp;
+    }
+
     // ==================== login ====================
 
     @Test
@@ -142,6 +157,41 @@ class SessionCookieTest {
         // The body keeps carrying them, so a non-browser client is unaffected.
         assertThat(cookieValue(resp, SessionCookies.ACCESS_TOKEN)).isEqualTo(data.get("token"));
         assertThat(cookieValue(resp, SessionCookies.REFRESH_TOKEN)).isEqualTo(data.get("refreshToken"));
+    }
+
+    @Test
+    void loginWithAuthModeCookieOmitsTokensFromTheBody() {
+        // The header this project's own frontend sends when it wants the cookie-only shape -
+        // see SessionCookies.AUTH_MODE_HEADER. Nothing else changes: the cookies still carry
+        // both tokens, only the JSON stops repeating them in clear text.
+        ResponseEntity<String> resp = loginWithAuthMode(SessionCookies.AUTH_MODE_COOKIE);
+
+        Map<String, Object> body = TestJson.bodyOf(resp);
+        assertThat(body).doesNotContainKey("token");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        assertThat(data).doesNotContainKey("token");
+        assertThat(data).doesNotContainKey("refreshToken");
+        assertThat(data).containsKey("user");
+
+        assertThat(setCookie(resp, SessionCookies.ACCESS_TOKEN)).isNotNull();
+        assertThat(setCookie(resp, SessionCookies.REFRESH_TOKEN)).isNotNull();
+    }
+
+    @Test
+    void loginWithoutTheHeaderStillReturnsTokensInTheBody() {
+        // A non-browser caller - a script, a future mobile app - never sends the header and
+        // must see exactly what it saw before this existed.
+        ResponseEntity<String> resp = loginWithAuthMode(null);
+
+        Map<String, Object> body = TestJson.bodyOf(resp);
+        assertThat(body.get("token")).isNotNull();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        assertThat(data.get("token")).isNotNull();
+        assertThat(data.get("refreshToken")).isNotNull();
     }
 
     @Test
@@ -206,6 +256,24 @@ class SessionCookieTest {
                 cookiePair(SessionCookies.REFRESH_TOKEN, refresh));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void refreshFromTheCookieAloneOmitsTheNewPairFromTheBody() {
+        // Nothing in the request body is, by construction, a cookie-session caller: there is
+        // nowhere else the presented token could have come from. See RefreshPayload.
+        String refresh = cookieValue(login(), SessionCookies.REFRESH_TOKEN);
+
+        ResponseEntity<String> resp = withCookies("/api/auth/refresh", HttpMethod.POST,
+                cookiePair(SessionCookies.REFRESH_TOKEN, refresh));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) TestJson.bodyOf(resp).get("data");
+        assertThat(data).doesNotContainKey("token");
+        assertThat(data).doesNotContainKey("refreshToken");
+
+        // The new pair still exists - as cookies, not in the body.
+        assertThat(cookieValue(resp, SessionCookies.REFRESH_TOKEN)).isNotNull().isNotEqualTo(refresh);
     }
 
     @Test

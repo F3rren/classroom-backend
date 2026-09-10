@@ -232,17 +232,16 @@ what gives you:
 | the DEBUG narration | `START login`, `room 3 is free over the requested period`: written by the code all along, printed by nobody until the profile said so |
 | errors that say what went wrong | `include-message` and `include-binding-errors` on, `?trace=true` for the stack trace — the mirror image of prod's three `never` |
 | Swagger | each service's own, and the aggregated UI on the gateway |
-| the databases and the broker | published on `127.0.0.1`, see below |
+| the broker | published on `127.0.0.1`, see below |
 
 Two profiles and not one: `dev` says WHAT behaviour is wanted, `docker` says WHERE it is
-running. The second is a short list — one line for `booking-service`
-(`application-docker.properties`), plus the `springProfile` conditions in
-`logback-spring.xml` — and it is what makes the first usable in a container at all. Switching
-the profile inside a container used to fail on exactly two things: the file log appender,
-which has nowhere writable to go inside the image, and `booking-service`'s Flyway baseline
-flags, meant for one developer's pre-Flyway local database and wrong against a container's
-always-empty one. `docker` answers both, so compose no longer has to avoid the profile and
-flip individual flags instead.
+running. The second is now a single guard — the `springProfile` conditions in
+`logback-spring.xml` that keep the rolling file appender out of the image, since its relative
+path resolves somewhere unwritable inside a container. It used to also carry
+`booking-service`'s Flyway baseline put back to `false`, in `application-docker.properties`,
+for a container's always-empty database; that file is gone now that the containers reach the
+developer's own local PostgreSQL — the same one a plain `dev` run always targeted — so the
+baseline setting is the same either way (see below).
 
 **Production names its files explicitly** and puts all of it back:
 
@@ -250,39 +249,54 @@ flip individual flags instead.
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-#### Inspecting a database from the host
+#### The three services connect to your local PostgreSQL
 
-The three PostgreSQL instances are published on the loopback, so pgAdmin or `psql` on the host
-reach them directly:
+`docker-compose.yml` starts no PostgreSQL of its own. It used to start three — one per
+service, published on `127.0.0.1:15432`/`15433`/`15434` so pgAdmin could reach them — which
+meant a second, empty PostgreSQL next to whatever is already on the host, the common case.
+Now `DB_HOST` is `host.docker.internal`, the name Docker Desktop resolves to the machine
+running it, and the three containers reach the exact same instance a plain
+`mvn spring-boot:run` would.
 
-| | | |
-|---|---|---|
-| `classroom_users` | `127.0.0.1:15432` | `auth-service` — users, refresh tokens |
-| `classroom` | `127.0.0.1:15433` | `booking-service` — rooms, bookings, courses |
-| `classroom_notifications` | `127.0.0.1:15434` | `notification-service` |
+**The three databases have to exist beforehand** on that instance — Flyway still creates
+every table on first start, the same as always, it just cannot create a database it has no
+connection to yet:
 
-The user is `postgres` and the password is whatever `DB_PASSWORD` holds (`postgres` if it is
-unset). `1543x` and not `5432`, so they do not collide with a PostgreSQL already installed on
-the host — which is exactly the case that makes you want to look at these. `127.0.0.1` and not
-`0.0.0.0`: reachable from this machine and no further, where without the address Docker would
-publish on every interface, database password and all.
+```sql
+CREATE DATABASE classroom_users;
+CREATE DATABASE classroom;
+CREATE DATABASE classroom_notifications;
+```
 
-The broker's management UI comes with them, on <http://127.0.0.1:15672> (`guest`/`guest` by
-default): it answers the question this architecture actually raises in development — did the
-event reach the queue, and did anybody consume it.
+`SPRING_DATASOURCE_PASSWORD` in `.env` — already the local PostgreSQL's password for
+`mvn spring-boot:run` — is what the containers authenticate with too, since they are talking
+to the very same instance. `booking-service` additionally reads `FLYWAY_BASELINE_ON_MIGRATE`
+(default `true`): set it to `false` if the local `classroom` database is a fresh one rather
+than the developer's old pre-Flyway one — see `application-dev.properties`.
 
-`docker-compose.prod.yml` takes all four away again with `ports: !reset []`, which **needs
-Compose 2.24 or newer**. The tag exists because compose merges `ports` by APPENDING: without
-it there is no way to take back a port declared in the base file, which is why these used to
-live in a separate override that production simply never loaded. On an older compose the
-command fails loudly rather than deploying a published database — the right way round.
+Inspecting the data is whatever you already use for the local instance — pgAdmin or `psql` on
+`localhost:5432` — with nothing extra published for it.
 
-`docker compose exec db-users psql -U postgres -d classroom_users` still works and needs no
-port at all.
+`docker-compose.prod.yml` does not follow this: production runs its **own** three PostgreSQL
+containers, unpublished, because "connect to whatever is on the deploying machine" is a
+development convenience, not a deployment story. See [Production](#production).
+
+#### The broker's management UI
+
+Still published, on <http://127.0.0.1:15672> (`guest`/`guest` by default): it answers the
+question this architecture actually raises in development — did the event reach the queue,
+and did anybody consume it. `127.0.0.1` and not `0.0.0.0`: reachable from this machine and no
+further, where without the address Docker would publish on every interface, broker
+credentials and all.
+
+`docker-compose.prod.yml` takes it away again with `ports: !reset []`, which **needs Compose
+2.24 or newer**. The tag exists because compose merges `ports` by APPENDING: without it there
+is no way to take back a port declared in the base file. On an older compose the command fails
+loudly rather than deploying a published broker — the right way round.
 
 #### What is reachable, and what is not
 
-The base file publishes **17102** and the infrastructure ports above. The four application
+The base file publishes **17102** and the broker's management UI above. The four application
 services publish nothing in either mode: they talk on the internal network, so the
 `/internal/` routes are unreachable from outside by construction and not merely by the
 gateway's rule.
@@ -339,7 +353,6 @@ checks the boundary holds.
 |---|---|
 | `application.properties` | everything needed to start, with `${VAR:default}` placeholders |
 | `application-dev.properties` | what a development run looks like: the SQL, the DEBUG narration, talking errors, Swagger on, a small pool |
-| `application-docker.properties` | the short list of things that are true only inside a container — `booking-service` only |
 | `application-prod.properties` | **hardening only**: Swagger off, a wider pool, Flyway made safe — and each service's own default profile |
 | `.env` | **secrets and environment parameters only**, not versioned |
 
@@ -361,11 +374,16 @@ That is a reversal. The base file used to leave everything on `prod` and overrid
 `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED`, because switching the whole
 profile in a container had been tried and reverted twice: `dev` turns on a file log appender
 with nowhere writable to go inside the image, and for `booking-service` a Flyway baseline
-meant for one developer's pre-Flyway database. Both were worked around by not using the
-profile; both are now fixed where they belong — a `docker` condition on the appender in
-`logback-spring.xml`, and `application-docker.properties` for the baseline — so the profile
-can say what the environment IS. The two `SPRINGDOC_*` variables are still read, and still
-default to off under `prod`: what changed is that nothing has to remember to pass them.
+meant for one developer's pre-Flyway database, wrong against what was then a container's
+always-empty one. Both were worked around by not using the profile; the first is now fixed
+where it belongs — a `docker` condition on the appender in `logback-spring.xml`. The second
+stopped being a problem a different way: `docker-compose.yml`'s containers now connect to that
+same developer's local database instead of an empty one of their own (see
+[With Docker](#with-docker)), so the baseline setting that was already right for `dev` is
+right for `dev,docker` too, and the override that used to live in
+`application-docker.properties` had nothing left to do. The two `SPRINGDOC_*` variables are
+still read, and still default to off under `prod`: what changed is that nothing has to
+remember to pass them.
 
 It was not always so, and getting the connection out of the profiles cost dearly the first
 time: the database URL lived only in `application-dev.properties`, written against
@@ -382,10 +400,12 @@ apply", which left the visible behaviour of a development run to whatever the ba
 defaults happened to be — the DEBUG narration the code writes was printed by nobody, and
 `booking-service`'s `dev` profile declared exactly the same log levels as its `prod` one.
 
-`application-docker.properties` exists only for `booking-service`, and that one is deliberate:
-it holds a single line, the Flyway baseline put back to `false`, because a container's database
-is always new. The other three have nothing that depends on being in a container, and an empty
-file would not be consistency — it would be a file to read in order to discover it says nothing.
+There is no `application-docker.properties` any more. It used to exist for `booking-service`
+alone, one line putting the Flyway baseline back to `false` because a container's database was
+always new; now that `docker-compose.yml` points the containers at the developer's own local
+database instead (see [With Docker](#with-docker)), that line had nothing left to override —
+deleting it, rather than leaving a file that overrides nothing, is the same reasoning that
+already kept the other three services from getting an empty one of their own.
 
 ### Why one file is .yml and ten are .properties
 
@@ -423,23 +443,31 @@ mistake does not fail the build, it shows up at startup or not at all.
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-`docker-compose.prod.yml` does three things, and all three undo a convenience that
-`docker-compose.yml` has on purpose, because that file is the development one:
+`docker-compose.yml`'s three application containers connect out to the developer's own local
+PostgreSQL (see [With Docker](#with-docker)) — a convenience with no meaning in a deployment,
+since there is no developer's machine to reach. So on top of undoing `docker-compose.yml`'s
+development conveniences, `docker-compose.prod.yml` is also where the three PostgreSQL
+containers themselves are defined — fresh, not as an override, because the base file no longer
+has any to override:
 
 1. **it puts the profile back** to `prod` on all five containers — no SQL, no DEBUG, no detail
    in the error responses, no Swagger;
 2. **it takes the fallback values away from the secrets**, described below;
-3. **it unpublishes the databases and the broker** with `ports: !reset []`, which needs
-   Compose 2.24 or newer — compose merges `ports` by appending, so an ordinary override could
-   only add to them.
+3. **it unpublishes the broker** with `ports: !reset []`, which needs Compose 2.24 or newer —
+   compose merges `ports` by appending, so an ordinary override could only add to them. The
+   three databases need no such trick: being new to this file, they simply carry no `ports` at
+   all.
 
-On the second: the secrets that have a fallback in development — `DB_PASSWORD`,
-`RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — become **mandatory** there,
-`${DB_PASSWORD:-postgres}` becoming `${DB_PASSWORD:?...}`.
+On the second: the secrets that have a fallback in development — `RABBITMQ_USER`,
+`RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — become **mandatory** there,
+`${RABBITMQ_USER:-guest}` becoming `${RABBITMQ_USER:?...}`. `DB_PASSWORD` has no development
+fallback to take away in the first place: `docker-compose.yml` does not reference it at all any
+more, so it is a production-only variable, `${DB_PASSWORD:?...}` from the start — the password
+of the three containers this file creates.
 The fallback in `docker-compose.yml` is there on purpose, because in development
 `docker compose up` has to work with nothing prepared; the problem is **how that convenience
-travels elsewhere**, which is silently. No warning, no error, just a database reachable with
-the password `postgres` and a broker with `guest`.
+travels elsewhere**, which is silently. No warning, no error, just a broker reachable with the
+password `guest`.
 
 With the override, a missing variable stops compose before anything starts and says which one
 is missing. Checked in all three states: without the variables it refuses, without the

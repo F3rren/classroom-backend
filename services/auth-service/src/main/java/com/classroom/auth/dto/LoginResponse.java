@@ -1,5 +1,6 @@
 package com.classroom.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 
 import com.classroom.util.Timestamps;
@@ -8,7 +9,11 @@ import com.classroom.util.Timestamps;
  * A successful login response. The token appears both at the root ("token") and inside
  * "data" - a deliberate duplication of the behaviour that was already there, kept for
  * compatibility with the current frontend.
+ *
+ * The root token is null - and, per @JsonInclude below, absent rather than "null" - for the
+ * same cookie-only callers LoginPayload leaves it out for: see AuthController.login.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
 public class LoginResponse {
 

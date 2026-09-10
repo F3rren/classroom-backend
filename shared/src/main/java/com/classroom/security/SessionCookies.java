@@ -30,7 +30,32 @@ public final class SessionCookies {
     /** Carries the refresh token, read by POST /auth/refresh and POST /auth/logout. */
     public static final String REFRESH_TOKEN = "refresh_token";
 
+    /**
+     * The header a browser client sends on POST /auth/login to ask for the cookie-only
+     * response - see AuthController.login.
+     *
+     * login() has no prior request to read a cookie from - it is the first one - so unlike
+     * refresh() and logout(), it cannot tell a cookie-session caller from a non-browser one by
+     * itself. This header is that missing signal: this project's own frontend sends it,
+     * non-browser callers (scripts, the tests, a future mobile app) simply never do, and get
+     * today's response - token and refreshToken in the body - exactly as before.
+     */
+    public static final String AUTH_MODE_HEADER = "X-Auth-Mode";
+
+    /** The only value {@link #AUTH_MODE_HEADER} is checked against. */
+    public static final String AUTH_MODE_COOKIE = "cookie";
+
     private SessionCookies() {
+    }
+
+    /**
+     * Whether the caller asked for the cookie-only login response.
+     *
+     * @param request the incoming request
+     * @return true when {@link #AUTH_MODE_HEADER} carries {@link #AUTH_MODE_COOKIE}
+     */
+    public static boolean requestsCookieMode(HttpServletRequest request) {
+        return AUTH_MODE_COOKIE.equalsIgnoreCase(request.getHeader(AUTH_MODE_HEADER));
     }
 
     /**
