@@ -32,7 +32,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -70,10 +69,6 @@ public class BookingController {
         return Timestamps.format(dateTime);
     }
 
-    private <T> ApiEnvelope<T> createErrorResponse(String error, String message, String userMessage, String sessionId) {
-        return ApiEnvelope.error(error, message, userMessage, sessionId);
-    }
-
     private <T> ApiEnvelope<T> createSuccessResponse(String message, T data, String sessionId) {
         return ApiEnvelope.success(message, data, sessionId);
     }
@@ -88,52 +83,22 @@ public class BookingController {
     }
 
     // Books a room.
+    //
+    // @ModelAttribute, not @RequestBody: query parameters, one per field, is what turns this
+    // into fillable inputs in Swagger UI instead of a JSON box to type by hand every time.
+    // Springdoc reads the same @Schema already on BookingRequest's fields either way, so
+    // nothing there changed - only how the values arrive, and none of them are secret.
     @PostMapping("/book")
     @Operation(summary = "Book a room")
-    public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @RequestBody BookingRequest request,
+    public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @ModelAttribute BookingRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START bookRoom - roomId: {}, courseId: {}, period: {} - {}", request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
 
-        LocalDateTime startTime;
-        LocalDateTime endTime;
-        try {
-            startTime = LocalDateTime.parse(request.getStartTime());
-        } catch (DateTimeParseException e) {
-            logger.warn("END bookRoom - could not parse the start date: '{}'", request.getStartTime());
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
-                                  "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-        try {
-            endTime = LocalDateTime.parse(request.getEndTime());
-        } catch (DateTimeParseException e) {
-            logger.warn("END bookRoom - could not parse the end date: '{}'", request.getEndTime());
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
-                                  "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
-        if (endTime.isBefore(startTime)) {
-            logger.warn("END bookRoom - the end date is before the start date");
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
-                                  "La data di fine deve essere successiva alla data di inizio.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-        if (startTime.isBefore(LocalDateTime.now())) {
-            logger.warn("END bookRoom - attempt to book in the past: {}", formatTimestamp(startTime));
-            return new ResponseEntity<>(
-                createErrorResponse("PAST_DATE", "Date in the past",
-                                  "Non puoi prenotare un'aula per una data già trascorsa.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
+        BookingPeriod period = BookingPeriod.parse(request.getStartTime(), request.getEndTime())
+                .requireNotInThePast("Non puoi prenotare un'aula per una data già trascorsa.");
+        LocalDateTime startTime = period.start();
+        LocalDateTime endTime = period.end();
 
         logger.debug("validation passed, attempting a booking for the period: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
 
@@ -156,54 +121,20 @@ public class BookingController {
         );
     }
 
-    // Updates an existing booking.
+    // Updates an existing booking. Same reasoning as bookRoom(): query parameters instead of
+    // a JSON body, for real form fields in Swagger UI.
     @PutMapping("/{bookingId}")
     @Operation(summary = "Update an existing booking (owner or admin only)")
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> updateBooking(@PathVariable @NonNull Long bookingId,
-                                                 @Valid @RequestBody BookingRequest request,
+                                                 @Valid @ModelAttribute BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START updateBooking - bookingId: {}, roomId: {}, courseId: {}, period: {} - {}", bookingId, request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
 
-        LocalDateTime startTime;
-        LocalDateTime endTime;
-        try {
-            startTime = LocalDateTime.parse(request.getStartTime());
-        } catch (DateTimeParseException e) {
-            logger.warn("END updateBooking - could not parse the start date: '{}'", request.getStartTime());
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
-                                  "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T14:30:00)", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-        try {
-            endTime = LocalDateTime.parse(request.getEndTime());
-        } catch (DateTimeParseException e) {
-            logger.warn("END updateBooking - could not parse the end date: '{}'", request.getEndTime());
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
-                                  "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS (es: 2024-12-25T16:30:00)", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
-        if (endTime.isBefore(startTime)) {
-            logger.warn("END updateBooking - the end date is before the start date");
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
-                                  "La data di fine deve essere successiva alla data di inizio.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-        if (startTime.isBefore(LocalDateTime.now())) {
-            logger.warn("END updateBooking - attempt to update with a date in the past: {}", formatTimestamp(startTime));
-            return new ResponseEntity<>(
-                createErrorResponse("PAST_DATE", "Date in the past",
-                                  "Non puoi modificare una prenotazione per una data già trascorsa.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
+        BookingPeriod period = BookingPeriod.parse(request.getStartTime(), request.getEndTime())
+                .requireNotInThePast("Non puoi modificare una prenotazione per una data già trascorsa.");
+        LocalDateTime startTime = period.start();
+        LocalDateTime endTime = period.end();
 
         logger.debug("validation passed, attempting to update booking ID {} for the period: {} - {}", bookingId, formatTimestamp(startTime), formatTimestamp(endTime));
 
@@ -226,46 +157,21 @@ public class BookingController {
         );
     }
 
-    // Blocks a room. Admin only.
+    // Blocks a room. Admin only. Same reasoning as bookRoom(): query parameters instead of a
+    // JSON body, for real form fields in Swagger UI.
     @PostMapping("/block")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Block a room for a period (admin only)")
-    public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @RequestBody BookingRequest request,
+    public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @ModelAttribute BookingRequest request,
                                        @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
         logger.debug("START blockRoom - roomId: {}, period: {} - {}", request.getRoomId(), request.getStartTime(), request.getEndTime());
 
-        LocalDateTime startTime;
-        LocalDateTime endTime;
-        try {
-            startTime = LocalDateTime.parse(request.getStartTime());
-        } catch (DateTimeParseException e) {
-            logger.warn("END blockRoom - could not parse the start date: '{}'", request.getStartTime());
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
-                                  "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-        try {
-            endTime = LocalDateTime.parse(request.getEndTime());
-        } catch (DateTimeParseException e) {
-            logger.warn("END blockRoom - could not parse the end date: '{}'", request.getEndTime());
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
-                                  "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
-        if (endTime.isBefore(startTime)) {
-            logger.warn("END blockRoom - the end date is before the start date");
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
-                                  "La data di fine deve essere successiva alla data di inizio.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
+        // No requireNotInThePast here, and it is deliberate: blocking a room that is busy
+        // right now is a legitimate thing for an admin to want.
+        BookingPeriod period = BookingPeriod.parse(request.getStartTime(), request.getEndTime());
+        LocalDateTime startTime = period.start();
+        LocalDateTime endTime = period.end();
 
         logger.debug("validation passed, attempting to block the room for the period: {} - {}", formatTimestamp(startTime), formatTimestamp(endTime));
 
@@ -296,37 +202,10 @@ public class BookingController {
         String sessionId = generateSessionId();
         logger.debug("START checkAvailability - roomId: {}, period: {} - {}", roomId, startTime, endTime);
 
-        LocalDateTime startDateTime;
-        LocalDateTime endDateTime;
-        try {
-            startDateTime = LocalDateTime.parse(startTime);
-        } catch (DateTimeParseException e) {
-            logger.warn("END checkAvailability - could not parse the start date: '{}'", startTime);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_START_DATE", "Invalid start date format",
-                                  "La data di inizio deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-        try {
-            endDateTime = LocalDateTime.parse(endTime);
-        } catch (DateTimeParseException e) {
-            logger.warn("END checkAvailability - could not parse the end date: '{}'", endTime);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_END_DATE", "Invalid end date format",
-                                  "La data di fine deve essere nel formato YYYY-MM-DDTHH:MM:SS", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
-        if (endDateTime.isBefore(startDateTime)) {
-            logger.warn("END checkAvailability - the end date is before the start date");
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_DATE_RANGE", "Invalid time range",
-                                  "La data di fine deve essere successiva alla data di inizio.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
+        // Asking whether a room was free yesterday is a fair question, so no past check.
+        BookingPeriod period = BookingPeriod.parse(startTime, endTime);
+        LocalDateTime startDateTime = period.start();
+        LocalDateTime endDateTime = period.end();
 
         logger.debug("availability check for roomId: {} over the period: {} - {}", roomId, formatTimestamp(startDateTime), formatTimestamp(endDateTime));
         boolean available = bookingService.isRoomAvailable(roomId, startDateTime, endDateTime);

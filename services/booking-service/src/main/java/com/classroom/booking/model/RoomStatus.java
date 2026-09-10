@@ -10,13 +10,18 @@ import java.util.Locale;
 /**
  * The STORED state of a room, meaning the room.status column on disk.
  *
+ * All of them are now DERIVED from {@link RoomOccupancy}, which is where the computation
+ * lives: the precedence used to be written three times, in three styles, and the copies had
+ * drifted. What follows is the list of renderings, not of independent rules.
+ *
  * Not to be confused with the two UPPERCASE vocabularies computed at runtime, which are
  * different contracts and stay plain strings:
  *  - {@code BookingService.getRoomStatus()} returns FREE/MAINTENANCE/BLOCKED/BOOKED
  *    (note BOOKED, which does not exist here, and no BUSY);
  *  - {@code AvailabilityPayload.status} returns FREE/BUSY.
- * Three overlapping vocabularies is one more than anybody needs, but merging them is a
- * change of contract rather than a refactor, so it is left as its own decision.
+ * Three overlapping vocabularies is one more than anybody needs. Merging them is a change of
+ * contract rather than a refactor, so it is still its own decision - but they are no longer
+ * three computations that happen to agree, only three ways of writing down one.
  *
  * There is also {@link RoomAvailability}, the "status" field of RoomDetailsResponse:
  * lowercase like this enum but with BOOKED and without BUSY, so that one is not

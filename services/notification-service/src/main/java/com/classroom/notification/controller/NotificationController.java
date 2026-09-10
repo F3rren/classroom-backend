@@ -7,6 +7,9 @@ import com.classroom.security.AppPrincipal;
 import com.classroom.notification.service.NotificationService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,16 +42,33 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
+    // The list itself is unwrapped - a bare JSON array - exactly as it always was, so an
+    // existing caller reading it that way keeps working. Only the EMPTY case changes: it used
+    // to answer "[]" too, indistinguishable from a slow network or a client that read the
+    // wrong field, where the rest of this codebase answers a MessageResponse instead (see
+    // BookingController.getAllBookings, the same idiom for the same case).
     @GetMapping
     @Operation(summary = "Notifications of the authenticated user")
-    public ResponseEntity<List<Notification>> getNotifications(@AuthenticationPrincipal AppPrincipal principal) {
-        return ResponseEntity.ok(notificationService.getNotificationsByUser(principal.id()));
+    @ApiResponse(responseCode = "200", description = "The caller's notifications, or a MessageResponse when there are none",
+            content = @Content(schema = @Schema(implementation = Notification.class, type = "array")))
+    public ResponseEntity<?> getNotifications(@AuthenticationPrincipal AppPrincipal principal) {
+        List<Notification> notifications = notificationService.getNotificationsByUser(principal.id());
+        if (notifications.isEmpty()) {
+            return ResponseEntity.ok(new MessageResponse("Nessuna notifica trovata"));
+        }
+        return ResponseEntity.ok(notifications);
     }
 
     @GetMapping("/unread")
     @Operation(summary = "Unread notifications of the authenticated user")
-    public ResponseEntity<List<Notification>> getUnreadNotifications(@AuthenticationPrincipal AppPrincipal principal) {
-        return ResponseEntity.ok(notificationService.getUnreadNotificationsByUser(principal.id()));
+    @ApiResponse(responseCode = "200", description = "The caller's unread notifications, or a MessageResponse when there are none",
+            content = @Content(schema = @Schema(implementation = Notification.class, type = "array")))
+    public ResponseEntity<?> getUnreadNotifications(@AuthenticationPrincipal AppPrincipal principal) {
+        List<Notification> notifications = notificationService.getUnreadNotificationsByUser(principal.id());
+        if (notifications.isEmpty()) {
+            return ResponseEntity.ok(new MessageResponse("Nessuna notifica da leggere"));
+        }
+        return ResponseEntity.ok(notifications);
     }
 
     @GetMapping("/unread-count")

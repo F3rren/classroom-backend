@@ -2,6 +2,7 @@ package com.classroom.booking;
 
 import com.classroom.testsupport.TestJson;
 import com.classroom.testsupport.TestJwt;
+import com.classroom.testsupport.TestQuery;
 import com.classroom.booking.model.Room;
 import com.classroom.booking.model.RoomStatus;
 import com.classroom.booking.model.Booking;
@@ -23,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
@@ -176,17 +178,20 @@ class BookingControllerTest {
     @Test
     @SuppressWarnings("unchecked")
     void theBookingSuccessResponseShapeIsLocked() throws Exception {
-        HttpHeaders headers = bearer(tokenOwner);
-        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-        Map<String, Object> body = Map.of(
+        // bookRoom() moved from a JSON @RequestBody to @ModelAttribute (one query parameter
+        // per field), so Swagger UI can offer real inputs instead of a JSON box - TestQuery
+        // builds the same query string a browser or curl would send. URI.create (not the
+        // String overload used elsewhere in this file) is what keeps TestRestTemplate from
+        // re-encoding it.
+        Map<String, Object> params = Map.of(
                 "roomId", roomId,
                 "startTime", LocalDateTime.now().plusDays(2).toString(),
                 "endTime", LocalDateTime.now().plusDays(2).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/book",
+                URI.create(rest.getRootUri() + "/api/bookings/book" + TestQuery.of(params)),
                 HttpMethod.POST,
-                new HttpEntity<>(body, headers),
+                new HttpEntity<>(bearer(tokenOwner)),
                 String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -200,17 +205,15 @@ class BookingControllerTest {
 
     @Test
     void missingFieldErrorResponseShapeIsLocked() throws Exception {
-        HttpHeaders headers = bearer(tokenOwner);
-        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-        // roomId missing
-        Map<String, Object> body = Map.of(
+        // roomId missing, same reasoning as above for @ModelAttribute + TestQuery.
+        Map<String, Object> params = Map.of(
                 "startTime", LocalDateTime.now().plusDays(2).toString(),
                 "endTime", LocalDateTime.now().plusDays(2).plusHours(1).toString());
 
         ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/book",
+                URI.create(rest.getRootUri() + "/api/bookings/book" + TestQuery.of(params)),
                 HttpMethod.POST,
-                new HttpEntity<>(body, headers),
+                new HttpEntity<>(bearer(tokenOwner)),
                 String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

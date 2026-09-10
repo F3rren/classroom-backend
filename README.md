@@ -69,12 +69,16 @@ name are changed in the profile (see below), not here.
 ## 3. Start it
 
 ```bash
-mvn spring-boot:run -pl booking-service -am
+mvn spring-boot:run -pl booking-service -am -Dspring-boot.run.profiles=dev
 ```
 
 `-pl booking-service` picks the module, `-am` builds `shared` first, which it depends on.
 
-The default profile is `dev`. On the first start Flyway creates the whole schema.
+The default profile is `prod` - locked down, Swagger off, and (for this service) it demands
+`CORS_ALLOWED_ORIGINS` with no fallback, so a bare `mvn spring-boot:run` with no profile at
+all now refuses to start. `-Dspring-boot.run.profiles=dev` opts into the development
+conveniences instead: Swagger UI, DevTools, and the settings this database already relies on.
+On the first start Flyway creates the whole schema.
 
 Check that it works:
 
@@ -132,7 +136,7 @@ services/auth-service/src/main/java/com/classroom/auth/
 
 shared/src/main/java/com/classroom/
   config/         SecurityConfig, JwtAuthFilter, RequestCorrelationFilter, the 401/403 handlers
-  exception/      GlobalExceptionHandler and the domain exceptions
+  exception/      GlobalExceptionHandler, the domain exceptions, ProtocolError
   security/       JwtVerifier, AppPrincipal
   events/         the messages that travel on RabbitMQ, and the queue and exchange names
   dto/            ApiEnvelope, the wrapper around every response
@@ -216,25 +220,108 @@ every token already issued, and whoever was logged in gets a 401 for no visible 
 
 `.env` is ignored by git; the versioned template is `.env.example`, which holds no values.
 
-It brings up three PostgreSQL instances (one per service), the four services, and publishes
-**only 17102**. The others talk on the internal network and are not reachable from outside:
-the `/internal/` routes are therefore unreachable by construction, and not merely by the
+#### It starts in DEVELOPMENT mode
+
+`docker-compose.yml` is the development file, and not "production with a couple of
+conveniences". The five containers start on `SPRING_PROFILES_ACTIVE=dev,docker`, which is
+what gives you:
+
+| | |
+|---|---|
+| the SQL Hibernate is running | `logging.level.org.hibernate.SQL=DEBUG`, formatted, with the bound parameters — through the logger, so every statement carries the `requestId` of the request that caused it |
+| the DEBUG narration | `START login`, `room 3 is free over the requested period`: written by the code all along, printed by nobody until the profile said so |
+| errors that say what went wrong | `include-message` and `include-binding-errors` on, `?trace=true` for the stack trace — the mirror image of prod's three `never` |
+| Swagger | each service's own, and the aggregated UI on the gateway |
+| the broker | published on `127.0.0.1`, see below |
+
+Two profiles and not one: `dev` says WHAT behaviour is wanted, `docker` says WHERE it is
+running. The second is now a single guard — the `springProfile` conditions in
+`logback-spring.xml` that keep the rolling file appender out of the image, since its relative
+path resolves somewhere unwritable inside a container. It used to also carry
+`booking-service`'s Flyway baseline put back to `false`, in `application-docker.properties`,
+for a container's always-empty database; that file is gone now that the containers reach the
+developer's own local PostgreSQL — the same one a plain `dev` run always targeted — so the
+baseline setting is the same either way (see below).
+
+**Production names its files explicitly** and puts all of it back:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+#### The three services connect to your local PostgreSQL
+
+`docker-compose.yml` starts no PostgreSQL of its own. It used to start three — one per
+service, published on `127.0.0.1:15432`/`15433`/`15434` so pgAdmin could reach them — which
+meant a second, empty PostgreSQL next to whatever is already on the host, the common case.
+Now `DB_HOST` is `host.docker.internal`, the name Docker Desktop resolves to the machine
+running it, and the three containers reach the exact same instance a plain
+`mvn spring-boot:run` would.
+
+**The three databases have to exist beforehand** on that instance — Flyway still creates
+every table on first start, the same as always, it just cannot create a database it has no
+connection to yet:
+
+```sql
+CREATE DATABASE classroom_users;
+CREATE DATABASE classroom;
+CREATE DATABASE classroom_notifications;
+```
+
+`SPRING_DATASOURCE_PASSWORD` in `.env` — already the local PostgreSQL's password for
+`mvn spring-boot:run` — is what the containers authenticate with too, since they are talking
+to the very same instance. `booking-service` additionally reads `FLYWAY_BASELINE_ON_MIGRATE`
+(default `true`): set it to `false` if the local `classroom` database is a fresh one rather
+than the developer's old pre-Flyway one — see `application-dev.properties`.
+
+Inspecting the data is whatever you already use for the local instance — pgAdmin or `psql` on
+`localhost:5432` — with nothing extra published for it.
+
+`docker-compose.prod.yml` does not follow this: production runs its **own** three PostgreSQL
+containers, unpublished, because "connect to whatever is on the deploying machine" is a
+development convenience, not a deployment story. See [Production](#production).
+
+#### The broker's management UI
+
+Still published, on <http://127.0.0.1:15672> (`guest`/`guest` by default): it answers the
+question this architecture actually raises in development — did the event reach the queue,
+and did anybody consume it. `127.0.0.1` and not `0.0.0.0`: reachable from this machine and no
+further, where without the address Docker would publish on every interface, broker
+credentials and all.
+
+`docker-compose.prod.yml` takes it away again with `ports: !reset []`, which **needs Compose
+2.24 or newer**. The tag exists because compose merges `ports` by APPENDING: without it there
+is no way to take back a port declared in the base file. On an older compose the command fails
+loudly rather than deploying a published broker — the right way round.
+
+#### What is reachable, and what is not
+
+The base file publishes **17102** and the broker's management UI above. The four application
+services publish nothing in either mode: they talk on the internal network, so the
+`/internal/` routes are unreachable from outside by construction and not merely by the
 gateway's rule.
 
-> Inside the containers `booking-service` runs with the **`prod`** profile, and that is not a
-> preference: `application-dev.properties` has the database URL written against `localhost`,
-> so with the default profile `DB_HOST` would be ignored and the service would die on its
-> first connection. Only `prod` reads the environment variables.
+Swagger for all three APIs is aggregated behind the gateway, on the one port the frontend
+knows: <http://localhost:17102/swagger-ui.html>, with a dropdown to switch between them.
+Nothing is published per service. In production the gateway is on `prod`, `application-dev.yml`
+is not loaded, and springdoc registers nothing at all — `/swagger-ui.html` 404s.
+
+The database connection never depended on the profile either way: it lives in
+`application.properties` with `${DB_HOST}`-style placeholders that take real values in a
+container and fall back to `localhost` outside one.
 
 ### Without Docker
 
-Four processes, each in its own terminal:
+Four processes, each in its own terminal. The three application services default to `prod`
+(locked down, Swagger off); pass `-Dspring-boot.run.profiles=dev` for the development
+conveniences - `booking-service` needs it just to start, since `prod` demands
+`CORS_ALLOWED_ORIGINS` with no fallback:
 
 ```bash
-mvn spring-boot:run -pl booking-service -am        # 17103
-mvn spring-boot:run -pl auth-service -am           # 17105
-mvn spring-boot:run -pl notification-service -am   # 17104
-mvn spring-boot:run -pl gateway -am                # 17102
+mvn spring-boot:run -pl booking-service -am -Dspring-boot.run.profiles=dev        # 17103
+mvn spring-boot:run -pl auth-service -am -Dspring-boot.run.profiles=dev           # 17105
+mvn spring-boot:run -pl notification-service -am -Dspring-boot.run.profiles=dev   # 17104
+mvn spring-boot:run -pl gateway -am -Dspring-boot.run.profiles=dev                # 17102
 ```
 
 The gateway does not validate tokens: it routes, and nothing else. Every service verifies the
@@ -265,26 +352,60 @@ checks the boundary holds.
 | File | Contents |
 |---|---|
 | `application.properties` | everything needed to start, with `${VAR:default}` placeholders |
-| `application-dev.properties` | development conveniences: DevTools, logging to file, the Flyway baseline |
-| `application-prod.properties` | **hardening only**: Swagger off, a wider pool, Flyway made safe |
+| `application-dev.properties` | what a development run looks like: the SQL, the DEBUG narration, talking errors, Swagger on, a small pool |
+| `application-prod.properties` | **hardening only**: Swagger off, a wider pool, Flyway made safe — and each service's own default profile |
 | `.env` | **secrets and environment parameters only**, not versioned |
 
-**No service depends on a profile in order to live.** The connection, the port and CORS live
-in `application.properties` in the `${DB_HOST:localhost}` form, which takes the real values in
-a container and falls back to the development defaults outside one. A profile adds or removes
-behaviour, it does not supply it: forgetting `SPRING_PROFILES_ACTIVE` **degrades** — you end
-up less protected — instead of breaking.
+**The connection and the port never depended on a profile.** They live in
+`application.properties` in the `${DB_HOST:localhost}` form, which takes the real values in a
+container and falls back to the development defaults outside one. **The profile itself now
+does**, though: each service's default profile is `prod`, not `dev`, so forgetting
+`SPRING_PROFILES_ACTIVE` lands you on the locked-down settings — Swagger off, no detail in
+error responses — instead of the permissive ones. `SPRING_PROFILES_ACTIVE=dev` is what opts
+back into development. For `booking-service` specifically, `prod` also demands
+`CORS_ALLOWED_ORIGINS` with no fallback, so forgetting the profile there refuses to start
+rather than merely running less protected.
 
-It was not always so, and it cost dearly: the database URL lived only in
-`application-dev.properties`, written against `localhost`, and with
-`spring.profiles.default=dev` a container without that variable started pointing at localhost
-and died on its first query. The symptom was a 503 from the gateway, and the cause sat three
-files away.
+`docker-compose.yml` sets `SPRING_PROFILES_ACTIVE=dev,docker` on all five containers, and
+`docker-compose.prod.yml` puts them back to `prod`: the file you run says which environment
+you are in, once, instead of each service being nudged one flag at a time.
 
-`application-dev.properties` exists only for `booking-service`, and that is deliberate: it is
-the only one with DevTools and file logging. The other two have nothing specific to
-development, and an empty file would not be consistency — it would be a file to read in order
-to discover it says nothing.
+That is a reversal. The base file used to leave everything on `prod` and override just
+`SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED`, because switching the whole
+profile in a container had been tried and reverted twice: `dev` turns on a file log appender
+with nowhere writable to go inside the image, and for `booking-service` a Flyway baseline
+meant for one developer's pre-Flyway database, wrong against what was then a container's
+always-empty one. Both were worked around by not using the profile; the first is now fixed
+where it belongs — a `docker` condition on the appender in `logback-spring.xml`. The second
+stopped being a problem a different way: `docker-compose.yml`'s containers now connect to that
+same developer's local database instead of an empty one of their own (see
+[With Docker](#with-docker)), so the baseline setting that was already right for `dev` is
+right for `dev,docker` too, and the override that used to live in
+`application-docker.properties` had nothing left to do. The two `SPRINGDOC_*` variables are
+still read, and still default to off under `prod`: what changed is that nothing has to
+remember to pass them.
+
+It was not always so, and getting the connection out of the profiles cost dearly the first
+time: the database URL lived only in `application-dev.properties`, written against
+`localhost`, and with the OLD `spring.profiles.default=dev` a container without that variable
+started pointing at localhost and died on its first query. The symptom was a 503 from the
+gateway, and the cause sat three files away. That is fixed by keeping the connection
+profile-independent, as above — not by which profile is the default, which is a separate
+question the project answered the other way afterwards: default to `prod`, so a forgotten
+profile degrades towards protection, not away from it.
+
+All four modules have a development profile now (`application-dev.yml` for the gateway, which
+is `.yml` for the reason below). They used not to: `dev` meant only "prod's hardening does not
+apply", which left the visible behaviour of a development run to whatever the base file's
+defaults happened to be — the DEBUG narration the code writes was printed by nobody, and
+`booking-service`'s `dev` profile declared exactly the same log levels as its `prod` one.
+
+There is no `application-docker.properties` any more. It used to exist for `booking-service`
+alone, one line putting the Flyway baseline back to `false` because a container's database was
+always new; now that `docker-compose.yml` points the containers at the developer's own local
+database instead (see [With Docker](#with-docker)), that line had nothing left to override —
+deleting it, rather than leaving a file that overrides nothing, is the same reasoning that
+already kept the other three services from getting an empty one of their own.
 
 ### Why one file is .yml and ten are .properties
 
@@ -318,18 +439,35 @@ mistake does not fail the build, it shows up at startup or not at all.
 
 ### Production
 
-The secrets that have a fallback in development — `DB_PASSWORD`, `RABBITMQ_USER`,
-`RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — become **mandatory** in production:
-
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-That file does one thing: it replaces `${DB_PASSWORD:-postgres}` with `${DB_PASSWORD:?...}`.
+`docker-compose.yml`'s three application containers connect out to the developer's own local
+PostgreSQL (see [With Docker](#with-docker)) — a convenience with no meaning in a deployment,
+since there is no developer's machine to reach. So on top of undoing `docker-compose.yml`'s
+development conveniences, `docker-compose.prod.yml` is also where the three PostgreSQL
+containers themselves are defined — fresh, not as an override, because the base file no longer
+has any to override:
+
+1. **it puts the profile back** to `prod` on all five containers — no SQL, no DEBUG, no detail
+   in the error responses, no Swagger;
+2. **it takes the fallback values away from the secrets**, described below;
+3. **it unpublishes the broker** with `ports: !reset []`, which needs Compose 2.24 or newer —
+   compose merges `ports` by appending, so an ordinary override could only add to them. The
+   three databases need no such trick: being new to this file, they simply carry no `ports` at
+   all.
+
+On the second: the secrets that have a fallback in development — `RABBITMQ_USER`,
+`RABBITMQ_PASSWORD`, `CORS_ALLOWED_ORIGINS` — become **mandatory** there,
+`${RABBITMQ_USER:-guest}` becoming `${RABBITMQ_USER:?...}`. `DB_PASSWORD` has no development
+fallback to take away in the first place: `docker-compose.yml` does not reference it at all any
+more, so it is a production-only variable, `${DB_PASSWORD:?...}` from the start — the password
+of the three containers this file creates.
 The fallback in `docker-compose.yml` is there on purpose, because in development
 `docker compose up` has to work with nothing prepared; the problem is **how that convenience
-travels elsewhere**, which is silently. No warning, no error, just a database reachable with
-the password `postgres` and a broker with `guest`.
+travels elsewhere**, which is silently. No warning, no error, just a broker reachable with the
+password `guest`.
 
 With the override, a missing variable stops compose before anything starts and says which one
 is missing. Checked in all three states: without the variables it refuses, without the
@@ -427,6 +565,15 @@ response header and in the body's `sessionId` field. It crosses the events on Ra
 carried as a message header: it is the only key that lets you reconstruct an operation
 touching three services, three databases and two different threads.
 
+> That sentence used to have an exception nobody had noticed. The two handlers that answer
+> **401 and 403** run inside the security filter chain, before any controller, and each minted
+> an `AUTH_xxxxxxxx` of its own: a refused request came back with one id in the header and a
+> different one in `sessionId`. Measured — header `REQ_852A1225`, body `AUTH_98C52C23` — which
+> is the exact failure the id exists to prevent, and the worst way for a diagnostic tool to
+> break, because it looks like it is working. They now read the id off the request they are
+> handed (`RequestCorrelationFilter.current(request)`, rather than the no-argument version,
+> because `RequestContextHolder` is not guaranteed to be populated that early).
+
 ## Tokens and authentication
 
 **Only `auth-service` issues them.** It is the only module with `jjwt-impl` among its compile
@@ -482,12 +629,80 @@ status once:
 |---|---|---|
 | `InvalidRequestException` | 400 | the request asks for something that makes no sense |
 | `MethodArgumentNotValidException` | 400 | Bean Validation rejected the body |
+| `HandlerMethodValidationException` | 400 | a constraint on a parameter said no (`@Positive` on a path variable) |
+| `AuthenticationFailedException` | 401 | a login with the wrong credentials |
+| `TooManyRequestsException` | 429 | refused for asking too often, and carries the `Retry-After` delay |
 | `AccessDeniedException` | 403 | authenticated, but not theirs and not an admin |
 | `ResourceNotFoundException` | 404 | the object named does not exist |
 | `DomainConflictException` | 409 | it exists, but its state does not admit the operation |
 | `BookingConflictException` | 409 | overlapping bookings |
+| `OptimisticLockingFailureException` | 409 | somebody else changed the same row first |
 | `DataIntegrityViolationException` | 409 | a database constraint said no |
 | anything else | 500 | unexpected, with the stack trace in the logs |
+
+**A malformed request is the framework's business, not the domain's.** `GlobalExceptionHandler`
+extends Spring's `ResponseEntityExceptionHandler`, which already knows the right status for
+the twenty-odd exceptions Spring MVC raises when a request does not honour the protocol; the
+only thing overridden is the body, so those answers arrive in the same envelope as every
+other. `ProtocolError` is the catalogue that supplies the code and the Italian sentence, keyed
+by status:
+
+| Case | Status | Header it also sets |
+|---|---|---|
+| body that is not JSON, or a field of the wrong type | 400 | |
+| path variable of the wrong type (`/api/rooms/abc`) | 400 | |
+| missing query parameter | 400 | |
+| method that does not exist on that path | 405 | `Allow` |
+| `Content-Type` nobody reads | 415 | `Accept` |
+| `Accept` the service cannot satisfy | 406 | *(no body: see below)* |
+| path with nothing mapped to it | 404 | |
+
+> This was not so until recently, and the way it failed is worth keeping written down.
+> `@ExceptionHandler(Exception.class)` is consulted **before** Spring's own
+> `DefaultHandlerExceptionResolver`, so it was catching all of those first and answering
+> **500 INTERNAL_ERROR** to every one — each logged at ERROR with a stack trace, in a project
+> whose rule is that an ERROR in production is a fact and not noise. Two cases of the family
+> had already been found and patched one at a time (`NoResourceFoundException`,
+> `NoHandlerFoundException`); inheriting covers the rest, including any Spring adds later.
+>
+> The consequence to remember when adding a handler: an `@ExceptionHandler` for a type the
+> base class already maps is not an override, it is an **ambiguity**, and the context refuses
+> to start. Validation and the two 404s are therefore written as `@Override` methods.
+
+The **406 is the one answer with no body**, and that is deliberate: a client that accepts
+nothing the service can produce cannot be sent the envelope either. Returning it anyway is
+what used to make this case fail twice — the second failure escaped to the container's error
+dispatch, which re-enters the security chain on `/error` unauthenticated, and the caller
+received a **401 telling it to log in** instead of a 406.
+
+**Three responses also carry the header that makes them actionable.** A status alone tells a
+client what happened; these tell it what to do next, and without them the only guidance is a
+sentence in Italian meant for a person:
+
+| Response | Header | Why |
+|---|---|---|
+| 401 (protected resource) | `WWW-Authenticate: Bearer realm="classroom"` | mandatory per RFC 9110 §11.6.1. When a token *was* sent and refused it becomes `error="invalid_token"` (RFC 6750 §3.1): without a token you log in, with an expired one you refresh — opposite moves, and previously indistinguishable. This is also the case the README warns about below, where changing `JWT_SECRET` starts refusing every existing token "for no visible reason" |
+| 429 | `Retry-After` | `LoginAttemptLimiter` is the only thing that knows when the window reopens, so it is the only thing that can say — the delay travels on `TooManyRequestsException`. Advisory: it is read separately from the check, so the window can roll over in between |
+| 503 | `Retry-After` | at the gateway. A constant, and it has to be — nothing knows when a service that is not answering will be back |
+
+The **401 of a failed login carries no challenge**, and that is deliberate rather than an
+oversight: `/api/auth/login` does not use HTTP authentication, it reads a JSON body, so a
+`Bearer` challenge would tell the caller to do the one thing that cannot help. A misleading
+challenge is worse than an absent one. The two 401s are different cases, and only the one
+above — a protected resource refusing a request — has something to challenge with.
+
+**Editing a room or a booking is version-checked.** Both are read-modify-write across two
+transactions — load, change some fields, save — so two people editing the same row both used
+to succeed, and the later write silently replaced the earlier one: no error, no trace, the
+first editor's change simply gone. `@Version` on `Room` and `Booking` (migration `V9`) turns
+that into a **409** for whoever arrives second, with `CONCURRENT_MODIFICATION` and an invitation
+to reload and retry.
+
+> `room.status` is refreshed through `RoomRepository.updateStatus`, a targeted column update
+> that deliberately **bypasses** the version. It is a cache of what the bookings say, not
+> anybody's edit: going through `save()` would bump the version and make two people booking
+> *different* slots in the same room at the same moment collide, so one would lose a perfectly
+> valid booking to a 409 raised by bookkeeping neither of them asked for.
 
 The distinction between 500 and 503 is not formal: they suggest two different actions. A 500
 says "something is broken", a 503 says "try again". `ServiceUnavailableException` still
@@ -498,6 +713,26 @@ call had failed, and that call is gone — see "Communication between services" 
 `IllegalArgumentException` is deliberately **not** mapped to 400: it signals a programming
 error, not a bad request, and turning it into a 400 would hide defects behind a response that
 looks normal.
+
+**A rule about a parameter lives on the parameter.** `@Positive` on a path variable, with the
+sentence to show written on the annotation — not an `if` at the top of the method. That rule
+used to be written the other way, and it is worth saying how it went: `id == null || id <= 0`
+appeared **eight times** across three controllers, in **three different Italian wordings** of
+the identical sentence, and whoever met two of them could not tell whether the difference
+meant anything. The `id == null` half was unreachable into the bargain — Spring never passes
+null for a required path variable, and a non-numeric segment was producing the 500 described
+above, not a null.
+
+> Both halves of Bean Validation answer with the same code, `VALIDATION_ERROR`: from the
+> caller's side a rejected body and a rejected parameter are one thing, and the reason is in
+> `userMessage` either way. The wordings live in `ValidationMessages` (booking-service) and
+> beside the controller that uses them (auth-service), because an annotation attribute has to
+> be a compile-time constant and an enum's fields are not one — which is why they are not in
+> `ResourceType` with the rest of that service's wordings.
+>
+> **Do not annotate those controllers `@Validated`.** With it, Spring runs AOP-based
+> validation instead and throws `ConstraintViolationException`, which nothing maps — the 400
+> would go back to being a 500.
 
 **The gateway has its own handler**, because it is WebFlux and does not share the services'.
 It produces the same envelope — a test keeps the two shapes aligned — and tells an unreachable
@@ -547,9 +782,16 @@ To **stdout**, always. In a container Docker collects them (`docker compose logs
 them to a file inside the image would mean producing them where nobody reads them and nobody
 rotates them.
 
-The one exception is the `dev` profile, which adds an appender on `logs/application.log` with
-rotation at 10 MB, 30 days and 500 MB in total. It sits inside `<springProfile name="dev">`,
-next to the file it applies to.
+The one exception is a development run **outside** a container, which adds an appender on
+`logs/application.log` with rotation at 10 MB, 30 days and 500 MB in total. It sits inside
+`<springProfile name="dev &amp; !docker">`, next to the file it applies to.
+
+The `!docker` half is what lets `docker-compose.yml` use the `dev` profile at all. The path is
+relative, so inside the image it resolves somewhere unwritable and the service dies at
+startup — which is why compose used to avoid the profile entirely and flip individual flags
+instead. The condition is stated twice, as `dev &amp; !docker` on the file appender and
+`!dev | docker` on the console-only root, because logback needs the two to cover every case
+between them: exactly one `<root>` has to apply, whichever profiles are active.
 
 ## Communication between services
 

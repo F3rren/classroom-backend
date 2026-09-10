@@ -1,9 +1,9 @@
 package com.classroom.booking.controller;
 
-import com.classroom.dto.ApiEnvelope;
 import com.classroom.booking.dto.BookingRequest;
 import com.classroom.exception.BookingConflictException;
 import com.classroom.exception.DomainConflictException;
+import com.classroom.exception.InvalidRequestException;
 import com.classroom.booking.model.Room;
 import com.classroom.booking.model.Booking;
 import com.classroom.booking.model.BookingStatus;
@@ -18,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -95,46 +97,41 @@ class BookingControllerUnitTest {
         return p;
     }
 
-    @SuppressWarnings("unchecked")
-    private String errorCode(ResponseEntity<?> resp) {
-        return ((ApiEnvelope<Object>) resp.getBody()).getError();
+    /**
+     * The controller no longer builds a 400 for a malformed period: BookingPeriod throws and
+     * GlobalExceptionHandler decides the status once, exactly as already happens for the
+     * conflicts below. Called directly, as here, the exception is what comes out - which is
+     * the behaviour worth pinning. That the codes still reach the client as 400s is checked
+     * over real HTTP, in BookingQueryTest and ProtocolErrorsTest.
+     */
+    private void assertRefusedWith(String expectedCode, ThrowingCallable call) {
+        assertThatThrownBy(call)
+                .isInstanceOf(InvalidRequestException.class)
+                .satisfies(e -> assertThat(((InvalidRequestException) e).getErrorCode())
+                        .isEqualTo(expectedCode));
     }
 
     // ==================== bookRoom ====================
 
     @Test
     void bookRoomRejectsAnUnparsableStartDate() {
-        ResponseEntity<?> resp = controller.bookRoom(request("non-una-data", "2030-01-01T12:00:00"), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_START_DATE");
+        assertRefusedWith("INVALID_START_DATE", () -> controller.bookRoom(request("non-una-data", "2030-01-01T12:00:00"), user));
     }
 
     @Test
     void bookRoomRejectsAnUnparsableEndDate() {
-        ResponseEntity<?> resp = controller.bookRoom(request("2030-01-01T10:00:00", "non-una-data"), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_END_DATE");
+        assertRefusedWith("INVALID_END_DATE", () -> controller.bookRoom(request("2030-01-01T10:00:00", "non-una-data"), user));
     }
 
     @Test
     void bookRoomRejectsAnEndBeforeTheStart() {
-        ResponseEntity<?> resp = controller.bookRoom(
-                request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_DATE_RANGE");
+        assertRefusedWith("INVALID_DATE_RANGE", () -> controller.bookRoom( request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user));
     }
 
     @Test
     void bookRoomRejectsADateInThePast() {
         LocalDateTime past = LocalDateTime.now().minusDays(2).withNano(0);
-        ResponseEntity<?> resp = controller.bookRoom(
-                request(past.format(ISO), past.plusHours(1).format(ISO)), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("PAST_DATE");
+        assertRefusedWith("PAST_DATE", () -> controller.bookRoom( request(past.format(ISO), past.plusHours(1).format(ISO)), user));
     }
 
     @Test
@@ -173,39 +170,23 @@ class BookingControllerUnitTest {
 
     @Test
     void updateRejectsAnUnparsableStartDate() {
-        ResponseEntity<?> resp = controller.updateBooking(
-                5L, request("boom", "2030-01-01T12:00:00"), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_START_DATE");
+        assertRefusedWith("INVALID_START_DATE", () -> controller.updateBooking( 5L, request("boom", "2030-01-01T12:00:00"), user));
     }
 
     @Test
     void updateRejectsAnUnparsableEndDate() {
-        ResponseEntity<?> resp = controller.updateBooking(
-                5L, request("2030-01-01T10:00:00", "boom"), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_END_DATE");
+        assertRefusedWith("INVALID_END_DATE", () -> controller.updateBooking( 5L, request("2030-01-01T10:00:00", "boom"), user));
     }
 
     @Test
     void updateRejectsAnEndBeforeTheStart() {
-        ResponseEntity<?> resp = controller.updateBooking(
-                5L, request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_DATE_RANGE");
+        assertRefusedWith("INVALID_DATE_RANGE", () -> controller.updateBooking( 5L, request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), user));
     }
 
     @Test
     void updateRejectsADateInThePast() {
         LocalDateTime past = LocalDateTime.now().minusDays(2).withNano(0);
-        ResponseEntity<?> resp = controller.updateBooking(
-                5L, request(past.format(ISO), past.plusHours(1).format(ISO)), user);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("PAST_DATE");
+        assertRefusedWith("PAST_DATE", () -> controller.updateBooking( 5L, request(past.format(ISO), past.plusHours(1).format(ISO)), user));
     }
 
     @Test
@@ -244,27 +225,17 @@ class BookingControllerUnitTest {
 
     @Test
     void blockRejectsAnUnparsableStartDate() {
-        ResponseEntity<?> resp = controller.blockRoom(request("boom", "2030-01-01T12:00:00"), admin);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_START_DATE");
+        assertRefusedWith("INVALID_START_DATE", () -> controller.blockRoom(request("boom", "2030-01-01T12:00:00"), admin));
     }
 
     @Test
     void blockRejectsAnUnparsableEndDate() {
-        ResponseEntity<?> resp = controller.blockRoom(request("2030-01-01T10:00:00", "boom"), admin);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_END_DATE");
+        assertRefusedWith("INVALID_END_DATE", () -> controller.blockRoom(request("2030-01-01T10:00:00", "boom"), admin));
     }
 
     @Test
     void blockRejectsAnEndBeforeTheStart() {
-        ResponseEntity<?> resp = controller.blockRoom(
-                request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), admin);
-
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errorCode(resp)).isEqualTo("INVALID_DATE_RANGE");
+        assertRefusedWith("INVALID_DATE_RANGE", () -> controller.blockRoom( request("2030-01-01T12:00:00", "2030-01-01T10:00:00"), admin));
     }
 
     @Test

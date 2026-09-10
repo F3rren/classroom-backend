@@ -45,6 +45,68 @@ class ErrorEnvelopeUnitTest {
     }
 
     @Test
+    void the401CarriesTheRequestsOwnIdAndNotAFreshOne() throws Exception {
+        // The defect this replaced: the handler minted an AUTH_xxxxxxxx of its own, so a
+        // refused request came back with one id in the X-Request-Id header and a different
+        // one in the body - two ids for one request, which is the exact failure the
+        // correlation id exists to prevent.
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RequestCorrelationFilter.ATTRIBUTE, "REQ_DEADBEEF");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        new ApiAuthenticationEntryPoint().commence(
+                request, response, new BadCredentialsException("nessun token"));
+
+        assertThat(objectMapper.readTree(response.getContentAsString()).get("sessionId").asText())
+                .isEqualTo("REQ_DEADBEEF");
+    }
+
+    @Test
+    void the403CarriesTheRequestsOwnIdToo() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RequestCorrelationFilter.ATTRIBUTE, "REQ_DEADBEEF");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        new ApiAccessDeniedHandler().handle(
+                request, response, new AccessDeniedException("permesso negato"));
+
+        assertThat(objectMapper.readTree(response.getContentAsString()).get("sessionId").asText())
+                .isEqualTo("REQ_DEADBEEF");
+    }
+
+    @Test
+    void a401WithoutATokenChallengesForOne() throws Exception {
+        // RFC 9110 section 11.6.1 makes WWW-Authenticate mandatory on a 401: without it a
+        // client is refused and not told what to attempt. It was missing entirely.
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        new ApiAuthenticationEntryPoint().commence(
+                new MockHttpServletRequest(), response, new BadCredentialsException("nessun token"));
+
+        assertThat(response.getHeader("WWW-Authenticate")).isEqualTo("Bearer realm=\"classroom\"");
+    }
+
+    @Test
+    void a401OnATokenThatWasSentSaysTheTokenIsTheProblem() throws Exception {
+        // RFC 6750 section 3.1. The two cases call for opposite actions - without a token you
+        // log in, with an expired one you refresh and retry - and only the request says which
+        // it was, since JwtAuthFilter does not throw on a bad token, it just leaves the
+        // request unauthenticated. It is also the case the README warns about: after
+        // JWT_SECRET changes, every existing token starts being refused "for no visible
+        // reason". Now the reason is in the header.
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer un-token-scaduto");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        new ApiAuthenticationEntryPoint().commence(
+                request, response, new BadCredentialsException("token scaduto"));
+
+        assertThat(response.getHeader("WWW-Authenticate"))
+                .startsWith("Bearer realm=\"classroom\"")
+                .contains("error=\"invalid_token\"");
+    }
+
+    @Test
     void insufficientPermissionsProducesA403Envelope() throws Exception {
         MockHttpServletResponse response = new MockHttpServletResponse();
 

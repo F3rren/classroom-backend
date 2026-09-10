@@ -41,6 +41,9 @@ class ErrorResponsesGatewayTest {
                 .exchange()
                 .expectStatus().isEqualTo(503)
                 .expectHeader().contentTypeCompatibleWith("application/json")
+                // What separates a 503 from a 500 is that repeating it is worth something,
+                // and this header is the only part of that a client can act on.
+                .expectHeader().exists("Retry-After")
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.error").isEqualTo("SERVICE_UNAVAILABLE")

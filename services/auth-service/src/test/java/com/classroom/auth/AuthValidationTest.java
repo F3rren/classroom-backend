@@ -1,6 +1,7 @@
 package com.classroom.auth;
 
 import com.classroom.testsupport.TestJson;
+import com.classroom.testsupport.TestQuery;
 import com.classroom.auth.model.User;
 import com.classroom.auth.repository.UserRepository;
 import com.classroom.model.Role;
@@ -18,6 +19,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
@@ -102,18 +104,29 @@ class AuthValidationTest {
         return h;
     }
 
+    /**
+     * register() and updateUser() moved from a JSON @RequestBody to @ModelAttribute (one
+     * query parameter per field), so Swagger UI can offer real inputs instead of a JSON box.
+     * TestQuery builds the query string; URI.create (not the String overload used elsewhere
+     * in this file for /api/auth/login, which never got this treatment) is what keeps
+     * TestRestTemplate from re-encoding it and turning "%40" into "%2540".
+     */
+    private ResponseEntity<String> callAdminUsers(String path, HttpMethod method, String token, Map<String, ?> params) {
+        URI uri = URI.create(rest.getRootUri() + path + TestQuery.of(params));
+        return rest.exchange(uri, method, new HttpEntity<>(bearer(token)), String.class);
+    }
+
 
     @Test
     void anInvalidEmailIsRejectedByValidation() throws Exception {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> params = Map.of(
                 "username", "nuovoutente",
                 "email", "non-e-una-email",
                 "password", "password1234",
                 "name", "Nuovo Utente",
                 "role", "user");
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = callAdminUsers("/api/admin/users", HttpMethod.POST, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         Map<String, Object> responseBody = TestJson.asMap(resp.getBody());
@@ -123,15 +136,14 @@ class AuthValidationTest {
 
     @Test
     void aTooShortPasswordIsRejected() throws Exception {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> params = Map.of(
                 "username", "nuovoutente2",
                 "email", "nuovoutente2@validation.test",
                 "password", "short",
                 "name", "Nuovo Utente 2",
                 "role", "user");
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = callAdminUsers("/api/admin/users", HttpMethod.POST, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -139,15 +151,14 @@ class AuthValidationTest {
 
     @Test
     void adminRegisterWithAnInvalidRoleIsRejected() throws Exception {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> params = Map.of(
                 "username", "nuovoutente3",
                 "email", "nuovoutente3@validation.test",
                 "password", "password1234",
                 "name", "Nuovo Utente 3",
                 "role", "superadmin");
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = callAdminUsers("/api/admin/users", HttpMethod.POST, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -155,15 +166,14 @@ class AuthValidationTest {
 
     @Test
     void validDataCreatesTheUser() throws Exception {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> params = Map.of(
                 "username", "nuovoutente4",
                 "email", "nuovoutente4@validation.test",
                 "password", "password1234",
                 "name", "Nuovo Utente 4",
                 "role", "user");
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = callAdminUsers("/api/admin/users", HttpMethod.POST, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(TestJson.asMap(resp.getBody()).get("success")).isEqualTo(true);
@@ -171,11 +181,10 @@ class AuthValidationTest {
 
     @Test
     void nonAdminCannotRegisterUsers() {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> params = Map.of(
                 "username", "x", "email", "x@validation.test", "password", "password1234", "name", "X");
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/users", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenUser)), String.class);
+        ResponseEntity<String> resp = callAdminUsers("/api/admin/users", HttpMethod.POST, tokenUser, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
@@ -213,6 +222,11 @@ class AuthValidationTest {
         // A contract test: the frontend reads these exact keys. It is here to stop a
         // refactor renaming them or adding some in silence. It used to live in the
         // application module, which no longer serves /api/auth/login.
+        //
+        // "refreshToken" was added to "data" deliberately, alongside POST /api/auth/refresh
+        // and POST /api/auth/logout (RefreshTokenService/AuthController): this is the one
+        // place this test is meant to catch a shape change, not prevent one that was made on
+        // purpose and is needed for those two endpoints to ever be reachable at all.
         ResponseEntity<String> resp = rest.postForEntity(
                 "/api/auth/login",
                 Map.of("email", "user@validation.test", "password", "user-password"),
@@ -225,7 +239,7 @@ class AuthValidationTest {
 
         Map<String, Object> data = (Map<String, Object>) body.get("data");
         assertThat(data.keySet()).containsExactlyInAnyOrder(
-                "token", "user", "loginTime", "tokenType");
+                "token", "refreshToken", "user", "loginTime", "tokenType");
 
         Map<String, Object> user = (Map<String, Object>) data.get("user");
         assertThat(user.keySet()).containsExactlyInAnyOrder(
@@ -239,16 +253,17 @@ class AuthValidationTest {
         // credentials, and the symptom would only surface at their next login.
         Long id = userRepository.findByEmail("user@validation.test").getId();
 
-        Map<String, Object> body = Map.of(
-                "username", "user-validation",
-                "email", "user@validation.test",
-                "password", "",
-                "name", "User Validation Rinominato",
-                "role", "user");
+        // password left out of the map entirely, not sent as "": TestQuery omits a null
+        // value rather than encoding it, and UpdateUserRequest.password is a plain String
+        // with no @NotBlank - an ABSENT query parameter binds to null there, exactly like an
+        // absent JSON field used to, which is the "leave it unchanged" case this test checks.
+        Map<String, Object> params = new java.util.HashMap<>();
+        params.put("username", "user-validation");
+        params.put("email", "user@validation.test");
+        params.put("name", "User Validation Rinominato");
+        params.put("role", "user");
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/users/" + id, HttpMethod.PUT,
-                new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = callAdminUsers("/api/admin/users/" + id, HttpMethod.PUT, tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
 

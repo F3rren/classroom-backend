@@ -39,6 +39,24 @@
       "type": "java.lang.Long",
       "description": "How long, in seconds, a browser may cache a CORS preflight response.",
       "defaultValue": 3600
+    },
+    {
+      "name": "classroom.openapi.title",
+      "type": "java.lang.String",
+      "description": "This service's own Swagger title (OpenApiConfig). Every service picks up that shared bean via @ComponentScan, so without a value here it would show booking-service's title instead of its own.",
+      "defaultValue": "Prenotazioni Aule API"
+    },
+    {
+      "name": "classroom.openapi.description",
+      "type": "java.lang.String",
+      "description": "This service's own Swagger description (OpenApiConfig), for the same reason as classroom.openapi.title.",
+      "defaultValue": "API REST per la gestione di prenotazioni aule, corsi e notifiche"
+    },
+    {
+      "name": "classroom.public-api-url",
+      "type": "java.lang.String",
+      "description": "The base URL declared in every service's OpenAPI spec (OpenApiConfig). Always the gateway, never the service's own port: the endpoints only exist under /api/**, reachable through the gateway either way, and leaving this unset lets springdoc guess it instead - wrongly, whenever the spec was fetched through a proxied path, such as the aggregated Swagger UI's /docs/<service>/v3/api-docs route.",
+      "defaultValue": "http://localhost:17102"
     }
   ]
 }

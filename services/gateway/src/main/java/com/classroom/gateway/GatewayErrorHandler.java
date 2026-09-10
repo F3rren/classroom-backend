@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
@@ -51,6 +52,9 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GatewayErrorHandler.class);
 
+    /** How long a client is told to wait before retrying an unreachable service. */
+    private static final String RETRY_AFTER_SECONDS = "10";
+
     /** The same format util.Timestamps uses in the services, not Spring's ISO. */
     private static final DateTimeFormatter API_TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -87,6 +91,19 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
 
         exchange.getResponse().setStatusCode(outcome.status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        if (outcome.status == HttpStatus.SERVICE_UNAVAILABLE) {
+            // What separates a 503 from a 500 is that repeating it is worth something, and
+            // Retry-After is the only part of that a client can act on: the userMessage says
+            // "fra qualche istante" to a person, this says how long to the code.
+            // RFC 9110 section 10.2.3.
+            //
+            // A constant, and it has to be: nothing here knows when the service will be back
+            // - it is not answering, which is why we are in this branch. Ten seconds is the
+            // order of magnitude of a service restarting, short enough that a client polling
+            // on it recovers promptly and long enough not to become a retry storm against
+            // something already down.
+            exchange.getResponse().getHeaders().set(HttpHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS);
+        }
 
         DataBuffer body = writeBody(exchange, outcome, sessionId);
         return exchange.getResponse().writeWith(Objects.requireNonNull(Mono.just(body)));

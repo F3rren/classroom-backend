@@ -16,6 +16,7 @@ import com.classroom.util.LogSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,15 @@ public class AdminUserController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminUserController.class);
 
+    /**
+     * On the annotation and not as an if at the top of each method, which is how it used to
+     * be written - here and in booking-service, eight copies in three different Italian
+     * wordings of the identical rule. A constant because an annotation attribute has to be a
+     * compile-time one; private because this is the only class in this service that takes a
+     * user id from the path.
+     */
+    private static final String USER_ID_POSITIVE = "L'ID dell'utente deve essere un numero positivo.";
+
     private final AuthService authService;
     private final UserService userService;
 
@@ -70,9 +80,15 @@ public class AdminUserController {
         return ApiEnvelope.success(message, data, sessionId);
     }
 
+    // @ModelAttribute, not @RequestBody: query parameters, one per field, is what turns this
+    // into fillable inputs in Swagger UI instead of a JSON box to type by hand. Springdoc
+    // reads the same @Schema on CreateUserRequest's fields either way, so nothing there
+    // changed - only how the values arrive. Login stays JSON-bodied on purpose: unlike this
+    // one, its password must never sit in a URL, where it would reach access logs, browser
+    // history and any Referer header sent afterwards.
     @PostMapping
     @Operation(summary = "Create a new user (admin only)")
-    public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @RequestBody CreateUserRequest request) {
+    public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @ModelAttribute CreateUserRequest request) {
         String sessionId = generateSessionId();
         logger.debug("register - user created by an admin | {} | role={}", LogSanitizer.maskEmail(request.getEmail()), request.getRole());
 
@@ -104,20 +120,18 @@ public class AdminUserController {
         );
     }
 
+    // Same reasoning as register(): query parameters instead of a JSON body, for real form
+    // fields in Swagger UI. The password field stays here too, but it is OPTIONAL for an
+    // update (empty means "leave it unchanged" - see UpdateUserRequest) and this is an
+    // admin-only, ADMIN-INITIATED action, not the credential a user types to log themselves
+    // in - the login endpoint is the one this project keeps out of any URL.
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing user (admin only)")
-    public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(@PathVariable("id") Long id, @Valid @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<ApiEnvelope<UserUpdateAck>> updateUser(
+            @PathVariable("id") @Positive(message = USER_ID_POSITIVE) Long id,
+            @Valid @ModelAttribute UpdateUserRequest request) {
         String sessionId = generateSessionId();
         logger.debug("updateUser - userId={} role={}", id, request.getRole());
-
-        if (id == null || id <= 0) {
-            logger.warn("END updateUser - invalid user ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "Invalid user id",
-                                  "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         User updated = authService.updateUser(id, request);
         logger.info("User updated by an admin - userId={}", updated.getId());
@@ -130,18 +144,10 @@ public class AdminUserController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a user and their data (admin only)")
-    public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUser(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiEnvelope<DeletedUserResponse>> deleteUser(
+            @PathVariable("id") @Positive(message = USER_ID_POSITIVE) Long id) {
         String sessionId = generateSessionId();
         logger.debug("START deleteUser - user ID: {}", id);
-
-        if (id == null || id <= 0) {
-            logger.warn("END deleteUser - invalid user ID: {}", id);
-            return new ResponseEntity<>(
-                createErrorResponse("INVALID_USER_ID", "Invalid user id",
-                                  "L'ID dell'utente deve essere un numero positivo valido.", sessionId),
-                HttpStatus.BAD_REQUEST
-            );
-        }
 
         if (userService.findById(id) == null) {
             logger.warn("END deleteUser - user not found - ID: {}", id);

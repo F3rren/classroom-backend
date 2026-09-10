@@ -80,6 +80,37 @@ public class LoginAttemptLimiter {
     }
 
     /**
+     * How many seconds until the key's window reopens, for the Retry-After header.
+     *
+     * RFC 9110 §10.2.3 is what makes a 429 actionable: without it the caller is told to
+     * "riprova tra qualche minuto" and has to guess how many. The limiter is the only thing
+     * that knows, so it is the only thing that can say.
+     *
+     * A key nobody has recorded, or one whose window has already closed, answers with the
+     * full window: it is the honest upper bound, and it is what the caller would wait
+     * anyway if it started counting now.
+     *
+     * The value is ADVISORY, and asking for it separately from tooManyAttempts is what
+     * makes it so: between the two calls the window can roll over and the answer be an
+     * instant too generous. That is the right trade for a header nobody makes a decision
+     * on beyond when to try again.
+     */
+    public long retryAfterSeconds(String key) {
+        Window window = windows.get(key);
+        long remainingMs = windowMs;
+        if (window != null) {
+            synchronized (window) {
+                long elapsed = System.currentTimeMillis() - window.startTime;
+                remainingMs = elapsed >= windowMs ? windowMs : windowMs - elapsed;
+            }
+        }
+        // Never zero: a Retry-After of 0 invites the immediate retry the limit exists to
+        // refuse. Rounded up for the same reason - answering "1" for 1.4 seconds left sends
+        // the caller back before the window has actually reopened.
+        return Math.max(1, (remainingMs + 999) / 1000);
+    }
+
+    /**
      * Removes the keys whose window has closed: from that moment they count for nothing, and
      * keeping them around would be memory and nothing else.
      *

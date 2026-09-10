@@ -25,6 +25,17 @@ public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * Optimistic locking. Hibernate bumps it on every update and refuses one whose version
+     * has moved on, which is what turns two people editing the same row at once from "the
+     * later write wins in silence" into a 409 for the one who lost.
+     *
+     * Never set by hand: it is Hibernate's, and the DTOs deliberately do not carry it.
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
     
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "room_id", nullable = false)

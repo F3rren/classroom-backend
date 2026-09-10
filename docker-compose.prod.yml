@@ -3,66 +3,149 @@
 #
 #     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
-# IT DOES ONE THING: it takes the fallback values away from the secrets.
+# docker-compose.yml is the DEVELOPMENT file: its three application services connect out to
+# whatever PostgreSQL is already running on the developer's own machine (DB_HOST is
+# host.docker.internal), which is a convenience that makes no sense here - there is no
+# "developer's machine" to reach in a deployment, and nothing says one exists. So unlike every
+# other difference below, THIS FILE DOES NOT OVERRIDE the database: it DEFINES it, fresh -
+# three postgres:16-alpine containers of its own, one per service, unpublished, wired to the
+# app services with their own depends_on and DB_HOST. It is what docker-compose.yml itself
+# used to contain, before development moved to the developer's own instance.
 #
-# docker-compose.yml has them on purpose - ${DB_PASSWORD:-postgres},
-# ${RABBITMQ_PASSWORD:-guest} - because in development "docker compose up" has to work with
-# nothing prepared. The problem is how that convenience travels elsewhere: silently. No
-# warning, no error, just a database reachable with the password "postgres" and a broker with
-# "guest".
+# THE REST DOES THREE THINGS, and each undoes a convenience that docker-compose.yml has on
+# purpose, because that file is the development one.
 #
-# Here the same variables become ${...:?}, that is, mandatory: if they are missing, compose
-# refuses to start and says which one. An error before starting, instead of a system that is
-# up and open.
+# 1. IT PUTS THE PROFILE BACK. docker-compose.yml starts the five services on "dev,docker":
+#    the SQL, the DEBUG narration, error responses carrying the reason, Swagger. Here they go
+#    back to "prod", which is also each service's own default (spring.profiles.default) - so
+#    this line is belt as well as braces, and it says out loud which environment this is.
 #
-# JWT_SECRET does not appear: it is already mandatory in the main file, because a signing
-# secret with a convenience value never makes sense, not even in development.
+# 2. IT TAKES THE FALLBACK VALUES AWAY FROM THE SECRETS. docker-compose.yml has them on
+#    purpose - ${SPRING_DATASOURCE_PASSWORD:-postgres}, ${RABBITMQ_PASSWORD:-guest} - because
+#    in development "docker compose up" has to work with nothing prepared. The problem is how
+#    that convenience travels elsewhere: silently. No warning, no error, just a database
+#    reachable with the password "postgres" and a broker with "guest". Here the passwords
+#    become ${DB_PASSWORD:?}, that is, mandatory: if it is missing, compose refuses to start
+#    and says so. An error before starting, instead of a system that is up and open.
+#
+#    JWT_SECRET does not appear: it is already mandatory in the main file, because a signing
+#    secret with a convenience value never makes sense, not even in development.
+#
+# 3. IT UNPUBLISHES THE BROKER. docker-compose.yml publishes its management UI on 127.0.0.1 so
+#    it is reachable from the host; "ports: !reset []" empties the list rather than adding to
+#    it, which is the whole difficulty - compose MERGES ports by appending, so without !reset
+#    there would be no way to take back a port declared in the base file. The three databases
+#    defined below need no such trick: they are new to this file, and simply carry no "ports"
+#    key at all.
+#
+#    !reset needs Compose 2.24 or newer. On an older one the tag is not recognised and the
+#    command fails loudly, which is the right way round: you find out before deploying, not
+#    afterwards, and the fix is to upgrade compose or to delete the "ports" block on "broker"
+#    below together with the one in docker-compose.yml.
 #
 # WHAT IT DELIBERATELY DOES NOT DO: restart policies, memory limits, replicas, log shipping.
 # Those are decisions that depend on WHERE you deploy, and inventing them here would mean
 # writing them before knowing whether they are needed.
 # ============================================================================
 
+x-profilo-produzione: &profilo "prod"
+
 services:
 
+  # Fresh definitions, not overrides: docker-compose.yml no longer has a "db-users" (etc.) to
+  # override. One database per service, exactly as development keeps - see docker-compose.yml
+  # - just containerised here instead of pointing at a developer's machine that does not exist
+  # in a deployment.
   db-users:
+    image: postgres:16-alpine
     environment:
+      POSTGRES_DB: classroom_users
       POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+    volumes:
+      - data-users:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_users"]
+      interval: 5s
+      retries: 12
 
   db-bookings:
+    image: postgres:16-alpine
     environment:
+      POSTGRES_DB: classroom
       POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+    volumes:
+      - data-bookings:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom"]
+      interval: 5s
+      retries: 12
 
   db-notifications:
+    image: postgres:16-alpine
     environment:
+      POSTGRES_DB: classroom_notifications
       POSTGRES_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
+    volumes:
+      - data-notifications:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_notifications"]
+      interval: 5s
+      retries: 12
 
   broker:
+    ports: !reset []
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
 
   auth-service:
+    depends_on:
+      db-users:
+        condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: *profilo
+      DB_HOST: db-users
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
       RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
 
   booking-service:
+    depends_on:
+      db-bookings:
+        condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: *profilo
+      DB_HOST: db-bookings
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
       RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
       # No fallback here either: localhost origins in production are not a useful default,
       # they are a door left open onto an origin that does not exist.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in production the allowed origins have to be declared}
+      # No FLYWAY_BASELINE_ON_MIGRATE override needed here: application-prod.properties
+      # already hardcodes baseline-on-migrate=false, not through that placeholder - right for
+      # this fresh container database, where V1 has to run for real. The placeholder only
+      # exists in application-dev.properties, for development's pre-Flyway local database.
 
   notification-service:
+    depends_on:
+      db-notifications:
+        condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: *profilo
+      DB_HOST: db-notifications
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?in production the database password has to be declared, not inherited from a default}
       RABBITMQ_USER: ${RABBITMQ_USER:?in production the broker user has to be declared, not left as guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?in production the broker password has to be declared, not left as guest}
 
   gateway:
     environment:
+      # Back to "prod", which for the gateway means the aggregated Swagger UI is not
+      # registered at all: application-dev.yml is what turns it on, and it is not loaded here.
+      SPRING_PROFILES_ACTIVE: *profilo
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?in production the allowed origins have to be declared}
+
+volumes:
+  data-users:
+  data-bookings:
+  data-notifications:

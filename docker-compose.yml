@@ -1,65 +1,80 @@
 # ============================================================================
-# The whole system with one command:
+# THE WHOLE SYSTEM IN DEVELOPMENT MODE, with one command:
 #
 #     JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 #
 # The frontend then points at http://localhost:17102 and nothing else.
 #
+# THIS FILE IS THE DEVELOPMENT ONE. Not "production with a couple of conveniences": the five
+# services start on SPRING_PROFILES_ACTIVE=dev,docker, so what you get is the SQL Hibernate
+# is running, the DEBUG narration of every request, error responses that say what went wrong,
+# and Swagger on. It is what you want while you are watching, and none of it is what you want
+# in front of users.
+#
+# PRODUCTION IS THE OTHER COMMAND, and it names its files explicitly:
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# See docker-compose.prod.yml: it puts the profile back to "prod", takes the fallback values
+# away from the secrets, and it is the file that spins up its own containerised PostgreSQL -
+# see below for why development does not.
+#
+# THE THREE APPLICATION SERVICES CONNECT TO YOUR LOCAL POSTGRESQL, not to a container. This
+# file used to start three postgres:16-alpine containers of its own, published on the loopback
+# so pgAdmin could reach them. That meant a second, empty PostgreSQL for anyone who already
+# had one installed and populated - exactly the case here. Now DB_HOST is
+# host.docker.internal, the name Docker Desktop resolves to the machine running it, and the
+# three databases (classroom_users, classroom, classroom_notifications) are expected to
+# already exist on that instance: Flyway creates the TABLES on startup, the same as always,
+# but it cannot create a DATABASE it has no connection to yet, so those three must exist
+# beforehand. SPRING_DATASOURCE_PASSWORD in .env - already the local PostgreSQL's password for
+# "mvn spring-boot:run" - is now also what these containers authenticate with, since they are
+# talking to the very same instance.
+#
 # ONE DATABASE PER SERVICE, rather than one with three schemas: that is the point of the
-# split. Each service can reach only its own, so a query that crosses the boundary does not
-# fail at runtime - it does not compile at all.
+# split, and it does not depend on where the database runs. Each service's JPA layer only ever
+# sees its own database's entities, so a query that crosses the boundary does not fail at
+# runtime - it does not compile at all.
 # ============================================================================
 
 name: classroom
 
-x-attesa-db: &attesa-db
-  condition: service_healthy
+# The profile the five services start on. It is one anchor and not five copies because the
+# five have to agree: a container left on "prod" while the others are on "dev" would differ
+# in its logs, its error responses and its documentation, and nothing would say why.
+#
+#   dev     WHAT behaviour is wanted: SQL, DEBUG, talking errors, Swagger.
+#   docker  WHERE it is running. It is a single guard now - the springProfile conditions in
+#           logback-spring.xml that keep the rolling file appender out of the image, since its
+#           relative path resolves somewhere unwritable inside a container. There used to be a
+#           second one, booking-service's Flyway baseline put back to false for a container's
+#           always-empty database; gone now that the containers reach the developer's own
+#           local PostgreSQL, the same one a plain "dev" run always targeted.
+x-profilo-sviluppo: &profilo "dev,docker"
+
+# host.docker.internal already resolves on Docker Desktop (Windows and Mac) without this, but
+# the mapping needs to be explicit to work the same way on Linux - "host-gateway" is the
+# special value Compose replaces with the host's real gateway IP. Harmless where it is already
+# implicit, so every service that talks to the local database carries it rather than relying
+# on a Windows-only default.
+x-verso-host: &verso-host
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
 
 services:
-
-  db-users:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: classroom_users
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes:
-      - data-users:/var/lib/postgresql/data
-    healthcheck:
-      # The services start faster than PostgreSQL: without this check they would fail at
-      # startup with "connection refused" and go into a restart loop.
-      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_users"]
-      interval: 5s
-      retries: 12
-
-  db-bookings:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: classroom
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes:
-      - data-bookings:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom"]
-      interval: 5s
-      retries: 12
-
-  db-notifications:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: classroom_notifications
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes:
-      - data-notifications:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d classroom_notifications"]
-      interval: 5s
-      retries: 12
 
   broker:
     image: rabbitmq:3.13-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    # The management UI on http://127.0.0.1:15672 (guest/guest by default). The image already
+    # carries it - that is what "-management-alpine" means - and it answers the question this
+    # architecture actually raises in development: did the event reach the queue, and did
+    # anybody consume it. docker-compose.prod.yml removes this publication the same way.
+    # The AMQP port itself (5672) stays unpublished: nothing on the host speaks it.
+    ports:
+      - "127.0.0.1:15672:15672"
     volumes:
       - data-broker:/var/lib/rabbitmq
     healthcheck:
@@ -70,6 +85,7 @@ services:
       retries: 12
 
   auth-service:
+    <<: *verso-host
     build:
       context: .
       args:
@@ -77,18 +93,16 @@ services:
     depends_on:
       broker:
         condition: service_healthy
-      db-users: *attesa-db
     environment:
-      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
-      # Without this line the service still starts, merely less protected: that is
-      # deliberate, so that forgetting it degrades rather than breaks.
-      SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: db-users
+      SPRING_PROFILES_ACTIVE: *profilo
+      DB_HOST: host.docker.internal
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DB_NAME: classroom_users
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Overridable: your local PostgreSQL may already hold this database under a different
+      # name than the container-only default. Set AUTH_DB_NAME in .env if so.
+      DB_NAME: ${AUTH_DB_NAME:-classroom_users}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-postgres}
       # The SAME secret for all of them: that is what lets every service verify on its own
       # the tokens this one signs, without calling it.
       JWT_SECRET: "${JWT_SECRET:?generate one with: openssl rand -base64 48}"
@@ -101,6 +115,7 @@ services:
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Amministratore}
 
   booking-service:
+    <<: *verso-host
     build:
       context: .
       args:
@@ -108,31 +123,28 @@ services:
     depends_on:
       broker:
         condition: service_healthy
-      db-bookings: *attesa-db
     environment:
-      # prod holds hardening ONLY, as for the other two. It is no longer a necessity: the
-      # connection lives in application.properties with placeholders, so without this line the
-      # service still starts, merely less protected.
-      #
-      # It was not always so, and that cost dearly: the URL lived only in
-      # application-dev.properties, written against localhost, and with
-      # spring.profiles.default=dev a container without this line started pointing at
-      # localhost and died on its first query. The symptom was a 503 from the gateway, and
-      # the cause sat three files away.
-      SPRING_PROFILES_ACTIVE: prod
-      # This is the only service whose prod profile demands the CORS origins with no
-      # fallback, so they have to be passed explicitly here.
+      SPRING_PROFILES_ACTIVE: *profilo
+      # prod has no fallback for this one (application-prod.properties): a real deployment is
+      # forced to set it for real rather than inherit a development value by accident. Here it
+      # is the two development servers, which is what the profile is for.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}"
-      DB_HOST: db-bookings
+      DB_HOST: host.docker.internal
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DB_NAME: classroom
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Overridable, same reason as AUTH_DB_NAME above.
+      DB_NAME: ${BOOKING_DB_NAME:-classroom}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-postgres}
       JWT_SECRET: "${JWT_SECRET:?generate one with: openssl rand -base64 48}"
       NOTIFICATION_SERVICE_URL: http://notification-service:17104
+      # true is right against the developer's own pre-Flyway "classroom" database - see
+      # application-dev.properties. Set FLYWAY_BASELINE_ON_MIGRATE=false in .env instead if
+      # the local database is a fresh one that has never seen these tables before.
+      FLYWAY_BASELINE_ON_MIGRATE: ${FLYWAY_BASELINE_ON_MIGRATE:-true}
 
   notification-service:
+    <<: *verso-host
     build:
       context: .
       args:
@@ -140,18 +152,15 @@ services:
     depends_on:
       broker:
         condition: service_healthy
-      db-notifications: *attesa-db
     environment:
-      # prod holds hardening ONLY - Swagger off, a wider pool, CORS with no fallback.
-      # Without this line the service still starts, merely less protected: that is
-      # deliberate, so that forgetting it degrades rather than breaks.
-      SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: db-notifications
+      SPRING_PROFILES_ACTIVE: *profilo
+      DB_HOST: host.docker.internal
       RABBITMQ_HOST: broker
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DB_NAME: classroom_notifications
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Overridable, same reason as AUTH_DB_NAME above.
+      DB_NAME: ${NOTIFICATION_DB_NAME:-classroom_notifications}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-postgres}
       JWT_SECRET: "${JWT_SECRET:?generate one with: openssl rand -base64 48}"
 
   gateway:
@@ -159,9 +168,11 @@ services:
       context: .
       args:
         MODULE: gateway
-    # The only published port. The other services talk to each other on compose's internal
-    # network and are not reachable from outside: the /internal/ routes are therefore
-    # unreachable from outside by construction, and not merely by rule.
+    # The only port that the frontend uses. The services behind it talk to each other on
+    # compose's internal network and are not published at all: the /internal/ routes are
+    # therefore unreachable from outside by construction, and not merely by rule. The
+    # broker's loopback port above is a development window onto the infrastructure, not onto
+    # the API - and production takes it away.
     ports:
       - "17102:17102"
     depends_on:
@@ -169,6 +180,12 @@ services:
       - booking-service
       - notification-service
     environment:
+      # Turns on the aggregated Swagger UI - the three services' /v3/api-docs gathered into
+      # one page on the one port that matters, http://localhost:17102/swagger-ui.html - the
+      # same way it turns on each service's own documentation behind it. It used to be a
+      # separate SWAGGER_UI_ENABLED here, which meant this file and the profile could disagree
+      # about whether the documentation exists. See application-dev.yml.
+      SPRING_PROFILES_ACTIVE: *profilo
       AUTH_SERVICE_URL: http://auth-service:17105
       BOOKING_SERVICE_URL: http://booking-service:17103
       NOTIFICATION_SERVICE_URL: http://notification-service:17104
@@ -176,6 +193,3 @@ services:
 
 volumes:
   data-broker:
-  data-users:
-  data-bookings:
-  data-notifications:

@@ -8,6 +8,7 @@ import com.classroom.exception.DomainConflictException;
 import com.classroom.booking.exception.ResourceType;
 import com.classroom.booking.model.Booking;
 import com.classroom.booking.model.BookingOwner;
+import com.classroom.booking.model.RoomOccupancy;
 import com.classroom.booking.model.RoomStatus;
 import com.classroom.booking.model.BookingStatus;
 import com.classroom.booking.repository.RoomRepository;
@@ -152,31 +153,16 @@ public class BookingService {
     public String getRoomStatus(Long roomId, LocalDateTime moment) {
         logger.debug("START getRoomStatus");
         logger.debug("checking room status - roomId: {}, moment: {}", roomId, moment);
-        List<Booking> activeBookings = bookingRepository.findActiveBookings(roomId, moment);
-            
-        if (activeBookings.isEmpty()) {
-            logger.debug("room status - roomId: {}, moment: {} - FREE", roomId, moment);
-            return "FREE";
-        }
-        
-        // Precedence: MAINTENANCE > BLOCKED > BOOKED
-        for (Booking p : activeBookings) {
-            if (p.getStatus() == BookingStatus.MAINTENANCE) {
-                logger.debug("room status - roomId: {}, moment: {} - MAINTENANCE", roomId, moment);
-                return "MAINTENANCE";
-            }
-        }
-        
-        for (Booking p : activeBookings) {
-            if (p.getStatus() == BookingStatus.BLOCKED) {
-                logger.debug("room status - roomId: {}, moment: {} - BLOCKED", roomId, moment);
-                return "BLOCKED";
-            }
-        }
-        
-        logger.debug("room status - roomId: {}, moment: {} - BOOKED", roomId, moment);
+        // The precedence MAINTENANCE > BLOCKED > BOOKED lives in RoomOccupancy, which is
+        // also what updateRoomStatus and the room details now read it through. It used to be
+        // written here as two loops, there as two anyMatch, and a third time in RoomService.
+        RoomOccupancy occupancy = RoomOccupancy.of(bookingRepository.findActiveBookings(roomId, moment));
+
+        logger.debug("room status - roomId: {}, moment: {} - {}", roomId, moment, occupancy);
         logger.debug("END getRoomStatus");
-        return "BOOKED";
+        // The uppercase name is this endpoint's long-standing contract, and the four values
+        // are exactly the constants' names.
+        return occupancy.name();
     }
     
     // Refreshes the room status from the bookings active right now.
@@ -192,33 +178,19 @@ public class BookingService {
         Room room = roomOpt.get();
         LocalDateTime now = LocalDateTime.now();
         
-        // The bookings active at this moment
-        List<Booking> activeBookings = bookingRepository.findActiveBookings(roomId, now);
-        
-        RoomStatus newStatus;
-        if (activeBookings.isEmpty()) {
-            newStatus = RoomStatus.FREE;
-        } else {
-            // Is there a maintenance or blocking booking among them?
-            boolean hasMaintenance = activeBookings.stream()
-                .anyMatch(p -> p.getStatus() == BookingStatus.MAINTENANCE);
-            boolean hasBlocked = activeBookings.stream()
-                .anyMatch(p -> p.getStatus() == BookingStatus.BLOCKED);
-            
-            if (hasMaintenance) {
-                newStatus = RoomStatus.MAINTENANCE;
-            } else if (hasBlocked) {
-                newStatus = RoomStatus.BLOCKED;
-            } else {
-                newStatus = RoomStatus.BUSY;
-            }
-        }
+        // Same computation as getRoomStatus above, rendered into the vocabulary the column
+        // uses: what is BOOKED to a reader is BUSY on disk.
+        RoomStatus newStatus = RoomOccupancy
+                .of(bookingRepository.findActiveBookings(roomId, now))
+                .toStoredStatus();
         
         // Write only if the status changed
         if (newStatus != room.getStatus()) {
             logger.debug("refreshing status of room {} da '{}' a '{}'", roomId, room.getStatus(), newStatus);
-            room.setStatus(newStatus);
-            roomRepository.save(room);
+            // updateStatus and not save(): the room is versioned now, and a bookkeeping
+            // write must never be able to fail somebody's booking with a 409. See the
+            // method's own javadoc in RoomRepository.
+            roomRepository.updateStatus(roomId, newStatus);
         } else {
             logger.debug("room status {} unchanged: '{}'", roomId, room.getStatus());
         }

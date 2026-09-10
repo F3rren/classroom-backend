@@ -4,6 +4,7 @@ import com.classroom.exception.DomainConflictException;
 import com.classroom.booking.exception.ResourceType;
 import com.classroom.booking.model.Room;
 import com.classroom.booking.model.RoomAvailability;
+import com.classroom.booking.model.RoomOccupancy;
 import com.classroom.booking.model.Booking;
 import com.classroom.model.Role;
 import com.classroom.booking.model.BookingStatus;
@@ -288,20 +289,29 @@ public class RoomService {
         RoomDetailsResponse.BlockInfo blockInfo = null;
 
         // Is the room busy or blocked right now?
-        for (Booking booking : bookings) {
-            if (booking.getStartTime().isBefore(now) && booking.getEndTime().isAfter(now)) {
-                if (booking.getStatus() == BookingStatus.BOOKED) {
-                    status = RoomAvailability.BOOKED;
-                    currentBooking = toCurrentBooking(booking);
-                } else if (booking.getStatus().isAdminIntervention()) {
-                    status = RoomAvailability.BLOCKED;
-                    blockInfo = new RoomDetailsResponse.BlockInfo(
-                        descriptionOr(booking, DEFAULT_BLOCK_REASON),
-                        BLOCKED_BY,
-                        booking.getCreatedAt().toLocalDate().format(DATE_FORMAT)
-                    );
-                }
-                break;
+        //
+        // Through RoomOccupancy, like BookingService: the precedence used to be written here
+        // a third time, and differently. This loop stopped at the FIRST booking overlapping
+        // the moment whatever its status, so a cancelled booking sitting in front of a real
+        // one hid it and the room reported itself free - reachable by cancelling a booking
+        // and re-booking the same slot, with the order down to the database.
+        List<Booking> holdingNow = bookings.stream()
+                .filter(booking -> booking.getStartTime().isBefore(now) && booking.getEndTime().isAfter(now))
+                .toList();
+        Optional<Booking> claim = RoomOccupancy.strongestClaim(holdingNow);
+
+        if (claim.isPresent()) {
+            Booking booking = claim.get();
+            RoomOccupancy occupancy = RoomOccupancy.of(holdingNow);
+            status = occupancy.toAvailability();
+            if (occupancy == RoomOccupancy.BOOKED) {
+                currentBooking = toCurrentBooking(booking);
+            } else {
+                blockInfo = new RoomDetailsResponse.BlockInfo(
+                    descriptionOr(booking, DEFAULT_BLOCK_REASON),
+                    BLOCKED_BY,
+                    booking.getCreatedAt().toLocalDate().format(DATE_FORMAT)
+                );
             }
         }
 

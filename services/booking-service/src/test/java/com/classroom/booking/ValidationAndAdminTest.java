@@ -2,6 +2,7 @@ package com.classroom.booking;
 
 import com.classroom.testsupport.TestJson;
 import com.classroom.testsupport.TestJwt;
+import com.classroom.testsupport.TestQuery;
 import com.classroom.booking.repository.RoomRepository;
 import com.classroom.booking.repository.BookingRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,11 +14,10 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
@@ -53,12 +53,21 @@ class ValidationAndAdminTest {
         tokenAdmin = TestJwt.forAdmin(1L, "admin@validation.test");
     }
 
-    @NonNull
-    private HttpHeaders bearerJson(String token) {
+    /**
+     * createRoom() and blockRoom() moved their request data from a JSON @RequestBody to
+     * @ModelAttribute / query parameters, so Swagger UI can offer real fillable inputs
+     * instead of a JSON box. This sends the same shape a browser or curl would - a query
+     * string - instead of a body the controller no longer reads.
+     *
+     * URI.create, not the String overload the rest of this file still uses for /api/rooms:
+     * TestRestTemplate's String-based exchange() would re-encode the pre-encoded query
+     * string TestQuery already produced, turning "%40" into "%2540".
+     */
+    private ResponseEntity<String> postQuery(String url, String token, Map<String, ?> params) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(Objects.requireNonNull(token));
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        return headers;
+        return rest.exchange(URI.create(rest.getRootUri() + url + TestQuery.of(params)),
+                HttpMethod.POST, new HttpEntity<>(headers), String.class);
     }
 
 
@@ -70,10 +79,9 @@ class ValidationAndAdminTest {
 
     @Test
     void createRoomWithANegativeCapacityIsRejected() throws Exception {
-        Map<String, Object> body = Map.of("name", "Aula X", "floor", 1, "capacity", -5);
+        Map<String, Object> params = Map.of("name", "Aula X", "floor", 1, "capacity", -5);
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = postQuery("/api/admin/rooms", tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -81,10 +89,9 @@ class ValidationAndAdminTest {
 
     @Test
     void createRoomWithBlankNameIsRejected() throws Exception {
-        Map<String, Object> body = Map.of("name", "  ", "floor", 1, "capacity", 10);
+        Map<String, Object> params = Map.of("name", "  ", "floor", 1, "capacity", 10);
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = postQuery("/api/admin/rooms", tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");
@@ -92,10 +99,9 @@ class ValidationAndAdminTest {
 
     @Test
     void createRoomWithValidDataSucceeds() {
-        Map<String, Object> body = Map.of("name", "Aula Valida", "floor", 2, "capacity", 25);
+        Map<String, Object> params = Map.of("name", "Aula Valida", "floor", 2, "capacity", 25);
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/admin/rooms", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = postQuery("/api/admin/rooms", tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
@@ -104,12 +110,11 @@ class ValidationAndAdminTest {
 
     @Test
     void blockRoomWithAMissingRoomIdIsRejectedByBeanValidation() throws Exception {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> params = Map.of(
                 "startTime", LocalDateTime.now().plusDays(1).toString(),
                 "endTime", LocalDateTime.now().plusDays(1).plusHours(1).toString());
 
-        ResponseEntity<String> resp = rest.exchange(
-                "/api/bookings/block", HttpMethod.POST, new HttpEntity<>(body, bearerJson(tokenAdmin)), String.class);
+        ResponseEntity<String> resp = postQuery("/api/bookings/block", tokenAdmin, params);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(TestJson.asMap(resp.getBody()).get("error")).isEqualTo("VALIDATION_ERROR");

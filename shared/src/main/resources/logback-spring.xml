@@ -83,12 +83,18 @@
     </appender>
 
     <!--
-      The file exists ONLY in development. In a container you would be writing inside the
-      image, where nobody reads it and nobody rotates it: there the logs go to stdout and
-      Docker collects them. The rotation policy sits here, next to the file it applies to -
-      it used to be declared in the prod profile, which has no file.
+      The file exists ONLY in development, and ONLY outside a container. In a container you
+      would be writing inside the image, where nobody reads it and nobody rotates it: there
+      the logs go to stdout and Docker collects them. The rotation policy sits here, next to
+      the file it applies to - it used to be declared in the prod profile, which has no file.
+
+      "dev &amp; !docker" and not plain "dev": the path is relative, so inside the container it
+      resolves somewhere that is not writable and the service dies at startup. That failure
+      is why docker-compose.yml used to avoid the dev profile altogether and flip individual
+      flags instead. Compose now activates "dev,docker", which selects development behaviour
+      everywhere except this appender.
     -->
-    <springProfile name="dev">
+    <springProfile name="dev &amp; !docker">
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/application.log</file>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -109,7 +115,8 @@
         </root>
     </springProfile>
 
-    <springProfile name="!dev">
+    <!-- Everything else - production, and development inside a container - logs to stdout. -->
+    <springProfile name="!dev | docker">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
