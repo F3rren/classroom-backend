@@ -79,12 +79,15 @@ class NotificationOwnershipTest {
     }
 
     @Test
-    void otherUserDoesNotSeeOwnersNotifications() {
-        ResponseEntity<Notification[]> resp = rest.exchange(
-                "/api/notifications", HttpMethod.GET, new HttpEntity<>(bearer(tokenOther)), Notification[].class);
+    void otherUserDoesNotSeeOwnersNotifications() throws Exception {
+        // Empty for this caller answers a MessageResponse, not "[]" - see
+        // NotificationController.getNotifications and BookingController.getAllBookings for
+        // the same idiom on the same case.
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/notifications", HttpMethod.GET, new HttpEntity<>(bearer(tokenOther)), String.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(resp.getBody()).isEmpty();
+        assertThat(TestJson.asMap(resp.getBody())).containsEntry("message", "Nessuna notifica trovata");
     }
 
     @Test

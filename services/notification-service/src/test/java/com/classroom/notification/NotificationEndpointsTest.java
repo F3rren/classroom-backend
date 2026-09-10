@@ -42,9 +42,12 @@ class NotificationEndpointsTest {
     // exist. That is precisely the point of the split.
     private static final Long OWNER_ID = 1L;
     private static final Long OTHER_ID = 2L;
+    // Never given a single notification: the empty case below relies on that.
+    private static final Long EMPTY_ID = 3L;
 
     private String tokenOwner;
     private String tokenOther;
+    private String tokenEmpty;
     private Long readNotificationId;
 
     @BeforeEach
@@ -64,6 +67,7 @@ class NotificationEndpointsTest {
         // Tokens signed directly: no user to create, no login to call.
         tokenOwner = TestJwt.forUser(OWNER_ID, "notif-owner@test.it");
         tokenOther = TestJwt.forUser(OTHER_ID, "notif-other@test.it");
+        tokenEmpty = TestJwt.forUser(EMPTY_ID, "notif-empty@test.it");
     }
 
     private ResponseEntity<String> exchange(String url, HttpMethod method, String token) {
@@ -89,6 +93,18 @@ class NotificationEndpointsTest {
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         // owner's 2 unread: the already-read one and other's are excluded
         assertThat(resp.getBody()).hasSize(2);
+    }
+
+    @Test
+    void unreadReturnsAStandardMessageWhenTheCallerHasNone() throws Exception {
+        // Nothing was ever saved for this user - not even a read notification. The endpoint
+        // used to answer "[]" here, indistinguishable from a slow network or a client reading
+        // the wrong field; it answers a MessageResponse now, the same idiom the base endpoint
+        // and BookingController.getAllBookings already use for "nothing to return".
+        ResponseEntity<String> resp = exchange("/api/notifications/unread", HttpMethod.GET, tokenEmpty);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(TestJson.asMap(resp.getBody())).containsEntry("message", "Nessuna notifica da leggere");
     }
 
     @Test

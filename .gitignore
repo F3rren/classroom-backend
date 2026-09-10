@@ -63,10 +63,14 @@ logs/
 .env
 .env.local
 
-# Personal, temporary Docker Compose overrides - e.g. SPRING_PROFILES_ACTIVE=dev to inspect
-# Swagger through Docker. Compose merges it automatically on top of docker-compose.yml, which
-# is convenient for the same reason it must stay out of git: committing it would turn one
+# Personal, temporary Docker Compose overrides - a port published just for today, a service
+# left out of the run. Compose merges it automatically on top of docker-compose.yml, which is
+# convenient for the same reason it must stay out of git: committing it would turn one
 # person's local override into everybody's default.
+#
+# It used to hold the development conveniences themselves - the profile, the database port.
+# Those are in docker-compose.yml now, which IS the development file, so there is nothing
+# left that everybody has to copy from a template before starting.
 docker-compose.override.yml
 
 # Environment-specific configuration files.

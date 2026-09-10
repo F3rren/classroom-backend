@@ -178,10 +178,23 @@ public class AuthController {
      * unreachable for exactly the clients the cookies are meant to protect.
      */
     private String presentedRefreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest) {
-        if (request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
-            return request.getRefreshToken();
+        if (!bodyCarriesRefreshToken(request)) {
+            return SessionCookies.read(httpRequest, SessionCookies.REFRESH_TOKEN);
         }
-        return SessionCookies.read(httpRequest, SessionCookies.REFRESH_TOKEN);
+        return request.getRefreshToken();
+    }
+
+    /**
+     * Whether the caller put a refresh token in the request body - as opposed to relying on
+     * the session cookie, which is what {@link #presentedRefreshToken} falls back to.
+     *
+     * The SAME check as presentedRefreshToken's own first branch, pulled out so refresh() can
+     * ask it too: a caller with nothing in the body is, by construction, a cookie-session
+     * caller (there is nowhere else the token could have come from), which is what tells
+     * refresh() to leave the new pair out of the response body - see RefreshPayload.
+     */
+    private boolean bodyCarriesRefreshToken(RefreshTokenRequest request) {
+        return request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank();
     }
 
     /** Checks the shape of an email address, with basic checks only. */
@@ -297,12 +310,20 @@ public class AuthController {
                    user.getUsername() != null ? user.getUsername() : "N/A",
                    user.getRole() != null ? user.getRole().getValue() : "USER");
 
+        // A caller that asked for the cookie-only response already gets both tokens as
+        // HttpOnly cookies below; leaving them in the body too would be exactly the exposure
+        // those cookies exist to prevent. See SessionCookies.AUTH_MODE_HEADER and LoginPayload.
+        boolean cookieOnly = SessionCookies.requestsCookieMode(httpRequest);
+        String bodyToken = cookieOnly ? null : token;
+        String bodyRefreshToken = cookieOnly ? null : refreshToken;
+
         // Building the response payload, with nothing sensitive in it
-        LoginPayload authData = new LoginPayload(token, refreshToken, UserSummaryDto.basic(user), formatTimestamp(LocalDateTime.now()));
+        LoginPayload authData = new LoginPayload(bodyToken, bodyRefreshToken, UserSummaryDto.basic(user),
+                formatTimestamp(LocalDateTime.now()));
 
         // Shape kept for the existing frontend: the token is duplicated at the root
         ResponseEntity<LoginResponse> response = new ResponseEntity<>(
-                new LoginResponse("Login effettuato con successo", token, authData, sessionId),
+                new LoginResponse("Login effettuato con successo", bodyToken, authData, sessionId),
                 HttpStatus.OK);
 
         // The same pair, also as HttpOnly cookies: a browser can then hold the session
@@ -352,10 +373,16 @@ public class AuthController {
 
         String newAccessToken = jwtService.generateToken(user);
 
+        // A caller with nothing in the request body got here on the cookie alone, so the new
+        // pair goes out ONLY as cookies below - repeating it here in clear text would be
+        // exactly the exposure the HttpOnly flag is meant to prevent. See RefreshPayload.
+        RefreshPayload payload = bodyCarriesRefreshToken(request)
+                ? new RefreshPayload(newAccessToken, rotation.refreshToken())
+                : RefreshPayload.forCookieSession();
+
         logger.debug("END refresh - new access token issued | userId: {}", user.getId());
         ResponseEntity<ApiEnvelope<RefreshPayload>> response = new ResponseEntity<>(
-                createSuccessResponse("Token aggiornato con successo",
-                        new RefreshPayload(newAccessToken, rotation.refreshToken()), sessionId),
+                createSuccessResponse("Token aggiornato con successo", payload, sessionId),
                 HttpStatus.OK);
 
         // The rotation invalidated the token the browser was holding: without replacing both
