@@ -3,7 +3,6 @@ package com.classroom.security;
 import com.classroom.testsupport.TestJwt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,9 +22,7 @@ class JwtVerifierUnitTest {
 
     @BeforeEach
     void setUp() {
-        verifier = new JwtVerifier();
-        ReflectionTestUtils.setField(verifier, "secret", TestJwt.TEST_SECRET);
-        verifier.init();
+        verifier = new JwtVerifier(TestJwt.TEST_SECRET);
     }
 
     @Test
@@ -48,10 +45,8 @@ class JwtVerifierUnitTest {
     @Test
     void rejectsATokenSignedWithAnotherSecret() {
         // A different secret, the same shape: this is the attempt to forge an identity
-        JwtVerifier anotherService = new JwtVerifier();
-        ReflectionTestUtils.setField(anotherService, "secret",
+        JwtVerifier anotherService = new JwtVerifier(
                 "dW4tc2VncmV0by1jb21wbGV0YW1lbnRlLWRpdmVyc28tZGEtcXVlbGxvLXZlcm8");
-        anotherService.init();
 
         assertThat(verifier.validateToken(TestJwt.forAdmin(1L, "intruso@example.it"))).isTrue();
         assertThat(anotherService.validateToken(TestJwt.forAdmin(1L, "intruso@example.it"))).isFalse();

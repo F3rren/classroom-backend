@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.classroom.auth.model.User;
 
-import jakarta.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
@@ -22,22 +21,19 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String secret;
-
-    private SecretKey key;
+    private final SecretKey key;
 
     // Same 1-hour value as before this became a property: nobody's behaviour changes by
     // default. It is a property now, not a hardcoded field, specifically so it can be
     // shortened later without a code change - the natural next step once /api/auth/refresh
     // (RefreshTokenService) is confirmed working end to end, since a short access token plus
     // silent refresh is the point of having a refresh token at all.
-    @Value("${jwt.access-token-expiration-ms:3600000}")
-    private long expiration;
+    private final long expiration;
 
-    @PostConstruct
-    public void init() {
+    public JwtService(@Value("${jwt.secret}") String secret,
+                       @Value("${jwt.access-token-expiration-ms:3600000}") long expiration) {
         this.key = JwtKey.from(secret);
+        this.expiration = expiration;
     }
 
     public String generateToken(User user) {

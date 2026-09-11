@@ -65,25 +65,28 @@ public class AuthController {
 
     // Le stesse durate con cui i token vengono emessi: un cookie che sopravvive al proprio
     // token lascerebbe il browser a presentare una credenziale gia' morta a ogni richiesta.
-    @Value("${jwt.access-token-expiration-ms:3600000}")
-    private long accessTokenTtlMs;
+    private final long accessTokenTtlMs;
 
-    @Value("${jwt.refresh-token-expiration-ms:2592000000}")
-    private long refreshTokenTtlMs;
+    private final long refreshTokenTtlMs;
 
     // Normalmente non serve toccarlo: il flag Secure segue gia' il protocollo della
     // richiesta. Serve solo dove il TLS termina altrove e l'inoltro di X-Forwarded-Proto non
     // e' configurato, perche' li' isSecure() direbbe falso anche su HTTPS.
-    @Value("${classroom.auth.cookies.force-secure:false}")
-    private boolean forceSecureCookies;
+    private final boolean forceSecureCookies;
 
     AuthController(AuthService authService, JwtService jwtService, RefreshTokenService refreshTokenService,
-                   UserService userService, LoginAttemptLimiter attemptLimiter) {
+                   UserService userService, LoginAttemptLimiter attemptLimiter,
+                   @Value("${jwt.access-token-expiration-ms:3600000}") long accessTokenTtlMs,
+                   @Value("${jwt.refresh-token-expiration-ms:2592000000}") long refreshTokenTtlMs,
+                   @Value("${classroom.auth.cookies.force-secure:false}") boolean forceSecureCookies) {
         this.authService = authService;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.userService = userService;
         this.attemptLimiter = attemptLimiter;
+        this.accessTokenTtlMs = accessTokenTtlMs;
+        this.refreshTokenTtlMs = refreshTokenTtlMs;
+        this.forceSecureCookies = forceSecureCookies;
     }
 
 

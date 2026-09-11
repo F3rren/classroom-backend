@@ -38,28 +38,35 @@ public class SecurityConfig {
      * The default covers only the OpenAPI documentation: a service that declares nothing
      * stays fully protected, which is the right default to get wrong.
      */
-    @Value("${classroom.security.public-paths:/v3/api-docs,/v3/api-docs/**,/swagger-ui/**,/swagger-ui.html}")
-    private String publicPaths;
+    private final String publicPaths;
 
-    @Value("${classroom.cors.allowed-origins}")
-    private String allowedOrigins;
+    private final String allowedOrigins;
 
-    @Value("${classroom.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}")
-    private String allowedMethods;
+    private final String allowedMethods;
 
-    @Value("${classroom.cors.allowed-headers:*}")
-    private String allowedHeaders;
+    private final String allowedHeaders;
 
-    @Value("${classroom.cors.allow-credentials:true}")
-    private boolean allowCredentials;
+    private final boolean allowCredentials;
 
-    @Value("${classroom.cors.max-age:3600}")
-    private long maxAge;
+    private final long maxAge;
 
-    SecurityConfig(JwtAuthFilter jwtAuthFilter, ApiAuthenticationEntryPoint apiAuthenticationEntryPoint, ApiAccessDeniedHandler apiAccessDeniedHandler) {
+    SecurityConfig(JwtAuthFilter jwtAuthFilter, ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
+                   ApiAccessDeniedHandler apiAccessDeniedHandler,
+                   @Value("${classroom.security.public-paths:/v3/api-docs,/v3/api-docs/**,/swagger-ui/**,/swagger-ui.html}") String publicPaths,
+                   @Value("${classroom.cors.allowed-origins}") String allowedOrigins,
+                   @Value("${classroom.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}") String allowedMethods,
+                   @Value("${classroom.cors.allowed-headers:*}") String allowedHeaders,
+                   @Value("${classroom.cors.allow-credentials:true}") boolean allowCredentials,
+                   @Value("${classroom.cors.max-age:3600}") long maxAge) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.apiAuthenticationEntryPoint = apiAuthenticationEntryPoint;
         this.apiAccessDeniedHandler = apiAccessDeniedHandler;
+        this.publicPaths = publicPaths;
+        this.allowedOrigins = allowedOrigins;
+        this.allowedMethods = allowedMethods;
+        this.allowedHeaders = allowedHeaders;
+        this.allowCredentials = allowCredentials;
+        this.maxAge = maxAge;
     }
 
     private static List<String> splitConfigList(String raw) {

@@ -68,7 +68,8 @@ class AuthControllerUnitTest {
         // used to be static and had to be cleared by hand between cases, because surefire
         // reuses the JVM across contexts.
         attemptLimiter = new LoginAttemptLimiter(100, 60_000L, 1000);
-        controller = new AuthController(authService, jwtService, refreshTokenService, userService, attemptLimiter);
+        controller = new AuthController(authService, jwtService, refreshTokenService, userService, attemptLimiter,
+                3_600_000L, 2_592_000_000L, false);
 
         httpRequest = mock(HttpServletRequest.class);
         when(httpRequest.getRemoteAddr()).thenReturn("10.0.0.1");
@@ -111,7 +112,7 @@ class AuthControllerUnitTest {
     @Test
     void blocksWithTooManyRequestsOnceTheAttemptLimitIsExceeded() {
         controller = new AuthController(authService, jwtService, refreshTokenService, userService,
-                new LoginAttemptLimiter(1, 60_000L, 1000));
+                new LoginAttemptLimiter(1, 60_000L, 1000), 3_600_000L, 2_592_000_000L, false);
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         // first attempt: uses up the quota and fails on wrong credentials
@@ -136,7 +137,7 @@ class AuthControllerUnitTest {
         // A negative window: every call lands outside it, so the counter starts over. It is
         // a constructor parameter now, instead of a field to force by reflection.
         controller = new AuthController(authService, jwtService, refreshTokenService, userService,
-                new LoginAttemptLimiter(1, -1L, 1000));
+                new LoginAttemptLimiter(1, -1L, 1000), 3_600_000L, 2_592_000_000L, false);
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",
@@ -151,7 +152,7 @@ class AuthControllerUnitTest {
     @Test
     void rateLimitIsPerEmailNotGlobal() {
         controller = new AuthController(authService, jwtService, refreshTokenService, userService,
-                new LoginAttemptLimiter(1, 60_000L, 1000));
+                new LoginAttemptLimiter(1, 60_000L, 1000), 3_600_000L, 2_592_000_000L, false);
         when(authService.login(anyString(), anyString())).thenReturn(null);
 
         assertRefusedWith(AuthenticationFailedException.class, "INVALID_CREDENTIALS",

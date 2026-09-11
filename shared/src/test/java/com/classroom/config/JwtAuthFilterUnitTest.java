@@ -11,7 +11,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,9 +29,7 @@ class JwtAuthFilterUnitTest {
 
     @BeforeEach
     void setUp() {
-        JwtVerifier verifier = new JwtVerifier();
-        ReflectionTestUtils.setField(verifier, "secret", TestJwt.TEST_SECRET);
-        verifier.init();
+        JwtVerifier verifier = new JwtVerifier(TestJwt.TEST_SECRET);
         filter = new JwtAuthFilter(verifier);
         SecurityContextHolder.clearContext();
     }

@@ -2,7 +2,6 @@ package com.classroom.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,13 +29,9 @@ public class JwtVerifier {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtVerifier.class);
 
-    @Value("${jwt.secret}")
-    private String secret;
+    private final SecretKey key;
 
-    private SecretKey key;
-
-    @PostConstruct
-    public void init() {
+    public JwtVerifier(@Value("${jwt.secret}") String secret) {
         // The secret is BASE64URL-encoded, not raw bytes: decoding it any other way would
         // produce a different key and every token would be refused.
         this.key = JwtKey.from(secret);
