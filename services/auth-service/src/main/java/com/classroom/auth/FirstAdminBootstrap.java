@@ -71,12 +71,7 @@ public class FirstAdminBootstrap implements ApplicationRunner {
             return;
         }
 
-        CreateUserRequest request = new CreateUserRequest();
-        request.setEmail(email);
-        request.setUsername(email);
-        request.setPassword(password);
-        request.setName(name);
-        request.setRole("admin");
+        CreateUserRequest request = new CreateUserRequest(email, email, password, "admin", name);
 
         User created = authService.register(request);
         logger.info("First administrator created on an empty database - userId={} email={}. "

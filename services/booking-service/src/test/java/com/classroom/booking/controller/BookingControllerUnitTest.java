@@ -68,13 +68,7 @@ class BookingControllerUnitTest {
     // ---------- helpers ----------
 
     private BookingRequest request(String startTime, String endTime) {
-        BookingRequest r = new BookingRequest();
-        r.setRoomId(10L);
-        r.setCourseId(null);
-        r.setStartTime(startTime);
-        r.setEndTime(endTime);
-        r.setDescription("descrizione di test");
-        return r;
+        return new BookingRequest(10L, null, startTime, endTime, "descrizione di test");
     }
 
     private BookingRequest validRequest() {

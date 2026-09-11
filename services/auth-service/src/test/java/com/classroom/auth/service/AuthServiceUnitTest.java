@@ -54,23 +54,17 @@ class AuthServiceUnitTest {
     }
 
     private CreateUserRequest creation(String email, String username) {
-        CreateUserRequest r = new CreateUserRequest();
-        r.setEmail(email);
-        r.setUsername(username);
-        r.setPassword("password123");
-        r.setName("Nuovo Utente");
-        r.setRole("user"); // DTO di richiesta: resta String, validata da @Pattern
-        return r;
+        // DTO di richiesta: role resta String, validata da @Pattern
+        return new CreateUserRequest(username, email, "password123", "user", "Nuovo Utente");
     }
 
     private UpdateUserRequest updateRequest(String email, String username, String password) {
-        UpdateUserRequest r = new UpdateUserRequest();
-        r.setEmail(email);
-        r.setUsername(username);
-        r.setPassword(password);
-        r.setName("Nome Aggiornato");
-        r.setRole("user"); // DTO di richiesta: resta String, validata da @Pattern
-        return r;
+        return updateRequest(email, username, password, "user");
+    }
+
+    private UpdateUserRequest updateRequest(String email, String username, String password, String role) {
+        // DTO di richiesta: role resta String, validata da @Pattern
+        return new UpdateUserRequest(username, email, password, role, "Nome Aggiornato");
     }
 
     // ==================== login ====================
@@ -221,12 +215,10 @@ class AuthServiceUnitTest {
     }
 
     @Test
-    @SuppressWarnings("null")
     void updateFallsBackToExistingRoleWhenNoneGiven() {
         User existing = user(1L, "mia@test.it");
         existing.setRole(Role.ADMIN);
-        UpdateUserRequest request = updateRequest("mia@test.it", "mio", "");
-        request.setRole(null);
+        UpdateUserRequest request = updateRequest("mia@test.it", "mio", "", null);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(userRepository.findByEmail("mia@test.it")).thenReturn(existing);

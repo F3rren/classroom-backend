@@ -76,10 +76,7 @@ class AuthControllerUnitTest {
     }
 
     private LoginRequest credentials(String email, String password) {
-        LoginRequest r = new LoginRequest();
-        r.setEmail(email);
-        r.setPassword(password);
-        return r;
+        return new LoginRequest(email, password);
     }
 
     private User validUser() {
@@ -268,9 +265,7 @@ class AuthControllerUnitTest {
     // ==================== refresh ====================
 
     private RefreshTokenRequest refreshRequest(String token) {
-        RefreshTokenRequest r = new RefreshTokenRequest();
-        r.setRefreshToken(token);
-        return r;
+        return new RefreshTokenRequest(token);
     }
 
     @Test

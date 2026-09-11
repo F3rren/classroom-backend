@@ -93,9 +93,9 @@ public class BookingController {
     public ResponseEntity<ApiEnvelope<BookingAckPayload>> bookRoom(@Valid @ModelAttribute BookingRequest request,
                                         @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("START bookRoom - roomId: {}, courseId: {}, period: {} - {}", request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
+        logger.debug("START bookRoom - roomId: {}, courseId: {}, period: {} - {}", request.roomId(), request.courseId(), request.startTime(), request.endTime());
 
-        BookingPeriod period = BookingPeriod.parse(request.getStartTime(), request.getEndTime())
+        BookingPeriod period = BookingPeriod.parse(request.startTime(), request.endTime())
                 .requireNotInThePast("Non puoi prenotare un'aula per una data già trascorsa.");
         LocalDateTime startTime = period.start();
         LocalDateTime endTime = period.end();
@@ -105,17 +105,17 @@ public class BookingController {
         Booking booking;
         try {
             booking = bookingService.bookRoom(
-                request.getRoomId(), request.getCourseId(), snapshotOf(principal), startTime, endTime, request.getDescription());
+                request.roomId(), request.courseId(), snapshotOf(principal), startTime, endTime, request.description());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("END bookRoom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.getRoomId());
+            logger.warn("END bookRoom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.roomId());
             throw new BookingConflictException("BOOKING_CONFLICT", "Could not book the room",
                     "L'aula è appena stata prenotata da un'altra richiesta per lo stesso periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("END bookRoom - booking created - ID: {}, roomId: {}, userId: {}", booking.getId(), request.getRoomId(), principal.id());
+        logger.debug("END bookRoom - booking created - ID: {}, roomId: {}, userId: {}", booking.getId(), request.roomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione effettuata con successo",
-                                new BookingAckPayload(booking, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
+                                new BookingAckPayload(booking, request.roomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
                                 sessionId),
             HttpStatus.CREATED
         );
@@ -129,9 +129,9 @@ public class BookingController {
                                                  @Valid @ModelAttribute BookingRequest request,
                                                  @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("START updateBooking - bookingId: {}, roomId: {}, courseId: {}, period: {} - {}", bookingId, request.getRoomId(), request.getCourseId(), request.getStartTime(), request.getEndTime());
+        logger.debug("START updateBooking - bookingId: {}, roomId: {}, courseId: {}, period: {} - {}", bookingId, request.roomId(), request.courseId(), request.startTime(), request.endTime());
 
-        BookingPeriod period = BookingPeriod.parse(request.getStartTime(), request.getEndTime())
+        BookingPeriod period = BookingPeriod.parse(request.startTime(), request.endTime())
                 .requireNotInThePast("Non puoi modificare una prenotazione per una data già trascorsa.");
         LocalDateTime startTime = period.start();
         LocalDateTime endTime = period.end();
@@ -141,17 +141,17 @@ public class BookingController {
         Booking booking;
         try {
             booking = bookingService.updateBooking(
-                bookingId, request.getRoomId(), request.getCourseId(), principal.id(), principal.isAdmin(), startTime, endTime, request.getDescription());
+                bookingId, request.roomId(), request.courseId(), principal.id(), principal.isAdmin(), startTime, endTime, request.description());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("END updateBooking - conflict raised by the database constraint (concurrent booking) - bookingId: {}, roomId: {}", bookingId, request.getRoomId());
+            logger.warn("END updateBooking - conflict raised by the database constraint (concurrent booking) - bookingId: {}, roomId: {}", bookingId, request.roomId());
             throw new BookingConflictException("UPDATE_CONFLICT", "Could not update the booking",
                     "L'aula è appena stata prenotata da un'altra richiesta per il nuovo periodo. Riprova con un altro orario.");
         }
 
-        logger.debug("END updateBooking - booking updated - ID: {}, roomId: {}, userId: {}", booking.getId(), request.getRoomId(), principal.id());
+        logger.debug("END updateBooking - booking updated - ID: {}, roomId: {}, userId: {}", booking.getId(), request.roomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Prenotazione modificata con successo",
-                                new BookingAckPayload(booking, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
+                                new BookingAckPayload(booking, request.roomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime)),
                                 sessionId),
             HttpStatus.OK
         );
@@ -165,11 +165,11 @@ public class BookingController {
     public ResponseEntity<ApiEnvelope<BlockAckPayload>> blockRoom(@Valid @ModelAttribute BookingRequest request,
                                        @AuthenticationPrincipal AppPrincipal principal) {
         String sessionId = generateSessionId();
-        logger.debug("START blockRoom - roomId: {}, period: {} - {}", request.getRoomId(), request.getStartTime(), request.getEndTime());
+        logger.debug("START blockRoom - roomId: {}, period: {} - {}", request.roomId(), request.startTime(), request.endTime());
 
         // No requireNotInThePast here, and it is deliberate: blocking a room that is busy
         // right now is a legitimate thing for an admin to want.
-        BookingPeriod period = BookingPeriod.parse(request.getStartTime(), request.getEndTime());
+        BookingPeriod period = BookingPeriod.parse(request.startTime(), request.endTime());
         LocalDateTime startTime = period.start();
         LocalDateTime endTime = period.end();
 
@@ -177,17 +177,17 @@ public class BookingController {
 
         Booking block;
         try {
-            block = bookingService.blockRoom(request.getRoomId(), snapshotOf(principal), startTime, endTime, request.getDescription());
+            block = bookingService.blockRoom(request.roomId(), snapshotOf(principal), startTime, endTime, request.description());
         } catch (DataIntegrityViolationException e) {
-            logger.warn("END blockRoom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.getRoomId());
+            logger.warn("END blockRoom - conflict raised by the database constraint (concurrent booking) - roomId: {}", request.roomId());
             throw new BookingConflictException("BLOCK_CONFLICT", "Could not block the room",
                     "L'aula è appena stata occupata da un'altra richiesta per lo stesso periodo.");
         }
 
-        logger.debug("END blockRoom - room blocked - block ID: {}, roomId: {}, Admin: {}", block.getId(), request.getRoomId(), principal.id());
+        logger.debug("END blockRoom - room blocked - block ID: {}, roomId: {}, Admin: {}", block.getId(), request.roomId(), principal.id());
         return new ResponseEntity<>(
             createSuccessResponse("Aula bloccata con successo",
-                                new BlockAckPayload(block, request.getRoomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime), principal.id()),
+                                new BlockAckPayload(block, request.roomId(), formatTimestamp(startTime) + " - " + formatTimestamp(endTime), principal.id()),
                                 sessionId),
             HttpStatus.CREATED
         );

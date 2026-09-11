@@ -221,7 +221,7 @@ public class RoomController {
         logger.debug("START getRoomDetailed - ID room: {}", id);
 
         RoomDetailsResponse roomDetails = roomService.getRoomWithDetails(id);
-        logger.debug("END getRoomDetailed - room details fetched: ID: {}, name: {}", roomDetails.getId(), roomDetails.getName());
+        logger.debug("END getRoomDetailed - room details fetched: ID: {}, name: {}", roomDetails.id(), roomDetails.name());
         return new ResponseEntity<>(
             createSuccessResponse("Dettagli aula recuperati con successo", new RoomWrapper<>(roomDetails), sessionId),
             HttpStatus.OK

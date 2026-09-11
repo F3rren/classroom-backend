@@ -1,62 +1,38 @@
 package com.classroom.booking.dto;
 
 import com.classroom.booking.model.RoomAvailability;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-public class RoomDetailsResponse {
-    private Long id;
-    private String name;
-    private int floor;
-    private int capacity;
-    private boolean isVirtual;
-    // An enum and not a String: @JsonValue serialises it to the same lowercase value as
-    // before, so the JSON is unchanged, but the possible values are now a closed set.
-    private RoomAvailability status;
-    private CurrentBooking booking;
-    private BlockInfo blocked;
-    private List<BookingInfo> bookings;
+public record RoomDetailsResponse(
+        Long id,
+        String name,
+        int floor,
+        int capacity,
+        // Lombok's boolean-getter convention (isVirtual() strips the "is") already made this
+        // field serialise as "virtual", not "isVirtual" - confirmed by printing the actual
+        // JSON before this conversion. A record has no such convention: without this
+        // annotation the property would become "isVirtual" and silently change the API.
+        @JsonProperty("virtual")
+        boolean isVirtual,
+        // An enum and not a String: @JsonValue serialises it to the same lowercase value as
+        // before, so the JSON is unchanged, but the possible values are now a closed set.
+        RoomAvailability status,
+        CurrentBooking booking,
+        BlockInfo blocked,
+        List<BookingInfo> bookings) {
 
     public RoomDetailsResponse(Long id, String name, int floor, int capacity, boolean isVirtual) {
-        this.id = id;
-        this.name = name;
-        this.floor = floor;
-        this.capacity = capacity;
-        this.isVirtual = isVirtual;
+        this(id, name, floor, capacity, isVirtual, null, null, null, null);
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CurrentBooking {
-        private String user;
-        private String date;
-        private String time;
-        private String purpose;
+    public record CurrentBooking(String user, String date, String time, String purpose) {
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class BlockInfo {
-        private String reason;
-        private String blockedBy;
-        private String blockedAt;
+    public record BlockInfo(String reason, String blockedBy, String blockedAt) {
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class BookingInfo {
-        private String date;
-        private String startTime;
-        private String endTime;
-        private String user;
-        private String purpose;
+    public record BookingInfo(String date, String startTime, String endTime, String user, String purpose) {
     }
 }

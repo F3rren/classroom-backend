@@ -90,7 +90,7 @@ public class AdminUserController {
     @Operation(summary = "Create a new user (admin only)")
     public ResponseEntity<ApiEnvelope<UserRegisterAck>> register(@Valid @ModelAttribute CreateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("register - user created by an admin | {} | role={}", LogSanitizer.maskEmail(request.getEmail()), request.getRole());
+        logger.debug("register - user created by an admin | {} | role={}", LogSanitizer.maskEmail(request.email()), request.role());
 
         User user = authService.register(request);
 
@@ -131,7 +131,7 @@ public class AdminUserController {
             @PathVariable("id") @Positive(message = USER_ID_POSITIVE) Long id,
             @Valid @ModelAttribute UpdateUserRequest request) {
         String sessionId = generateSessionId();
-        logger.debug("updateUser - userId={} role={}", id, request.getRole());
+        logger.debug("updateUser - userId={} role={}", id, request.role());
 
         User updated = authService.updateUser(id, request);
         logger.info("User updated by an admin - userId={}", updated.getId());

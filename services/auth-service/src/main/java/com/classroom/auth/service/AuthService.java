@@ -51,7 +51,7 @@ public class AuthService {
 
     public User register(CreateUserRequest request) {
         // Is the email or the username already registered?
-        if (userRepository.findByEmail(request.getEmail()) != null) {
+        if (userRepository.findByEmail(request.email()) != null) {
             // The code stays USER_ALREADY_EXISTS, already exposed and truthful. What changed
             // is the message: it used not to say WHICH of the two fields was in conflict, and
             // whoever read it did not know what to correct.
@@ -59,17 +59,17 @@ public class AuthService {
                     "Email already registered",
                     "Questa email e' gia' associata a un altro utente.");
         }
-        if (userRepository.findByUsername(request.getUsername()) != null) {
+        if (userRepository.findByUsername(request.username()) != null) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
-                    "Username already registered: " + request.getUsername(),
+                    "Username already registered: " + request.username(),
                     "Questo username e' gia' in uso.");
         }
         User user = new User();
-        user.setEmail(request.getEmail());
-        user.setName(request.getName());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(Role.from(request.getRole()));
-        user.setUsername(request.getUsername());
+        user.setEmail(request.email());
+        user.setName(request.name());
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setRole(Role.from(request.role()));
+        user.setUsername(request.username());
 
         // The registration date is set once here and never changed afterwards.
         user.setRegisteredAt(LocalDateTime.now());
@@ -92,7 +92,7 @@ public class AuthService {
         }
 
         // Is the new email or username already taken by somebody else?
-        User userWithEmail = userRepository.findByEmail(request.getEmail());
+        User userWithEmail = userRepository.findByEmail(request.email());
         if (userWithEmail != null && !userWithEmail.getId().equals(id)) {
             // 409 and no longer 404: this case used to return the same null as "no such
             // user", and the answer said "user not found" about a user that existed
@@ -101,28 +101,28 @@ public class AuthService {
                     "Email already used by another user",
                     "Questa email e' gia' associata a un altro utente.");
         }
-        User userWithUsername = userRepository.findByUsername(request.getUsername());
+        User userWithUsername = userRepository.findByUsername(request.username());
         if (userWithUsername != null && !userWithUsername.getId().equals(id)) {
             throw new DomainConflictException("USER_ALREADY_EXISTS",
                     "Username already used by another user",
                     "Questo username e' gia' in uso.");
         }
         // The fields that may change.
-        user.setEmail(request.getEmail());
-        user.setName(request.getName());
+        user.setEmail(request.email());
+        user.setName(request.name());
 
         // The password changes only when a new one is actually supplied.
-        boolean passwordChanged = request.getPassword() != null && !request.getPassword().trim().isEmpty();
+        boolean passwordChanged = request.password() != null && !request.password().trim().isEmpty();
         if (passwordChanged) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setPassword(passwordEncoder.encode(request.password()));
         }
 
         // The FORM of the role (admin|user, case-insensitive) is already guaranteed by
         // @Pattern on the DTO; what is left here is the normalisation and the fallback for a
         // role that was not supplied at all.
-        Role role = request.getRole() != null ? Role.from(request.getRole()) : user.getRole();
+        Role role = request.role() != null ? Role.from(request.role()) : user.getRole();
         user.setRole(role);
-        user.setUsername(request.getUsername());
+        user.setUsername(request.username());
 
         // registeredAt is deliberately NOT touched - it keeps its original value.
         // lastLogin is only ever updated by a login.

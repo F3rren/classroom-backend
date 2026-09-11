@@ -116,7 +116,7 @@ public class AdminController {
     @Operation(summary = "Create a room (admin only)")
     public ResponseEntity<ApiEnvelope<RoomAckPayload>> createRoom(@Valid @ModelAttribute RoomRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.debug("START createRoom | name: {} | floor: {} | capacity: {}", roomRequest.getName(), roomRequest.getFloor(), roomRequest.getCapacity());
+        logger.debug("START createRoom | name: {} | floor: {} | capacity: {}", roomRequest.name(), roomRequest.floor(), roomRequest.capacity());
 
         Room newRoom = roomService.createRoom(roomRequest);
         logger.debug("END createRoom - room created | ID: {} | name: {}", newRoom.getId(), newRoom.getName());
@@ -134,7 +134,7 @@ public class AdminController {
             @PathVariable("id") @Positive(message = ValidationMessages.ROOM_ID_POSITIVE) Long id,
             @Valid @ModelAttribute RoomRequest roomRequest) {
         String sessionId = generateSessionId();
-        logger.debug("START updateRoom | ID room: {} | new name: {} | floor: {} | capacity: {}", id, roomRequest.getName(), roomRequest.getFloor(), roomRequest.getCapacity());
+        logger.debug("START updateRoom | ID room: {} | new name: {} | floor: {} | capacity: {}", id, roomRequest.name(), roomRequest.floor(), roomRequest.capacity());
 
         Room updatedRoom = roomService.updateRoom(id, roomRequest);
         logger.debug("END updateRoom - room updated | ID: {} | name: {}", updatedRoom.getId(), updatedRoom.getName());
@@ -220,8 +220,8 @@ public class AdminController {
 
         // requestBody itself is never null with @ModelAttribute (unlike the optional
         // @RequestBody this used to be) - only its reason field can be, when nobody passed one.
-        String reason = (requestBody.getReason() != null)
-            ? requestBody.getReason()
+        String reason = (requestBody.reason() != null)
+            ? requestBody.reason()
             : "Eliminazione da parte dell'amministratore";
         logger.debug("deletion reason: {}", reason);
 

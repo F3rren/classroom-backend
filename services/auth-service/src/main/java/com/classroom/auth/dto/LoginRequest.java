@@ -2,7 +2,6 @@ package com.classroom.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
 
 /**
  * A login request.
@@ -19,15 +18,13 @@ import lombok.Data;
  * on /v3/api-docs, without them LoginRequest.required would lose both fields and the
  * documentation would show them as optional.
  */
-@Data
 @Schema(description = "The login credentials")
-public class LoginRequest {
+public record LoginRequest(
+        @NotBlank(message = "L'email è obbligatoria per effettuare il login.")
+        @Schema(description = "The account email address", example = "mario.rossi@example.it")
+        String email,
 
-    @NotBlank(message = "L'email è obbligatoria per effettuare il login.")
-    @Schema(description = "The account email address", example = "mario.rossi@example.it")
-    private String email;
-
-    @NotBlank(message = "La password è obbligatoria per effettuare il login.")
-    @Schema(description = "The account password", example = "password-sicura")
-    private String password;
+        @NotBlank(message = "La password è obbligatoria per effettuare il login.")
+        @Schema(description = "The account password", example = "password-sicura")
+        String password) {
 }

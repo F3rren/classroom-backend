@@ -61,11 +61,11 @@ class FirstAdminBootstrapUnitTest {
 
         ArgumentCaptor<CreateUserRequest> request = ArgumentCaptor.forClass(CreateUserRequest.class);
         verify(authService).register(request.capture());
-        assertThat(request.getValue().getEmail()).isEqualTo("primo@admin.it");
+        assertThat(request.getValue().email()).isEqualTo("primo@admin.it");
         // The role is lowercase: it is the value of the Role enum, not the constant's name.
         // Getting it wrong would create an ordinary user and leave the knot tied, with no
         // error to show for it.
-        assertThat(request.getValue().getRole()).isEqualTo("admin");
+        assertThat(request.getValue().role()).isEqualTo("admin");
     }
 
     @Test

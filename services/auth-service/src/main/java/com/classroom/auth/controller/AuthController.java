@@ -184,7 +184,7 @@ public class AuthController {
         if (!bodyCarriesRefreshToken(request)) {
             return SessionCookies.read(httpRequest, SessionCookies.REFRESH_TOKEN);
         }
-        return request.getRefreshToken();
+        return request.refreshToken();
     }
 
     /**
@@ -197,7 +197,7 @@ public class AuthController {
      * refresh() to leave the new pair out of the response body - see RefreshPayload.
      */
     private boolean bodyCarriesRefreshToken(RefreshTokenRequest request) {
-        return request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank();
+        return request != null && request.refreshToken() != null && !request.refreshToken().isBlank();
     }
 
     /** Checks the shape of an email address, with basic checks only. */
@@ -232,13 +232,13 @@ public class AuthController {
         // limiter. See LoginRequest's javadoc - @Valid on the parameter would move all of it
         // in front, and an attacker could then fail validation for ever without ever
         // consuming an attempt.
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+        if (request.email() == null || request.email().trim().isEmpty()) {
             logger.warn("END login - email missing");
             throw new InvalidRequestException("MISSING_EMAIL", "Missing email",
                     "L'email è obbligatoria per effettuare il login.");
         }
 
-        String email = request.getEmail().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase();
         String maskedEmail = LogSanitizer.maskEmail(email);
 
         // Anti brute-force rate limiting, keyed on IP + email.
@@ -263,14 +263,14 @@ public class AuthController {
                     "Il formato dell'email inserita non è valido.");
         }
 
-        if (request.getPassword() == null || request.getPassword().isEmpty()) {
+        if (request.password() == null || request.password().isEmpty()) {
             logger.warn("END login - password missing for email: {}", maskedEmail);
             throw new InvalidRequestException("MISSING_PASSWORD", "Missing password",
                     "La password è obbligatoria per effettuare il login.");
         }
 
         // Password length check (basic hardening)
-        if (request.getPassword().length() < 3) {
+        if (request.password().length() < 3) {
             logger.warn("END login - password too short for email: {}", maskedEmail);
             throw new InvalidRequestException("PASSWORD_TOO_SHORT", "Password too short",
                     "La password deve essere di almeno 3 caratteri.");
@@ -281,7 +281,7 @@ public class AuthController {
         // GlobalExceptionHandler maps properly - a database constraint, for one, which is a
         // 409. A failure here now rises and is answered by the handler, with the stack trace
         // logged once instead of swallowed.
-        User user = authService.login(email, request.getPassword());
+        User user = authService.login(email, request.password());
 
         if (user == null) {
             logger.warn("END login - invalid credentials for email: {}", maskedEmail);

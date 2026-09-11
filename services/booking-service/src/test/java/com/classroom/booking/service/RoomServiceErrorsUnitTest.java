@@ -45,12 +45,7 @@ class RoomServiceErrorsUnitTest {
     }
 
     private RoomRequest request(String name) {
-        RoomRequest r = new RoomRequest();
-        r.setName(name);
-        r.setCapacity(30);
-        r.setFloor(1);
-        r.setVirtual(false);
-        return r;
+        return new RoomRequest(name, 30, 1, false);
     }
 
     @Test

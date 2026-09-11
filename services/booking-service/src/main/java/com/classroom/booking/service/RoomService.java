@@ -68,16 +68,16 @@ public class RoomService {
 
     // Creates a room.
     public Room createRoom(RoomRequest request) {
-        logger.debug("START createRoom - data received: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
-                   request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
-        
-        if (roomRepository.existsByNameIgnoreCase(request.getName())) {
-            logger.debug("END createRoom - name already taken: {}", request.getName());
+        logger.debug("START createRoom - data received: name: {}, capacity: {}, floor: {}, isVirtual: {}",
+                   request.name(), request.capacity(), request.floor(), request.isVirtual());
+
+        if (roomRepository.existsByNameIgnoreCase(request.name())) {
+            logger.debug("END createRoom - name already taken: {}", request.name());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Room name already taken: " + request.getName(),
+                    "Room name already taken: " + request.name(),
                     "Esiste gia' un'aula con questo nome.");
         }
-        
+
 
         // No validation here: RoomRequest already carries @NotBlank, @Positive and
         // @PositiveOrZero and the controller uses @Valid, so Bean Validation rejects earlier
@@ -85,9 +85,9 @@ public class RoomService {
         // the same rule could drift apart.
 
         Room room = new Room();
-        room.setName(request.getName().trim());
-        room.setCapacity(request.getCapacity());
-        room.setFloor(request.getFloor());
+        room.setName(request.name().trim());
+        room.setCapacity(request.capacity());
+        room.setFloor(request.floor());
         room.setVirtual(request.isVirtual());
 
         logger.debug("validation passed, creating the room - final data: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
@@ -105,26 +105,26 @@ public class RoomService {
 
     // Updates an existing room.
     public Room updateRoom(@NonNull Long id, RoomRequest request) {
-        logger.debug("START updateRoom - ID: {}, data received: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
-                   id, request.getName(), request.getCapacity(), request.getFloor(), request.isVirtual());
-        
+        logger.debug("START updateRoom - ID: {}, data received: name: {}, capacity: {}, floor: {}, isVirtual: {}",
+                   id, request.name(), request.capacity(), request.floor(), request.isVirtual());
+
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> ResourceType.ROOM.notFoundById(id));
-        logger.debug("existing room found - name: {}, capacity: {}, floor: {}, isVirtual: {}", 
+        logger.debug("existing room found - name: {}, capacity: {}, floor: {}, isVirtual: {}",
                    room.getName(), room.getCapacity(), room.getFloor(), room.isVirtual());
 
-        if (roomRepository.existsByNameIgnoreCaseAndIdNot(request.getName(), id)) {
-            logger.debug("END updateRoom - name already taken: {}", request.getName());
+        if (roomRepository.existsByNameIgnoreCaseAndIdNot(request.name(), id)) {
+            logger.debug("END updateRoom - name already taken: {}", request.name());
             throw new DomainConflictException("ROOM_NAME_TAKEN",
-                    "Room name already taken: " + request.getName(),
+                    "Room name already taken: " + request.name(),
                     "Esiste gia' un'aula con questo nome.");
         }
 
         // As in createRoom: the validation is @Valid's job, not this method's.
 
-        room.setName(request.getName().trim());
-        room.setCapacity(request.getCapacity());
-        room.setFloor(request.getFloor());
+        room.setName(request.name().trim());
+        room.setCapacity(request.capacity());
+        room.setFloor(request.floor());
         room.setVirtual(request.isVirtual());
 
         logger.debug("validation passed, updating the room - final data: name: {}, capacity: {}, floor: {}, isVirtual: {}", 
@@ -281,9 +281,6 @@ public class RoomService {
      * deterministic and lets a list of rooms share one single "now".
      */
     private RoomDetailsResponse toRoomDetails(Room room, List<Booking> bookings, LocalDateTime now) {
-        RoomDetailsResponse roomDetails = new RoomDetailsResponse(
-                room.getId(), room.getName(), room.getFloor(), room.getCapacity(), room.isVirtual());
-
         RoomAvailability status = RoomAvailability.FREE;
         RoomDetailsResponse.CurrentBooking currentBooking = null;
         RoomDetailsResponse.BlockInfo blockInfo = null;
@@ -341,11 +338,9 @@ public class RoomService {
             }
         }
 
-        roomDetails.setStatus(status);
-        roomDetails.setBooking(currentBooking);
-        roomDetails.setBlocked(blockInfo);
-        roomDetails.setBookings(bookingInfos);
-        return roomDetails;
+        return new RoomDetailsResponse(
+                room.getId(), room.getName(), room.getFloor(), room.getCapacity(), room.isVirtual(),
+                status, currentBooking, blockInfo, bookingInfos);
     }
 
     private RoomDetailsResponse.CurrentBooking toCurrentBooking(Booking booking) {
