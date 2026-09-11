@@ -1,20 +1,13 @@
 package com.classroom.booking.dto;
 
 import com.classroom.booking.model.Room;
-import lombok.Getter;
 
 import java.util.List;
 
 /** A room plus its detailed bookings, not wrapped in ApiEnvelope (the existing shape). */
-@Getter
-public class RoomWithBookingsPayload {
-    private final Room room;
-    private final List<BookingDetailDto> bookings;
-    private final int totalBookings;
+public record RoomWithBookingsPayload(Room room, List<BookingDetailDto> bookings, int totalBookings) {
 
     public RoomWithBookingsPayload(Room room, List<BookingDetailDto> bookings) {
-        this.room = room;
-        this.bookings = bookings;
-        this.totalBookings = bookings.size();
+        this(room, bookings, bookings.size());
     }
 }

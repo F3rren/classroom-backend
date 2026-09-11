@@ -298,7 +298,7 @@ public class RoomController {
         long virtualCount = roomService.countVirtualRooms();
         RoomStats stats = new RoomStats(physicalCount, virtualCount);
 
-        logger.debug("END getRoomsStats - statistics computed: total: {}, physical: {}, virtual: {}", stats.getTotalRooms(), physicalCount, virtualCount);
+        logger.debug("END getRoomsStats - statistics computed: total: {}, physical: {}, virtual: {}", stats.totalRooms(), physicalCount, virtualCount);
 
         return new ResponseEntity<>(
             createSuccessResponse("Statistiche aule recuperate con successo", new RoomStatsPayload(stats), sessionId),

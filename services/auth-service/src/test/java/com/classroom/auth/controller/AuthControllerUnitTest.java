@@ -257,12 +257,12 @@ class AuthControllerUnitTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         LoginResponse body = (LoginResponse) Objects.requireNonNull(resp.getBody());
-        assertThat(body.getToken()).isEqualTo("token-valido");
+        assertThat(body.token()).isEqualTo("token-valido");
         // the token is duplicated inside "data" too, the historic shape the frontend expects
-        assertThat(body.getData().getToken()).isEqualTo("token-valido");
-        assertThat(body.isSuccess()).isTrue();
+        assertThat(body.data().token()).isEqualTo("token-valido");
+        assertThat(body.success()).isTrue();
         // without this, the client would have no way to ever call /refresh or /logout
-        assertThat(body.getData().getRefreshToken()).isEqualTo("refresh-valido");
+        assertThat(body.data().refreshToken()).isEqualTo("refresh-valido");
     }
 
     // ==================== refresh ====================
@@ -305,8 +305,8 @@ class AuthControllerUnitTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         RefreshPayload data = Objects.requireNonNull(resp.getBody()).getData();
-        assertThat(data.getToken()).isEqualTo("nuovo-token");
-        assertThat(data.getRefreshToken()).isEqualTo("nuovo-refresh");
+        assertThat(data.token()).isEqualTo("nuovo-token");
+        assertThat(data.refreshToken()).isEqualTo("nuovo-refresh");
     }
 
     @Test
@@ -330,7 +330,7 @@ class AuthControllerUnitTest {
 
         verify(refreshTokenService).revoke("un-token");
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(Objects.requireNonNull(resp.getBody()).getData().isLoggedOut()).isTrue();
+        assertThat(Objects.requireNonNull(resp.getBody()).getData().loggedOut()).isTrue();
     }
 
     @Test

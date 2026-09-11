@@ -2,20 +2,11 @@ package com.classroom.auth.dto;
 
 import com.classroom.model.Role;
 import com.classroom.auth.model.User;
-import lombok.Getter;
 
 /** Summary of a user just created by an admin (POST /api/admin/users). */
-@Getter
-public class UserRegisterAck {
-    private final Long userId;
-    private final String email;
-    private final String username;
-    private final Role role;
+public record UserRegisterAck(Long userId, String email, String username, Role role) {
 
     public UserRegisterAck(User user) {
-        this.userId = user.getId();
-        this.email = user.getEmail();
-        this.username = user.getUsername();
-        this.role = user.getRole();
+        this(user.getId(), user.getEmail(), user.getUsername(), user.getRole());
     }
 }

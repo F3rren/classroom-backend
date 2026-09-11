@@ -1,23 +1,22 @@
 package com.classroom.booking.dto;
 
-import lombok.Getter;
-
 /** Physical versus virtual room statistics, inside RoomStatsPayload.statistics. */
-@Getter
-public class RoomStats {
-    private final long totalRooms;
-    private final long physicalRooms;
-    private final long virtualRooms;
-    private final double physicalPercentage;
-    private final double virtualPercentage;
-    private final boolean hasRooms;
+public record RoomStats(
+        long totalRooms,
+        long physicalRooms,
+        long virtualRooms,
+        double physicalPercentage,
+        double virtualPercentage,
+        boolean hasRooms) {
 
     public RoomStats(long physicalRooms, long virtualRooms) {
-        this.physicalRooms = physicalRooms;
-        this.virtualRooms = virtualRooms;
-        this.totalRooms = physicalRooms + virtualRooms;
-        this.physicalPercentage = totalRooms > 0 ? Math.round((double) physicalRooms / totalRooms * 10000.0) / 100.0 : 0.0;
-        this.virtualPercentage = totalRooms > 0 ? Math.round((double) virtualRooms / totalRooms * 10000.0) / 100.0 : 0.0;
-        this.hasRooms = totalRooms > 0;
+        this(physicalRooms + virtualRooms, physicalRooms, virtualRooms,
+                percentage(physicalRooms, physicalRooms + virtualRooms),
+                percentage(virtualRooms, physicalRooms + virtualRooms),
+                (physicalRooms + virtualRooms) > 0);
+    }
+
+    private static double percentage(long part, long total) {
+        return total > 0 ? Math.round((double) part / total * 10000.0) / 100.0 : 0.0;
     }
 }

@@ -2,7 +2,6 @@ package com.classroom.auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Getter;
 
 /**
  * The contents of "data" in the login response: token, user summary, session metadata.
@@ -18,28 +17,23 @@ import lombok.Getter;
  * the response body.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Getter
 @Schema(description = "The contents of \"data\" in the login response. token and refreshToken are "
         + "absent when the caller asked for the cookie-only response (see X-Auth-Mode): both "
         + "already went out as HttpOnly cookies")
-public class LoginPayload {
-
-    @Schema(description = "The JWT to send in the Authorization header - absent in the cookie-only response")
-    private final String token;
-    @Schema(description = "The refresh token: send it to POST /api/auth/refresh for a new token pair, "
-            + "or to POST /api/auth/logout to end the session early - absent in the cookie-only response")
-    private final String refreshToken;
-    @Schema(description = "The authenticated user's data")
-    private final UserSummaryDto user;
-    @Schema(description = "The moment of the login", example = "2026-08-31 14:05:00")
-    private final String loginTime;
-    @Schema(description = "The authentication scheme to use", example = "Bearer")
-    private final String tokenType = "Bearer";
+public record LoginPayload(
+        @Schema(description = "The JWT to send in the Authorization header - absent in the cookie-only response")
+        String token,
+        @Schema(description = "The refresh token: send it to POST /api/auth/refresh for a new token pair, "
+                + "or to POST /api/auth/logout to end the session early - absent in the cookie-only response")
+        String refreshToken,
+        @Schema(description = "The authenticated user's data")
+        UserSummaryDto user,
+        @Schema(description = "The moment of the login", example = "2026-08-31 14:05:00")
+        String loginTime,
+        @Schema(description = "The authentication scheme to use", example = "Bearer")
+        String tokenType) {
 
     public LoginPayload(String token, String refreshToken, UserSummaryDto user, String loginTime) {
-        this.token = token;
-        this.refreshToken = refreshToken;
-        this.user = user;
-        this.loginTime = loginTime;
+        this(token, refreshToken, user, loginTime, "Bearer");
     }
 }

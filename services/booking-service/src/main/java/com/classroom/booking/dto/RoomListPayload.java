@@ -1,7 +1,6 @@
 package com.classroom.booking.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Getter;
 
 import java.util.List;
 
@@ -13,26 +12,36 @@ import java.util.List;
  * @JsonInclude(NON_NULL) omits them for all the others, reproducing today's exact shape.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Getter
-public class RoomListPayload {
-    private List<?> rooms;
-    private int totalRooms;
-    private Integer floor;
-    private Integer minCapacity;
-    private String type;
-    private String suggestion;
-    private Integer maxCapacityFound;
+public record RoomListPayload(
+        List<?> rooms,
+        int totalRooms,
+        Integer floor,
+        Integer minCapacity,
+        String type,
+        String suggestion,
+        Integer maxCapacityFound) {
 
     public static RoomListPayload of(List<?> rooms) {
-        RoomListPayload p = new RoomListPayload();
-        p.rooms = rooms;
-        p.totalRooms = rooms.size();
-        return p;
+        return new RoomListPayload(rooms, rooms.size(), null, null, null, null, null);
     }
 
-    public RoomListPayload withFloor(int floor) { this.floor = floor; return this; }
-    public RoomListPayload withMinCapacity(int minCapacity) { this.minCapacity = minCapacity; return this; }
-    public RoomListPayload withType(String type) { this.type = type; return this; }
-    public RoomListPayload withSuggestion(String suggestion) { this.suggestion = suggestion; return this; }
-    public RoomListPayload withMaxCapacityFound(int maxCapacityFound) { this.maxCapacityFound = maxCapacityFound; return this; }
+    public RoomListPayload withFloor(int floor) {
+        return new RoomListPayload(rooms, totalRooms, floor, minCapacity, type, suggestion, maxCapacityFound);
+    }
+
+    public RoomListPayload withMinCapacity(int minCapacity) {
+        return new RoomListPayload(rooms, totalRooms, floor, minCapacity, type, suggestion, maxCapacityFound);
+    }
+
+    public RoomListPayload withType(String type) {
+        return new RoomListPayload(rooms, totalRooms, floor, minCapacity, type, suggestion, maxCapacityFound);
+    }
+
+    public RoomListPayload withSuggestion(String suggestion) {
+        return new RoomListPayload(rooms, totalRooms, floor, minCapacity, type, suggestion, maxCapacityFound);
+    }
+
+    public RoomListPayload withMaxCapacityFound(int maxCapacityFound) {
+        return new RoomListPayload(rooms, totalRooms, floor, minCapacity, type, suggestion, maxCapacityFound);
+    }
 }

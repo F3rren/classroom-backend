@@ -1,18 +1,9 @@
 package com.classroom.booking.dto;
 
-import lombok.Getter;
-
 /** Confirmation that an admin deleted a booking. */
-@Getter
-public class BookingDeletionResponse {
-    private final Long deletedBookingId;
-    private final Long adminId;
-    private final boolean adminAction = true;
-    private final String reason;
+public record BookingDeletionResponse(Long deletedBookingId, Long adminId, boolean adminAction, String reason) {
 
     public BookingDeletionResponse(Long deletedBookingId, Long adminId, String reason) {
-        this.deletedBookingId = deletedBookingId;
-        this.adminId = adminId;
-        this.reason = reason;
+        this(deletedBookingId, adminId, true, reason);
     }
 }
