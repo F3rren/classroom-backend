@@ -2,6 +2,9 @@ package com.classroom.booking.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Who made a booking, as a snapshot taken at the moment of booking.
@@ -19,6 +22,9 @@ import jakarta.persistence.Embeddable;
  * their name, history is not rewritten. For the same reason these fields must not be
  * resynchronised when auth-service updates a profile.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Embeddable
 public class BookingOwner {
 
@@ -30,37 +36,4 @@ public class BookingOwner {
 
     @Column(name = "user_name", length = 100)
     private String name;
-
-    public BookingOwner() {
-    }
-
-    public BookingOwner(Long id, String username, String name) {
-        this.id = id;
-        this.username = username;
-        this.name = name;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
 }

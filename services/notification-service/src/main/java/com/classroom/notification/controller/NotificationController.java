@@ -16,8 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,12 +28,11 @@ import java.util.Optional;
  * this one, whose caller is another service, these are read by the person in front of the
  * screen. Everything else here - Swagger summaries, log lines - is read by a programmer.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/notifications")
 @Tag(name = "Notifications")
 public class NotificationController {
-
-    private static final Logger logger = LoggerFactory.getLogger(NotificationController.class);
 
     private final NotificationService notificationService;
 

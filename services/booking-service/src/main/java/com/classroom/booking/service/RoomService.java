@@ -12,10 +12,10 @@ import com.classroom.booking.repository.RoomRepository;
 import com.classroom.booking.repository.BookingRepository;
 import com.classroom.booking.dto.RoomRequest;
 import com.classroom.booking.dto.RoomDetailsResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -25,10 +25,9 @@ import java.util.Optional;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class RoomService {
-
-    private static final Logger logger = LoggerFactory.getLogger(RoomService.class);
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
@@ -169,6 +168,7 @@ public class RoomService {
     }
 
     // Full details of every room, with status and bookings.
+    @Transactional(readOnly = true)
     public List<RoomDetailsResponse> getAllRoomsWithDetails() {
         logger.debug("START getAllRoomsWithDetails");
         List<RoomDetailsResponse> response = getRoomsDetailsFromList(roomRepository.findAll());
@@ -177,6 +177,7 @@ public class RoomService {
     }
 
     // Full details of a single room.
+    @Transactional(readOnly = true)
     public RoomDetailsResponse getRoomWithDetails(@NonNull Long roomId) {
         logger.debug("START getRoomWithDetails - ID room: {}", roomId);
 
@@ -210,6 +211,7 @@ public class RoomService {
     }
     
     // Full details of the physical rooms.
+    @Transactional(readOnly = true)
     public List<RoomDetailsResponse> getPhysicalRoomsWithDetails() {
         logger.debug("START getPhysicalRoomsWithDetails - fetching physical room details");
         List<Room> rooms = roomRepository.findByIsVirtual(false);
@@ -219,6 +221,7 @@ public class RoomService {
     }
     
     // Full details of the virtual rooms.
+    @Transactional(readOnly = true)
     public List<RoomDetailsResponse> getVirtualRoomsWithDetails() {
         logger.debug("START getVirtualRoomsWithDetails - fetching virtual room details");
         List<Room> rooms = roomRepository.findByIsVirtual(true);

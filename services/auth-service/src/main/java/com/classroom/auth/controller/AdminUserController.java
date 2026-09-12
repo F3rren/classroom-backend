@@ -17,8 +17,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -46,9 +45,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin/users")
 @Tag(name = "User administration")
 @PreAuthorize("hasRole('ADMIN')")
+@Slf4j
 public class AdminUserController {
-
-    private static final Logger logger = LoggerFactory.getLogger(AdminUserController.class);
 
     /**
      * On the annotation and not as an if at the top of each method, which is how it used to

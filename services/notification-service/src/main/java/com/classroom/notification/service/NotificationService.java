@@ -2,11 +2,10 @@ package com.classroom.notification.service;
 
 import com.classroom.notification.model.Notification;
 import com.classroom.notification.repository.NotificationRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,10 +14,9 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class NotificationService {
-
-    private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
 
     /** The type stored on the notification, and what a client filters on. */
     private static final String TYPE_CANCELLATION = "cancellation";

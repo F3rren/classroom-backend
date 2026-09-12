@@ -3,8 +3,7 @@ package com.classroom.auth.messaging;
 import com.classroom.config.RequestCorrelationFilter;
 import com.classroom.events.EventTopology;
 import com.classroom.events.UserDeletedEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -21,10 +20,9 @@ import org.springframework.stereotype.Component;
  * up. That is why the failure stays logged as an error and is not propagated: the user has
  * already been deleted, and failing the admin's response would not bring it back.
  */
+@Slf4j
 @Component
 public class EventPublisher {
-
-    private static final Logger logger = LoggerFactory.getLogger(EventPublisher.class);
 
     private final RabbitTemplate rabbitTemplate;
 

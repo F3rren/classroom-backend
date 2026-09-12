@@ -5,8 +5,7 @@ import com.classroom.config.RequestCorrelationFilter;
 import com.classroom.events.BookingCancelledEvent;
 import com.classroom.events.EventTopology;
 import com.classroom.notification.service.NotificationService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
@@ -22,10 +21,9 @@ import org.springframework.stereotype.Component;
  * apart: a malformed message is discarded and logged, because retrying will never fix it;
  * a database write failure is propagated, because that one really can succeed next time.
  */
+@Slf4j
 @Component
 public class CancellationListener {
-
-    private static final Logger logger = LoggerFactory.getLogger(CancellationListener.class);
 
     private final NotificationService notificationService;
 

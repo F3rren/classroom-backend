@@ -5,8 +5,7 @@ import com.classroom.auth.model.User;
 import com.classroom.auth.repository.UserRepository;
 import com.classroom.auth.service.AuthService;
 import com.classroom.util.LogSanitizer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -31,10 +30,9 @@ import org.springframework.stereotype.Component;
  * passes the same PasswordEncoder and the same checks as any other user, and there is no
  * second way of creating one that could drift from the first.
  */
+@Slf4j
 @Component
 public class FirstAdminBootstrap implements ApplicationRunner {
-
-    private static final Logger logger = LoggerFactory.getLogger(FirstAdminBootstrap.class);
 
     private final UserRepository userRepository;
     private final AuthService authService;

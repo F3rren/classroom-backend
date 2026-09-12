@@ -2,8 +2,7 @@ package com.classroom.exception;
 
 import com.classroom.config.RequestCorrelationFilter;
 import com.classroom.dto.ApiEnvelope;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -59,13 +58,12 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  *
  * Every userMessage here stays Italian: it is the one field of the envelope a person reads.
  */
+// @Slf4j's generated field hides the commons-logging "logger" the base class declares.
+// Deliberate: every class in this codebase logs through SLF4J under this name, and the
+// inherited field is never read by the base class itself.
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
-
-    // Hides the commons-logging "logger" the base class declares. Deliberate: every class in
-    // this codebase logs through SLF4J under this name, and the inherited field is never
-    // read by the base class itself.
-    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /** What is said when a rejected value carries no message of its own. */
     private static final String GENERIC_VALIDATION_MESSAGE = "I dati inviati non sono validi.";

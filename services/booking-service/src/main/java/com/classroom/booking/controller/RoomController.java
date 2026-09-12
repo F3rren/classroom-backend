@@ -19,8 +19,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -31,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
  * itself is already guaranteed by SecurityConfig's anyRequest().authenticated() policy, so
  * neither a manual check nor @PreAuthorize is needed.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/rooms")
 @Tag(name = "Rooms")
@@ -38,8 +38,6 @@ public class RoomController {
 
     private final RoomService roomService;
     private final BookingService bookingService;
-
-    private static final Logger logger = LoggerFactory.getLogger(RoomController.class);
 
     /** A cap on the capacity filter: beyond it this is not a plausible request, it is a typo. */
     private static final int MAX_REQUESTABLE_CAPACITY = 1000;

@@ -4,8 +4,7 @@ import com.classroom.booking.service.BookingService;
 import com.classroom.config.RequestCorrelationFilter;
 import com.classroom.events.EventTopology;
 import com.classroom.events.UserDeletedEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
@@ -22,10 +21,9 @@ import org.springframework.stereotype.Component;
  * logged, because retrying will never fix it; a database failure is propagated, because that
  * one really can succeed next time.
  */
+@Slf4j
 @Component
 public class UserDeletionListener {
-
-    private static final Logger logger = LoggerFactory.getLogger(UserDeletionListener.class);
 
     private final BookingService bookingService;
 

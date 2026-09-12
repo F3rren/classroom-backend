@@ -15,8 +15,7 @@ import com.classroom.booking.repository.RoomRepository;
 import com.classroom.booking.repository.CourseRepository;
 import com.classroom.booking.repository.BookingRepository;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +25,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class BookingService {
-    
-    private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
-    
+
     private final BookingRepository bookingRepository;
     
     private final RoomRepository roomRepository;

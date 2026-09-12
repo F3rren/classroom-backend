@@ -1,7 +1,6 @@
 package com.classroom.auth.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -30,10 +29,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * one, and staying up without limiting is worth more than falling over on memory exhaustion
  * and taking the legitimate logins down too. Keys already known keep being limited.
  */
+@Slf4j
 @Component
 public class LoginAttemptLimiter {
-
-    private static final Logger logger = LoggerFactory.getLogger(LoginAttemptLimiter.class);
 
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
 

@@ -4,16 +4,14 @@ import com.classroom.auth.model.User;
 import com.classroom.auth.repository.UserRepository;
 import com.classroom.auth.messaging.EventPublisher;
 import com.classroom.events.UserDeletedEvent;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Service
 public class UserService {
-
-    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
 

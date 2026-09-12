@@ -1,8 +1,7 @@
 package com.classroom.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -46,11 +45,10 @@ import java.util.Objects;
  *
  * @Order(-2) to come before DefaultErrorWebExceptionHandler, registered at -1.
  */
+@Slf4j
 @Component
 @Order(-2)
 public class GatewayErrorHandler implements ErrorWebExceptionHandler {
-
-    private static final Logger logger = LoggerFactory.getLogger(GatewayErrorHandler.class);
 
     /** How long a client is told to wait before retrying an unreachable service. */
     private static final String RETRY_AFTER_SECONDS = "10";

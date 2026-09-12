@@ -2,8 +2,7 @@ package com.classroom.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -24,10 +23,9 @@ import java.util.function.Function;
  * The trade-off worth keeping in mind: the secret is now shared between several processes,
  * so rotating it means restarting all of them together.
  */
+@Slf4j
 @Component
 public class JwtVerifier {
-
-    private static final Logger logger = LoggerFactory.getLogger(JwtVerifier.class);
 
     private final SecretKey key;
 

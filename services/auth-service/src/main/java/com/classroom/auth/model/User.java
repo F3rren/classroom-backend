@@ -5,8 +5,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
@@ -19,9 +21,12 @@ import java.time.LocalDateTime;
  * strings, so a client comparing role === "admin" keeps working. Role.JpaConverter is what
  * holds both ends to it.
  */
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 @Entity
 @Table(name = "users")
 // When a User is referenced as a LAZY relation, Hibernate loads it as a proxy subclass that
@@ -30,35 +35,45 @@ import java.time.LocalDateTime;
 // ByteBuddyInterceptor).
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private Long id;
-    
+
     @Column(nullable = false, unique = true, length = 50)
+    @ToString.Include
     private String username;
-    
+
     @Column(nullable = false, length = 100)
+    @ToString.Include
     private String name;
-    
+
     @Column(nullable = false, unique = true, length = 100)
+    @ToString.Include
     private String email;
-    
+
+    // Left out of toString on purpose - onlyExplicitlyIncluded=true already means "excluded
+    // unless marked", so this is the same guarantee the old @ToString.Exclude gave, just
+    // expressed as an absence instead of an exclusion.
     @Column(nullable = false, length = 255)
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @ToString.Exclude
     private String password;
-    
+
     @Column(nullable = false, length = 20)
     // Stored lowercase by Role's converter (CHECK constraint user_role_check)
+    @ToString.Include
     private Role role;
-    
+
     @Column(name = "registered_at", nullable = false, updatable = false)
+    @ToString.Include
     private LocalDateTime registeredAt;
-    
+
     @Column(name = "last_login")
+    @ToString.Include
     private LocalDateTime lastLogin;
-    
+
     @PrePersist
     protected void onCreate() {
         if (registeredAt == null) {
@@ -70,5 +85,5 @@ public class User {
             role = Role.USER;
         }
     }
-    
+
 }
